@@ -1,0 +1,17 @@
+---
+title: Content-Based Router — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+message [class] "Message" { attributes: "-type" }
+router [class] "Content Router" { methods: "route(msg)" }
+a [class] "Channel A" { methods: "handle()" }
+b [class] "Channel B" { methods: "handle()" }
+c [class] "Channel C" { methods: "handle()" }
+
+message -> router "in"
+router -> a "type = A"
+router -> b "type = B"
+router -> c "type = C"

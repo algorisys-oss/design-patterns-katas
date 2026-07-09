@@ -1,0 +1,13 @@
+---
+title: Message Channel — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+producer [class] "Producer" { methods: "send(msg)" }
+channel [class] "Message Channel" { attributes: "-messages" }
+consumer [class] "Consumer" { methods: "receive(msg)" }
+
+producer -> channel "send"
+channel -> consumer "deliver"

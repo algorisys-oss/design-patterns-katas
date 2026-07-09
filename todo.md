@@ -77,7 +77,7 @@ just doesn't render yet. Planned modern families (empty until content lands):
   dependency injection, CQRS, event sourcing)
 - **distributed** (cloud) ✅ (8 katas: circuit breaker, retry, timeout, bulkhead, saga,
   cache-aside, strangler fig, leader election)
-- **messaging** — message channel/router, pipes & filters, aggregator, splitter, pub/sub
+- **messaging** ✅ (6 katas: message channel, pipes & filters, content-based router, splitter, aggregator, dead letter queue)
 - **data** — repository, unit of work, data mapper, active record, identity map
 - **functional** ✅ (6 katas: option/result, currying & partial application, memoization,
   function composition, immutability, lens)

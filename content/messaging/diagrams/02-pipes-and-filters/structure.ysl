@@ -1,0 +1,17 @@
+---
+title: Pipes and Filters — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 110
+---
+
+source [class] "Source" { methods: "emit()" }
+f1 [class] "Filter: parse" { methods: "process(m)" }
+f2 [class] "Filter: enrich" { methods: "process(m)" }
+f3 [class] "Filter: format" { methods: "process(m)" }
+sink [class] "Sink" { methods: "consume()" }
+
+source -> f1 "pipe"
+f1 -> f2 "pipe"
+f2 -> f3 "pipe"
+f3 -> sink "pipe"

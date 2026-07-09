@@ -1,0 +1,17 @@
+---
+title: Aggregator — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+m1 [class] "Message 1"
+m2 [class] "Message 2"
+m3 [class] "Message 3"
+aggregator [class] "Aggregator" { attributes: "-pending", methods: "aggregate()" }
+combined [class] "Combined Message"
+
+m1 -> aggregator "collect"
+m2 -> aggregator
+m3 -> aggregator
+aggregator -> combined "emit when complete"

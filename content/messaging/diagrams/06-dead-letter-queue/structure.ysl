@@ -1,0 +1,15 @@
+---
+title: Dead Letter Queue — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+producer [class] "Producer" { methods: "send(msg)" }
+queue [class] "Queue" { attributes: "-messages" }
+consumer [class] "Consumer" { methods: "process(msg)" }
+dlq [class] "Dead Letter Queue" { attributes: "-failed" }
+
+producer -> queue "send"
+queue -> consumer "deliver"
+consumer -> dlq "fail / max retries"

@@ -1,0 +1,17 @@
+---
+title: Splitter — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+composite [class] "Composite Message" { attributes: "-items[]" }
+splitter [class] "Splitter" { methods: "split(msg)" }
+m1 [class] "Message 1"
+m2 [class] "Message 2"
+m3 [class] "Message 3"
+
+composite -> splitter "in"
+splitter -> m1 "part"
+splitter -> m2
+splitter -> m3
