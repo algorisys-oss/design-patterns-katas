@@ -1,0 +1,13 @@
+---
+title: Data Mapper — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+domain [class] "Domain Object" { attributes: "-fields", methods: "rules()" }
+mapper [class] "Data Mapper" { methods: "find(id);save(obj)" }
+db [class] "Database" { attributes: "-tables" }
+
+mapper -> domain "constructs"
+mapper -> db "reads / writes rows"

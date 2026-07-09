@@ -1,0 +1,13 @@
+---
+title: Identity Map — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+session [class] "Session / UoW" { methods: "get(id)" }
+idmap [class] "Identity Map" { attributes: "-byId: Map" }
+db [class] "Database" { methods: "load(id)" }
+
+session -> idmap "get(id)"
+idmap -> db "miss → load once"

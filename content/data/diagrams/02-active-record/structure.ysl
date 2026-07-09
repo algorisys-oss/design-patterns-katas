@@ -1,0 +1,11 @@
+---
+title: Active Record — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 130
+---
+
+record [class] "User (Active Record)" { attributes: "-name;-email", methods: "save();delete();find()" }
+db [class] "users table" { attributes: "-rows" }
+
+record -> db "maps 1:1, owns its own SQL"

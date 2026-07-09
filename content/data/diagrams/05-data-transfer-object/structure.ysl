@@ -1,0 +1,13 @@
+---
+title: Data Transfer Object — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+service [class] "Service" { methods: "getUser(id)" }
+dto [class] "UserDTO" { attributes: "-id;-name;-email" }
+client [class] "Client / API" { methods: "render()" }
+
+service -> dto "assembles (no behavior)"
+dto -> client "sent across boundary"

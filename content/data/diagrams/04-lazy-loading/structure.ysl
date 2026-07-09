@@ -1,0 +1,13 @@
+---
+title: Lazy Loading — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+order [class] "Order" { attributes: "-customer: Proxy" }
+proxy [class] "Lazy Proxy" { attributes: "-loaded", methods: "get()" }
+customer [class] "Customer" { attributes: "-full data" }
+
+order -> proxy "holds placeholder"
+proxy -> customer "load on first access"
