@@ -1,0 +1,14 @@
+---
+title: Optimistic UI — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+ui [class] "UI" { methods: "apply(change)" }
+optimistic [class] "Optimistic State" { attributes: "-pending" }
+server [class] "Server" { methods: "commit(change)" }
+
+ui -> optimistic "apply now"
+optimistic -> server "send"
+server -> optimistic "confirm / rollback"

@@ -1,0 +1,13 @@
+---
+title: Container / Presentational — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+store [class] "Store / API" { methods: "fetch()" }
+container [class] "Container" { attributes: "-state;-loading", methods: "load()" }
+view [class] "Presentational" { methods: "render(props)" }
+
+store -> container "data"
+container -> view "props + callbacks"

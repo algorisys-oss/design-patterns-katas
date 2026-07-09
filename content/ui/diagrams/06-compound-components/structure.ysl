@@ -1,0 +1,15 @@
+---
+title: Compound Components — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+parent [class] "Tabs (Parent)" { attributes: "-active", methods: "context()" }
+list [class] "TabList" { methods: "render()" }
+tab [class] "Tab" { methods: "select()" }
+panel [class] "TabPanel" { methods: "render()" }
+
+parent -> list "shares context"
+parent -> tab
+parent -> panel

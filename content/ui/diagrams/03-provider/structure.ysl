@@ -1,0 +1,15 @@
+---
+title: Provider / Context — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+provider [class] "Provider" { attributes: "-value" }
+a [class] "Consumer A" { methods: "use(value)" }
+b [class] "Consumer B" { methods: "use(value)" }
+c [class] "Consumer C" { methods: "use(value)" }
+
+provider -> a "provides"
+provider -> b
+provider -> c

@@ -1,0 +1,13 @@
+---
+title: Reactive State — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+signal [class] "Signal / Source" { attributes: "-value", methods: "set(v)" }
+derived [class] "Derived" { methods: "compute()" }
+view [class] "View / Effect" { methods: "render()" }
+
+signal -> derived "tracked by"
+derived -> view "updates"

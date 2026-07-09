@@ -81,7 +81,8 @@ just doesn't render yet. Planned modern families (empty until content lands):
 - **data** — repository, unit of work, data mapper, active record, identity map
 - **functional** — result/option/either, currying & partial application, memoization,
   composition/pipeline, lens, transducer
-- **ui** — component/container, state management, provider, render props, hooks
+- **ui** ✅ (6 katas: container/presentational, unidirectional data flow, provider,
+  reactive state, optimistic UI, compound components)
 - **deployment** (devops) — blue-green, canary, rolling, feature flags, IaC, GitOps
 - **anti-patterns** — a short set for contrast
 

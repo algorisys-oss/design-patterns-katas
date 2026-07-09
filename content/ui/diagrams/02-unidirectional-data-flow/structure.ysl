@@ -1,0 +1,15 @@
+---
+title: Unidirectional Data Flow — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 130
+---
+
+view [class] "View" { methods: "render(state)" }
+action [class] "Action" { attributes: "-type;-payload" }
+reducer [class] "Reducer" { methods: "(state, action)" }
+state [class] "New State" { attributes: "-value" }
+
+view -> action "1. dispatch"
+action -> reducer "2. handle"
+reducer -> state "3. next state"
