@@ -142,10 +142,13 @@ body {
   justify-content: center;
 }
 .structure-diagram .structure-svg {
-  width: 100%;
-  max-width: 560px;
-  height: auto;
   display: block;
+  /* Size from the diagram's own dimensions, bounded by both axes so a tall/narrow
+     diagram isn't upscaled to the column width. Small diagrams stay at natural size. */
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 480px;
 }
 
 /* ---- highlight.js tokens, mapped to the palette ---- */

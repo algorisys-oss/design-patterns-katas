@@ -53,19 +53,30 @@ await page.waitForFunction(() => typeof window.Yappy !== "undefined", { timeout:
 // adding it in the frontend) keeps the attribution attached to the artifact and means it
 // survives every re-render.
 const FOOTER_H = 50;
+const FOOTER_FONT = 16;
 const FOOTER_TEXT = "Made with yappydraw.com by Algorisys Technologies";
 function addFooter(svg) {
   const tag = svg.match(/<svg[^>]*>/)?.[0];
   const vb = tag?.match(/viewBox="\s*([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s*"/);
   if (!tag || !vb) return svg;
   const minX = +vb[1], minY = +vb[2], w = +vb[3], h = +vb[4];
-  const hAttr = +(tag.match(/height="([\d.eE+-]+)"/)?.[1] ?? h);
-  let newTag = tag
-    .replace(/viewBox="[^"]*"/, `viewBox="${minX} ${minY} ${w} ${h + FOOTER_H}"`)
-    .replace(/height="[^"]*"/, `height="${hAttr + FOOTER_H}"`);
+
+  // A narrow diagram is thinner than the credit line — widen the canvas symmetrically so
+  // the footer isn't clipped, which also re-centers the diagram content. 0.55·fontSize is a
+  // safe per-glyph width estimate for Handlee; err generous rather than clip.
+  const footerW = FOOTER_TEXT.length * FOOTER_FONT * 0.55;
+  const newW = Math.max(w, footerW + 40);
+  const newMinX = minX - (newW - w) / 2;
+  const newH = h + FOOTER_H;
+
+  // yappy sets width/height equal to the viewBox extent — keep them in lockstep.
+  const newTag = tag
+    .replace(/viewBox="[^"]*"/, `viewBox="${newMinX} ${minY} ${newW} ${newH}"`)
+    .replace(/width="[^"]*"/, `width="${newW}"`)
+    .replace(/height="[^"]*"/, `height="${newH}"`);
   const footer =
-    `<text x="${minX + w / 2}" y="${minY + h + FOOTER_H * 0.62}" text-anchor="middle" ` +
-    `font-family="Handlee, cursive" font-size="18" fill="#9aa4b0">${FOOTER_TEXT}</text>`;
+    `<text x="${newMinX + newW / 2}" y="${minY + h + FOOTER_H * 0.62}" text-anchor="middle" ` +
+    `font-family="Handlee, cursive" font-size="${FOOTER_FONT}" fill="#9aa4b0">${FOOTER_TEXT}</text>`;
   return svg.replace(tag, newTag).replace(/<\/svg>\s*$/, footer + "</svg>");
 }
 

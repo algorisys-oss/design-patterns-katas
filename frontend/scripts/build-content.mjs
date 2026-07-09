@@ -103,9 +103,11 @@ function loadDiagram(file) {
   } catch {
     return null;
   }
-  // Strip the fixed width/height so the SVG scales to its container; keep the viewBox.
+  // Keep the intrinsic width/height (and viewBox) so CSS can bound the diagram by both
+  // dimensions without upscaling it — a tall, narrow diagram must not be blown up to
+  // the full column width. Just tag it for styling.
   svg = svg.replace(/<svg([^>]*)>/, (_m, attrs) => {
-    let a = attrs.replace(/\s(width|height)="[^"]*"/g, "");
+    let a = attrs;
     if (!/preserveAspectRatio/.test(a)) a += ' preserveAspectRatio="xMidYMid meet"';
     return `<svg${a} class="structure-svg" role="img">`;
   });
