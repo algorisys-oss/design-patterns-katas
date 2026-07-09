@@ -1,0 +1,13 @@
+---
+title: Currying / Partial Application — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+full [class] "f(a, b, c)" { methods: "call(a, b, c)" }
+curried [class] "curry(f)" { methods: "f(a)(b)(c)" }
+partial [class] "g = f(a)" { methods: "g(b, c)" }
+
+full -> curried "curry"
+curried -> partial "apply a"

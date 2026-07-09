@@ -1,0 +1,13 @@
+---
+title: Option / Result — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+op [class] "Operation" { methods: "run(x)" }
+result [class] "Result<T, E>" { attributes: "Ok(T) | Err(E)" }
+caller [class] "Caller" { methods: "map / match" }
+
+op -> result "returns"
+result -> caller "match"

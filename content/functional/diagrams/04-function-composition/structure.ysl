@@ -1,0 +1,17 @@
+---
+title: Function Composition — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 115
+---
+
+input [class] "Input" { attributes: "x" }
+f [class] "f" { methods: "parse(x)" }
+g [class] "g" { methods: "validate(x)" }
+h [class] "h" { methods: "format(x)" }
+output [class] "Output" { attributes: "h(g(f(x)))" }
+
+input -> f "x"
+f -> g "f(x)"
+g -> h "g(f(x))"
+h -> output "result"

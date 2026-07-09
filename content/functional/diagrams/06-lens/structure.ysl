@@ -1,0 +1,13 @@
+---
+title: Lens — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+lens [class] "Lens<S, A>" { methods: "get(s);set(s, a)" }
+whole [class] "Whole (S)" { attributes: "-a: {b: {c}}" }
+part [class] "Part (A)" { attributes: "c" }
+
+lens -> whole "focuses on"
+lens -> part "get / set (copy)"

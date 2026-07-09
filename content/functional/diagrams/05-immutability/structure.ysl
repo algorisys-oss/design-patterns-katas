@@ -1,0 +1,13 @@
+---
+title: Immutability — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+v1 [class] "State v1" { attributes: "-value: 1" }
+update [class] "update(fn)" { methods: "return new" }
+v2 [class] "State v2" { attributes: "-value: 2" }
+
+v1 -> update "input (unchanged)"
+update -> v2 "new copy"

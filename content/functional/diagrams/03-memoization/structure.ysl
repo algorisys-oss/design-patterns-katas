@@ -1,0 +1,13 @@
+---
+title: Memoization — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+caller [class] "Caller" { methods: "call(x)" }
+memoized [class] "Memoized fn" { attributes: "-cache: Map" }
+pure [class] "Pure Function" { methods: "compute(x)" }
+
+caller -> memoized "call(x)"
+memoized -> pure "miss → compute + store"
