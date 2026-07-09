@@ -1,0 +1,17 @@
+---
+title: Command — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+invoker [class] "Invoker"
+command [class] "Command"
+concrete [class] "ConcreteCommand"
+receiver [class] "Receiver"
+
+invoker -> command "invoke()"
+concrete -> command "implements"
+concrete -> receiver "calls"
+client -> concrete "creates"

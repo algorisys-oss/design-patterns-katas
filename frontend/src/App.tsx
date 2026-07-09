@@ -1,11 +1,24 @@
 import * as React from "react";
 import { Routes, Route, Navigate, useParams, Link } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Sidebar } from "@/components/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { KataView } from "@/components/kata-view";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { getKata, katas } from "@/lib/content";
+
+function usePersistedBool(key: string, initial: boolean) {
+  const [value, setValue] = React.useState<boolean>(() => {
+    if (typeof localStorage === "undefined") return initial;
+    const stored = localStorage.getItem(key);
+    return stored === null ? initial : stored === "1";
+  });
+  React.useEffect(() => {
+    localStorage.setItem(key, value ? "1" : "0");
+  }, [key, value]);
+  return [value, setValue] as const;
+}
 
 const CATEGORY_LABEL: Record<string, string> = {
   foundations: "Foundations",
@@ -18,11 +31,17 @@ const firstKataId = katas[0]?.id ?? "";
 
 export default function App() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [collapsed, setCollapsed] = usePersistedBool("sidebar-collapsed", false);
 
   return (
-    <div className="grid min-h-screen grid-cols-1 md:grid-cols-[264px_minmax(0,1fr)]">
-      {/* sidebar — sticky on desktop, drawer on mobile */}
-      <aside className="sticky top-0 hidden h-screen border-r border-border bg-[color-mix(in_srgb,var(--background)_92%,var(--foreground)_3%)] md:block">
+    <div className={cn("grid min-h-screen grid-cols-1", !collapsed && "md:grid-cols-[264px_minmax(0,1fr)]")}>
+      {/* sidebar — sticky on desktop, drawer on mobile, collapsible on desktop */}
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-screen border-r border-border bg-[color-mix(in_srgb,var(--background)_92%,var(--foreground)_3%)]",
+          !collapsed && "md:block",
+        )}
+      >
         <Sidebar />
       </aside>
 
@@ -46,6 +65,16 @@ export default function App() {
               onClick={() => setMobileOpen((v) => !v)}
             >
               {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden md:inline-flex"
+              aria-label={collapsed ? "Show sidebar" : "Hide sidebar"}
+              aria-pressed={collapsed}
+              onClick={() => setCollapsed((v) => !v)}
+            >
+              {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </Button>
             <Breadcrumb />
           </div>

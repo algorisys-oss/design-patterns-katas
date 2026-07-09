@@ -1,6 +1,6 @@
 import * as React from "react";
-import { NavLink } from "react-router-dom";
-import { Search, X } from "lucide-react";
+import { NavLink, useSearchParams } from "react-router-dom";
+import { Search, X, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { groupByCategory, searchKatas, type Kata } from "@/lib/content";
@@ -14,9 +14,24 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [query, setQuery] = React.useState("");
-  const results = React.useMemo(() => searchKatas(query, []), [query]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTag = searchParams.get("tag");
+  const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
+
+  const results = React.useMemo(
+    () => searchKatas(query, activeTag ? [activeTag] : []),
+    [query, activeTag],
+  );
   const groups = groupByCategory(results);
   const total = results.length;
+  // When filtering, keep every group open so matches are always visible.
+  const filtering = query.trim().length > 0 || Boolean(activeTag);
+
+  const clearTag = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("tag");
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -50,22 +65,52 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         )}
       </div>
 
+      {activeTag && (
+        <div className="px-4 pb-2">
+          <button
+            onClick={clearTag}
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 font-mono text-[11px] text-foreground transition-colors hover:bg-primary/20"
+          >
+            #{activeTag}
+            <X className="h-3 w-3" aria-hidden />
+            <span className="sr-only">Clear tag filter</span>
+          </button>
+        </div>
+      )}
+
       <nav className="thin-scroll flex-1 overflow-y-auto px-2 pb-10">
         {total === 0 && (
-          <p className="px-3 py-6 font-mono text-[12px] text-faint">No patterns match “{query}”.</p>
+          <p className="px-3 py-6 font-mono text-[12px] text-faint">
+            No patterns match {activeTag ? `#${activeTag}` : `“${query}”`}.
+          </p>
         )}
-        {groups.map(([category, items]) => (
-          <div key={category} className="mb-1">
-            <h4 className="px-3 pb-1.5 pt-4 font-mono text-[10.5px] font-semibold uppercase tracking-[0.13em] text-faint">
-              {CATEGORY_LABEL[category] ?? category}
-            </h4>
-            <ul>
-              {items.map((k) => (
-                <SidebarLink key={k.id} kata={k} onNavigate={onNavigate} />
-              ))}
-            </ul>
-          </div>
-        ))}
+        {groups.map(([category, items]) => {
+          const isCollapsed = !filtering && collapsed[category];
+          return (
+            <div key={category} className="mb-1">
+              <button
+                type="button"
+                onClick={() => setCollapsed((c) => ({ ...c, [category]: !c[category] }))}
+                aria-expanded={!isCollapsed}
+                className="flex w-full items-center gap-1 px-3 pb-1.5 pt-4 font-mono text-[10.5px] font-semibold uppercase tracking-[0.13em] text-faint transition-colors hover:text-foreground"
+              >
+                <ChevronRight
+                  className={cn("h-3 w-3 flex-none transition-transform", !isCollapsed && "rotate-90")}
+                  aria-hidden
+                />
+                {CATEGORY_LABEL[category] ?? category}
+                <span className="ml-auto tabular-nums text-faint/70">{items.length}</span>
+              </button>
+              {!isCollapsed && (
+                <ul>
+                  {items.map((k) => (
+                    <SidebarLink key={k.id} kata={k} onNavigate={onNavigate} />
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
       </nav>
     </div>
   );

@@ -1,0 +1,13 @@
+---
+title: Memento — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+originator [class] "Originator"
+memento [class] "Memento"
+caretaker [class] "Caretaker"
+
+originator -> memento "creates"
+caretaker -> memento "stores"

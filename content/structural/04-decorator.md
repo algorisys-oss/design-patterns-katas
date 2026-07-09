@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [structural, wrapper, composition, open-closed, layering]
 related: [adapter, proxy, composite, chain-of-responsibility]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -135,6 +135,58 @@ source.read("a");
 **🧠 Tradeoff** — Each decorator is a single-responsibility wrapper sharing `read(key)`, so
 features compose at runtime and new ones don't touch existing classes. The price is a chain of
 objects and order sensitivity — here logging sees every call, caching short-circuits repeats.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// One client carrying flags for every cross-cutting concern.
+class HttpClient {
+  constructor({ retry = false, log = false, token } = {}) { Object.assign(this, { retry, log, token }); }
+  async request(opts) {
+    if (this.log) console.log(opts.method, opts.url);
+    if (this.token) opts.headers = { ...opts.headers, authorization: `Bearer ${this.token}` };
+    // retry logic tangled in here too…
+    return fetch(opts.url, opts);
+  }
+}
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// Base client, then one wrapper per concern — all sharing request(opts).
+class HttpClient { request(opts) { return fetch(opts.url, opts); } }
+
+class WithAuth {
+  constructor(inner, token) { this.inner = inner; this.token = token; }
+  request(opts) {
+    return this.inner.request({
+      ...opts,
+      headers: { ...opts.headers, authorization: `Bearer ${this.token}` },
+    });
+  }
+}
+class WithRetry {
+  constructor(inner, tries = 3) { this.inner = inner; this.tries = tries; }
+  async request(opts) {
+    for (let i = 1; ; i++) {
+      try { return await this.inner.request(opts); }
+      catch (e) { if (i >= this.tries) throw e; }
+    }
+  }
+}
+
+// Compose in the order you want the behavior:
+const client = new WithRetry(new WithAuth(new HttpClient(), token));
+client.request({ url: "/orders", method: "GET" });
+```
+
+**🧠 Tradeoff** — Each wrapper adds one concern and shares `request(opts)`, so features compose at
+runtime and order is meaningful — here retry wraps auth, so every retry re-sends the token. This is
+the object cousin of Express middleware; when the concerns are purely functional, a middleware chain
+(Chain of Responsibility) is the lighter expression of the same idea.
 
 ### Python
 

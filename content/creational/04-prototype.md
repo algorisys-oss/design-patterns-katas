@@ -10,7 +10,7 @@ frequency: low
 difficulty: intermediate
 tags: [creational, cloning, copy, deep-copy, object-template]
 related: [factory-method, abstract-factory]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -116,6 +116,42 @@ even cycles, replacing the fragile `JSON.parse(JSON.stringify(x))` trick — but
 functions and class instances. When you only need to *reset* a template, a shallow spread with
 fresh nested literals is fine; reach for the deep copy exactly when nested state must be
 independent.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// A shared default object reused across requests — mutations leak between them.
+const defaultJob = { attempts: 0, options: { priority: "normal" } };
+
+function enqueue(overrides) {
+  const job = defaultJob;                            // same object every call
+  job.options.priority = overrides.priority ?? job.options.priority;
+  return job;                                        // one request's change bleeds into the next
+}
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// structuredClone (Node 17+) gives each request an independent deep copy of the template.
+const defaultJob = { attempts: 0, options: { priority: "normal", retries: 3 } };
+
+function enqueue(overrides) {
+  const job = structuredClone(defaultJob);           // request-scoped, isolated
+  Object.assign(job.options, overrides);
+  return job;
+}
+
+enqueue({ priority: "high" }).options.priority; // "high"
+defaultJob.options.priority;                    // "normal" — template untouched
+```
+
+**🧠 Tradeoff** — Cloning a template per request is the fix for a classic Node bug: shared mutable
+state leaking across requests. `structuredClone` deep-copies nested objects and even cycles, but
+throws on functions and class instances — for objects with methods, give them a `clone()` method
+or a copy constructor instead.
 
 ### Python
 

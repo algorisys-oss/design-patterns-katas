@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [structural, tree, part-whole, recursion, hierarchy]
 related: [decorator, iterator, visitor]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -121,6 +121,46 @@ root.totalSize();   // 150 — client never checks types or recurses
 folder handles recursion. Child-management (`add`) lives only on `Folder`, so a `File` can't
 accidentally hold children — the safe placement, at the cost of needing a `Folder` reference to
 build the tree.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// Callers branch on the node kind and recurse by hand to run a pipeline.
+async function run(node) {
+  if (node.kind === "step") return node.fn();
+  for (const child of node.steps) await run(child); // sequential group, inline
+}
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// A single step and a group of steps share the same run() — clients don't branch.
+class Step {
+  constructor(name, fn) { this.name = name; this.fn = fn; }
+  run() { return this.fn(); }                        // leaf
+}
+class Pipeline {
+  constructor(name) { this.name = name; this.steps = []; }
+  add(step) { this.steps.push(step); return this; }
+  async run() {                                      // composite: run children in order
+    for (const step of this.steps) await step.run();
+  }
+}
+
+const deploy = new Pipeline("deploy")
+  .add(new Step("build", build))
+  .add(new Pipeline("test").add(new Step("unit", unit)).add(new Step("e2e", e2e)))
+  .add(new Step("release", release));
+
+await deploy.run(); // client calls run() once; nesting handles itself
+```
+
+**🧠 Tradeoff** — Both `Step` and `Pipeline` expose `run()`, so a pipeline can contain steps or
+other pipelines to any depth and the caller never inspects types. Sequencing lives in `Pipeline`; a
+`ParallelPipeline` using `Promise.all` would slot in the same way — the uniform tree is the point.
 
 ### Python
 

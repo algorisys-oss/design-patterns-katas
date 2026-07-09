@@ -1,0 +1,15 @@
+---
+title: Interpreter — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+expr [class] "AbstractExpression"
+terminal [class] "TerminalExpression"
+nonterminal [class] "NonterminalExpression"
+
+client -> expr "interpret(context)"
+terminal -> expr "implements"
+nonterminal -> expr "implements + holds children"

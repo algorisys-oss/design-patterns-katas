@@ -1,0 +1,15 @@
+---
+title: Flyweight — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+factory [class] "FlyweightFactory"
+flyweight [class] "Flyweight"
+concrete [class] "ConcreteFlyweight"
+
+client -> factory "getFlyweight()"
+factory -> flyweight "pools"
+concrete -> flyweight "implements"

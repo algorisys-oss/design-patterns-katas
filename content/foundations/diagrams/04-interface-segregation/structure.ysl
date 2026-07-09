@@ -1,0 +1,15 @@
+---
+title: Interface Segregation — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+human [class] "Human"
+robot [class] "Robot"
+workable [class] "Workable"
+eatable [class] "Eatable"
+
+human -> workable "implements"
+human -> eatable "implements"
+robot -> workable "implements"

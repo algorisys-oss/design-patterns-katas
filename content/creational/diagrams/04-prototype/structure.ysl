@@ -1,0 +1,15 @@
+---
+title: Prototype — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+prototype [class] "Prototype"
+p1 [class] "ConcretePrototype 1"
+p2 [class] "ConcretePrototype 2"
+
+client -> prototype "clone()"
+p1 -> prototype "implements"
+p2 -> prototype "implements"

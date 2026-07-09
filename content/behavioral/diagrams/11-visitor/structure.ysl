@@ -1,0 +1,19 @@
+---
+title: Visitor — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+visitor [class] "Visitor"
+concretevisitor [class] "ConcreteVisitor"
+element [class] "Element"
+elementa [class] "ConcreteElement A"
+elementb [class] "ConcreteElement B"
+
+client -> visitor "uses"
+concretevisitor -> visitor "implements"
+element -> visitor "accept(visitor)"
+elementa -> element "implements"
+elementb -> element "implements"

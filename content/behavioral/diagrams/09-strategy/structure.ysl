@@ -1,0 +1,15 @@
+---
+title: Strategy — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+context [class] "Context"
+strategy [class] "Strategy"
+sa [class] "ConcreteStrategy A"
+sb [class] "ConcreteStrategy B"
+
+context -> strategy "uses"
+sa -> strategy "implements"
+sb -> strategy "implements"

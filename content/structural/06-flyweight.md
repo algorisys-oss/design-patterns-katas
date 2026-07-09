@@ -10,7 +10,7 @@ frequency: low
 difficulty: advanced
 tags: [structural, memory, sharing, intrinsic-extrinsic, performance]
 related: [factory-method, singleton, prototype]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -120,6 +120,39 @@ for (let i = 0; i < 1_000_000; i++) {
 texture exists once instead of a million times; each tree keeps only its `x,y` and a reference.
 The flyweight must stay immutable — mutating the shared `TreeType` would change every tree at
 once.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// Compiling the validator on every request — CPU and memory burned re-creating the same thing.
+function validate(schema, payload) {
+  const validator = ajv.compile(schema); // expensive, identical each call
+  return validator(payload);
+}
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// The compiled validator is intrinsic, shared state cached by a factory; the payload is extrinsic.
+const cache = new Map();
+function validatorFor(schema) {
+  const key = JSON.stringify(schema);
+  if (!cache.has(key)) cache.set(key, ajv.compile(schema)); // compiled once per schema
+  return cache.get(key);
+}
+
+function validate(schema, payload) {
+  return validatorFor(schema)(payload); // reuse the shared compiled validator
+}
+```
+
+**🧠 Tradeoff** — One compiled validator per schema is shared across every request that uses it, so
+the expensive compile happens once instead of per call — the same trick backs prepared-statement
+caches and compiled-regex reuse. The shared object must stay immutable, and watch the cache key: an
+unbounded map keyed by dynamic schemas is a memory leak, so bound it or key by a stable id.
 
 ### Python
 

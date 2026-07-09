@@ -1,0 +1,15 @@
+---
+title: Dependency Inversion — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+service [class] "PaymentService"
+gateway [class] "PaymentGateway"
+stripe [class] "StripeGateway"
+paypal [class] "PaypalGateway"
+
+service -> gateway "depends on"
+stripe -> gateway "implements"
+paypal -> gateway "implements"

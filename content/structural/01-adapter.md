@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [structural, interface-conversion, wrapper, integration, legacy]
 related: [facade, decorator, bridge, proxy]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -112,6 +112,50 @@ const checkout = new Checkout(new StripeAdapter(stripe));
 **🧠 Tradeoff** — The adapter centralizes the name and unit translation, so `Checkout` depends
 only on `pay(dollars)` and never sees Stripe. The cost is one wrapper class per vendor — cheap,
 and it's exactly where a vendor swap is isolated.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// The upload code is welded to the S3 SDK's shape.
+class Uploader {
+  constructor(s3) { this.s3 = s3; }
+  save(key, data) {
+    return this.s3.putObject({ Bucket: "uploads", Key: key, Body: data }).promise();
+  }
+}
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// One port our code speaks: save(key, data) / load(key). Adapters make each SDK speak it.
+class S3Adapter {
+  constructor(s3, bucket) { this.s3 = s3; this.bucket = bucket; }
+  save(key, data) { return this.s3.putObject({ Bucket: this.bucket, Key: key, Body: data }).promise(); }
+  load(key) { return this.s3.getObject({ Bucket: this.bucket, Key: key }).promise().then((r) => r.Body); }
+}
+class FsAdapter {
+  constructor(dir) { this.dir = dir; }
+  save(key, data) { return fs.promises.writeFile(`${this.dir}/${key}`, data); }
+  load(key) { return fs.promises.readFile(`${this.dir}/${key}`); }
+}
+
+// Uploader depends on save/load, not on any SDK.
+class Uploader {
+  constructor(storage) { this.storage = storage; }
+  put(key, data) { return this.storage.save(key, data); }
+}
+const uploader = new Uploader(
+  process.env.NODE_ENV === "prod" ? new S3Adapter(s3, "uploads") : new FsAdapter("/tmp"),
+);
+```
+
+**🧠 Tradeoff** — Each adapter absorbs one SDK's method names and argument shapes, so `Uploader`
+never sees S3 and local disk becomes a drop-in for tests. The cost is one wrapper per backend.
+Node's own `util.promisify` is this pattern at the language level — an adapter from callback style
+to promises.
 
 ### Python
 

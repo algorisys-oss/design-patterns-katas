@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [creational, step-by-step, fluent-api, immutability, optional-params]
 related: [abstract-factory, factory-method]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -129,6 +129,50 @@ const request = new HttpRequestBuilder()
 **🧠 Tradeoff** — Returning `this` from each step gives the fluent chain; `build()` centralizes
 validation and freezes the result so it can't be mutated afterward. The cost is a second class
 and a mutable staging object; for a two-field object this ceremony isn't worth it.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// Concatenating SQL by hand — unreadable, and one step from an injection hole.
+function findUsers(filters) {
+  let sql = "SELECT * FROM users";
+  if (filters.country) sql += ` WHERE country = '${filters.country}'`; // 🚨 interpolated value
+  if (filters.limit) sql += ` LIMIT ${filters.limit}`;
+  return sql;
+}
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// A fluent builder assembles a parameterized query — values never touch the string.
+class QueryBuilder {
+  #table; #wheres = []; #params = []; #limit;
+  from(t) { this.#table = t; return this; }
+  where(col, value) {
+    this.#params.push(value);
+    this.#wheres.push(`${col} = $${this.#params.length}`);
+    return this;
+  }
+  limit(n) { this.#limit = n; return this; }
+  build() {
+    let text = `SELECT * FROM ${this.#table}`;
+    if (this.#wheres.length) text += ` WHERE ${this.#wheres.join(" AND ")}`;
+    if (this.#limit) text += ` LIMIT ${this.#limit}`;
+    return { text, values: this.#params }; // ready for node-postgres
+  }
+}
+
+const query = new QueryBuilder().from("users").where("country", "US").limit(10).build();
+// { text: "SELECT * FROM users WHERE country = $1 LIMIT 10", values: ["US"] }
+```
+
+**🧠 Tradeoff** — The builder keeps values in a params array and emits only placeholders, so the
+query is safe by construction and reads in the order you think about it — this is the shape of Knex
+and most query builders. The cost is the builder class; for a fixed one-line query a plain
+parameterized string is simpler.
 
 ### Python
 

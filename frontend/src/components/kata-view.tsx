@@ -1,7 +1,8 @@
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Implementations } from "@/components/implementations";
 import { freqDots } from "@/lib/utils";
-import { type Kata } from "@/lib/content";
+import { getAdjacent, type Kata } from "@/lib/content";
 
 const CATEGORY_LABEL: Record<string, string> = {
   foundations: "Foundations",
@@ -64,12 +65,50 @@ export function KataView({ kata }: { kata: Kata }) {
       {kata.tags.length > 0 && (
         <div className="mt-14 flex flex-wrap gap-2 border-t border-border pt-6">
           {kata.tags.map((t) => (
-            <Badge key={t} variant="outline">
-              #{t}
-            </Badge>
+            <Link key={t} to={`?tag=${encodeURIComponent(t)}`} aria-label={`Filter by ${t}`}>
+              <Badge
+                variant="outline"
+                className="cursor-pointer transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-foreground"
+              >
+                #{t}
+              </Badge>
+            </Link>
           ))}
         </div>
       )}
+
+      <PrevNext id={kata.id} />
     </article>
+  );
+}
+
+function PrevNext({ id }: { id: string }) {
+  const { prev, next } = getAdjacent(id);
+  if (!prev && !next) return null;
+  return (
+    <nav className="mt-12 grid grid-cols-2 gap-3 border-t border-border pt-6" aria-label="Pattern navigation">
+      {prev ? (
+        <Link
+          to={`/kata/${prev.id}`}
+          className="flex flex-col rounded-lg border border-border px-4 py-3 transition-colors hover:border-primary/40 hover:bg-primary/5"
+        >
+          <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-faint">← Previous</span>
+          <span className="mt-1 text-[15px] font-semibold text-foreground">{prev.title}</span>
+        </Link>
+      ) : (
+        <span />
+      )}
+      {next ? (
+        <Link
+          to={`/kata/${next.id}`}
+          className="flex flex-col items-end rounded-lg border border-border px-4 py-3 text-right transition-colors hover:border-primary/40 hover:bg-primary/5"
+        >
+          <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-faint">Next →</span>
+          <span className="mt-1 text-[15px] font-semibold text-foreground">{next.title}</span>
+        </Link>
+      ) : (
+        <span />
+      )}
+    </nav>
   );
 }

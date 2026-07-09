@@ -1,0 +1,13 @@
+---
+title: Singleton — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+clienta [class] "Client A"
+clientb [class] "Client B"
+singleton [class] "Singleton"
+
+clienta -> singleton "getInstance()"
+clientb -> singleton "same instance"

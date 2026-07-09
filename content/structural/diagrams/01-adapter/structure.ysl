@@ -1,0 +1,15 @@
+---
+title: Adapter — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+target [class] "Target"
+adapter [class] "Adapter"
+adaptee [class] "Adaptee"
+
+client -> target "uses"
+adapter -> target "implements"
+adapter -> adaptee "wraps"

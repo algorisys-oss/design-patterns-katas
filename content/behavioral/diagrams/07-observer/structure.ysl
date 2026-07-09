@@ -1,0 +1,15 @@
+---
+title: Observer — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+subject [class] "Subject"
+observer [class] "Observer"
+obsA [class] "ConcreteObserver A"
+obsB [class] "ConcreteObserver B"
+
+subject -> observer "observers *"
+obsA -> observer "implements"
+obsB -> observer "implements"

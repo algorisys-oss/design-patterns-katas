@@ -1,0 +1,15 @@
+---
+title: Single Responsibility — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+employee [class] "Employee"
+pay [class] "PayCalculator"
+repo [class] "EmployeeRepository"
+report [class] "ReportFormatter"
+
+employee -> pay "delegates pay"
+employee -> repo "delegates persistence"
+employee -> report "delegates reporting"

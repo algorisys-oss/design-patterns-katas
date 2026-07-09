@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [behavioral, algorithms, open-closed, runtime-swap, composition]
 related: [state, template-method, factory-method]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -167,6 +167,47 @@ console.log(context.pay(300));          // Paid 300 using Crypto.
 method. That's flexible but unenforced: nothing stops you passing an object without a `pay`.
 For a single-method strategy you could skip classes entirely and pass a plain function — the
 class version pays off when a strategy carries its own configuration or state.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// A route handler switching on the payment method — the same conditional, server-side.
+app.post("/pay", (req, res) => {
+  const { method, amount } = req.body;
+  switch (method) {
+    case "credit": return res.send(`Charged ${amount} to card`);
+    case "paypal": return res.send(`Sent ${amount} via PayPal`);
+    default: return res.status(400).send(`Unknown method: ${method}`);
+  }
+  // every new gateway edits this handler
+});
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// Strategies are functions in a registry, selected by key at request time.
+const gateways = {
+  credit: (amount) => `Charged ${amount} to card`,
+  paypal: (amount) => `Sent ${amount} via PayPal`,
+  crypto: (amount) => `Sent ${amount} in crypto`, // add a gateway: one entry, no handler edits
+};
+
+app.post("/pay", (req, res) => {
+  const { method, amount } = req.body;
+  const charge = gateways[method];
+  if (!charge) return res.status(400).send(`Unknown method: ${method}`);
+  res.send(charge(amount));
+});
+```
+
+**🧠 Tradeoff** — On the backend a strategy is usually just a function keyed in an object, so
+"add a strategy" becomes "add a key" — no classes, no context object. This is how Passport.js
+registers auth strategies (`passport.use(new LocalStrategy(...))`) and how payment SDKs dispatch
+gateways. The looseness is the same duck-typing bargain: an unknown key must be handled
+explicitly, since nothing verifies the map is complete.
 
 ### Python
 

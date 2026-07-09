@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [structural, simplification, subsystem, api-surface, decoupling]
 related: [adapter, mediator, singleton]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -118,6 +118,47 @@ orders.checkout(order);   // callers know only this
 **🧠 Tradeoff** — The facade centralizes the orchestration and the subsystem dependencies, so
 callers depend on `checkout()` alone. It doesn't lock the subsystems away — advanced code can
 still use them directly — which keeps the facade a convenience, not a cage.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// The route handler orchestrates every service and must get the order right.
+app.post("/signup", async (req, res) => {
+  const user = await users.create(req.body);
+  await workspaces.provision(user.id);
+  await mailer.sendWelcome(user.email);
+  await analytics.track("signup", user.id);
+  res.json(user);
+});
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// One method hides the multi-service dance and its ordering.
+class AccountService {
+  constructor(users, workspaces, mailer, analytics) {
+    Object.assign(this, { users, workspaces, mailer, analytics });
+  }
+  async signup(input) {
+    const user = await this.users.create(input);
+    await this.workspaces.provision(user.id);
+    await this.mailer.sendWelcome(user.email);
+    await this.analytics.track("signup", user.id);
+    return user;
+  }
+}
+
+const accounts = new AccountService(users, workspaces, mailer, analytics);
+app.post("/signup", async (req, res) => res.json(await accounts.signup(req.body)));
+```
+
+**🧠 Tradeoff** — The controller now depends on `signup()` alone; the facade owns the service wiring
+and the order of operations, which is where it belongs and where it can be tested. The facade
+doesn't seal the services off — a background job can still call `mailer` directly — so it stays a
+convenience, not a wall.
 
 ### Python
 

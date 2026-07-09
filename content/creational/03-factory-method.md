@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [creational, object-creation, polymorphism, open-closed, decoupling]
 related: [abstract-factory, strategy, singleton]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -125,6 +125,45 @@ const cache = createCache("redis");
 **🧠 Tradeoff** — A registry object turns "add a case" into "add a key", so the factory itself
 never changes as products grow. The cost is a lookup that can fail at runtime rather than a
 `switch` the compiler could (in a typed language) check for exhaustiveness.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// The channel switch, copied into every place that sends a notification.
+function notify(channel, user, msg) {
+  if (channel === "email") return sendEmail(user.email, msg);
+  else if (channel === "sms") return sendSms(user.phone, msg);
+  // adding "push" means editing this — and every other copy
+  throw new Error(`Unknown channel: ${channel}`);
+}
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// A registry maps a channel name to its sender. New channels add one entry.
+const channels = {
+  email: (user, msg) => sendEmail(user.email, msg),
+  sms: (user, msg) => sendSms(user.phone, msg),
+};
+
+function notifier(channel) {
+  const send = channels[channel] ?? channels[process.env.DEFAULT_CHANNEL];
+  if (!send) throw new Error(`Unknown channel: ${channel}`);
+  return send;
+}
+
+// Register a new channel without touching notifier():
+channels.push = (user, msg) => sendPush(user.deviceToken, msg);
+notifier("push")(user, "your order shipped");
+```
+
+**🧠 Tradeoff** — Keying senders in an object turns "add a channel" into "add an entry", and the
+registry can be populated from config or plugins — even lazily with a dynamic `import()` for a
+driver you only load when it's selected. The price is the registry's: an unknown key fails at
+runtime, not at compile time.
 
 ### Python
 

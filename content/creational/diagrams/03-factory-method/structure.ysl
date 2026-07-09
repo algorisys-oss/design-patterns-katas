@@ -1,0 +1,15 @@
+---
+title: Factory Method — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+creator [class] "Creator"
+concretecreator [class] "ConcreteCreator"
+product [class] "Product"
+concreteproduct [class] "ConcreteProduct"
+
+concretecreator -> creator "implements"
+concretecreator -> concreteproduct "creates"
+concreteproduct -> product "implements"

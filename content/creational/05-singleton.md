@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [creational, single-instance, global-access, shared-state, lazy-init]
 related: [factory-method, abstract-factory]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -128,6 +128,38 @@ cache.get("token");         // "abc" — shared everywhere
 simplest correct singleton — no lazy-guard needed. Use a class with a static `getInstance()`
 only if construction must be deferred past import or take arguments. Private fields (`#store`)
 keep the internals from being poked at.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// A new pool per request — connections balloon until the database refuses more.
+export function handler(req, res) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL }); // every request!
+  return pool.query("SELECT 1").then((r) => res.json(r.rows));
+}
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// db.js — the pool is created once when the module first loads, then shared.
+import { Pool } from "pg";
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// handler.js — every importer reuses the same pool.
+import { pool } from "./db.js";
+export function handler(req, res) {
+  return pool.query("SELECT 1").then((r) => res.json(r.rows));
+}
+```
+
+**🧠 Tradeoff** — Node caches each module after first evaluation, so an exported instance is a
+per-process singleton — the standard way to share a pool, config, or logger. The catch is
+"per-process": under `cluster` or multiple workers each process gets its own pool, and serverless
+cold starts reset it, so anything that must be single *across* processes (a lock, a counter) needs
+external coordination like Redis.
 
 ### Python
 

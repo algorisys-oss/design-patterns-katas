@@ -51,6 +51,21 @@ export function groupByCategory(list: Kata[]): [string, Kata[]][] {
     .filter(([, ks]) => ks.length > 0);
 }
 
+// Canonical reading order — same as the sidebar: category order, then sequence within.
+export const orderedKatas: Kata[] = categories.flatMap((c) =>
+  katas.filter((k) => k.category === c).sort((a, b) => a.sequence - b.sequence),
+);
+
+// The previous/next kata in reading order, for page-to-page navigation.
+export function getAdjacent(id: string): { prev?: Kata; next?: Kata } {
+  const i = orderedKatas.findIndex((k) => k.id === id);
+  if (i === -1) return {};
+  return {
+    prev: i > 0 ? orderedKatas[i - 1] : undefined,
+    next: i < orderedKatas.length - 1 ? orderedKatas[i + 1] : undefined,
+  };
+}
+
 // Search across title, intent, tags, category, related, and body prose.
 export function searchKatas(query: string, activeTags: string[]): Kata[] {
   const q = query.trim().toLowerCase();

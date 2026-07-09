@@ -1,0 +1,15 @@
+---
+title: State — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+context [class] "Context"
+state [class] "State"
+statea [class] "ConcreteState A"
+stateb [class] "ConcreteState B"
+
+context -> state "delegates"
+statea -> state "implements"
+stateb -> state "implements"

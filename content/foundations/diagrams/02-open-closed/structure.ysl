@@ -1,0 +1,17 @@
+---
+title: Open/Closed — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+calc [class] "AreaCalculator"
+shape [class] "Shape"
+circle [class] "Circle"
+square [class] "Square"
+triangle [class] "Triangle"
+
+calc -> shape "depends on"
+circle -> shape "extend"
+square -> shape "extend"
+triangle -> shape "extend (no edits)"

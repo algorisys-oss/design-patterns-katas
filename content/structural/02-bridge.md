@@ -10,7 +10,7 @@ frequency: low
 difficulty: advanced
 tags: [structural, decoupling, composition, two-dimensions, abstraction]
 related: [abstract-factory, adapter, strategy]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -117,6 +117,45 @@ new Square(new CanvasRenderer()).draw();  // canvas.rect()
 **🧠 Tradeoff** — Shapes and renderers now vary independently: adding a Triangle is one class,
 adding WebGL is one renderer, no combinatorial blowup. The cost is the up-front split — worth it
 only when both axes really change; for a single axis this is just needless indirection.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// A class per (message type × transport) — the grid grows with every addition.
+class AlertEmail { send() { /* format alert, send email */ } }
+class AlertSms { send() { /* format alert, send sms */ } }
+class ReminderEmail { send() { /* … */ } }
+class ReminderSms { send() { /* … */ } }
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// Implementor axis: transports.
+class EmailTransport { deliver(to, text) { return sendEmail(to, text); } }
+class SmsTransport { deliver(to, text) { return sendSms(to, text); } }
+
+// Abstraction axis: message types hold a transport and format the body.
+class Alert {
+  constructor(transport) { this.transport = transport; }
+  send(to, subject) { return this.transport.deliver(to, `🚨 ALERT: ${subject}`); }
+}
+class Reminder {
+  constructor(transport) { this.transport = transport; }
+  send(to, subject) { return this.transport.deliver(to, `Reminder: ${subject}`); }
+}
+
+// Compose the axes freely:
+new Alert(new SmsTransport()).send(user.phone, "server down");
+new Reminder(new EmailTransport()).send(user.email, "invoice due");
+```
+
+**🧠 Tradeoff** — Message types and transports now vary independently: a new message type is one
+class, a new transport (Slack, push) is one class, with no combinatorial explosion. The split earns
+its keep only because both axes really grow here — for a single transport it would be needless
+indirection.
 
 ### Python
 

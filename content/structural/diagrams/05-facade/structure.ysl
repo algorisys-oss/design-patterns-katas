@@ -1,0 +1,17 @@
+---
+title: Facade — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+facade [class] "Facade"
+sa [class] "Subsystem A"
+sb [class] "Subsystem B"
+sc [class] "Subsystem C"
+
+client -> facade "uses"
+facade -> sa "delegates"
+facade -> sb "delegates"
+facade -> sc "delegates"

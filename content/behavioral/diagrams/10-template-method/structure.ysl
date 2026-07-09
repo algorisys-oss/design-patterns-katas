@@ -1,0 +1,13 @@
+---
+title: Template Method — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+abstract [class] "AbstractClass"
+concrete [class] "ConcreteClass"
+
+client -> abstract "templateMethod()"
+concrete -> abstract "overrides steps"

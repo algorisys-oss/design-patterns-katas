@@ -1,0 +1,15 @@
+---
+title: Builder — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+director [class] "Director"
+builder [class] "Builder"
+concrete [class] "ConcreteBuilder"
+product [class] "Product"
+
+director -> builder "uses"
+concrete -> builder "implements"
+concrete -> product "builds"

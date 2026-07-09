@@ -1,0 +1,16 @@
+---
+title: Proxy — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+subject [class] "Subject"
+proxy [class] "Proxy"
+real [class] "RealSubject"
+
+client -> subject "uses"
+proxy -> subject "implements"
+real -> subject "implements"
+proxy -> real "delegates"

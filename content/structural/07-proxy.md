@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [structural, access-control, lazy-loading, caching, wrapper]
 related: [decorator, adapter, facade]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -119,6 +119,42 @@ gallery[0].display();  // only THIS image loads
 lazily — a hundred proxies cost nothing until shown. JS also has a built-in `Proxy` object for
 intercepting property access (validation, reactivity); that's the same idea at the language
 level.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// Every read goes to the database, even for the same id fetched a moment ago.
+class UserRepo {
+  constructor(db) { this.db = db; }
+  get(id) { return this.db.query("SELECT * FROM users WHERE id = $1", [id]); }
+}
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// Same get(id) interface, but a caching proxy short-circuits repeat reads.
+class CachingUserRepo {
+  constructor(inner, ttl = 30_000) { this.inner = inner; this.ttl = ttl; this.cache = new Map(); }
+  async get(id) {
+    const hit = this.cache.get(id);
+    if (hit && hit.expires > Date.now()) return hit.value; // served from cache
+    const value = await this.inner.get(id);
+    this.cache.set(id, { value, expires: Date.now() + this.ttl });
+    return value;
+  }
+}
+
+// Drop-in: callers still just call get(id).
+const users = new CachingUserRepo(new UserRepo(db));
+```
+
+**🧠 Tradeoff** — The proxy shares `get(id)`, so it substitutes for the real repo while adding
+caching that callers never see — the same slot where an access-control or rate-limit proxy would
+go. The hard part is invalidation: a TTL is the simple choice, but stale reads are possible, so tune
+the window or clear entries on write.
 
 ### Python
 

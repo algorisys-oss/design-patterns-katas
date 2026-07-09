@@ -1,0 +1,18 @@
+---
+title: Iterator — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+aggregate [class] "Aggregate"
+iterator [class] "Iterator"
+concreteagg [class] "ConcreteAggregate"
+concreteit [class] "ConcreteIterator"
+
+client -> aggregate "uses"
+client -> iterator "uses"
+concreteagg -> aggregate "implements"
+concreteit -> iterator "implements"
+concreteagg -> concreteit "creates"

@@ -1,0 +1,15 @@
+---
+title: Composite — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+component [class] "Component"
+leaf [class] "Leaf"
+composite [class] "Composite"
+
+client -> component "uses"
+leaf -> component "implements"
+composite -> component "implements + children"

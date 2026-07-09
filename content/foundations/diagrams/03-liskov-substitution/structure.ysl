@@ -1,0 +1,15 @@
+---
+title: Liskov Substitution — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+shape [class] "Shape"
+rect [class] "Rectangle"
+square [class] "Square"
+
+client -> shape "uses"
+rect -> shape "substitutable"
+square -> shape "substitutable"

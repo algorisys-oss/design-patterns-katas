@@ -10,7 +10,11 @@
 - [x] dev.sh (one-command start)
 - [x] SOLID foundations category (5 principles)
 - [x] Node.js language tab (frontend/backend JS split) for pattern katas
-- [ ] Remaining behavioral patterns (7) + Node.js retrofit of the 13 earlier patterns
+- [x] Remaining behavioral patterns (7) + Node.js retrofit of the 13 earlier patterns
+- [~] Structure diagrams (SVG) per pattern + all 5 SOLID — 28 rendered via yappy (name-only boxes)
+- [ ] Rich UML (members, UML arrowheads, rounded corners) — blocked on yappy DSL gaps
+      (see ~/work/algo/yappy/docs/dsl-uml-gaps.md); re-render as Mermaid classDiagram once fixed
+- [ ] Wire diagrams into the frontend (copy SVGs to assets + Structure section per kata)
 - [ ] Optional Go content API (`net/http`) — static build covers hosting for now
 - [ ] Move content to fetched JSON asset (shrink JS bundle)
 - [ ] Static deploy (GitHub Pages / Netlify)
@@ -37,14 +41,14 @@
 - [x] 01 chain-of-responsibility
 - [x] 02 command
 - [x] 03 interpreter
-- [ ] 04 iterator
-- [ ] 05 mediator
-- [ ] 06 memento
+- [x] 04 iterator
+- [x] 05 mediator
+- [x] 06 memento
 - [x] 07 observer
 - [x] 08 state
-- [x] 09 strategy  ← exemplar (needs Node.js retrofit)
-- [ ] 10 template-method  (no reference article — write fresh)
-- [ ] 11 visitor          (no reference article — write fresh)
+- [x] 09 strategy  ← exemplar
+- [x] 10 template-method  (no reference article — write fresh)
+- [x] 11 visitor          (no reference article — write fresh)
 
 ## Notes
 

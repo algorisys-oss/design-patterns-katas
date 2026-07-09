@@ -1,0 +1,16 @@
+---
+title: Chain of Responsibility — Structure
+layout: tree-down
+hSpacing: 90
+vSpacing: 160
+---
+
+client [class] "Client"
+handler [class] "Handler"
+h1 [class] "ConcreteHandler A"
+h2 [class] "ConcreteHandler B"
+
+client -> handler "request"
+h1 -> handler "implements"
+h2 -> handler "implements"
+h1 -> h2 "next"

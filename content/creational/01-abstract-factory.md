@@ -10,7 +10,7 @@ frequency: medium
 difficulty: advanced
 tags: [creational, object-families, consistency, cross-platform, decoupling]
 related: [factory-method, builder, singleton]
-languages: [javascript, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go]
 ---
 
 ## Intent
@@ -123,6 +123,46 @@ const ui = buildUI(factory);   // guaranteed all-Mac or all-Windows
 never mentions a concrete product. Because JS has no interfaces, the "same family" contract is a
 convention, not enforced — a typed language would make `Factory` an interface both concretes
 implement.
+
+### Node.js
+
+**❌ Naive**
+
+```js
+// Picking each client independently — nothing stops an AWS bucket paired with a GCP queue.
+const storage = provider === "aws" ? new S3Storage(creds) : new GcsStorage(creds);
+const queue = provider === "aws" ? new SqsQueue(creds) : new PubSubQueue(creds);
+// two decisions that must agree, enforced by nothing
+```
+
+**✅ Idiomatic (backend)**
+
+```js
+// Each provider factory builds a matching family of clients from one config.
+class AwsFactory {
+  constructor(config) { this.config = config; }
+  createStorage() { return new S3Storage(this.config); }
+  createQueue() { return new SqsQueue(this.config); }
+}
+class GcpFactory {
+  constructor(config) { this.config = config; }
+  createStorage() { return new GcsStorage(this.config); }
+  createQueue() { return new PubSubQueue(this.config); }
+}
+
+// The app is handed ONE factory at startup and can't mix clouds.
+function buildInfra(factory) {
+  return { storage: factory.createStorage(), queue: factory.createQueue() };
+}
+
+const factory = process.env.CLOUD === "aws" ? new AwsFactory(cfg) : new GcpFactory(cfg);
+const infra = buildInfra(factory); // all-AWS or all-GCP, same creds and region
+```
+
+**🧠 Tradeoff** — On the backend the "family" is a set of provider clients that must share
+credentials, region, and retry policy; the factory guarantees they're built consistently and lets
+you swap clouds by swapping one object at startup. As always in JS the shared interface is
+convention — a typed codebase would make `InfraFactory` an interface both providers implement.
 
 ### Python
 
