@@ -1,0 +1,18 @@
+---
+title: CQRS — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+client [class] "Client" { methods: "act()" }
+command [class] "Command Side" { methods: "handle(cmd)" }
+write [class] "Write Model" { attributes: "-state" }
+query [class] "Query Side" { methods: "handle(query)" }
+read [class] "Read Model" { attributes: "-views" }
+
+client -> command "commands"
+client -> query "queries"
+command -> write "mutates"
+write -> read "projects"
+query -> read "reads"

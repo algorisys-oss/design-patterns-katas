@@ -1,0 +1,18 @@
+---
+title: Event Sourcing — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 115
+---
+
+command [class] "Command" { methods: "issue()" }
+aggregate [class] "Aggregate" { attributes: "-state", methods: "apply(event)" }
+store [class] "Event Store" { attributes: "-events: Event[]", methods: "append(e)" }
+projection [class] "Projection" { methods: "on(event)" }
+readmodel [class] "Read Model" { attributes: "-view" }
+
+command -> aggregate "handled by"
+aggregate -> store "appends"
+store -> aggregate "replay"
+store -> projection "feeds"
+projection -> readmodel "updates"

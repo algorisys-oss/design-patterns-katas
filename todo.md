@@ -71,10 +71,10 @@ The catalog isn't limited to the 23 GoF patterns. Categories are a one-entry dat
 [frontend/src/lib/categories.json](frontend/src/lib/categories.json); a family with no katas
 just doesn't render yet. Planned modern families (empty until content lands):
 
-- **concurrency** — worker pool, producer–consumer, future/promise, actor, pub/sub,
-  fan-out/fan-in, semaphore/rate-limiter, read-write lock, barrier
-- **architectural** — MVC/MVP/MVVM, layered, hexagonal (ports & adapters), repository,
-  unit of work, dependency injection, service locator, CQRS, event sourcing
+- **concurrency** ✅ (6 katas: worker pool, producer–consumer, future/promise, actor,
+  pub/sub, fan-out/fan-in)
+- **architectural** ✅ (8 katas: layered, MVC, hexagonal, repository, unit of work,
+  dependency injection, CQRS, event sourcing)
 - **distributed** (cloud) — circuit breaker, retry, bulkhead, timeout, saga, sidecar,
   strangler fig, cache-aside, leader election
 - **messaging** — message channel/router, pipes & filters, aggregator, splitter, pub/sub

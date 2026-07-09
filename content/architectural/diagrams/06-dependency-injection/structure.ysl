@@ -1,0 +1,16 @@
+---
+title: Dependency Injection — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+container [class] "Container / Injector" { methods: "resolve(T)" }
+service [class] "OrderService" { attributes: "-gateway: Gateway" }
+gateway [interface] "Gateway" { methods: "charge(amount)" }
+impl [class] "StripeGateway" { methods: "charge(amount)" }
+
+container -> service "creates"
+container -> impl
+service -> gateway "depends on"
+gateway --> impl { startArrowhead: triangle, endArrowhead: none }

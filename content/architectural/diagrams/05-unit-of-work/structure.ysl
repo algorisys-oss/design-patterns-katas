@@ -1,0 +1,15 @@
+---
+title: Unit of Work — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+service [class] "Service" { methods: "register(user)" }
+uow [class] "UnitOfWork" { attributes: "-new;-dirty;-removed", methods: "commit();rollback()" }
+repo [class] "Repository" { methods: "add(entity)" }
+db [class] "Database" { methods: "transaction()" }
+
+service -> uow "uses"
+uow -> repo "tracks"
+uow -> db "commits"

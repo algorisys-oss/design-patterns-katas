@@ -1,0 +1,15 @@
+---
+title: Repository — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 130
+---
+
+service [class] "Service" { methods: "getUser(id)" }
+repo [interface] "UserRepository" { methods: "find(id);save(u)" }
+sql [class] "SqlUserRepository" { methods: "find(id);save(u)" }
+mem [class] "InMemoryUserRepository" { methods: "find(id);save(u)" }
+
+service -> repo "uses"
+repo --> sql { startArrowhead: triangle, endArrowhead: none }
+repo --> mem { startArrowhead: triangle, endArrowhead: none }

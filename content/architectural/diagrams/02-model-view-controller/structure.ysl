@@ -1,0 +1,14 @@
+---
+title: Model–View–Controller — Structure
+layout: tree-down
+hSpacing: 65
+vSpacing: 130
+---
+
+controller [class] "Controller" { methods: "handleInput()" }
+model [class] "Model" { attributes: "-state", methods: "update()" }
+view [class] "View" { methods: "render()" }
+
+controller -> model "updates"
+controller -> view "selects"
+model -> view "notifies"

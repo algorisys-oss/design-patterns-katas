@@ -1,0 +1,17 @@
+---
+title: Hexagonal (Ports & Adapters) — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 115
+---
+
+driving [class] "HTTP Adapter" { methods: "handle(req)" }
+inport [interface] "Input Port" { methods: "execute(cmd)" }
+core [class] "Application Core" { methods: "use cases" }
+outport [interface] "Output Port" { methods: "save(entity)" }
+driven [class] "DB Adapter" { methods: "save(entity)" }
+
+driving -> inport "calls"
+inport --> core { startArrowhead: triangle, endArrowhead: none }
+core -> outport "uses"
+outport --> driven { startArrowhead: triangle, endArrowhead: none }

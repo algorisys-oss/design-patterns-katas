@@ -8,7 +8,7 @@ vSpacing: 125
 s1 [class] "Sender A" { methods: "send(msg)" }
 s2 [class] "Sender B" { methods: "send(msg)" }
 mailbox [class] "Mailbox" { attributes: "-queue: Msg[]" }
-actor [class] "Actor" { attributes: "-state"; methods: "receive(msg)" }
+actor [class] "Actor" { attributes: "-state", methods: "receive(msg)" }
 
 s1 -> mailbox "send"
 s2 -> mailbox

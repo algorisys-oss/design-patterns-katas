@@ -1,0 +1,15 @@
+---
+title: Layered Architecture — Structure
+layout: tree-down
+hSpacing: 60
+vSpacing: 110
+---
+
+presentation [class] "Presentation" { methods: "controllers, views" }
+application [class] "Application" { methods: "use cases" }
+domain [class] "Domain" { methods: "entities, rules" }
+infra [class] "Infrastructure" { methods: "db, http, fs" }
+
+presentation -> application "depends on"
+application -> domain
+domain -> infra
