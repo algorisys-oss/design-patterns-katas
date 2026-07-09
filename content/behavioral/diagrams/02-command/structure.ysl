@@ -1,17 +1,15 @@
 ---
 title: Command — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-client [class] "Client"
-invoker [class] "Invoker"
-command [class] "Command"
-concrete [class] "ConcreteCommand"
-receiver [class] "Receiver"
+invoker [class] "Invoker" { attributes: "-history", methods: "invoke(cmd);undo()" }
+command [interface] "Command" { methods: "execute();undo()" }
+concmd [class] "ConcreteCommand" { attributes: "-receiver: Receiver", methods: "execute();undo()" }
+receiver [class] "Receiver" { methods: "action()" }
 
-invoker -> command "invoke()"
-concrete -> command "implements"
-concrete -> receiver "calls"
-client -> concrete "creates"
+invoker -> command "commands" { startArrowhead: diamond, endArrowhead: none }
+command --> concmd { startArrowhead: triangle, endArrowhead: none }
+concmd -> receiver "receiver"

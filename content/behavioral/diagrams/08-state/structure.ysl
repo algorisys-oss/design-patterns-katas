@@ -1,15 +1,15 @@
 ---
 title: State — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-context [class] "Context"
-state [class] "State"
-statea [class] "ConcreteState A"
-stateb [class] "ConcreteState B"
+context [class] "Context" { attributes: "-state: State", methods: "request();setState(s)" }
+state [interface] "State" { methods: "play();pause()" }
+playing [class] "PlayingState" { methods: "play();pause()" }
+paused [class] "PausedState" { methods: "play();pause()" }
 
-context -> state "delegates"
-statea -> state "implements"
-stateb -> state "implements"
+context -> state "state" { startArrowhead: diamond, endArrowhead: none }
+state --> playing { startArrowhead: triangle, endArrowhead: none }
+state --> paused { startArrowhead: triangle, endArrowhead: none }

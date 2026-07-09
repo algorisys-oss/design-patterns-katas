@@ -1,15 +1,15 @@
 ---
 title: Dependency Inversion — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 60
+vSpacing: 150
 ---
 
-service [class] "PaymentService"
-gateway [class] "PaymentGateway"
-stripe [class] "StripeGateway"
-paypal [class] "PaypalGateway"
+service [class] "PaymentService" { attributes: "-gateway: PaymentGateway", methods: "pay(amount)" }
+gateway [interface] "PaymentGateway" { methods: "charge(amount)" }
+stripe [class] "StripeGateway" { methods: "charge(amount)" }
+paypal [class] "PaypalGateway" { methods: "charge(amount)" }
 
-service -> gateway "depends on"
-stripe -> gateway "implements"
-paypal -> gateway "implements"
+service --> gateway "depends on"
+gateway --> stripe { startArrowhead: triangle, endArrowhead: none }
+gateway --> paypal { startArrowhead: triangle, endArrowhead: none }

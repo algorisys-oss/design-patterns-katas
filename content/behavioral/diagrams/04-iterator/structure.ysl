@@ -1,18 +1,15 @@
 ---
 title: Iterator — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-client [class] "Client"
-aggregate [class] "Aggregate"
-iterator [class] "Iterator"
-concreteagg [class] "ConcreteAggregate"
-concreteit [class] "ConcreteIterator"
+aggregate [interface] "Aggregate" { methods: "createIterator()" }
+concagg [class] "ConcreteAggregate" { attributes: "-items", methods: "createIterator()" }
+iterator [interface] "Iterator" { methods: "next();hasNext()" }
+conciter [class] "ConcreteIterator" { attributes: "-index", methods: "next();hasNext()" }
 
-client -> aggregate "uses"
-client -> iterator "uses"
-concreteagg -> aggregate "implements"
-concreteit -> iterator "implements"
-concreteagg -> concreteit "creates"
+aggregate --> concagg { startArrowhead: triangle, endArrowhead: none }
+iterator --> conciter { startArrowhead: triangle, endArrowhead: none }
+concagg --> conciter "creates"

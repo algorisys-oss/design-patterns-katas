@@ -1,13 +1,13 @@
 ---
 title: Memento — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-originator [class] "Originator"
-memento [class] "Memento"
-caretaker [class] "Caretaker"
+originator [class] "Originator" { attributes: "-state", methods: "save() Memento;restore(m)" }
+caretaker [class] "Caretaker" { attributes: "-history: Memento[]", methods: "backup();undo()" }
+memento [class] "Memento" { attributes: "-state", methods: "getState()" }
 
-originator -> memento "creates"
-caretaker -> memento "stores"
+originator --> memento "creates"
+caretaker -> memento "history" { startArrowhead: diamond, endArrowhead: none }

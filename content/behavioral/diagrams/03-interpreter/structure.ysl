@@ -1,15 +1,18 @@
 ---
 title: Interpreter — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 60
+vSpacing: 150
 ---
 
-client [class] "Client"
-expr [class] "AbstractExpression"
-terminal [class] "TerminalExpression"
-nonterminal [class] "NonterminalExpression"
+client [class] "Client" { methods: "parse(text)" }
+context [class] "Context" { attributes: "-variables", methods: "lookup(name)" }
+expr [interface] "AbstractExpression" { methods: "interpret(context)" }
+term [class] "TerminalExpression" { methods: "interpret(context)" }
+nonterm [class] "NonTerminalExpression" { methods: "interpret(context)" }
 
-client -> expr "interpret(context)"
-terminal -> expr "implements"
-nonterminal -> expr "implements + holds children"
+client -> expr "builds"
+client --> context "input"
+expr --> term { startArrowhead: triangle, endArrowhead: none }
+expr --> nonterm { startArrowhead: triangle, endArrowhead: none }
+nonterm -> expr "children" { startArrowhead: diamond, endArrowhead: none }

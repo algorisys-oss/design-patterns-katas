@@ -1,19 +1,19 @@
 ---
 title: Visitor — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 55
+vSpacing: 140
 ---
 
-client [class] "Client"
-visitor [class] "Visitor"
-concretevisitor [class] "ConcreteVisitor"
-element [class] "Element"
-elementa [class] "ConcreteElement A"
-elementb [class] "ConcreteElement B"
+element [interface] "Element" { methods: "accept(visitor)" }
+circle [class] "Circle" { methods: "accept(visitor)" }
+square [class] "Square" { methods: "accept(visitor)" }
+visitor [interface] "Visitor" { methods: "visitCircle(c);visitSquare(s)" }
+area [class] "AreaVisitor" { methods: "visitCircle(c);visitSquare(s)" }
+svg [class] "SvgVisitor" { methods: "visitCircle(c);visitSquare(s)" }
 
-client -> visitor "uses"
-concretevisitor -> visitor "implements"
-element -> visitor "accept(visitor)"
-elementa -> element "implements"
-elementb -> element "implements"
+element --> circle { startArrowhead: triangle, endArrowhead: none }
+element --> square { startArrowhead: triangle, endArrowhead: none }
+element --> visitor "accept(v)"
+visitor --> area { startArrowhead: triangle, endArrowhead: none }
+visitor --> svg { startArrowhead: triangle, endArrowhead: none }

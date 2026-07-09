@@ -1,15 +1,17 @@
 ---
 title: Strategy — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 60
+vSpacing: 150
 ---
 
-context [class] "Context"
-strategy [class] "Strategy"
-sa [class] "ConcreteStrategy A"
-sb [class] "ConcreteStrategy B"
+context [class] "Context" { attributes: "-strategy: Strategy", methods: "setStrategy(s);execute(amount)" }
+strategy [interface] "Strategy" { methods: "pay(amount)" }
+cc [class] "CreditCard" { methods: "pay(amount)" }
+pp [class] "PayPal" { methods: "pay(amount)" }
+cr [class] "Crypto" { methods: "pay(amount)" }
 
-context -> strategy "uses"
-sa -> strategy "implements"
-sb -> strategy "implements"
+context -> strategy "strategy" { startArrowhead: diamond, endArrowhead: none }
+strategy --> cc { startArrowhead: triangle, endArrowhead: none }
+strategy --> pp { startArrowhead: triangle, endArrowhead: none }
+strategy --> cr { startArrowhead: triangle, endArrowhead: none }

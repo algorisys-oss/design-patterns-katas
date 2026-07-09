@@ -1,17 +1,17 @@
 ---
 title: Facade — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 55
+vSpacing: 150
 ---
 
-client [class] "Client"
-facade [class] "Facade"
-sa [class] "Subsystem A"
-sb [class] "Subsystem B"
-sc [class] "Subsystem C"
+client [class] "Client" { methods: "order()" }
+facade [class] "OrderFacade" { methods: "placeOrder(cart)" }
+inventory [class] "Inventory" { methods: "reserve(items)" }
+payment [class] "Payment" { methods: "charge(total)" }
+shipping [class] "Shipping" { methods: "dispatch(order)" }
 
 client -> facade "uses"
-facade -> sa "delegates"
-facade -> sb "delegates"
-facade -> sc "delegates"
+facade --> inventory
+facade --> payment
+facade --> shipping

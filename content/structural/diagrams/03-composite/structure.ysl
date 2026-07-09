@@ -1,15 +1,14 @@
 ---
 title: Composite — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-client [class] "Client"
-component [class] "Component"
-leaf [class] "Leaf"
-composite [class] "Composite"
+component [interface] "Component" { methods: "size()" }
+leaf [class] "File" { methods: "size()" }
+composite [class] "Folder" { attributes: "-children: Component[]", methods: "size();add(c)" }
 
-client -> component "uses"
-leaf -> component "implements"
-composite -> component "implements + children"
+component --> leaf { startArrowhead: triangle, endArrowhead: none }
+component --> composite { startArrowhead: triangle, endArrowhead: none }
+composite -> component "children" { startArrowhead: diamond, endArrowhead: none }

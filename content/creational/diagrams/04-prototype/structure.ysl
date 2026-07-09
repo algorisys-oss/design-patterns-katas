@@ -1,15 +1,15 @@
 ---
 title: Prototype — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-client [class] "Client"
-prototype [class] "Prototype"
-p1 [class] "ConcretePrototype 1"
-p2 [class] "ConcretePrototype 2"
+client [class] "Client" { methods: "spawn(p)" }
+prototype [interface] "Prototype" { methods: "clone()" }
+concrete1 [class] "Enemy" { attributes: "-stats", methods: "clone()" }
+concrete2 [class] "Document" { attributes: "-blocks", methods: "clone()" }
 
-client -> prototype "clone()"
-p1 -> prototype "implements"
-p2 -> prototype "implements"
+client --> prototype "clone()"
+prototype --> concrete1 { startArrowhead: triangle, endArrowhead: none }
+prototype --> concrete2 { startArrowhead: triangle, endArrowhead: none }

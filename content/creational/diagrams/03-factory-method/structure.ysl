@@ -1,15 +1,15 @@
 ---
 title: Factory Method — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-creator [class] "Creator"
-concretecreator [class] "ConcreteCreator"
-product [class] "Product"
-concreteproduct [class] "ConcreteProduct"
+factory [class] "CacheFactory" { methods: "create(kind)" }
+product [interface] "Cache" { methods: "get(k);set(k, v)" }
+inmem [class] "InMemoryCache" { methods: "get(k);set(k, v)" }
+disk [class] "DiskCache" { methods: "get(k);set(k, v)" }
 
-concretecreator -> creator "implements"
-concretecreator -> concreteproduct "creates"
-concreteproduct -> product "implements"
+factory --> product "creates"
+product --> inmem { startArrowhead: triangle, endArrowhead: none }
+product --> disk { startArrowhead: triangle, endArrowhead: none }

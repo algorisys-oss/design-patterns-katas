@@ -1,15 +1,15 @@
 ---
 title: Single Responsibility — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 55
+vSpacing: 150
 ---
 
-employee [class] "Employee"
-pay [class] "PayCalculator"
-repo [class] "EmployeeRepository"
-report [class] "ReportFormatter"
+employee [class] "Employee" { attributes: "-name;-salary" }
+pay [class] "PayCalculator" { methods: "calculate(emp)" }
+repo [class] "EmployeeRepository" { methods: "save(emp)" }
+report [class] "ReportFormatter" { methods: "format(emp)" }
 
-employee -> pay "delegates pay"
-employee -> repo "delegates persistence"
-employee -> report "delegates reporting"
+employee -> pay
+employee -> repo
+employee -> report

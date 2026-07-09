@@ -1,16 +1,15 @@
 ---
 title: Chain of Responsibility — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-client [class] "Client"
-handler [class] "Handler"
-h1 [class] "ConcreteHandler A"
-h2 [class] "ConcreteHandler B"
+client [class] "Client" { methods: "start(request)" }
+handler [interface] "Handler" { attributes: "-next: Handler", methods: "setNext(h);handle(request)" }
+ha [class] "ConcreteHandlerA" { methods: "handle(request)" }
+hb [class] "ConcreteHandlerB" { methods: "handle(request)" }
 
-client -> handler "request"
-h1 -> handler "implements"
-h2 -> handler "implements"
-h1 -> h2 "next"
+client -> handler "sends"
+handler --> ha { startArrowhead: triangle, endArrowhead: none }
+handler --> hb { startArrowhead: triangle, endArrowhead: none }

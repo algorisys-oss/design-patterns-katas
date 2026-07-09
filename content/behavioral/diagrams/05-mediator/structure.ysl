@@ -1,15 +1,17 @@
 ---
 title: Mediator — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 60
+vSpacing: 150
 ---
 
-mediator [class] "Mediator"
-concrete [class] "ConcreteMediator"
-ca [class] "Colleague A"
-cb [class] "Colleague B"
+mediator [interface] "Mediator" { methods: "notify(sender, event)" }
+concmed [class] "ConcreteMediator" { methods: "notify(sender, event)" }
+colleague [class] "Colleague" { attributes: "«abstract»;-mediator: Mediator" }
+cola [class] "ColleagueA" { methods: "send(msg);receive(msg)" }
+colb [class] "ColleagueB" { methods: "send(msg);receive(msg)" }
 
-concrete -> mediator "implements"
-ca -> mediator "notifies"
-cb -> mediator "notifies"
+mediator --> concmed { startArrowhead: triangle, endArrowhead: none }
+concmed -> colleague "colleagues" { startArrowhead: diamond, endArrowhead: none }
+colleague -> cola { startArrowhead: triangle, endArrowhead: none }
+colleague -> colb { startArrowhead: triangle, endArrowhead: none }

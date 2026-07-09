@@ -1,17 +1,19 @@
 ---
 title: Bridge — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 60
+vSpacing: 150
 ---
 
-abstraction [class] "Abstraction"
-refined [class] "RefinedAbstraction"
-implementor [class] "Implementor"
-impla [class] "ConcreteImplementor A"
-implb [class] "ConcreteImplementor B"
+abstraction [class] "Abstraction" { attributes: "-impl: Renderer", methods: "draw()" }
+circle [class] "Circle" { methods: "draw()" }
+square [class] "Square" { methods: "draw()" }
+renderer [interface] "Renderer" { methods: "render(shape)" }
+svg [class] "SvgRenderer" { methods: "render(shape)" }
+canvas [class] "CanvasRenderer" { methods: "render(shape)" }
 
-refined -> abstraction "extends"
-abstraction -> implementor "has-a"
-impla -> implementor "implements"
-implb -> implementor "implements"
+abstraction -> circle { startArrowhead: triangle, endArrowhead: none }
+abstraction -> square { startArrowhead: triangle, endArrowhead: none }
+abstraction -> renderer "impl" { startArrowhead: diamond, endArrowhead: none }
+renderer --> svg { startArrowhead: triangle, endArrowhead: none }
+renderer --> canvas { startArrowhead: triangle, endArrowhead: none }

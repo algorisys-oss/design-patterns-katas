@@ -1,19 +1,19 @@
 ---
 title: Abstract Factory — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 55
+vSpacing: 140
 ---
 
-client [class] "Client"
-factory [class] "AbstractFactory"
-factory1 [class] "ConcreteFactory 1"
-factory2 [class] "ConcreteFactory 2"
-producta [class] "ProductA"
-productb [class] "ProductB"
+absfactory [interface] "AbstractFactory" { methods: "createButton();createCheckbox()" }
+macf [class] "MacFactory" { methods: "createButton();createCheckbox()" }
+winf [class] "WinFactory" { methods: "createButton();createCheckbox()" }
+button [interface] "Button" { methods: "render()" }
+macbtn [class] "MacButton" { methods: "render()" }
+winbtn [class] "WinButton" { methods: "render()" }
 
-client -> factory "uses"
-factory1 -> factory "implements"
-factory2 -> factory "implements"
-factory -> producta "creates"
-factory -> productb "creates"
+absfactory --> macf { startArrowhead: triangle, endArrowhead: none }
+absfactory --> winf { startArrowhead: triangle, endArrowhead: none }
+button --> macbtn { startArrowhead: triangle, endArrowhead: none }
+button --> winbtn { startArrowhead: triangle, endArrowhead: none }
+macf --> macbtn "creates"

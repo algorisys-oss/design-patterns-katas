@@ -1,13 +1,11 @@
 ---
 title: Template Method — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-client [class] "Client"
-abstract [class] "AbstractClass"
-concrete [class] "ConcreteClass"
+abstract [class] "AbstractClass" { attributes: "«abstract»", methods: "templateMethod();#step1();#step2();#hook()" }
+concrete [class] "ConcreteClass" { methods: "#step1();#step2()" }
 
-client -> abstract "templateMethod()"
-concrete -> abstract "overrides steps"
+abstract -> concrete { startArrowhead: triangle, endArrowhead: none }

@@ -1,15 +1,15 @@
 ---
 title: Observer — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-subject [class] "Subject"
-observer [class] "Observer"
-obsA [class] "ConcreteObserver A"
-obsB [class] "ConcreteObserver B"
+subject [class] "Subject" { attributes: "-observers", methods: "subscribe(o);unsubscribe(o);notify(data)" }
+observer [interface] "Observer" { methods: "update(data)" }
+obsa [class] "ConcreteObserverA" { methods: "update(data)" }
+obsb [class] "ConcreteObserverB" { methods: "update(data)" }
 
-subject -> observer "observers *"
-obsA -> observer "implements"
-obsB -> observer "implements"
+subject -> observer "observers" { startArrowhead: diamond, endArrowhead: none }
+observer --> obsa { startArrowhead: triangle, endArrowhead: none }
+observer --> obsb { startArrowhead: triangle, endArrowhead: none }

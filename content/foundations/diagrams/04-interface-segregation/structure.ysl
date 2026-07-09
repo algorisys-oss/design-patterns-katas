@@ -1,15 +1,15 @@
 ---
 title: Interface Segregation — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 80
+vSpacing: 150
 ---
 
-human [class] "Human"
-robot [class] "Robot"
-workable [class] "Workable"
-eatable [class] "Eatable"
+workable [interface] "Workable" { methods: "work()" }
+eatable [interface] "Eatable" { methods: "eat()" }
+robot [class] "Robot" { methods: "work()" }
+human [class] "Human" { methods: "work();eat()" }
 
-human -> workable "implements"
-human -> eatable "implements"
-robot -> workable "implements"
+workable --> robot { startArrowhead: triangle, endArrowhead: none }
+workable --> human { startArrowhead: triangle, endArrowhead: none }
+eatable --> human { startArrowhead: triangle, endArrowhead: none }

@@ -1,15 +1,13 @@
 ---
 title: Flyweight — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-client [class] "Client"
-factory [class] "FlyweightFactory"
-flyweight [class] "Flyweight"
-concrete [class] "ConcreteFlyweight"
+client [class] "Client" { methods: "render(x, y)" }
+factory [class] "FlyweightFactory" { attributes: "-pool: Map", methods: "get(key)" }
+flyweight [class] "Flyweight" { attributes: "-intrinsic", methods: "draw(extrinsic)" }
 
-client -> factory "getFlyweight()"
-factory -> flyweight "pools"
-concrete -> flyweight "implements"
+client --> factory "get(key)"
+factory -> flyweight "pool" { startArrowhead: diamond, endArrowhead: none }

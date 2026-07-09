@@ -1,17 +1,14 @@
 ---
 title: Decorator — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-component [class] "Component"
-concrete [class] "ConcreteComponent"
-decorator [class] "Decorator"
-da [class] "ConcreteDecorator A"
-db [class] "ConcreteDecorator B"
+component [interface] "Component" { methods: "read()" }
+concrete [class] "ConcreteComponent" { methods: "read()" }
+decorator [class] "Decorator" { attributes: "-inner: Component", methods: "read()" }
 
-concrete -> component "implements"
-decorator -> component "implements + wraps"
-da -> decorator "extends"
-db -> decorator "extends"
+component --> concrete { startArrowhead: triangle, endArrowhead: none }
+component --> decorator { startArrowhead: triangle, endArrowhead: none }
+decorator -> component "wraps" { startArrowhead: diamond, endArrowhead: none }

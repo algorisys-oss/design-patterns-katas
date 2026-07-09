@@ -1,16 +1,14 @@
 ---
 title: Proxy — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-client [class] "Client"
-subject [class] "Subject"
-proxy [class] "Proxy"
-real [class] "RealSubject"
+subject [interface] "Subject" { methods: "display()" }
+real [class] "HighResImage" { methods: "display()" }
+proxy [class] "ImageProxy" { attributes: "-real: HighResImage", methods: "display()" }
 
-client -> subject "uses"
-proxy -> subject "implements"
-real -> subject "implements"
-proxy -> real "delegates"
+subject --> real { startArrowhead: triangle, endArrowhead: none }
+subject --> proxy { startArrowhead: triangle, endArrowhead: none }
+proxy -> real "real" { startArrowhead: diamond, endArrowhead: none }

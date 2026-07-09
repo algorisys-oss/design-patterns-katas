@@ -1,13 +1,11 @@
 ---
 title: Singleton — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-clienta [class] "Client A"
-clientb [class] "Client B"
-singleton [class] "Singleton"
+client [class] "Client" { methods: "use()" }
+singleton [class] "Singleton" { attributes: "-instance: Singleton «static»", methods: "getInstance() «static»;operation()" }
 
-clienta -> singleton "getInstance()"
-clientb -> singleton "same instance"
+client --> singleton "getInstance()"

@@ -1,15 +1,15 @@
 ---
 title: Adapter — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-client [class] "Client"
-target [class] "Target"
-adapter [class] "Adapter"
-adaptee [class] "Adaptee"
+client [class] "Client" { methods: "pay(dollars)" }
+target [interface] "Target" { methods: "pay(dollars)" }
+adapter [class] "Adapter" { attributes: "-adaptee: Adaptee", methods: "pay(dollars)" }
+adaptee [class] "Adaptee" { methods: "charge(cents)" }
 
 client -> target "uses"
-adapter -> target "implements"
-adapter -> adaptee "wraps"
+target --> adapter { startArrowhead: triangle, endArrowhead: none }
+adapter -> adaptee "adaptee"

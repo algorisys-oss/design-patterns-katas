@@ -1,15 +1,15 @@
 ---
 title: Liskov Substitution — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-client [class] "Client"
-shape [class] "Shape"
-rect [class] "Rectangle"
-square [class] "Square"
+client [class] "Client" { methods: "use(shape)" }
+shape [interface] "Shape" { methods: "area()" }
+rect [class] "Rectangle" { methods: "area()" }
+square [class] "Square" { methods: "area()" }
 
-client -> shape "uses"
-rect -> shape "substitutable"
-square -> shape "substitutable"
+client --> shape "uses"
+shape --> rect { startArrowhead: triangle, endArrowhead: none }
+shape --> square { startArrowhead: triangle, endArrowhead: none }

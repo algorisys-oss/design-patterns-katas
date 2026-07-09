@@ -1,15 +1,15 @@
 ---
 title: Builder — Structure
 layout: tree-down
-hSpacing: 90
-vSpacing: 160
+hSpacing: 70
+vSpacing: 150
 ---
 
-director [class] "Director"
-builder [class] "Builder"
-concrete [class] "ConcreteBuilder"
-product [class] "Product"
+director [class] "Director" { methods: "construct(b)" }
+builder [interface] "Builder" { methods: "setHeader(h);setBody(b);build()" }
+concrete [class] "HttpRequestBuilder" { methods: "setHeader(h);setBody(b);build()" }
+product [class] "HttpRequest" { attributes: "-headers;-body" }
 
-director -> builder "uses"
-concrete -> builder "implements"
-concrete -> product "builds"
+director -> builder "builder" { startArrowhead: diamond, endArrowhead: none }
+builder --> concrete { startArrowhead: triangle, endArrowhead: none }
+concrete --> product "builds"
