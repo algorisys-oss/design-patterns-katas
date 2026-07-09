@@ -1,0 +1,18 @@
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+
+# Go / backend
+backend/bin/
+backend/server
+
+# Generated static content
+frontend/public/content/*.json
+
+# Editor / OS
+.DS_Store
+*.un~
+.vscode/
+.idea/
