@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getKata, katas } from "@/lib/content";
 
+// Injected by Vite (define) from frontend/package.json.
+declare const __APP_VERSION__: string;
+
 function usePersistedBool(key: string, initial: boolean) {
   const [value, setValue] = React.useState<boolean>(() => {
     if (typeof localStorage === "undefined") return initial;
@@ -87,7 +90,44 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      <StatusBar />
     </div>
+  );
+}
+
+function StatusBar() {
+  const year = new Date().getFullYear();
+  // Hard reload: bust the document cache with a fresh query param, then navigate.
+  // (HashRouter keeps the route in the hash, so the current kata is preserved.)
+  const hardReload = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("r", Date.now().toString(36));
+    window.location.replace(url.href);
+  };
+  return (
+    <footer className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-4 border-t border-border bg-[color-mix(in_srgb,var(--background)_90%,transparent)] px-4 py-1.5 font-mono text-[11px] text-faint backdrop-blur md:px-6">
+      <span>
+        © {year} <span className="text-muted-foreground">Algorisys Open Source Team</span>
+        <span className="mx-1.5 text-border-strong">·</span>
+        <a
+          href="https://www.algorisys.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline-offset-2 hover:underline"
+        >
+          www.algorisys.com
+        </a>
+      </span>
+      <button
+        type="button"
+        onClick={hardReload}
+        title="Reload the latest version"
+        className="tabular-nums transition-colors hover:text-foreground"
+      >
+        v{__APP_VERSION__}
+      </button>
+    </footer>
   );
 }
 
