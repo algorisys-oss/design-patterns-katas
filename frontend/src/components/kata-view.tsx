@@ -1,8 +1,11 @@
+import * as React from "react";
 import { Link } from "react-router-dom";
+import { Check, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Implementations } from "@/components/implementations";
-import { freqDots } from "@/lib/utils";
+import { cn, freqDots } from "@/lib/utils";
 import { getAdjacent, type Kata } from "@/lib/content";
+import { Lessons, useLessonComplete } from "@/lib/lessons";
 
 const CATEGORY_LABEL: Record<string, string> = {
   foundations: "Foundations",
@@ -14,6 +17,30 @@ const CATEGORY_LABEL: Record<string, string> = {
 export function KataView({ kata }: { kata: Kata }) {
   const dots = freqDots(kata.frequency);
   const isPrinciple = kata.kind === "principle";
+  const done = useLessonComplete(kata.id);
+  const endRef = React.useRef<HTMLDivElement>(null);
+  const autoMarked = React.useRef(false);
+
+  // Fresh auto-mark budget whenever the reader opens a different lesson.
+  React.useEffect(() => {
+    autoMarked.current = false;
+  }, [kata.id]);
+
+  // Auto-mark complete once the learner scrolls to the end of the lesson. Only ever
+  // marks (never un-marks), and only once per visit, so a manual un-mark sticks.
+  React.useEffect(() => {
+    const el = endRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting) && !autoMarked.current) {
+        autoMarked.current = true;
+        Lessons.complete(kata.id);
+      }
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [kata.id]);
+
   return (
     <article className="mx-auto max-w-[760px] px-6 pb-24 pt-8 md:px-10">
       <header className="border-b border-border pb-7">
@@ -34,6 +61,21 @@ export function KataView({ kata }: { kata: Kata }) {
               {kata.frequency}
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => Lessons.toggle(kata.id)}
+            aria-pressed={done}
+            title={done ? "Marked complete — click to undo" : "Mark this lesson complete"}
+            className={cn(
+              "ml-auto inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] transition-colors",
+              done
+                ? "border-transparent bg-primary text-primary-foreground hover:bg-primary/90"
+                : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
+            )}
+          >
+            {done ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+            {done ? "Completed" : "Mark complete"}
+          </button>
         </div>
         <h1 className="font-serif text-[44px] font-semibold leading-[1.05] tracking-[-0.015em] text-balance">
           {kata.title}
@@ -76,6 +118,24 @@ export function KataView({ kata }: { kata: Kata }) {
           ))}
         </div>
       )}
+
+      <div ref={endRef} aria-hidden className="h-px" />
+
+      <div className="mt-10 flex justify-center">
+        <button
+          type="button"
+          onClick={() => Lessons.toggle(kata.id)}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-[14px] font-semibold transition-colors",
+            done
+              ? "border-primary/40 bg-primary/10 text-foreground hover:bg-primary/15"
+              : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
+          )}
+        >
+          {done ? <Check className="h-4 w-4 text-primary" /> : <Circle className="h-4 w-4" />}
+          {done ? "Lesson completed" : "Mark this lesson complete"}
+        </button>
+      </div>
 
       <PrevNext id={kata.id} />
     </article>

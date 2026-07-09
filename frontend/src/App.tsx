@@ -7,6 +7,7 @@ import { KataView } from "@/components/kata-view";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getKata, katas } from "@/lib/content";
+import { useLessonsProgress } from "@/lib/lessons";
 
 // Injected by Vite (define) from frontend/package.json.
 declare const __APP_VERSION__: string;
@@ -98,6 +99,7 @@ export default function App() {
 
 function StatusBar() {
   const year = new Date().getFullYear();
+  const { count, total, percent } = useLessonsProgress();
   // Hard reload: bust the document cache with a fresh query param, then navigate.
   // (HashRouter keeps the route in the hash, so the current kata is preserved.)
   const hardReload = () => {
@@ -119,14 +121,20 @@ function StatusBar() {
           www.algorisys.com
         </a>
       </span>
-      <button
-        type="button"
-        onClick={hardReload}
-        title="Reload the latest version"
-        className="tabular-nums transition-colors hover:text-foreground"
-      >
-        v{__APP_VERSION__}
-      </button>
+      <div className="flex items-center gap-3">
+        <span className="tabular-nums" title="Lessons you've completed">
+          <span className="text-muted-foreground">{count}</span>/{total} · {percent}%
+        </span>
+        <span className="text-border-strong">·</span>
+        <button
+          type="button"
+          onClick={hardReload}
+          title="Reload the latest version"
+          className="tabular-nums transition-colors hover:text-foreground"
+        >
+          v{__APP_VERSION__}
+        </button>
+      </div>
     </footer>
   );
 }

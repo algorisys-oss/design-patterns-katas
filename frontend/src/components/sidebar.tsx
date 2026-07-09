@@ -1,9 +1,10 @@
 import * as React from "react";
 import { NavLink, useSearchParams } from "react-router-dom";
-import { Search, X, ChevronRight } from "lucide-react";
+import { Search, X, ChevronRight, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { groupByCategory, searchKatas, type Kata } from "@/lib/content";
+import { useLessonComplete, useLessonsProgress } from "@/lib/lessons";
 
 const CATEGORY_LABEL: Record<string, string> = {
   foundations: "Foundations",
@@ -44,6 +45,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-faint">JS · Python · Elixir · Go</div>
         </div>
       </div>
+
+      <SidebarProgress />
 
       <div className="relative px-4 pb-3 pt-4">
         <Search className="pointer-events-none absolute left-[26px] top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-faint" />
@@ -117,6 +120,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function SidebarLink({ kata, onNavigate }: { kata: Kata; onNavigate?: () => void }) {
+  const done = useLessonComplete(kata.id);
   return (
     <li>
       <NavLink
@@ -124,7 +128,7 @@ function SidebarLink({ kata, onNavigate }: { kata: Kata; onNavigate?: () => void
         onClick={onNavigate}
         className={({ isActive }) =>
           cn(
-            "flex items-baseline gap-2.5 rounded-md px-3 py-1.5 text-[14px] text-muted-foreground transition-colors",
+            "flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[14px] text-muted-foreground transition-colors",
             "hover:bg-primary/10 hover:text-foreground",
             isActive && "bg-primary/15 font-semibold text-foreground",
           )
@@ -133,8 +137,38 @@ function SidebarLink({ kata, onNavigate }: { kata: Kata; onNavigate?: () => void
         <span className="min-w-[16px] font-mono text-[11px] text-faint">
           {String(kata.sequence).padStart(2, "0")}
         </span>
-        {kata.title}
+        <span className="min-w-0 flex-1 truncate">{kata.title}</span>
+        {done && (
+          <Check className="h-3.5 w-3.5 flex-none text-primary" aria-label="Completed" />
+        )}
       </NavLink>
     </li>
+  );
+}
+
+function SidebarProgress() {
+  const { count, total, percent } = useLessonsProgress();
+  return (
+    <div className="px-4 pb-1 pt-3">
+      <div className="mb-1 flex items-center justify-between font-mono text-[10.5px] text-faint">
+        <span className="uppercase tracking-[0.1em]">Progress</span>
+        <span className="tabular-nums text-muted-foreground">
+          {count} / {total} · {percent}%
+        </span>
+      </div>
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-border"
+        role="progressbar"
+        aria-valuenow={count}
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-label="Lessons completed"
+      >
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-300"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
   );
 }
