@@ -57,17 +57,61 @@ class SimplePrinter implements Machine {
 - Too many micro-interfaces can fragment the design.
 - Split by *client role*, not arbitrarily.
 
+## ISP and API Evolution
+
+Interface size is also an **evolution** problem, not just a coupling one. Every method on an
+interface is a promise to every client and every implementer — and the wider that promise, the
+harder it is to change without breaking someone. This is where ISP meets versioning and backward
+compatibility.
+
+- **Widening breaks implementers.** Add a method to a fat interface and *every* implementer must
+  now provide it — existing code stops compiling, or starts throwing. Small interfaces localize
+  the change: a new capability becomes a *new* interface that only the types needing it adopt.
+- **Changing a signature breaks callers.** Turning `charge(amount)` into `charge(amount, currency)`
+  breaks every existing call. Backward-compatible evolution is **additive**: keep the old method
+  and add a new, specific one, or accept an options/request object so new fields stay optional.
+  Old callers keep working; new callers opt in.
+- **Version at the seam.** When a contract genuinely must change incompatibly, *version* it
+  (`PaymentV2`, `/v2/...`) and deprecate the old one on a schedule rather than mutating it under
+  live clients. Segregated interfaces make this cheap — you version the one small role that
+  changed, not a god interface every client touches.
+
+The through-line: **prefer many specific methods/interfaces over one broad, mutable one.**
+Specific signatures are stable — you extend the surface with new members instead of reshaping
+existing ones — which is exactly what keeps published APIs and shared libraries compatible.
+
+```
+// ❌ breaking — every existing caller of charge(amount) must now change
+charge(amount, currency)
+
+// ✅ additive — old callers keep working; new capability is a new, specific method
+charge(amount)                     // unchanged, still valid
+chargeInCurrency(amount, currency) // new
+// or accept an options object so new fields are optional:
+charge({ amount, currency })       // { currency } can be added later without breaking anyone
+```
+
+This is the same instinct as overloading a function with specific argument sets instead of
+piling optional flags onto one signature: narrow, purpose-built entry points are easier to keep
+stable than one wide one that keeps growing parameters.
+
 ## Common Mistakes
 
 - **The fat "manager" interface** — one interface every implementer must fully satisfy.
 - **Stub-and-throw methods** — a sign the interface bundles unrelated roles.
 - **Splitting without a client** — inventing role interfaces no caller actually needs.
+- **Evolving a fat interface in place** — adding methods to (or changing signatures on) a
+  widely-implemented interface is a breaking change; grow the API with new specific
+  methods/interfaces and version incompatible changes instead of reshaping the contract.
 
 ## Key Takeaways
 
 - ISP = small, role-focused interfaces over one fat one.
 - Let the client's actual needs define the interface boundary.
 - Compose small interfaces where a type genuinely plays several roles.
+- Small interfaces evolve safely: extend with new specific methods/interfaces (or optional
+  fields) and version incompatible changes, rather than widening or reshaping a contract
+  everyone depends on.
 
 ## Implementations
 
@@ -270,6 +314,9 @@ Where ISP shows up in practice:
 - **Device drivers** — printer/scanner/fax as separate capabilities.
 - **Repositories** — a read-only `Reader` vs a read-write `Store` for callers that only read.
 - **Service clients** — narrow interfaces per consumer, not one god client.
+- **Public & library APIs** — additive changes (new methods, optional params, versioned
+  interfaces like `v1`/`v2`) keep existing clients working; ISP keeps each versioned surface
+  small, so a breaking change touches one role instead of everyone.
 
 ## Related Principles & Patterns
 
