@@ -85,13 +85,13 @@ just doesn't render yet. Planned modern families (empty until content lands):
 - **deployment** (devops) — blue-green, canary, rolling, feature flags, IaC, GitOps
 - **anti-patterns** — a short set for contrast
 
-### Concurrency pilot (first family)
+### Concurrency (first family — pilot complete)
 - [x] 01 worker-pool  ← exemplar for the family
-- [ ] 02 producer-consumer
-- [ ] 03 future-promise
-- [ ] 04 actor
-- [ ] 05 pub-sub
-- [ ] 06 fan-out-fan-in
+- [x] 02 producer-consumer
+- [x] 03 future-promise
+- [x] 04 actor
+- [x] 05 pub-sub
+- [x] 06 fan-out-fan-in
 
 ## Notes
 

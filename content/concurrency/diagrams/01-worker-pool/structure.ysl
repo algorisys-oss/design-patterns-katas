@@ -13,5 +13,5 @@ w3 [class] "Worker 3" { methods: "run(task)" }
 
 producer -> queue "submit"
 queue -> w1 "dequeue"
-queue -> w2 "dequeue"
-queue -> w3 "dequeue"
+queue -> w2
+queue -> w3

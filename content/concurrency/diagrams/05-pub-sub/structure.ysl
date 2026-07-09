@@ -1,0 +1,17 @@
+---
+title: Publish–Subscribe — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+publisher [class] "Publisher" { methods: "publish(topic, msg)" }
+broker [class] "Broker / Topic" { attributes: "-subscribers" }
+s1 [class] "Subscriber A" { methods: "onMessage(m)" }
+s2 [class] "Subscriber B" { methods: "onMessage(m)" }
+s3 [class] "Subscriber C" { methods: "onMessage(m)" }
+
+publisher -> broker "publish"
+broker -> s1 "deliver"
+broker -> s2
+broker -> s3

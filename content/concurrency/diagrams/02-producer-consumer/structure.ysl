@@ -1,0 +1,15 @@
+---
+title: Producer–Consumer — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+producer [class] "Producer" { methods: "produce()" }
+queue [class] "Bounded Queue" { attributes: "-buffer: Item[]" }
+c1 [class] "Consumer A" { methods: "consume()" }
+c2 [class] "Consumer B" { methods: "consume()" }
+
+producer -> queue "put"
+queue -> c1 "take"
+queue -> c2

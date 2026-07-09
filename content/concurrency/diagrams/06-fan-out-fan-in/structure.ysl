@@ -1,0 +1,19 @@
+---
+title: Fan-out / Fan-in — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+source [class] "Source" { methods: "items()" }
+w1 [class] "Worker 1" { methods: "run(item)" }
+w2 [class] "Worker 2" { methods: "run(item)" }
+w3 [class] "Worker 3" { methods: "run(item)" }
+sink [class] "Merge / Sink" { methods: "collect()" }
+
+source -> w1 "fan-out"
+source -> w2
+source -> w3
+w1 -> sink "fan-in"
+w2 -> sink
+w3 -> sink

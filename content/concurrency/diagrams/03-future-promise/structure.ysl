@@ -1,0 +1,13 @@
+---
+title: Future / Promise — Structure
+layout: tree-down
+hSpacing: 60
+vSpacing: 130
+---
+
+op [class] "Async Operation" { methods: "start()" }
+future [class] "Future / Promise" { attributes: "-state: pending → settled" }
+caller [class] "Caller" { methods: "then(fn) / await" }
+
+op -> future "produces"
+future -> caller "resolves"
