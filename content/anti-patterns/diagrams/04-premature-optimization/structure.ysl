@@ -1,0 +1,13 @@
+---
+title: Premature Optimization — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+req [class] "Requirement" { methods: "solve()" }
+opt [class] "Complex 'Optimized' Code" { attributes: "-caches;-bit tricks;-unmeasured" }
+profiler [class] "Profiler (skipped)" { methods: "measure()" }
+
+req -> opt "optimize before measuring"
+opt -> profiler "the real bottleneck was elsewhere"

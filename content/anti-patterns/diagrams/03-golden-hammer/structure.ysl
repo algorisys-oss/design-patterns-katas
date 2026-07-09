@@ -1,0 +1,15 @@
+---
+title: Golden Hammer — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+hammer [class] "Familiar Tool" { methods: "apply()" }
+p1 [class] "Problem: a queue" { attributes: "-needs a queue" }
+p2 [class] "Problem: a cache" { attributes: "-needs a cache" }
+p3 [class] "Problem: a graph" { attributes: "-needs a graph" }
+
+hammer -> p1 "force-fit"
+hammer -> p2
+hammer -> p3

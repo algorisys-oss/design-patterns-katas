@@ -1,0 +1,15 @@
+---
+title: Copy-Paste Programming — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+original [class] "Original Block" { methods: "logic()" }
+copy1 [class] "Copy 1 (drifted)" { methods: "logic()" }
+copy2 [class] "Copy 2 (bug fixed here only)" { methods: "logic()" }
+copy3 [class] "Copy 3" { methods: "logic()" }
+
+original -> copy1 "duplicated"
+original -> copy2
+original -> copy3

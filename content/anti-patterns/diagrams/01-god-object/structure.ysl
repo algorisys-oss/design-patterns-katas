@@ -1,0 +1,15 @@
+---
+title: God Object → Refactor — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+god [class] "OrderManager (God Object)" { attributes: "-users;-orders;-payments", methods: "validate();charge();ship();email();report()" }
+a [class] "OrderValidator" { methods: "validate()" }
+b [class] "PaymentService" { methods: "charge()" }
+c [class] "Notifier" { methods: "email()" }
+
+god -> a "extract →"
+god -> b
+god -> c

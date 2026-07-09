@@ -1,0 +1,15 @@
+---
+title: Spaghetti Code — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+a [class] "Module A" { methods: "doStuff()" }
+b [class] "Module B" { methods: "helper()" }
+c [class] "Module C" { methods: "util()" }
+
+a -> b "calls"
+b -> c "calls"
+c -> a "jumps back"
+a -> c "and directly"
