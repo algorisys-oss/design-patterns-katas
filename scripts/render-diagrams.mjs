@@ -48,18 +48,40 @@ page.on("pageerror", (e) => console.error("  page error:", e.message));
 await page.goto(URL, { waitUntil: "domcontentloaded" });
 await page.waitForFunction(() => typeof window.Yappy !== "undefined", { timeout: 30_000 });
 
+// Bake an attribution footer into the exported SVG: grow the viewBox/height to make
+// room, then drop a centered credit line beneath the diagram. Baking it in (rather than
+// adding it in the frontend) keeps the attribution attached to the artifact and means it
+// survives every re-render.
+const FOOTER_H = 50;
+const FOOTER_TEXT = "Made with yappydraw.com by Algorisys Technologies";
+function addFooter(svg) {
+  const tag = svg.match(/<svg[^>]*>/)?.[0];
+  const vb = tag?.match(/viewBox="\s*([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s*"/);
+  if (!tag || !vb) return svg;
+  const minX = +vb[1], minY = +vb[2], w = +vb[3], h = +vb[4];
+  const hAttr = +(tag.match(/height="([\d.eE+-]+)"/)?.[1] ?? h);
+  let newTag = tag
+    .replace(/viewBox="[^"]*"/, `viewBox="${minX} ${minY} ${w} ${h + FOOTER_H}"`)
+    .replace(/height="[^"]*"/, `height="${hAttr + FOOTER_H}"`);
+  const footer =
+    `<text x="${minX + w / 2}" y="${minY + h + FOOTER_H * 0.62}" text-anchor="middle" ` +
+    `font-family="Handlee, cursive" font-size="18" fill="#9aa4b0">${FOOTER_TEXT}</text>`;
+  return svg.replace(tag, newTag).replace(/<\/svg>\s*$/, footer + "</svg>");
+}
+
 let ok = 0;
 let failed = 0;
 for (const src of sources) {
   const source = readFileSync(src, "utf8");
   const out = src.replace(/\.(mmd|ysl)$/, ".svg");
   try {
-    const svg = await page.evaluate((text) => {
+    const raw = await page.evaluate((text) => {
       window.Yappy.clear();
       window.Yappy.importDSL(text);
       return window.Yappy.exportSVG(false);
     }, source);
-    if (!svg || !svg.includes("<svg")) throw new Error("empty or invalid SVG");
+    if (!raw || !raw.includes("<svg")) throw new Error("empty or invalid SVG");
+    const svg = addFooter(raw);
     writeFileSync(out, svg);
     console.log("  ✓", out.replace(CONTENT + "/", ""), `(${svg.length} bytes)`);
     ok++;
