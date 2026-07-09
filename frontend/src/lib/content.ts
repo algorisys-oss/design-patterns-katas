@@ -14,6 +14,7 @@ export interface Kata {
   id: string;
   title: string;
   category: string;
+  kind: string;
   sequence: number;
   gof: boolean;
   intent: string;

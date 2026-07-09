@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getKata, katas } from "@/lib/content";
 
 const CATEGORY_LABEL: Record<string, string> = {
+  foundations: "Foundations",
   creational: "Creational",
   structural: "Structural",
   behavioral: "Behavioral",

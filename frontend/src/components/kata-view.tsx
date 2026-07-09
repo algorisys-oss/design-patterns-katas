@@ -4,6 +4,7 @@ import { freqDots } from "@/lib/utils";
 import { type Kata } from "@/lib/content";
 
 const CATEGORY_LABEL: Record<string, string> = {
+  foundations: "Foundations",
   creational: "Creational",
   structural: "Structural",
   behavioral: "Behavioral",
@@ -11,20 +12,27 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 export function KataView({ kata }: { kata: Kata }) {
   const dots = freqDots(kata.frequency);
+  const isPrinciple = kata.kind === "principle";
   return (
     <article className="mx-auto max-w-[760px] px-6 pb-24 pt-8 md:px-10">
       <header className="border-b border-border pb-7">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <Badge variant="category">{CATEGORY_LABEL[kata.category] ?? kata.category}</Badge>
           <Badge className="capitalize">{kata.difficulty}</Badge>
-          <span className="ml-1 inline-flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-            Frequency
-            <span className="tracking-[1px]">
-              <span style={{ color: "var(--primary)" }}>{"●".repeat(dots.on)}</span>
-              <span style={{ color: "var(--border-strong)" }}>{"●".repeat(dots.off)}</span>
+          {isPrinciple ? (
+            <span className="ml-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Principle
             </span>
-            {kata.frequency}
-          </span>
+          ) : (
+            <span className="ml-1 inline-flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+              Frequency
+              <span className="tracking-[1px]">
+                <span style={{ color: "var(--primary)" }}>{"●".repeat(dots.on)}</span>
+                <span style={{ color: "var(--border-strong)" }}>{"●".repeat(dots.off)}</span>
+              </span>
+              {kata.frequency}
+            </span>
+          )}
         </div>
         <h1 className="font-serif text-[44px] font-semibold leading-[1.05] tracking-[-0.015em] text-balance">
           {kata.title}

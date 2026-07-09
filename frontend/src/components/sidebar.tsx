@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { groupByCategory, searchKatas, type Kata } from "@/lib/content";
 
 const CATEGORY_LABEL: Record<string, string> = {
+  foundations: "Foundations",
   creational: "Creational",
   structural: "Structural",
   behavioral: "Behavioral",

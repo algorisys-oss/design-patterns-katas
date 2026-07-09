@@ -11,8 +11,8 @@ import hljs from "highlight.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONTENT_DIR = resolve(__dirname, "../../content");
 const OUT_DIR = resolve(__dirname, "../src/data");
-const CATEGORY_ORDER = ["creational", "structural", "behavioral"];
-const LANG_ORDER = ["javascript", "python", "elixir", "go"];
+const CATEGORY_ORDER = ["foundations", "creational", "structural", "behavioral"];
+const LANG_ORDER = ["javascript", "node-js", "python", "elixir", "go"];
 const HLJS_ALIAS = { javascript: "javascript", js: "javascript", python: "python", elixir: "elixir", go: "go" };
 
 // ---- markdown → HTML with syntax highlighting ----
@@ -130,6 +130,7 @@ function buildKata(file) {
     id: data.id,
     title: data.title,
     category: data.category,
+    kind: data.kind || "pattern",
     sequence: data.sequence ?? 0,
     gof: data.gof ?? true,
     intent: data.intent || "",

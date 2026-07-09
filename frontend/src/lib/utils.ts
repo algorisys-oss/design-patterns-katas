@@ -7,6 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export const LANG_META: Record<string, { label: string; color: string }> = {
   javascript: { label: "JavaScript", color: "var(--lang-js)" },
+  "node-js": { label: "Node.js", color: "var(--lang-node)" },
   python: { label: "Python", color: "var(--lang-python)" },
   elixir: { label: "Elixir", color: "var(--lang-elixir)" },
   go: { label: "Go", color: "var(--lang-go)" },
