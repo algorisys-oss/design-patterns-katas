@@ -65,10 +65,41 @@ All 28 katas are written and carry a structure diagram.
 - [x] 10 template-method
 - [x] 11 visitor
 
+## Beyond GoF — extended taxonomy
+
+The catalog isn't limited to the 23 GoF patterns. Categories are a one-entry data change in
+[frontend/src/lib/categories.json](frontend/src/lib/categories.json); a family with no katas
+just doesn't render yet. Planned modern families (empty until content lands):
+
+- **concurrency** — worker pool, producer–consumer, future/promise, actor, pub/sub,
+  fan-out/fan-in, semaphore/rate-limiter, read-write lock, barrier
+- **architectural** — MVC/MVP/MVVM, layered, hexagonal (ports & adapters), repository,
+  unit of work, dependency injection, service locator, CQRS, event sourcing
+- **distributed** (cloud) — circuit breaker, retry, bulkhead, timeout, saga, sidecar,
+  strangler fig, cache-aside, leader election
+- **messaging** — message channel/router, pipes & filters, aggregator, splitter, pub/sub
+- **data** — repository, unit of work, data mapper, active record, identity map
+- **functional** — result/option/either, currying & partial application, memoization,
+  composition/pipeline, lens, transducer
+- **ui** — component/container, state management, provider, render props, hooks
+- **deployment** (devops) — blue-green, canary, rolling, feature flags, IaC, GitOps
+- **anti-patterns** — a short set for contrast
+
+### Concurrency pilot (first family)
+- [x] 01 worker-pool  ← exemplar for the family
+- [ ] 02 producer-consumer
+- [ ] 03 future-promise
+- [ ] 04 actor
+- [ ] 05 pub-sub
+- [ ] 06 fan-out-fan-in
+
 ## Notes
 
 - 21 of 23 patterns have a reference article (source for JS + Applications). Template Method
   and Visitor were written from scratch, matching the house voice.
+- Beyond-GoF katas set `gof: false`; concurrency uses structure/sequence diagrams and leans on
+  each language's native primitives (Go channels, Elixir processes, JS promises, Python
+  futures) — that contrast is the point of the family.
 - Ported code (Python/Elixir/Go) matches the pattern's *behavior*, not the JS line shape
   (LOOPS.md XXXVI).
 - `[~]` = in progress. Legend mirrors the `progress` API statuses:

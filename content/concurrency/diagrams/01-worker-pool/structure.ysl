@@ -1,0 +1,17 @@
+---
+title: Worker Pool — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+producer [class] "Producer" { methods: "submit(task)" }
+queue [class] "Task Queue" { attributes: "-tasks: Task[]" }
+w1 [class] "Worker 1" { methods: "run(task)" }
+w2 [class] "Worker 2" { methods: "run(task)" }
+w3 [class] "Worker 3" { methods: "run(task)" }
+
+producer -> queue "submit"
+queue -> w1 "dequeue"
+queue -> w2 "dequeue"
+queue -> w3 "dequeue"
