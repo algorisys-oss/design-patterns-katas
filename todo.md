@@ -1,5 +1,9 @@
 # Build Checklist
 
+Completion status is also available programmatically — see
+[frontend/src/lib/progress.ts](frontend/src/lib/progress.ts). In the browser console:
+`KatasProgress.summary()`, `KatasProgress.byStatus("todo")`, `KatasProgress.markCompleted(id)`.
+
 ## Milestones
 
 - [x] Scaffold repo (content categories, backend, frontend, docs)
@@ -11,31 +15,42 @@
 - [x] SOLID foundations category (5 principles)
 - [x] Node.js language tab (frontend/backend JS split) for pattern katas
 - [x] Remaining behavioral patterns (7) + Node.js retrofit of the 13 earlier patterns
-- [~] Structure diagrams (SVG) per pattern + all 5 SOLID — 28 rendered via yappy (name-only boxes)
-- [ ] Rich UML (members, UML arrowheads, rounded corners) — blocked on yappy DSL gaps
-      (see ~/work/algo/yappy/docs/dsl-uml-gaps.md); re-render as Mermaid classDiagram once fixed
-- [ ] Wire diagrams into the frontend (copy SVGs to assets + Structure section per kata)
-- [ ] Optional Go content API (`net/http`) — static build covers hosting for now
+- [x] Structure diagrams (SVG) per pattern + all 5 SOLID — 28 rendered via yappy
+- [x] Rich UML (members, «interface»/«abstract» stereotypes, distinct arrowheads) — native
+      YSL tree layout through the fixed yappy export (the DSL gaps are closed)
+- [x] Wire diagrams into the frontend (inlined into each kata's Structure section, both themes)
+- [x] Attribution footer baked into every diagram SVG
+- [x] Footer status bar (copyright, www.algorisys.com, version, hard-reload)
+- [~] Static deploy (GitHub Pages) — `scripts/deploy.sh` wired to `npm run deploy`; not yet published
 - [ ] Move content to fetched JSON asset (shrink JS bundle)
-- [ ] Static deploy (GitHub Pages / Netlify)
+- [ ] Optional Go content API (`net/http`) — static build covers hosting for now
 
-## Patterns (23 GoF)
+## Patterns (23 GoF + 5 SOLID)
+
+All 28 katas are written and carry a structure diagram.
+
+### Foundations (SOLID)
+- [x] 01 single-responsibility
+- [x] 02 open-closed
+- [x] 03 liskov-substitution
+- [x] 04 interface-segregation
+- [x] 05 dependency-inversion
 
 ### Creational
-- [ ] 01 abstract-factory
-- [ ] 02 builder
-- [ ] 03 factory-method
-- [ ] 04 prototype
-- [ ] 05 singleton
+- [x] 01 abstract-factory
+- [x] 02 builder
+- [x] 03 factory-method
+- [x] 04 prototype
+- [x] 05 singleton
 
 ### Structural
-- [ ] 01 adapter
-- [ ] 02 bridge
-- [ ] 03 composite
-- [ ] 04 decorator
-- [ ] 05 facade
-- [ ] 06 flyweight
-- [ ] 07 proxy
+- [x] 01 adapter
+- [x] 02 bridge
+- [x] 03 composite
+- [x] 04 decorator
+- [x] 05 facade
+- [x] 06 flyweight
+- [x] 07 proxy
 
 ### Behavioral
 - [x] 01 chain-of-responsibility
@@ -47,12 +62,14 @@
 - [x] 07 observer
 - [x] 08 state
 - [x] 09 strategy  ← exemplar
-- [x] 10 template-method  (no reference article — write fresh)
-- [x] 11 visitor          (no reference article — write fresh)
+- [x] 10 template-method
+- [x] 11 visitor
 
 ## Notes
 
 - 21 of 23 patterns have a reference article (source for JS + Applications). Template Method
-  and Visitor do not — write those from scratch, matching the house voice.
-- Ported code (Python/Elixir/Go) must match the pattern's *behavior*, not the JS line shape
+  and Visitor were written from scratch, matching the house voice.
+- Ported code (Python/Elixir/Go) matches the pattern's *behavior*, not the JS line shape
   (LOOPS.md XXXVI).
+- `[~]` = in progress. Legend mirrors the `progress` API statuses:
+  `completed` = `[x]`, `in-progress` = `[~]`, `todo` = `[ ]`.
