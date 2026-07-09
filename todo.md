@@ -36,7 +36,7 @@
 - [ ] 04 iterator
 - [ ] 05 mediator
 - [ ] 06 memento
-- [ ] 07 observer
+- [x] 07 observer
 - [ ] 08 state
 - [x] 09 strategy  ← exemplar
 - [ ] 10 template-method  (no reference article — write fresh)
