@@ -1,15 +1,34 @@
 # Frontend (React)
 
-ReactJS + shadcn/ui + Tailwind CSS. A read-only kata browser: category sidebar, kata view,
-and a `[ JavaScript | Python | Elixir | Go ]` tab switcher over each pattern's implementations.
-Light/dark theme toggle. No code execution in v1.
+ReactJS + shadcn/ui + Tailwind v4 (Vite). A read-only kata browser: category sidebar with
+**search**, kata view, and a `[ JavaScript | Python | Elixir | Go ]` tab switcher colored by
+each language. Light/dark toggle. No code execution in v1.
 
-## Content source
+## Run
 
-One content client, two modes:
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173  (rebuilds content, then starts Vite)
+```
 
-- **Static mode** (default, backend-free) — fetches pre-built JSON generated from
-  `content/**/*.md` by the build script. Deploys to GitHub Pages / Netlify.
-- **API mode** — fetches from the Go backend's `/api/katas` during local development.
+Other scripts:
 
-Not yet implemented — see [../todo.md](../todo.md).
+```bash
+npm run content    # compile ../content/**/*.md → src/data/katas.json
+npm run build      # content + production build → dist/
+npm run preview    # serve the built dist/
+```
+
+## How content flows
+
+`scripts/build-content.mjs` reads `../content/**/*.md`, parses frontmatter + sections,
+splits the Implementations section into per-language tab panels, highlights code with
+highlight.js, and writes `src/data/katas.json` (git-ignored, regenerated on every build).
+The app imports that JSON — so the site is fully **static** and needs no backend. The Go
+backend (`../backend`) is an optional alternative content source in dev.
+
+## Search
+
+The sidebar search filters katas by title, intent, tags, category, related patterns, and body
+prose. The search string for each kata is precomputed in the content build.

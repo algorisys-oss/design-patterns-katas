@@ -8,7 +8,8 @@ frontend/.vite/
 backend/bin/
 backend/server
 
-# Generated static content
+# Generated content (rebuilt by `npm run content`)
+frontend/src/data/katas.json
 frontend/public/content/*.json
 
 # Editor / OS
