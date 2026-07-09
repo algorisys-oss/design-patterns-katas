@@ -5,14 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Implementations } from "@/components/implementations";
 import { cn, freqDots } from "@/lib/utils";
 import { getAdjacent, type Kata } from "@/lib/content";
+import { categoryLabel } from "@/lib/categories";
 import { Lessons, useLessonComplete } from "@/lib/lessons";
-
-const CATEGORY_LABEL: Record<string, string> = {
-  foundations: "Foundations",
-  creational: "Creational",
-  structural: "Structural",
-  behavioral: "Behavioral",
-};
 
 export function KataView({ kata }: { kata: Kata }) {
   const dots = freqDots(kata.frequency);
@@ -90,7 +84,7 @@ export function KataView({ kata }: { kata: Kata }) {
     <article className="mx-auto max-w-[760px] px-6 pb-24 pt-8 md:px-10">
       <header className="border-b border-border pb-7">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <Badge variant="category">{CATEGORY_LABEL[kata.category] ?? kata.category}</Badge>
+          <Badge variant="category">{categoryLabel(kata.category)}</Badge>
           <Badge className="capitalize">{kata.difficulty}</Badge>
           {isPrinciple ? (
             <span className="ml-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">

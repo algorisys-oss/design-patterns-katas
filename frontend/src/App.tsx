@@ -7,6 +7,7 @@ import { KataView } from "@/components/kata-view";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getKata, katas } from "@/lib/content";
+import { categoryLabel } from "@/lib/categories";
 import { useLessonsProgress } from "@/lib/lessons";
 
 // Injected by Vite (define) from frontend/package.json.
@@ -23,13 +24,6 @@ function usePersistedBool(key: string, initial: boolean) {
   }, [key, value]);
   return [value, setValue] as const;
 }
-
-const CATEGORY_LABEL: Record<string, string> = {
-  foundations: "Foundations",
-  creational: "Creational",
-  structural: "Structural",
-  behavioral: "Behavioral",
-};
 
 const firstKataId = katas[0]?.id ?? "";
 
@@ -152,7 +146,7 @@ function Breadcrumb() {
   if (!kata) return <span className="font-mono text-[12px] text-faint">Design Patterns</span>;
   return (
     <div className="font-mono text-[12px] text-faint">
-      {CATEGORY_LABEL[kata.category] ?? kata.category} / <span className="text-muted-foreground">{kata.title}</span>
+      {categoryLabel(kata.category)} / <span className="text-muted-foreground">{kata.title}</span>
     </div>
   );
 }

@@ -4,14 +4,8 @@ import { Search, X, ChevronRight, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { groupByCategory, searchKatas, type Kata } from "@/lib/content";
+import { categoryLabel } from "@/lib/categories";
 import { useLessonComplete, useLessonsProgress } from "@/lib/lessons";
-
-const CATEGORY_LABEL: Record<string, string> = {
-  foundations: "Foundations",
-  creational: "Creational",
-  structural: "Structural",
-  behavioral: "Behavioral",
-};
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [query, setQuery] = React.useState("");
@@ -101,7 +95,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   className={cn("h-3 w-3 flex-none transition-transform", !isCollapsed && "rotate-90")}
                   aria-hidden
                 />
-                {CATEGORY_LABEL[category] ?? category}
+                {categoryLabel(category)}
                 <span className="ml-auto tabular-nums text-faint/70">{items.length}</span>
               </button>
               {!isCollapsed && (

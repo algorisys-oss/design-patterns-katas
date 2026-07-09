@@ -11,7 +11,11 @@ import hljs from "highlight.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONTENT_DIR = resolve(__dirname, "../../content");
 const OUT_DIR = resolve(__dirname, "../src/data");
-const CATEGORY_ORDER = ["foundations", "creational", "structural", "behavioral"];
+// Category order comes from the shared registry (src/lib/categories.json) so the build
+// and the app agree, and new families are a one-entry data change.
+const CATEGORY_ORDER = JSON.parse(
+  readFileSync(resolve(__dirname, "../src/lib/categories.json"), "utf8"),
+).map((c) => c.slug);
 const LANG_ORDER = ["javascript", "node-js", "python", "elixir", "go"];
 const HLJS_ALIAS = { javascript: "javascript", js: "javascript", python: "python", elixir: "elixir", go: "go" };
 

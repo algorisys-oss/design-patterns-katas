@@ -1,0 +1,93 @@
+[
+  {
+    "slug": "foundations",
+    "label": "Foundations",
+    "blurb": "The SOLID principles the patterns rest on.",
+    "track": "foundations",
+    "gof": false
+  },
+  {
+    "slug": "creational",
+    "label": "Creational",
+    "blurb": "How objects get made, decoupled from their concrete types.",
+    "track": "gof",
+    "gof": true
+  },
+  {
+    "slug": "structural",
+    "label": "Structural",
+    "blurb": "How objects and classes compose into larger structures.",
+    "track": "gof",
+    "gof": true
+  },
+  {
+    "slug": "behavioral",
+    "label": "Behavioral",
+    "blurb": "How objects collaborate and share responsibility at runtime.",
+    "track": "gof",
+    "gof": true
+  },
+  {
+    "slug": "concurrency",
+    "label": "Concurrency",
+    "blurb": "Coordinating work across threads, processes, and async tasks.",
+    "track": "modern",
+    "gof": false
+  },
+  {
+    "slug": "architectural",
+    "label": "Architectural",
+    "blurb": "How whole systems are organized — layers, boundaries, and flow.",
+    "track": "modern",
+    "gof": false
+  },
+  {
+    "slug": "distributed",
+    "label": "Distributed & Cloud",
+    "blurb": "Resilience and coordination across services and the network.",
+    "track": "modern",
+    "gof": false
+  },
+  {
+    "slug": "messaging",
+    "label": "Messaging & Integration",
+    "blurb": "Moving data between systems with queues, events, and routers.",
+    "track": "modern",
+    "gof": false
+  },
+  {
+    "slug": "data",
+    "label": "Data & Persistence",
+    "blurb": "Persistence and the shape of data access.",
+    "track": "modern",
+    "gof": false
+  },
+  {
+    "slug": "functional",
+    "label": "Functional",
+    "blurb": "Composition, purity, and values over control flow.",
+    "track": "modern",
+    "gof": false
+  },
+  {
+    "slug": "ui",
+    "label": "UI & Frontend",
+    "blurb": "Structuring user interfaces and their state.",
+    "track": "modern",
+    "gof": false
+  },
+  {
+    "slug": "deployment",
+    "label": "Deployment & DevOps",
+    "blurb": "Shipping and operating software — release, rollout, and ops.",
+    "track": "modern",
+    "gof": false
+  },
+  {
+    "slug": "anti-patterns",
+    "label": "Anti-Patterns",
+    "blurb": "Common traps, and what to do instead.",
+    "track": "modern",
+    "gof": false
+  }
+]
