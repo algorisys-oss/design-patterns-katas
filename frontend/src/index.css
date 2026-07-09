@@ -128,6 +128,26 @@ body {
   font-family: var(--mono); font-size: 13px; line-height: 1.62; background: none; padding: 0; white-space: pre;
 }
 
+/* ---- structure diagrams (inline SVG, hand-drawn black strokes) ---- */
+/* The SVG is drawn with black strokes, so it always sits on a light "whiteboard"
+   panel — legible in both themes — while the frame border follows the palette. */
+.structure-diagram {
+  margin: 18px 0;
+  padding: 20px 16px;
+  background: #fdfdfb;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow-x: auto;
+  display: flex;
+  justify-content: center;
+}
+.structure-diagram .structure-svg {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  display: block;
+}
+
 /* ---- highlight.js tokens, mapped to the palette ---- */
 .hljs-comment, .hljs-quote { color: var(--faint); font-style: italic; }
 .hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-name { color: var(--lang-elixir); }

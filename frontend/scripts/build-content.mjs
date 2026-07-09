@@ -2,7 +2,7 @@
 // Runs at `npm run content` (and before dev/build). No backend needed — this is
 // what makes the site statically hostable.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
-import { join, dirname, resolve } from "node:path";
+import { join, dirname, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import matter from "gray-matter";
 import { marked } from "marked";
@@ -92,6 +92,26 @@ function parseImplementations(body) {
   return { intro_html: md(intro.join("\n")), langs: panels };
 }
 
+// Load the pre-rendered structure diagram that sits beside each kata:
+//   content/<category>/<NN-slug>.md  →  content/<category>/diagrams/<NN-slug>/structure.svg
+// Returns an inline, theme-friendly <figure> (or null if the kata has no diagram).
+function loadDiagram(file) {
+  const svgPath = join(dirname(file), "diagrams", basename(file, ".md"), "structure.svg");
+  let svg;
+  try {
+    svg = readFileSync(svgPath, "utf8");
+  } catch {
+    return null;
+  }
+  // Strip the fixed width/height so the SVG scales to its container; keep the viewBox.
+  svg = svg.replace(/<svg([^>]*)>/, (_m, attrs) => {
+    let a = attrs.replace(/\s(width|height)="[^"]*"/g, "");
+    if (!/preserveAspectRatio/.test(a)) a += ' preserveAspectRatio="xMidYMid meet"';
+    return `<svg${a} class="structure-svg" role="img">`;
+  });
+  return `<figure class="structure-diagram">${svg}</figure>`;
+}
+
 function walk(dir) {
   const out = [];
   for (const name of readdirSync(dir)) {
@@ -113,6 +133,18 @@ function buildKata(file) {
     }
     return { kind: "prose", id: slug(s.title), title: s.title, html: md(s.body) };
   });
+
+  // Wire the structure diagram in: append it to the Structure section, or — for the
+  // SOLID principles, which have no Structure heading — insert one right after the intro.
+  const figure = loadDiagram(file);
+  if (figure) {
+    const structure = blocks.find((b) => b.id === "structure" && b.kind === "prose");
+    if (structure) {
+      structure.html += figure;
+    } else {
+      blocks.splice(1, 0, { kind: "prose", id: "structure", title: "Structure", html: figure });
+    }
+  }
 
   const tags = data.tags || [];
   const aka = data.also_known_as || [];
