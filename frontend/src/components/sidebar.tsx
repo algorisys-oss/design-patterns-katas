@@ -4,8 +4,15 @@ import { Search, X, ChevronRight, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { groupByCategory, searchKatas, type Kata } from "@/lib/content";
-import { categoryLabel } from "@/lib/categories";
+import { categoryLabel, categoryMeta, type CategoryTrack } from "@/lib/categories";
 import { useLessonComplete, useLessonsProgress } from "@/lib/lessons";
+
+// Super-groups the category list into tracks in the sidebar.
+const TRACK_LABEL: Record<CategoryTrack, string> = {
+  foundations: "Principles",
+  gof: "Gang of Four",
+  modern: "Modern Patterns",
+};
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [query, setQuery] = React.useState("");
@@ -81,10 +88,22 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             No patterns match {activeTag ? `#${activeTag}` : `“${query}”`}.
           </p>
         )}
-        {groups.map(([category, items]) => {
+        {groups.map(([category, items], idx) => {
           const isCollapsed = !filtering && collapsed[category];
+          const track = categoryMeta(category)?.track;
+          const prevTrack = idx > 0 ? categoryMeta(groups[idx - 1][0])?.track : undefined;
+          const showTrack = track && track !== prevTrack;
           return (
-            <div key={category} className="mb-1">
+            <React.Fragment key={category}>
+              {showTrack && (
+                <div className="mt-5 mb-1 flex items-center gap-2 px-3 first:mt-1">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-primary/80">
+                    {TRACK_LABEL[track]}
+                  </span>
+                  <span className="h-px flex-1 bg-border" aria-hidden />
+                </div>
+              )}
+              <div className="mb-1">
               <button
                 type="button"
                 onClick={() => setCollapsed((c) => ({ ...c, [category]: !c[category] }))}
@@ -98,14 +117,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {categoryLabel(category)}
                 <span className="ml-auto tabular-nums text-faint/70">{items.length}</span>
               </button>
-              {!isCollapsed && (
-                <ul>
-                  {items.map((k) => (
-                    <SidebarLink key={k.id} kata={k} onNavigate={onNavigate} />
-                  ))}
-                </ul>
-              )}
-            </div>
+                {!isCollapsed && (
+                  <ul>
+                    {items.map((k) => (
+                      <SidebarLink key={k.id} kata={k} onNavigate={onNavigate} />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </React.Fragment>
           );
         })}
       </nav>
