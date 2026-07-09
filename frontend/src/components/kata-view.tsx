@@ -21,25 +21,70 @@ export function KataView({ kata }: { kata: Kata }) {
   const endRef = React.useRef<HTMLDivElement>(null);
   const autoMarked = React.useRef(false);
 
-  // Fresh auto-mark budget whenever the reader opens a different lesson.
+  // Estimated reading time for this lesson (~200 wpm), floored/capped so it gates
+  // auto-completion without ever being punitive.
+  const minReadMs = React.useMemo(() => {
+    const text = kata.blocks
+      .map((b: { kind: string; html?: string; intro_html?: string; langs?: { html: string }[] }) =>
+        b.kind === "impl"
+          ? (b.intro_html ?? "") + " " + (b.langs ?? []).map((l) => l.html).join(" ")
+          : b.html ?? "",
+      )
+      .join(" ")
+      .replace(/<[^>]+>/g, " ");
+    const words = (text.match(/\S+/g) ?? []).length;
+    return Math.min(45_000, Math.max(8_000, Math.round((words / 200) * 60_000)));
+  }, [kata.blocks]);
+
+  // Auto-mark complete when the learner reaches the end of the lesson — but only after
+  // they've spent the estimated reading time (counted while the tab is visible) and are
+  // still at the end. Scrolling very fast to the bottom therefore does NOT complete it.
+  // Only ever marks (never un-marks), and only once per visit, so a manual un-mark sticks.
   React.useEffect(() => {
     autoMarked.current = false;
-  }, [kata.id]);
+    const sentinel = endRef.current;
+    if (!sentinel) return;
 
-  // Auto-mark complete once the learner scrolls to the end of the lesson. Only ever
-  // marks (never un-marks), and only once per visit, so a manual un-mark sticks.
-  React.useEffect(() => {
-    const el = endRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting) && !autoMarked.current) {
+    let activeMs = 0;
+    let resumedAt: number | null = document.visibilityState === "visible" ? Date.now() : null;
+    const elapsed = () => activeMs + (resumedAt != null ? Date.now() - resumedAt : 0);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        resumedAt = Date.now();
+      } else if (resumedAt != null) {
+        activeMs += Date.now() - resumedAt;
+        resumedAt = null;
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Re-checks visible reading time each time it fires: mark once enough has accrued
+    // while still at the end, otherwise defer the remainder.
+    const schedule = () => {
+      clearTimeout(timer);
+      if (autoMarked.current) return;
+      const remaining = minReadMs - elapsed();
+      if (remaining <= 0) {
         autoMarked.current = true;
         Lessons.complete(kata.id);
+      } else {
+        timer = setTimeout(schedule, remaining);
       }
+    };
+
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) schedule();
+      else clearTimeout(timer); // left the end before earning it — cancel
     });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [kata.id]);
+    io.observe(sentinel);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      clearTimeout(timer);
+      io.disconnect();
+    };
+  }, [kata.id, minReadMs]);
 
   return (
     <article className="mx-auto max-w-[760px] px-6 pb-24 pt-8 md:px-10">
