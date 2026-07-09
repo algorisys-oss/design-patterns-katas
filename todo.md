@@ -36,7 +36,7 @@
 ### Behavioral
 - [x] 01 chain-of-responsibility
 - [x] 02 command
-- [ ] 03 interpreter
+- [x] 03 interpreter
 - [ ] 04 iterator
 - [ ] 05 mediator
 - [ ] 06 memento
