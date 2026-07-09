@@ -1,0 +1,15 @@
+---
+title: Strangler Fig — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+client [class] "Client" { methods: "request()" }
+facade [class] "Facade / Router" { methods: "route(req)" }
+legacy [class] "Legacy System" { methods: "handle()" }
+modern [class] "New System" { methods: "handle()" }
+
+client -> facade "request"
+facade -> legacy "old routes"
+facade -> modern "migrated routes"

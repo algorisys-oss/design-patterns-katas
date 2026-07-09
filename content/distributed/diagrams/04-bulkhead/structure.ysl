@@ -1,0 +1,17 @@
+---
+title: Bulkhead — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+client [class] "Client" { methods: "call(dep)" }
+poolA [class] "Pool A" { attributes: "-limit: 10" }
+poolB [class] "Pool B" { attributes: "-limit: 10" }
+depA [class] "Dependency A" { methods: "handle()" }
+depB [class] "Dependency B" { methods: "handle()" }
+
+client -> poolA "route A"
+client -> poolB "route B"
+poolA -> depA "isolated"
+poolB -> depB "isolated"

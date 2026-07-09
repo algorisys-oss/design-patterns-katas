@@ -1,0 +1,13 @@
+---
+title: Retry — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+client [class] "Client" { methods: "run()" }
+retry [class] "Retry Policy" { attributes: "-maxAttempts;-backoff", methods: "execute(op)" }
+service [class] "Remote Service" { methods: "handle()" }
+
+client -> retry "execute"
+retry -> service "attempt (with backoff)"

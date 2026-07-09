@@ -1,0 +1,15 @@
+---
+title: Leader Election — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+coordinator [class] "Coordinator" { attributes: "-lease", methods: "elect()" }
+leader [class] "Leader" { methods: "doWork()" }
+f1 [class] "Follower A" { methods: "standby()" }
+f2 [class] "Follower B" { methods: "standby()" }
+
+coordinator -> leader "elected"
+coordinator -> f1 "follows"
+coordinator -> f2

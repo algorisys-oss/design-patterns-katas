@@ -1,0 +1,15 @@
+---
+title: Saga — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 115
+---
+
+orchestrator [class] "Saga Orchestrator" { methods: "run();compensate()" }
+order [class] "Order Service" { methods: "create();cancel()" }
+payment [class] "Payment Service" { methods: "charge();refund()" }
+shipping [class] "Shipping Service" { methods: "ship();recall()" }
+
+orchestrator -> order "step 1"
+orchestrator -> payment "step 2"
+orchestrator -> shipping "step 3"

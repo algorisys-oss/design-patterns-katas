@@ -75,8 +75,8 @@ just doesn't render yet. Planned modern families (empty until content lands):
   pub/sub, fan-out/fan-in)
 - **architectural** ✅ (8 katas: layered, MVC, hexagonal, repository, unit of work,
   dependency injection, CQRS, event sourcing)
-- **distributed** (cloud) — circuit breaker, retry, bulkhead, timeout, saga, sidecar,
-  strangler fig, cache-aside, leader election
+- **distributed** (cloud) ✅ (8 katas: circuit breaker, retry, timeout, bulkhead, saga,
+  cache-aside, strangler fig, leader election)
 - **messaging** — message channel/router, pipes & filters, aggregator, splitter, pub/sub
 - **data** — repository, unit of work, data mapper, active record, identity map
 - **functional** — result/option/either, currying & partial application, memoization,

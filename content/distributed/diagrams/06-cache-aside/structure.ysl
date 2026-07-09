@@ -1,0 +1,14 @@
+---
+title: Cache-Aside — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+client [class] "Client" { methods: "get(key)" }
+cache [class] "Cache" { methods: "get(key);set(key, v)" }
+db [class] "Database" { methods: "load(key)" }
+
+client -> cache "1. read"
+cache -> db "2. miss → load"
+db -> cache "3. populate"

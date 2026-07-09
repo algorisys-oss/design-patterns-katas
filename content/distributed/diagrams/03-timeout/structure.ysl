@@ -1,0 +1,15 @@
+---
+title: Timeout — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+client [class] "Client" { methods: "run()" }
+timeout [class] "Timeout" { attributes: "-deadline", methods: "within(op)" }
+service [class] "Remote Service" { methods: "handle()" }
+timer [class] "Timer" { methods: "after(ms)" }
+
+client -> timeout "call"
+timeout -> service "attempt"
+timeout -> timer "race"

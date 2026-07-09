@@ -1,0 +1,13 @@
+---
+title: Circuit Breaker — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+client [class] "Client" { methods: "call()" }
+breaker [class] "Circuit Breaker" { attributes: "-state: closed|open|half-open;-failures" }
+service [class] "Remote Service" { methods: "handle()" }
+
+client -> breaker "call"
+breaker -> service "forward if closed"
