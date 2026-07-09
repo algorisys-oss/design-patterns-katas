@@ -1,0 +1,15 @@
+---
+title: Feature Flags — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+request [class] "Request" { attributes: "-user" }
+flags [class] "Flag Service" { methods: "isEnabled(flag, user)" }
+newpath [class] "New Path" { methods: "run()" }
+oldpath [class] "Old Path" { methods: "run()" }
+
+request -> flags "check"
+flags -> newpath "enabled"
+flags -> oldpath "disabled"

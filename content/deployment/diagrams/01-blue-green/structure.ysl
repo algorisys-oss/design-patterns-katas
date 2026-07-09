@@ -1,0 +1,13 @@
+---
+title: Blue-Green Deployment — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+router [class] "Load Balancer" { methods: "route()" }
+blue [class] "Blue (v1)" { attributes: "-live" }
+green [class] "Green (v2)" { attributes: "-staged" }
+
+router -> blue "100% live"
+router -> green "0% → switch"

@@ -83,7 +83,7 @@ just doesn't render yet. Planned modern families (empty until content lands):
   function composition, immutability, lens)
 - **ui** ✅ (6 katas: container/presentational, unidirectional data flow, provider,
   reactive state, optimistic UI, compound components)
-- **deployment** (devops) — blue-green, canary, rolling, feature flags, IaC, GitOps
+- **deployment** (devops) ✅ (6 katas: blue-green, canary, rolling deployment, feature flags, sidecar, infrastructure as code)
 - **anti-patterns** — a short set for contrast
 
 ### Concurrency (first family — pilot complete)

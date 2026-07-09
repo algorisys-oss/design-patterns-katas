@@ -1,0 +1,13 @@
+---
+title: Rolling Deployment — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+lb [class] "Service" { methods: "route()" }
+old [class] "Old Pods (v1)" { attributes: "-replicas -" }
+new [class] "New Pods (v2)" { attributes: "-replicas +" }
+
+lb -> old "draining"
+lb -> new "ramping up"

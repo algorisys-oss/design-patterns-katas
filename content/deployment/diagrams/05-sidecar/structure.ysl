@@ -1,0 +1,14 @@
+---
+title: Sidecar — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+pod [class] "Pod" { attributes: "-shared net/volume" }
+app [class] "App Container" { methods: "serve()" }
+sidecar [class] "Sidecar Container" { methods: "proxy/log/tls" }
+
+pod -> app "main"
+pod -> sidecar "attached"
+app -> sidecar "via localhost"

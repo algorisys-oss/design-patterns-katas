@@ -1,0 +1,13 @@
+---
+title: Infrastructure as Code — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+code [class] "IaC Code" { attributes: "-desired state", methods: "plan();apply()" }
+provisioner [class] "Provisioner" { methods: "reconcile()" }
+infra [class] "Infrastructure" { attributes: "-actual state" }
+
+code -> provisioner "desired state"
+provisioner -> infra "create / update / destroy"

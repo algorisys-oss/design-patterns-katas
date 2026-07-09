@@ -1,0 +1,13 @@
+---
+title: Canary Release — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 125
+---
+
+router [class] "Router / Mesh" { methods: "split()" }
+stable [class] "Stable (v1)" { attributes: "-90% traffic" }
+canary [class] "Canary (v2)" { attributes: "-10% traffic" }
+
+router -> stable "90%"
+router -> canary "10% → watch metrics"
