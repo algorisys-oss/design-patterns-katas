@@ -295,6 +295,15 @@ Real-world uses of Command (from the reference article), by tier:
   and replay, CQRS command handlers.
 - **Both** — macros (a command of commands), remote procedure invocation.
 
+**In modern systems:**
+
+- **Low-code** — a button's `"action": {…}` JSON becomes a Command the runtime dispatches, so the
+  UI's behavior is authored as data, not wired in code.
+- **Workflow engine** — each step is a Command: queued, logged, retried, replayed, and rolled back
+  through a paired compensating command.
+- **Multi-agent** — a tool call is a Command object the orchestrator can log, gate behind approval,
+  and re-run deterministically when replaying a session.
+
 ## Related Patterns
 
 - **Memento** — pairs with Command for undo: the memento snapshots state a command restores.

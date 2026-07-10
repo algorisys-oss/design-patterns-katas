@@ -310,6 +310,15 @@ projections yourself — the usual Go bargain of clarity for hand-written plumbi
 - **Debugging & analytics** — replay production event streams to reproduce bugs or build new
   metrics from history you already captured (backend).
 
+**In modern systems:**
+
+- **Workflow engine** — a run's history *is* its event log; instance state is a fold over it,
+  giving replay, resume, and audit for free.
+- **Multi-agent** — the agent's message and tool-call log is the source of truth; the conversation
+  state is derived from it, so a session can be replayed exactly.
+- **Low-code** — every builder edit stored as an event, so the document is a replay and
+  time-travel undo is trivial.
+
 ## Related Patterns
 
 - **CQRS** — the natural read side: projections consume the event stream to build query models,

@@ -319,6 +319,14 @@ Real-world uses of Factory Method (from the reference article):
 - **Database drivers** — construct the driver named in a connection string.
 - **UI element creation** — build the platform-appropriate widget.
 
+**In modern systems:**
+
+- **Low-code** — the `"type"` discriminator in each JSON node dispatched to the matching widget
+  constructor. This is the engine's core dispatch: data names the type, the factory builds it.
+- **Workflow engine** — a step's `"kind"` field selects which step class to instantiate.
+- **Multi-agent** — a `"role"` field constructs the right agent (researcher, coder, reviewer) from
+  one registry.
+
 ## Related Patterns
 
 - **Abstract Factory** — makes *families* of related products; Factory Method makes one product

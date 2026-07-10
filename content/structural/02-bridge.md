@@ -306,6 +306,15 @@ Real-world uses of Bridge (from the reference article):
 - **Notifications** — message types over delivery channels.
 - **Cross-platform toolkits** — one widget API over native platform implementations.
 
+**In modern systems:**
+
+- **Low-code** — the component abstraction sits apart from its renderer, so one JSON schema drives
+  web, native, or PDF output by swapping the implementor.
+- **Multi-agent** — the agent logic decoupled from the model backend (hosted, local, mock) behind
+  an implementor interface, so you test the reasoning against a fake.
+- **Workflow engine** — the workflow model decoupled from the execution backend (in-process,
+  queue, serverless).
+
 ## Related Patterns
 
 - **Abstract Factory** — can create matched abstraction+implementor pairs for a Bridge.

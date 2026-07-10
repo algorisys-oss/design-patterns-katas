@@ -295,6 +295,15 @@ Real-world uses of Facade (from the reference article):
 - **Media / hardware subsystems** — `computer.start()` over CPU, memory, disk.
 - **Phoenix contexts / service layers** — a domain API over schemas and services.
 
+**In modern systems:**
+
+- **Multi-agent** — one `agent.run(task)` over a tangle of model, memory, tools, and planner
+  subsystems; callers never see the wiring.
+- **Workflow engine** — a single `startWorkflow(def, input)` hiding the scheduler, store, and
+  executor behind it.
+- **Low-code** — `render(schema)` as the one entry point over the parser, node factory, and
+  renderer.
+
 ## Related Patterns
 
 - **Adapter** — converts one interface to another; Facade defines a new, simpler interface over

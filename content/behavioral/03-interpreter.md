@@ -324,6 +324,15 @@ Real-world uses of Interpreter (from the reference article), by tier:
 - **Both** — calculators, template languages, and any small, stable DSL where behavior is
   described as data.
 
+**In modern systems:**
+
+- **Low-code** — a JSON rule tree (`{"and": [{"eq": ["role", "admin"]}, …]}`) parsed once and
+  evaluated per record. This *is* the core of a JSON low-code engine: behavior shipped as data.
+- **Workflow engine** — step conditions and transition guards written as data, interpreted to
+  decide which node runs next, so the flow is editable without a redeploy.
+- **Multi-agent** — an agent's plan expressed as a small step DSL the runtime walks, rather than
+  free-form generated code you have to sandbox and trust.
+
 ## Related Patterns
 
 - **Composite** — an AST *is* a Composite tree; Interpreter adds the `interpret` operation that

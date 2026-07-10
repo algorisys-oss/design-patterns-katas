@@ -11,6 +11,7 @@ import { Lessons, useLessonComplete } from "@/lib/lessons";
 export function KataView({ kata }: { kata: Kata }) {
   const dots = freqDots(kata.frequency);
   const isPrinciple = kata.kind === "principle";
+  const isPlaybook = kata.kind === "playbook";
   const done = useLessonComplete(kata.id);
   const endRef = React.useRef<HTMLDivElement>(null);
   const autoMarked = React.useRef(false);
@@ -86,9 +87,9 @@ export function KataView({ kata }: { kata: Kata }) {
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <Badge variant="category">{categoryLabel(kata.category)}</Badge>
           <Badge className="capitalize">{kata.difficulty}</Badge>
-          {isPrinciple ? (
+          {isPrinciple || isPlaybook ? (
             <span className="ml-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-              Principle
+              {isPlaybook ? "Playbook" : "Principle"}
             </span>
           ) : (
             <span className="ml-1 inline-flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">

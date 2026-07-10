@@ -286,6 +286,15 @@ Real-world uses of Adapter (from the reference article):
 - **Storage backends** — S3/GCS/local disk behind a common blob interface.
 - **Logging libraries** — adapt a third-party logger to your logging contract.
 
+**In modern systems:**
+
+- **Multi-agent** — wrap heterogeneous tool and model APIs behind one uniform `call` interface the
+  orchestrator expects, so a new provider is a new adapter, not a rewrite.
+- **Low-code** — adapt an external REST endpoint to the datasource interface a JSON binding
+  assumes.
+- **Workflow engine** — adapt a third-party service to the step contract so it drops into a
+  pipeline unchanged.
+
 ## Related Patterns
 
 - **Facade** — simplifies a whole subsystem behind a new interface; Adapter converts one object

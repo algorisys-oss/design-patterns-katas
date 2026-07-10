@@ -301,6 +301,14 @@ yours, which is exactly what you want when delivery semantics matter.
 - **Logging & telemetry** — components emit events onto a bus; collectors subscribe to ship them
   onward (backend).
 
+**In modern systems:**
+
+- **Multi-agent** — a shared event bus (a blackboard) agents publish findings to and subscribe to
+  each other's, coordinating without direct coupling.
+- **Workflow engine** — steps emit domain events other workflows subscribe to, decoupling the
+  producer from everything that reacts.
+- **Low-code** — form fields publish change events on a bus that cross-field rules subscribe to.
+
 ## Related Patterns
 
 - **Observer** — pub/sub is Observer with a broker in the middle: many publishers/topics and

@@ -280,6 +280,14 @@ bounds width by the worker count. The price is Go's usual bookkeeping — the ex
 - **MapReduce jobs** — the canonical large-scale form: map tasks fan out across a cluster, reduce
   tasks fan in (backend).
 
+**In modern systems:**
+
+- **Multi-agent** — spawn N sub-agents over slices of a task, then gather and merge their results:
+  map-reduce for agents, and how a supervisor parallelizes a large job.
+- **Workflow engine** — a parallel-gateway step forks branches and joins on all of them before
+  continuing.
+- **Low-code** — resolve many field datasources in parallel, then render once all resolve.
+
 ## Related Patterns
 
 - **Worker Pool** — the pool bounds the fan-out width so it doesn't become unbounded parallelism;

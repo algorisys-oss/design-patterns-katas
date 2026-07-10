@@ -310,6 +310,13 @@ goroutines ranging over the same channel. The cost is Go's usual one — you own
 - **Job systems** — every task queue (Redis lists, SQS, RabbitMQ) is producer–consumer with a
   durable buffer in the middle (backend).
 
+**In modern systems:**
+
+- **Workflow engine** — the scheduler produces ready steps; executors consume them, the two sides
+  decoupled by the queue between them.
+- **Multi-agent** — a planner agent produces subtasks onto a queue that worker agents consume,
+  scaling workers independently of the planner.
+
 ## Related Patterns
 
 - **Worker Pool** — a worker pool is producer–consumer with a *fixed set* of consumers pulling

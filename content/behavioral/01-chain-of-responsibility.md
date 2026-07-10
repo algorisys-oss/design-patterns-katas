@@ -350,6 +350,15 @@ Real-world uses of Chain of Responsibility (from the reference article), by tier
 - **Both** — any "try each candidate in order until one takes it" flow: parsers, dispatchers,
   fallback resolvers.
 
+**In modern systems:**
+
+- **Low-code** — a validation pipeline where each rule from the JSON schema gets a pass at the
+  value, the first failure stopping the chain.
+- **Workflow engine** — step middleware (auth → quota → audit) each step passes through before it
+  runs.
+- **Multi-agent** — a fallback model chain (fast → strong → human), or tool dispatch where each
+  handler claims only the calls it recognizes.
+
 ## Related Patterns
 
 - **Command** — the request travelling the chain is often a Command object; CoR decides *who*

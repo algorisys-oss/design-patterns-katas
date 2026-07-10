@@ -304,6 +304,15 @@ Where Visitor shows up in practice:
   document tree processing, static analysis.
 - **Both** — any stable node hierarchy with a growing set of operations.
 
+**In modern systems:**
+
+- **Low-code** — one pass over the JSON node tree per operation: validate, compile to a form,
+  estimate render cost — add an operation without touching the node types.
+- **Workflow engine** — walk a workflow graph to type-check, price, or visualize it, each as its
+  own visitor over the same node set.
+- **Multi-agent** — traverse a plan tree to collect every tool it will call before executing any
+  of them, e.g. for a dry-run or a permission check.
+
 ## Related Patterns
 
 - **Composite** — Visitor commonly walks a composite tree, applying an operation to each node.

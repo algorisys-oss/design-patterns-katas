@@ -312,6 +312,13 @@ SDK, which persists workflow state and replays it, rather than an in-memory loop
 - **Provisioning** — spinning up resources across systems, tearing down the created ones if a later
   step fails (backend).
 
+**In modern systems:**
+
+- **Workflow engine** — this *is* the resilience model: each step carries a compensating action, so
+  a late failure unwinds the earlier committed steps in reverse.
+- **Multi-agent** — a multi-step agent task where each committed side effect (a booking, a payment)
+  has an undo the orchestrator runs when a later step aborts.
+
 ## Related Patterns
 
 - **Unit of Work** — each saga step is a local unit of work (a real ACID transaction in one

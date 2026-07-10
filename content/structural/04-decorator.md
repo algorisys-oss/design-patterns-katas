@@ -367,6 +367,14 @@ Real-world uses of Decorator (from the reference article):
 - **UI components** — borders, scroll, shadow added by wrapping.
 - **Feature toggles & i18n** — wrap a renderer to add behavior conditionally.
 
+**In modern systems:**
+
+- **Multi-agent** — wrap a raw model call with retry, caching, guardrail, and logging layers, each
+  added independently and removable without touching the core call.
+- **Workflow engine** — a step wrapped with timing, tracing, and idempotency without editing the
+  step's own logic.
+- **Low-code** — a field decorated by permission and formatting layers declared in its JSON.
+
 ## Related Patterns
 
 - **Proxy** — same wrapping shape; Proxy controls access, Decorator adds behavior.

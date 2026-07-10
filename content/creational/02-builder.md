@@ -323,6 +323,14 @@ Real-world uses of Builder (from the reference article):
 - **Configuration objects** — many optional settings with sane defaults.
 - **Test data builders** — construct valid fixtures with a few overrides.
 
+**In modern systems:**
+
+- **Low-code** — assemble a form or page step by step from its JSON schema, validating each
+  section as it attaches.
+- **Multi-agent** — build a model request: system prompt + tools + memory + params composed before
+  the call, with defaults filled in.
+- **Workflow engine** — a fluent DSL that builds a workflow graph (`.step().then().branch()`).
+
 ## Related Patterns
 
 - **Abstract Factory** — returns families of products immediately; Builder assembles one complex

@@ -292,6 +292,15 @@ Real-world uses of Flyweight (from the reference article):
 - **Connection/thread pooling** — reuse a small set of expensive objects.
 - **Icon / image caches** — one decoded image shared across many UI nodes.
 
+**In modern systems:**
+
+- **Low-code** — one shared widget definition per `type` reused across thousands of rendered
+  instances; only per-instance state (value, position) differs.
+- **Multi-agent** — a tool schema or system prompt shared by reference across many agent instances
+  instead of copied into each.
+- **Workflow engine** — step definitions interned once and referenced by every running instance,
+  not re-parsed per run.
+
 ## Related Patterns
 
 - **Factory Method / Singleton** — the flyweight factory caches and returns shared instances.

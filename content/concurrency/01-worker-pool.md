@@ -342,6 +342,14 @@ Go bargain: no framework, but you own the concurrency.
 - **Parallel test runners** — Jest, pytest-xdist, and `go test` shard tests across a bounded
   pool of workers.
 
+**In modern systems:**
+
+- **Workflow engine** — a fixed pool of executors pulls ready steps off the queue, so pool size
+  caps how much of the workflow runs at once.
+- **Multi-agent** — a bounded pool of agent workers drains a task queue, so a fan-out can't spawn
+  unbounded, budget-burning model calls.
+- **Low-code** — a render pool materializes many rows or widgets without flooding the main thread.
+
 ## Related Patterns
 
 - **Producer–Consumer** — the worker pool *is* a producer–consumer with a fixed consumer count;

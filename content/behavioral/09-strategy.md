@@ -420,6 +420,14 @@ Real-world uses of Strategy (from the reference articles):
 - **Logging** — console vs file vs remote sink selected by environment (backend).
 - **API rate limiting** — token bucket vs leaky bucket per route (backend).
 
+**In modern systems:**
+
+- **Low-code** — a field's `"validator": "email"` or `"format": "currency"` picks a strategy at
+  render time straight from the JSON config; adding one is a new object, not a new branch.
+- **Workflow engine** — a step's retry/backoff policy chosen by name from the step definition.
+- **Multi-agent** — swap the planning strategy (ReAct vs plan-and-execute) or the model behind a
+  single `generate` call without touching the orchestration around it.
+
 ## Related Patterns
 
 - **State** — identical structure, different intent. State objects transition between

@@ -305,6 +305,15 @@ Real-world uses of Composite (from the reference article):
 - **Graphics / scene graphs** — groups of shapes transformed together.
 - **Expression / AST trees** — evaluate nested expressions uniformly.
 
+**In modern systems:**
+
+- **Low-code** — the JSON schema itself: a `container` holds fields and other containers, rendered
+  by one recursive walk that treats a leaf field and a group alike.
+- **Workflow engine** — a sub-workflow is a step, so a group of steps drops in anywhere a single
+  step is expected.
+- **Multi-agent** — a team is an agent: a supervisor wrapping workers exposes the same `run`
+  interface as a lone agent, so you can nest teams within teams.
+
 ## Related Patterns
 
 - **Decorator** — wraps a single component to add behavior; Composite aggregates many.

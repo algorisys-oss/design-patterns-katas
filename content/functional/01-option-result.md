@@ -323,6 +323,14 @@ the failure case is impossible to overlook.
 - **Elixir/Go idioms** — `{:ok, _}`/`{:error, _}` and `(value, error)` are the everyday shape of the
   whole ecosystem (backend).
 
+**In modern systems:**
+
+- **Multi-agent** — a tool returns `Result<value, error>` so the agent handles failure as data it
+  can reason about, instead of an exception thrown mid-loop.
+- **Workflow engine** — a step returns `Result` and the engine branches to compensation on `Err`
+  without exceptions crossing step boundaries.
+- **Low-code** — a validator returns `Result` per field, collected into a form-level error map.
+
 ## Related Patterns
 
 - **Function Composition** — `map`/`andThen` let Options/Results compose into pipelines that

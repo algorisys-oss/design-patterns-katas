@@ -280,6 +280,15 @@ the wiring while keeping it compile-time and explicit, avoiding runtime reflecti
 - **Feature flags & A/B** — inject different strategy implementations per user or rollout without
   branching the callers (backend & frontend).
 
+**In modern systems:**
+
+- **Multi-agent** — inject the model client, tools, and memory into an agent so it's testable with
+  mocks and reconfigurable without touching its logic.
+- **Low-code** — the runtime injects datasources, validators, and theme into the renderer, so one
+  schema runs against different backends.
+- **Workflow engine** — inject the store and queue into the executor to swap in-memory for prod
+  infra.
+
 ## Related Patterns
 
 - **Dependency Inversion** — the principle (depend on abstractions); DI is a concrete technique for

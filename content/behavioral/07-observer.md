@@ -320,6 +320,14 @@ Real-world uses of Observer (from the reference article), by tier:
   (`order:placed` → email + analytics + inventory).
 - **Both** — MVVM/data-binding, notification systems, cache invalidation on change.
 
+**In modern systems:**
+
+- **Workflow engine** — step-completion events fan out to progress trackers, dashboards, and audit
+  sinks without the step knowing who listens.
+- **Multi-agent** — token and tool-event streams the UI and logger subscribe to as the agent runs.
+- **Low-code** — a field re-renders when the model value it's bound to changes; the binding is the
+  subscription.
+
 ## Related Patterns
 
 - **Mediator** — Observer broadcasts one-way; Mediator centralizes two-way coordination among

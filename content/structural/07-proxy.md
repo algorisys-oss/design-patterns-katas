@@ -303,6 +303,14 @@ Real-world uses of Proxy (from the reference article):
 - **Reactivity / data binding** — intercept reads/writes (JS `Proxy`, Vue reactivity).
 - **Logging & monitoring** — count or trace access to an object.
 
+**In modern systems:**
+
+- **Multi-agent** — a caching/rate-limiting proxy in front of a model, or a remote-agent proxy
+  that looks local to the orchestrator while the work runs elsewhere.
+- **Low-code** — a lazy datasource proxy that fetches only when a bound field first renders.
+- **Workflow engine** — a proxy step that enforces quota or auth before delegating to the real
+  one.
+
 ## Related Patterns
 
 - **Decorator** — identical wrapping shape; Decorator adds behavior, Proxy controls access.

@@ -281,6 +281,13 @@ command — explicitly to you.
 - **Data ingestion** — records that fail validation captured in a DLQ for correction and re-import
   (backend).
 
+**In modern systems:**
+
+- **Workflow engine** — a step that exhausts its retries lands in a DLQ for inspection instead of
+  killing the whole run.
+- **Multi-agent** — tasks an agent can't complete after N tries are parked for human review rather
+  than looping forever and draining the budget.
+
 ## Related Patterns
 
 - **Retry** — the DLQ is where retries *end*: exhaust transient retries first, dead-letter on permanent

@@ -272,6 +272,14 @@ plain and testable; keep `Route` a pure dispatch so it stays a thin chokepoint r
 - **Load & feature routing** — directing traffic by region, A/B cohort, or version (backend).
 - **Support/workflow systems** — routing tickets/tasks to queues by category or priority (backend).
 
+**In modern systems:**
+
+- **Low-code** — route a record to the form or handler named by a discriminator field in its JSON.
+- **Workflow engine** — a branch step routes the instance to the next node by inspecting payload
+  content.
+- **Multi-agent** — a router agent dispatches each request to the specialist agent that handles
+  that intent.
+
 ## Related Patterns
 
 - **Message Channel** — the router reads from one channel and writes to others; it's the traffic

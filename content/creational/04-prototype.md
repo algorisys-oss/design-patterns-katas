@@ -273,6 +273,14 @@ Real-world uses of Prototype (from the reference article):
 - **Editor objects** — duplicate a shape or component on the canvas.
 - **Snapshots** — clone current state as a starting point for edits.
 
+**In modern systems:**
+
+- **Low-code** — a saved template node cloned to seed a new form section, then tweaked — no
+  re-parsing the schema from scratch.
+- **Multi-agent** — clone a configured agent as a starting point and adjust its prompt or tools per
+  task, rather than rebuilding it.
+- **Workflow engine** — duplicate a workflow definition as the base for a variant.
+
 ## Related Patterns
 
 - **Factory Method / Abstract Factory** — create via a factory call; Prototype creates via

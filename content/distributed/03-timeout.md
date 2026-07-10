@@ -261,6 +261,13 @@ first-class rather than bolted on.
 - **UI operations** — bounding a fetch so the interface can show a timeout state instead of an
   endless spinner (frontend).
 
+**In modern systems:**
+
+- **Multi-agent** — bound a model or tool call so a hung dependency can't freeze the whole agent
+  loop, which otherwise waits forever with no signal.
+- **Workflow engine** — a per-step deadline that fails the step (and triggers compensation)
+  instead of hanging the instance indefinitely.
+
 ## Related Patterns
 
 - **Retry** — a timeout produces the bounded failure that a retry can then re-attempt; together they

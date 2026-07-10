@@ -341,6 +341,14 @@ Real-world uses of State (from the reference article), by tier:
   lifecycle.
 - **Both** — finite state machines, game entity AI states.
 
+**In modern systems:**
+
+- **Workflow engine** — a workflow instance *is* a state machine: `pending → running → waiting →
+  done | failed`, with only legal transitions allowed and each captured for audit.
+- **Multi-agent** — an agent's lifecycle (thinking → calling-tool → waiting → done) modeled as
+  explicit states instead of scattered boolean flags.
+- **Low-code** — a wizard's step-to-step navigation driven by a state map declared in config.
+
 ## Related Patterns
 
 - **Strategy** — same structure; Strategy variants are client-chosen and transition-free, State

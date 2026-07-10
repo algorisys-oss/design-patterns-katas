@@ -89,5 +89,12 @@
     "blurb": "Common traps, and what to do instead.",
     "track": "modern",
     "gof": false
+  },
+  {
+    "slug": "playbooks",
+    "label": "Playbooks",
+    "blurb": "Whole systems built from the patterns — low-code, workflow, multi-agent.",
+    "track": "modern",
+    "gof": false
   }
 ]

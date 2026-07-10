@@ -307,6 +307,13 @@ slow calls count as failures. Go's explicitness shows: you configure `ReadyToTri
 - **Frontend API clients** — a breaker on a flaky endpoint lets the UI show cached/degraded state
   instead of spinning (frontend).
 
+**In modern systems:**
+
+- **Multi-agent** — trip the breaker on a flaky model or tool so the orchestrator fails fast to a
+  fallback instead of hammering it and burning the budget.
+- **Workflow engine** — a step calling a downstream service opens the breaker after repeated
+  failures rather than stalling every run behind it.
+
 ## Related Patterns
 
 - **Retry** — retry handles *transient* blips; the breaker handles *sustained* failure. Put retries

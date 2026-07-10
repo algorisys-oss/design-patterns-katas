@@ -259,6 +259,15 @@ usual Go bargain of explicitness.
   request/response pipe (backend).
 - **Media processing** — decode → resize → watermark → encode pipelines for images/video (backend).
 
+**In modern systems:**
+
+- **Workflow engine** — the linear engine *is* pipes-and-filters: each step transforms the payload
+  and passes it to the next.
+- **Low-code** — a field value flows through parse → validate → format filters declared in its
+  JSON.
+- **Multi-agent** — a context pipeline (retrieve → rerank → summarize) shapes what the model sees
+  before it runs.
+
 ## Related Patterns
 
 - **Function Composition** — pipes-and-filters is composition at the system/stream level, with filters

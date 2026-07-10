@@ -311,6 +311,15 @@ Real-world uses of Abstract Factory (from the reference article):
 - **Database access kits** — connection + query builder + migrator per engine.
 - **Theming** — a consistent set of components per design theme.
 
+**In modern systems:**
+
+- **Low-code** — a renderer family: one factory yields matching input, button, and layout widgets
+  for web; another the native set — one schema, consistent output per target.
+- **Multi-agent** — a provider family that produces a matching model, tokenizer, and tool-formatter
+  set, so they never mismatch.
+- **Workflow engine** — an environment factory yielding matching store, queue, and executor for
+  dev vs prod.
+
 ## Related Patterns
 
 - **Factory Method** — the building block; each creator in an abstract factory is one.

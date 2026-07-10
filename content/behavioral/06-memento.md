@@ -304,6 +304,14 @@ Real-world uses of Memento (from the reference article), by tier:
   event-sourced state restoration.
 - **Both** — time-travel debugging, optimistic-update rollback on error.
 
+**In modern systems:**
+
+- **Workflow engine** — a checkpoint captured before each step so a crashed run resumes from the
+  last good state instead of restarting from the top.
+- **Multi-agent** — a conversation/context snapshot the orchestrator can roll back to when a branch
+  dead-ends, and try a different approach from there.
+- **Low-code** — undo in the visual builder: each edit pushes a snapshot of the JSON document.
+
 ## Related Patterns
 
 - **Command** — pairs with Memento: a command captures a memento to implement undo.

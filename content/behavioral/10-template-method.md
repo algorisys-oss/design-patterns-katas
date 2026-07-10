@@ -343,6 +343,15 @@ Where Template Method shows up in practice:
   batch-job runners with overridable steps.
 - **Both** — any "fixed sequence, varying steps" algorithm.
 
+**In modern systems:**
+
+- **Workflow engine** — a step base fixes the skeleton (validate → run → record) and each concrete
+  step fills in only `run`.
+- **Multi-agent** — an agent-turn template (gather context → decide → act → reflect) with the
+  decide/act steps overridden per agent role.
+- **Low-code** — a base renderer fixes the mount/update/unmount flow; each widget type supplies
+  just its draw step.
+
 ## Related Patterns
 
 - **Strategy** — Template Method varies steps via inheritance (compile-time); Strategy injects the

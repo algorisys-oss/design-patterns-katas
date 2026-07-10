@@ -286,6 +286,14 @@ about when it stops and how it interacts with `context`.
 - **Frontend fetches** — retrying a flaky request a couple of times keeps a UI from flashing an
   error on a momentary blip (frontend).
 
+**In modern systems:**
+
+- **Multi-agent** — retry a model call with backoff on rate-limit or `5xx`, and retry a tool on
+  transient failure, before the agent gives up on the turn.
+- **Workflow engine** — a per-step retry policy declared in the step definition, with backoff and
+  a max-attempts cap before it dead-letters.
+- **Low-code** — a datasource binding retries a failed fetch before showing an error state.
+
 ## Related Patterns
 
 - **Circuit Breaker** — the counterpart: retry handles *transient* failure, the breaker stops the

@@ -301,6 +301,15 @@ Real-world uses of Mediator (from the reference article), by tier:
   broker between services, workflow orchestration.
 - **Both** — decoupling components that would otherwise form a mesh.
 
+**In modern systems:**
+
+- **Multi-agent** — a supervisor agent is the mediator: workers never talk N-to-N, they report to
+  the hub and it decides who runs next, keeping coordination in one auditable place.
+- **Workflow engine** — the orchestrator mediates the steps; a step reports completion and the
+  orchestrator, not the step, chooses the successor.
+- **Low-code** — a form mediator wires cross-field logic (show B when A changes) declared in the
+  JSON schema rather than hard-coded between fields.
+
 ## Related Patterns
 
 - **Observer** — Mediator often uses Observer internally, but adds coordination rules; Observer

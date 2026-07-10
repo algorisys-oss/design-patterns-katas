@@ -307,6 +307,14 @@ and wire the rest yourself.
 - **UI components** — a component with local state and a message reducer (Elm, Redux) is an actor
   in spirit: state changed only through dispatched messages (frontend).
 
+**In modern systems:**
+
+- **Multi-agent** — each agent is an actor with a mailbox: it processes one message at a time,
+  owns private state, and never shares memory — the cleanest model for concurrent agents.
+- **Workflow engine** — a workflow instance as an actor that owns its state and is driven by
+  messages (start, step-done, cancel).
+- **Low-code** — a stateful widget as an actor receiving user events serially.
+
 ## Related Patterns
 
 - **Producer–Consumer** — an actor's mailbox is a producer–consumer queue with the actor as the
