@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "content": "node scripts/build-content.mjs",
+    "lint:content": "node ../scripts/lint-content.mjs",
     "dev": "npm run content && vite",
     "build": "npm run content && vite build",
     "preview": "vite preview",

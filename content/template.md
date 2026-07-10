@@ -1,126 +1,36 @@
----
-id: pattern-slug
-category: behavioral        # creational | structural | behavioral
-sequence: 0                 # order within the category
-title: Pattern Name
-also_known_as: []
-gof: true
-intent: "One sentence describing what the pattern does."
-frequency: medium           # low | medium | high
-difficulty: intermediate    # beginner | intermediate | advanced
-tags: []
-related: []
-languages: [javascript, python, elixir, go]
----
+# Authoring Templates
 
-## Intent
+This catalog holds several *kinds* of lesson, and they don't all share the same shape. Pick the
+template that matches what you're writing, copy it, and fill it in. The `kind:` frontmatter field
+records which shape a lesson uses; the frontend and build read it.
 
-One crisp sentence. Then a short paragraph on what problem it solves and why it matters.
+| Kind | `kind:` | Families | Sections (the pedagogical contract) | Impl tabs |
+|---|---|---|---|---|
+| **Pattern** | `pattern` | creational, structural, behavioral, concurrency, architectural, distributed, messaging, data, functional, ui, ai | Intent · The Problem · Structure · When to Use · Advantages/Disadvantages · Common Mistakes · Key Takeaways · **Implementations** · Applications · Related Patterns | 4 languages, ❌ Naive → ✅ Idiomatic → 🧠 Tradeoff |
+| **Principle** | `principle` | foundations (SOLID) | The Principle · The Smell · Why It Matters · Benefits and Cautions · Common Mistakes · Key Takeaways · **Implementations** · Applications · Related Principles & Patterns | 4 languages, ❌ Naive → ✅ Idiomatic → 🧠 Note |
+| **Anti-pattern** | `anti-pattern` | anti-patterns | The Anti-Pattern · How It Happens · Why It Hurts · The Refactor · Warning Signs · Key Takeaways · **Implementations** · Related Patterns | ❌ Anti-Pattern → ✅ Refactor (languages that make the point) |
+| **Ops** | `pattern` | deployment (and some distributed/messaging) | same skeleton as Pattern | tabs are **tools** (`[kubernetes, terraform, ci-cd, aws]`), config per tool, no Naive/Idiomatic split |
+| **Playbook** | `playbook` | playbooks | Intent · The Shape · The Patterns You'll Reach For · How the Approach Changed · Pitfalls · Related Playbooks | **none** — `languages: []`; a playbook assembles patterns, it doesn't implement one |
 
-## The Problem
+## Templates
 
-The mess the pattern removes — usually a growing pile of conditionals or tight coupling.
-Show the pain before the cure.
+- [templates/pattern.md](templates/pattern.md) — the design-pattern skeleton (the common case)
+- [templates/principle.md](templates/principle.md) — SOLID / foundations
+- [templates/anti-pattern.md](templates/anti-pattern.md) — a trap and its refactor
+- [templates/ops.md](templates/ops.md) — deployment / infrastructure, with tool tabs
+- [templates/playbook.md](templates/playbook.md) — a whole system built from the patterns
 
-## Structure
+## Rules that apply to every kind
 
-Key Components / Participants:
+- **Frontmatter `related:` holds kata *ids* only** — `node scripts/lint-content.mjs` fails on
+  an unknown id, a category not in `categories.json`, or a `languages:` list that disagrees with
+  the actual `### ` implementation tabs.
+- **Structure diagrams** are optional but encouraged: author a `structure.ysl` under
+  `content/<category>/diagrams/<NN-slug>/`, then run `scripts/render-diagrams.mjs`. The build
+  inlines the rendered SVG into the Structure section.
+- **Port behavior, not syntax** — show each language's idiomatic form, not a transliteration
+  (see [../CLAUDE.md](../CLAUDE.md) and [../LOOPS.md](../LOOPS.md)).
+- Files and folders are lowercase-hyphenated; kata files are `NN-<slug>.md`, numbered per family.
 
-- **Context** — …
-- **Strategy (interface)** — …
-- **Concrete Strategies** — …
-
-```
-optional ASCII sketch of the relationships
-```
-
-## When to Use
-
-- …
-- …
-
-## Advantages and Disadvantages
-
-### Advantages
-- …
-
-### Disadvantages
-- …
-
-## Common Mistakes
-
-- **Mistake** — why it bites.
-
-## Key Takeaways
-
-- …
-
-## Implementations
-
-### JavaScript
-
-**❌ Naive**
-
-```js
-// the version that works but doesn't scale
-```
-
-**✅ Idiomatic**
-
-```js
-// the pattern in JS idioms
-```
-
-**🧠 Tradeoff** — one paragraph.
-
-### Python
-
-**❌ Naive**
-
-```python
-```
-
-**✅ Idiomatic**
-
-```python
-```
-
-**🧠 Tradeoff** — one paragraph.
-
-### Elixir
-
-**❌ Naive**
-
-```elixir
-```
-
-**✅ Idiomatic**
-
-```elixir
-```
-
-**🧠 Tradeoff** — one paragraph.
-
-### Go
-
-**❌ Naive**
-
-```go
-```
-
-**✅ Idiomatic**
-
-```go
-```
-
-**🧠 Tradeoff** — one paragraph.
-
-## Applications
-
-Real-world uses (from the reference articles). Frontend / backend where useful.
-
-- …
-
-## Related Patterns
-
-- **Neighbour** — how this pattern differs from it.
+See [../CLAUDE.md](../CLAUDE.md) for the full schema and voice, and
+[behavioral/09-strategy.md](behavioral/09-strategy.md) for the worked pattern exemplar.

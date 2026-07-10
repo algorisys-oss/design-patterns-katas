@@ -9,7 +9,7 @@ intent: "Connect a sender and a receiver through a named channel they both know,
 frequency: high
 difficulty: beginner
 tags: [messaging, integration, decoupling, queue, async]
-related: [producer-consumer, pub-sub, message-router]
+related: [producer-consumer, pub-sub, content-based-router]
 languages: [javascript, node-js, python, elixir, go]
 ---
 

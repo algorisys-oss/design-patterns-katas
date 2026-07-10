@@ -9,7 +9,7 @@ intent: "Run many tasks over a fixed set of reusable workers, capping concurrenc
 frequency: high
 difficulty: intermediate
 tags: [concurrency, throughput, backpressure, bounded-parallelism, pool]
-related: [producer-consumer, future-promise, semaphore]
+related: [producer-consumer, future-promise, bulkhead]
 languages: [javascript, node-js, python, elixir, go]
 ---
 

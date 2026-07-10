@@ -122,15 +122,29 @@ function walk(dir) {
   const out = [];
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
-    if (statSync(p).isDirectory()) out.push(...walk(p));
-    else if (name.endsWith(".md") && name !== "template.md") out.push(p);
+    if (statSync(p).isDirectory()) {
+      if (name !== "templates") out.push(...walk(p)); // authoring skeletons, not katas
+    } else if (name.endsWith(".md") && name !== "template.md") {
+      out.push(p);
+    }
   }
   return out;
 }
 
-function buildKata(file) {
+// Turn [[kata-id]] cross-references into clickable links to the target kata. The app is
+// hash-routed (#/kata/:id), so these work on any static host. An unknown id is left as raw
+// text — `node scripts/lint-content.mjs` fails on it.
+function linkWikilinks(md, titleById) {
+  return md.replace(/\[\[([a-z0-9-]+)\]\]/g, (m, id) => {
+    const title = titleById.get(id);
+    return title ? `[${title}](#/kata/${id})` : m;
+  });
+}
+
+function buildKata(file, titleById) {
   const raw = readFileSync(file, "utf8");
-  const { data, content } = matter(raw);
+  const { data, content: rawContent } = matter(raw);
+  const content = linkWikilinks(rawContent, titleById);
   const sections = splitSections(content);
   const blocks = sections.map((s) => {
     if (s.title.toLowerCase().startsWith("implementation")) {
@@ -184,7 +198,13 @@ function buildKata(file) {
 }
 
 const files = walk(CONTENT_DIR);
-const katas = files.map(buildKata).sort((a, b) => {
+// First pass: id → title, so [[id]] cross-references can resolve to the target's title.
+const titleById = new Map();
+for (const f of files) {
+  const { data } = matter(readFileSync(f, "utf8"));
+  if (data.id) titleById.set(data.id, data.title);
+}
+const katas = files.map((f) => buildKata(f, titleById)).sort((a, b) => {
   const ca = CATEGORY_ORDER.indexOf(a.category);
   const cb = CATEGORY_ORDER.indexOf(b.category);
   if (ca !== cb) return ca - cb;

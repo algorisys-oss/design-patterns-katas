@@ -142,7 +142,7 @@ async function answer(question, retriever) {
     `Answer the question using ONLY the context below. ` +
     `If the answer isn't there, say "I don't know."\n\n` +
     `Context:\n${context}\n\nQuestion: ${question}`;
-  return callModel(prompt); // e.g. @anthropic-ai/sdk, model "claude-opus-4-8"
+  return callModel(prompt); // your model SDK, kept behind one boundary
 }
 ```
 
@@ -185,7 +185,7 @@ def answer(question: str, retriever: Retriever) -> str:
         'If the answer isn\'t there, say "I don\'t know."\n\n'
         f"Context:\n{context}\n\nQuestion: {question}"
     )
-    return call_model(prompt)  # anthropic SDK, model="claude-opus-4-8"
+    return call_model(prompt)  # your model SDK, kept behind one boundary
 ```
 
 **🧠 Tradeoff** — `Retriever` as a `Protocol` types the seam without a base class: any object with
@@ -278,7 +278,7 @@ func Answer(question string, r Retriever) string {
         "Answer the question using ONLY the context below. "+
             "If the answer isn't there, say \"I don't know.\"\n\n"+
             "Context:\n%s\n\nQuestion: %s", context, question)
-    return CallModel(prompt) // POST to the Messages API; model "claude-opus-4-8"
+    return CallModel(prompt) // your model SDK — here a plain HTTP POST behind one boundary
 }
 ```
 

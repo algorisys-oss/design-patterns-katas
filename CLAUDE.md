@@ -99,8 +99,11 @@ Body sections, in order:
    (payment, auth, validation, theming, games…). Short bullets, frontend/backend where useful.
 10. `## Related Patterns` — how this differs from its GoF neighbours.
 
-See [content/template.md](content/template.md) for the copy-paste skeleton and
+See [content/template.md](content/template.md) for the per-kind authoring templates (pattern,
+principle, anti-pattern, ops, playbook) and the lesson-shape table, and
 [content/behavioral/09-strategy.md](content/behavioral/09-strategy.md) for the worked exemplar.
+Run `node scripts/lint-content.mjs` before committing content — it fails on dangling `related:`
+ids, dangling `[[wiki-links]]`, unknown categories, and language/impl-tab mismatches.
 
 ## Reference Material
 

@@ -9,7 +9,7 @@ intent: "Defer loading a piece of data — usually a related object or collectio
 frequency: high
 difficulty: intermediate
 tags: [data, persistence, performance, deferred, n-plus-one]
-related: [proxy, virtual-proxy, cache-aside]
+related: [proxy, cache-aside]
 languages: [javascript, node-js, python, elixir, go]
 ---
 
