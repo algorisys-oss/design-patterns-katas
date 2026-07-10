@@ -1,0 +1,17 @@
+---
+title: Structured Output — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+schema [class] "Schema"
+model [class] "Model" { methods: "generate()" }
+validator [class] "Validator" { methods: "validate(json)" }
+typed [class] "Typed Object"
+err [class] "Error"
+
+schema -> model "constrain"
+model -> validator "JSON"
+validator -> typed "ok"
+validator -> err "refusal / truncation"

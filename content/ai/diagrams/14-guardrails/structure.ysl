@@ -1,0 +1,20 @@
+---
+title: Guardrails — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+input [class] "Input"
+inguards [class] "Input Guards" { methods: "injection; PII" }
+model [class] "Model"
+outguards [class] "Output Guards" { methods: "schema; safety" }
+deliver [class] "Deliver"
+block [class] "Block / Redact"
+
+input -> inguards
+inguards -> model "clean"
+model -> outguards "draft"
+outguards -> deliver "safe"
+inguards -> block
+outguards -> block

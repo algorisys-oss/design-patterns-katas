@@ -1,0 +1,14 @@
+---
+title: Tool Use — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 130
+---
+
+model [class] "Model" { methods: "call()" }
+registry [class] "Dispatch Table" { methods: "dispatch(call)" }
+tool [interface] "Tool" { methods: "run(input)" }
+
+model -> registry "tool_call {name, input}"
+registry -> tool "validated input"
+tool -> model "tool_result(id)"

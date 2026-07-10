@@ -1,0 +1,18 @@
+---
+title: Model Cascade — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+request [class] "Request"
+cheap [class] "Cheap Model" { methods: "answer()" }
+gate [class] "Confidence Gate" { methods: "confident?" }
+strong [class] "Strong Model" { methods: "answer()" }
+answer [class] "Answer"
+
+request -> cheap
+cheap -> gate "draft"
+gate -> answer "accept"
+gate -> strong "escalate"
+strong -> answer

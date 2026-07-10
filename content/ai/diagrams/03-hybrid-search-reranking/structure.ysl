@@ -1,0 +1,20 @@
+---
+title: Hybrid Search & Reranking — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+query [class] "Query"
+sparse [class] "Sparse (BM25)" { methods: "search(q)" }
+dense [class] "Dense (Vectors)" { methods: "search(q)" }
+fuse [class] "Fusion (RRF)" { methods: "fuse(lists)" }
+rerank [class] "Reranker" { methods: "rerank(q, ids)" }
+topk [class] "Top-k"
+
+query -> sparse "keyword"
+query -> dense "semantic"
+sparse -> fuse
+dense -> fuse
+fuse -> rerank "candidates"
+rerank -> topk

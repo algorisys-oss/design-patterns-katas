@@ -1,0 +1,17 @@
+---
+title: LLM-as-Judge — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+candidate [class] "Candidate"
+rubric [class] "Rubric"
+reference [class] "Reference"
+judge [class] "Judge (LLM)" { methods: "evaluate()" }
+verdict [class] "Verdict" { methods: "reason → score" }
+
+candidate -> judge
+rubric -> judge
+reference -> judge
+judge -> verdict

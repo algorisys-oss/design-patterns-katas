@@ -1,0 +1,17 @@
+---
+title: Router — Structure
+layout: tree-down
+hSpacing: 45
+vSpacing: 120
+---
+
+request [class] "Request"
+router [class] "Router" { methods: "classify(req)" }
+r1 [class] "Billing (RAG)"
+r2 [class] "Coding (strong)"
+r3 [class] "Default"
+
+request -> router
+router -> r1
+router -> r2
+router -> r3 "fallback"

@@ -1,0 +1,17 @@
+---
+title: Semantic Caching — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+request [class] "Request"
+cache [class] "Semantic Cache" { methods: "nearest(vec)" }
+model [class] "Model" { methods: "generate()" }
+response [class] "Response"
+
+request -> cache "embed"
+cache -> response "hit ≥ threshold"
+cache -> model "miss"
+model -> cache "store"
+model -> response

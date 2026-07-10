@@ -1,0 +1,18 @@
+---
+title: Memory — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+turn [class] "Turn"
+short [class] "Short-Term" { methods: "recent + summary" }
+long [class] "Long-Term Store" { methods: "retrieve();write()" }
+prompt [class] "Prompt"
+model [class] "Model"
+
+turn -> prompt
+short -> prompt "compacted"
+long -> prompt "retrieved facts"
+prompt -> model
+model -> long "persist"

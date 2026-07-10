@@ -1,0 +1,17 @@
+---
+title: Query Rewriting — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+raw [class] "Raw Query"
+history [class] "History"
+rewriter [class] "Rewriter (LLM)" { methods: "rewrite(q, hist)" }
+retriever [class] "Retriever" { methods: "search(q)" }
+fuse [class] "Fuse" { methods: "merge()" }
+
+raw -> rewriter
+history -> rewriter
+rewriter -> retriever "q1 … qn"
+retriever -> fuse "chunks"

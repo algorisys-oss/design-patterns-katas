@@ -1,0 +1,16 @@
+---
+title: ReAct Loop — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+question [class] "Question"
+model [class] "Model" { methods: "think()" }
+tools [interface] "Tools" { methods: "run(input)" }
+answer [class] "Answer"
+
+question -> model
+model -> tools "action"
+tools -> model "observation (loop)"
+model -> answer "done"

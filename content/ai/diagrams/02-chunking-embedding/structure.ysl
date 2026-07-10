@@ -1,0 +1,17 @@
+---
+title: Chunking & Embedding — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+doc [class] "Document"
+loader [class] "Loader" { methods: "load()" }
+splitter [class] "Splitter" { methods: "split(text)" }
+embedder [class] "Embedder" { methods: "embed(chunks)" }
+store [class] "Vector Store" { methods: "add(chunk, vec)" }
+
+doc -> loader
+loader -> splitter "text"
+splitter -> embedder "chunks (size + overlap)"
+embedder -> store "vectors"

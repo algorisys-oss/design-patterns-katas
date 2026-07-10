@@ -1,0 +1,18 @@
+---
+title: Human-in-the-Loop — Structure
+layout: tree-down
+hSpacing: 50
+vSpacing: 120
+---
+
+agent [class] "Agent" { methods: "step(action)" }
+gate [class] "Gate" { methods: "needs_approval?" }
+checkpoint [class] "Checkpoint" { methods: "persist" }
+human [class] "Human" { methods: "approve / edit / reject" }
+execute [class] "Execute"
+
+agent -> gate "action"
+gate -> execute "not gated"
+gate -> checkpoint "gated"
+checkpoint -> human
+human -> execute "approve / edit"

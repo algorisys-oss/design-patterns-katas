@@ -1,0 +1,17 @@
+---
+title: RAG — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+query [class] "Question"
+retriever [interface] "Retriever" { methods: "retrieve(q, k)" }
+store [class] "Vector Store" { methods: "search(vec)" }
+builder [class] "Prompt Builder" { methods: "build(ctx, q)" }
+gen [class] "Generator (LLM)" { methods: "answer(prompt)" }
+
+query -> retriever "embed"
+retriever -> store "search"
+retriever -> builder "top-k chunks"
+builder -> gen "grounded prompt"

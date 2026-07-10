@@ -1,0 +1,17 @@
+---
+title: Prompt Chaining — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+input [class] "Input"
+s1 [class] "Step 1: Extract" { methods: "run()" }
+s2 [class] "Step 2: Classify" { methods: "run()" }
+s3 [class] "Step 3: Draft" { methods: "run()" }
+output [class] "Output"
+
+input -> s1
+s1 -> s2 "structured"
+s2 -> s3 "gate ✓"
+s3 -> output

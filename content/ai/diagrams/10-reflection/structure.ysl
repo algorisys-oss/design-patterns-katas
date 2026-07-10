@@ -1,0 +1,16 @@
+---
+title: Reflection — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+task [class] "Task"
+gen [class] "Generator" { methods: "draft();revise()" }
+critic [class] "Critic" { methods: "critique(draft)" }
+final [class] "Final"
+
+task -> gen
+gen -> critic "draft"
+critic -> gen "feedback (loop)"
+critic -> final "pass"

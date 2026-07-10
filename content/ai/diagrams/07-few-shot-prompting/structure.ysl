@@ -1,0 +1,17 @@
+---
+title: Few-Shot Prompting — Structure
+layout: tree-down
+hSpacing: 55
+vSpacing: 120
+---
+
+selector [class] "Selector" { methods: "select(k)" }
+examples [class] "Examples" { methods: "in → out" }
+instruction [class] "Instruction"
+query [class] "Query"
+model [class] "Model" { methods: "complete()" }
+
+selector -> examples "static / retrieved"
+instruction -> model
+examples -> model "shots"
+query -> model
