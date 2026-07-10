@@ -104,6 +104,10 @@ function StatusBar() {
   return (
     <footer className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-4 border-t border-border bg-[color-mix(in_srgb,var(--background)_90%,transparent)] px-4 py-1.5 font-mono text-[11px] text-faint backdrop-blur md:px-6">
       <span>
+        <a href="#/" className="text-primary underline-offset-2 hover:underline" title="Back to the catalog home">
+          ⌂ Home
+        </a>
+        <span className="mx-1.5 text-border-strong">·</span>
         © {year} <span className="text-muted-foreground">Algorisys Open Source Team</span>
         <span className="mx-1.5 text-border-strong">·</span>
         <a
@@ -113,6 +117,16 @@ function StatusBar() {
           className="text-primary underline-offset-2 hover:underline"
         >
           www.algorisys.com
+        </a>
+        <span className="mx-1.5 text-border-strong">·</span>
+        <a
+          href="https://github.com/algorisys-oss/design-patterns-katas"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline-offset-2 hover:underline"
+          title="Star this project on GitHub"
+        >
+          ★ GitHub
         </a>
       </span>
       <div className="flex items-center gap-3">

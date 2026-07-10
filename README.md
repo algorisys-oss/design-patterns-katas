@@ -1,5 +1,7 @@
 # Software Design & Architecture Katas
 
+**[▶ Live site](https://algorisys-oss.github.io/design-patterns-katas/)** · **[★ Star on GitHub](https://github.com/algorisys-oss/design-patterns-katas)**
+
 A cross-language catalog of the patterns, principles, and playbooks that recur in real software —
 taught once, language-agnostically, then shown side by side in **JavaScript, Python, Elixir, and
 Go** (with tool tabs for the ops patterns). The point isn't the syntax — it's watching the same
