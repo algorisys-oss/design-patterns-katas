@@ -1,0 +1,19 @@
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+
+# Go / backend
+backend/bin/
+backend/server
+
+# Generated content (rebuilt by `npm run content`)
+frontend/src/data/katas.json
+frontend/public/content/*.json
+
+# Editor / OS
+.DS_Store
+*.un~
+.vscode/
+.idea/

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Design Patterns Katas</title>
+    <meta
+      name="description"
+      content="Learn the 23 Gang of Four design patterns once, then compare them side by side in JavaScript, Python, Elixir, and Go."
+    />
+    <script>
+      // Set theme before paint to avoid a flash of the wrong theme.
+      (function () {
+        try {
+          var stored = localStorage.getItem("dpk-theme");
+          var dark = stored ? stored === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.classList.toggle("dark", dark);
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-CK6k9HFQ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-KW76PewT.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
