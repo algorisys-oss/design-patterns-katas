@@ -91,6 +91,13 @@
     "gof": false
   },
   {
+    "slug": "ai",
+    "label": "AI & LLM Patterns",
+    "blurb": "Retrieval, agents, and reliability patterns for LLM-powered systems.",
+    "track": "modern",
+    "gof": false
+  },
+  {
     "slug": "playbooks",
     "label": "Playbooks",
     "blurb": "Whole systems built from the patterns — low-code, workflow, multi-agent.",
