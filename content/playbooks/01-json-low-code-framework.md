@@ -66,6 +66,11 @@ backend you inject.
 - **Event Sourcing / Memento** — store every builder edit as an event (or snapshot) so undo and
   an audit trail come almost for free.
 
+When the low-code platform gains "AI" fields, the **AI & LLM Patterns** family plugs in:
+**Structured Output** (generate and validate a form's JSON schema from a description),
+**Retrieval-Augmented Generation** (a knowledge field grounded in attached documents), and
+**Guardrails** (validate model output before it becomes app data).
+
 ## How the Approach Changed
 
 The kernel — *data describes behavior, a runtime interprets it* — is decades old. What moved is

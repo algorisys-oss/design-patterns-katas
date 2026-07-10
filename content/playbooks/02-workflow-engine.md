@@ -66,6 +66,12 @@ Every transition is written to a log, so instance state is a fold over that hist
 - **Pipes and Filters** — a linear workflow *is* pipes-and-filters: each step transforms the
   payload and passes it on.
 
+When a step's work is a model call, the **AI & LLM Patterns** family supplies the rest —
+**Prompt Chaining** (a step that is itself a pipeline of focused calls), **Structured Output**
+(so a step returns data the orchestrator can branch on), **Model Cascade** (escalate a step to a
+stronger model when it fails a gate), and **Human-in-the-Loop** (an approval step that pauses the
+instance durably).
+
 ## How the Approach Changed
 
 1. **Cron + scripts** — steps chained by shell and prayer; a mid-run crash means manual cleanup.

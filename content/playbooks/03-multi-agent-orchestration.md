@@ -70,6 +70,13 @@ replayable command.
 - **Result over exceptions** — a tool returns `Result<value, error>` so the agent handles failure
   as data it can reason about, instead of an exception thrown mid-loop.
 
+**And the LLM-specific patterns**, taught in the **AI & LLM Patterns** family, are the substrate an
+agent runtime is built from: the **ReAct Loop** (think → act → observe), **Tool Use** (typed
+function calling), **Reflection** (a critic agent), the **Router** (dispatch to the specialist),
+**Memory** (short-term + long-term), **Guardrails** (gate every hand-off), **LLM-as-Judge** (grade a
+worker's output), and **Human-in-the-Loop** (approve the risky action). This playbook is the
+assembly; those katas are the parts.
+
 ## How the Approach Changed
 
 1. **One prompt** — a single call in, a single answer out; no tools, no loop.
