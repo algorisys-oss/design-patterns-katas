@@ -12,6 +12,7 @@
 import * as React from "react";
 import { katas } from "./content";
 import { createKvStore } from "./kv-store";
+import { notifyCompletion } from "./skillzengine-bridge";
 
 interface LessonRecord {
   completedAt: number;
@@ -37,12 +38,15 @@ const ready: Promise<void> = store
     /* storage unavailable — start empty */
   });
 
-function setComplete(id: string, done: boolean): void {
+function setComplete(id: string, done: boolean, silent = false): void {
   if (done === completed.has(id)) return;
   const next = new Set(completed);
   if (done) {
     next.add(id);
     void store.set(id, { completedAt: Date.now() } satisfies LessonRecord);
+    if (!silent) {
+      void notifyCompletion(id);
+    }
   } else {
     next.delete(id);
     void store.remove(id);
@@ -70,14 +74,14 @@ export const Lessons = {
   completedIds(): string[] {
     return [...completed];
   },
-  complete(id: string): void {
-    setComplete(id, true);
+  complete(id: string, silent = false): void {
+    setComplete(id, true, silent);
   },
-  uncomplete(id: string): void {
-    setComplete(id, false);
+  uncomplete(id: string, silent = false): void {
+    setComplete(id, false, silent);
   },
-  toggle(id: string): void {
-    setComplete(id, !completed.has(id));
+  toggle(id: string, silent = false): void {
+    setComplete(id, !completed.has(id), silent);
   },
   /** Clear all completion (this learner starts over). */
   reset(): void {

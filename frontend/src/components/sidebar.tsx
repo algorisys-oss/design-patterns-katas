@@ -153,7 +153,7 @@ function SidebarLink({ kata, onNavigate }: { kata: Kata; onNavigate?: () => void
         </span>
         <span className="min-w-0 flex-1 truncate">{kata.title}</span>
         {done && (
-          <Check className="h-3.5 w-3.5 flex-none text-primary" aria-label="Completed" />
+          <Check className="h-3.5 w-3.5 flex-none text-green-500" aria-label="Completed" />
         )}
       </NavLink>
     </li>
