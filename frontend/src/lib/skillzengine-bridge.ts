@@ -141,3 +141,8 @@ export async function remoteLog(msg: any) {
     console.error("Failed to send remote log:", err);
   }
 }
+
+// Initialize bridge params on module load to capture them before URL cleaning
+if (typeof window !== "undefined") {
+  getBridgeParams();
+}
