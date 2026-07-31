@@ -4,7 +4,7 @@
 // running app through Playwright: window.Yappy.importDSL(src) then window.Yappy.exportSVG().
 //
 // Prereq: yappy vite server running (default http://localhost:5173).
-//   cd /home/rajesh/work/algo/yappy && npx vite --port 5173 --strictPort
+//   cd /home/rajesh/work/algo/design-tools/yappy && npx vite --port 5173 --strictPort
 //
 // Run from the yappy dir so `playwright` resolves (its chromium lives there):
 //   node /home/rajesh/lab/katas/design-patterns/scripts/render-diagrams.mjs
@@ -17,7 +17,7 @@ import { pathToFileURL } from "node:url";
 
 // yappy owns the Playwright install; resolve it by absolute path since ESM looks
 // up bare specifiers relative to this file, not the cwd.
-const PW = process.env.PLAYWRIGHT_PATH || "/home/rajesh/work/algo/yappy/node_modules/playwright/index.js";
+const PW = process.env.PLAYWRIGHT_PATH || "/home/rajesh/work/algo/design-tools/yappy/node_modules/playwright/index.js";
 const pw = await import(pathToFileURL(PW).href);
 const chromium = pw.chromium ?? pw.default?.chromium;
 if (!chromium) throw new Error("could not load chromium from " + PW);
