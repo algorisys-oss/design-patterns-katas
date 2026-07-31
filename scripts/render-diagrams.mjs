@@ -42,11 +42,19 @@ if (sources.length === 0) {
 }
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
-page.on("pageerror", (e) => console.error("  page error:", e.message));
 
-await page.goto(URL, { waitUntil: "domcontentloaded" });
-await page.waitForFunction(() => typeof window.Yappy !== "undefined", { timeout: 30_000 });
+// One fresh page per diagram. Reusing a single page with Yappy.clear() between imports
+// looks tempting (and is much faster) but is wrong: clear() does not reset everything the
+// edge-anchor spreading reads, so a diagram's connectors come out attached to different
+// box edges depending on which diagram was rendered before it. Same source, two answers.
+// A fresh page is the only way to make the corpus reproducible.
+async function freshPage() {
+  const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+  page.on("pageerror", (e) => console.error("  page error:", e.message));
+  await page.goto(URL, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => typeof window.Yappy !== "undefined", { timeout: 30_000 });
+  return page;
+}
 
 // Bake an attribution footer into the exported SVG: grow the viewBox/height to make
 // room, then drop a centered credit line beneath the diagram. Baking it in (rather than
@@ -85,9 +93,10 @@ let failed = 0;
 for (const src of sources) {
   const source = readFileSync(src, "utf8");
   const out = src.replace(/\.(mmd|ysl)$/, ".svg");
+  let page;
   try {
+    page = await freshPage();
     const raw = await page.evaluate((text) => {
-      window.Yappy.clear();
       window.Yappy.importDSL(text);
       return window.Yappy.exportSVG(false);
     }, source);
@@ -99,6 +108,8 @@ for (const src of sources) {
   } catch (e) {
     console.error("  ✗", src.replace(CONTENT + "/", ""), "-", e.message);
     failed++;
+  } finally {
+    if (page) await page.close();
   }
 }
 
