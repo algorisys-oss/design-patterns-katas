@@ -93,6 +93,8 @@ Data Mapper ──constructs──► Domain Object   (pure, no DB knowledge)
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -133,6 +135,8 @@ you need; for real rules it's the clean separation.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -163,6 +167,8 @@ implement Data Mapper (vs. Sequelize's Active Record). The extra mapper is the c
 handlers and rules that never see a column name.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -205,6 +211,8 @@ tables.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -238,6 +246,8 @@ translation to plain structs in the context. The separation is idiomatic; the ex
 per complexity.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -286,6 +296,8 @@ generates. Go's culture strongly favors this explicit Data-Mapper approach over 
 database dependency and SQL you can see.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -346,6 +358,8 @@ The cost is two types plus translation per aggregate; the payoff is that `Rename
 storage at all.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -489,6 +503,8 @@ struct this small, `User` and `UserRow` are identical shapes and the split reads
 its keep once the storage layout (packed fields, foreign keys) and the domain shape start to diverge.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

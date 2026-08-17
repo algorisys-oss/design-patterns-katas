@@ -96,6 +96,8 @@ Service ──uses──► UnitOfWork  { new, dirty, removed }
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -138,6 +140,8 @@ API; the unit adds the *tracking* and a single boundary. For one two-statement o
 transaction is enough — the unit earns its keep when many repositories contribute changes.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -182,6 +186,8 @@ around), which is simpler to reason about but less automatic than an ORM session
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -221,6 +227,8 @@ gives you a session, use it; hand-rolling change tracking duplicates a solved pr
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -252,6 +260,8 @@ is composable and inspectable before it runs — very Elixir. The cost is learni
 anything beyond simple chains.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -297,6 +307,8 @@ thread `tx` through every write — which is verbose but leaves the transaction 
 Change *tracking* (auto-detecting dirty objects) isn't idiomatic Go; you register writes directly.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -351,6 +363,8 @@ and removed entities and `SaveChangesAsync` flushes them all in one transaction.
 first; build your own only when the ORM isn't there.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -517,6 +531,8 @@ state — the price is that every rule must be checkable up front, which a real 
 doesn't require.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

@@ -94,6 +94,8 @@ Input x ──► f ──f(x)──► g ──g(f(x))──► h ──► Out
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -122,6 +124,8 @@ Ramda/lodard-fp provide `pipe`/`compose`; the TC39 pipeline operator (`|>`) may 
 the stages pure — a side-effecting step makes the pipeline's result depend on hidden context.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -158,6 +162,8 @@ hidden effects.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -191,6 +197,8 @@ point-free style is less Pythonic than named steps, so compose meaningful chunks
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -223,6 +231,8 @@ closure for that).
 
 ### Go
 
+*Targets Go 1.26.*
+
 **❌ Naive**
 
 ```go
@@ -254,6 +264,8 @@ sequential statements for clarity over clever composition. Where the stages shar
 tidy; where they don't, plain code wins.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -288,6 +300,8 @@ want instead. Explicit `Func` composition earns its place when the pipeline itse
 store, pass, or build from configuration.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -389,6 +403,8 @@ at compile time with no indirection. But often the most idiomatic Zig is neither
 functions in sequence and let the reader see every step.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

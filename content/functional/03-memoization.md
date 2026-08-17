@@ -99,6 +99,8 @@ call(x) ──► [ memoized ] ──hit──► cached result
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -134,6 +136,8 @@ for object arguments.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -168,6 +172,8 @@ you cache `compiled`, not the rendered output. Bounding is what separates a cach
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -197,6 +203,8 @@ method caching, `cachetools` extends it. The footgun is `maxsize=None` on high-c
 memory leak.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -228,6 +236,8 @@ accumulator map instead. The functional model reframes memoization as an explici
 transparent per-function state — a bit more ceremony, but honest about where the state lives.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -266,6 +276,8 @@ unbounded, so add an LRU (e.g. `hashicorp/golang-lru`) for open-ended inputs.
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -301,6 +313,8 @@ miss the same key together (wrap values in `Lazy<T>` when compute-once matters),
 is unbounded — reach for `MemoryCache` when inputs are open-ended.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -393,6 +407,8 @@ also yours. For a small closed domain like this one, plain Zig often skips the m
 fills a fixed `[81]u64` table — cheaper than hashing and impossible to leak.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

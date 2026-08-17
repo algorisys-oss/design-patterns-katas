@@ -93,6 +93,8 @@ Service ──assembles──► UserDTO { id, name, email }   (no behavior, tai
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -128,6 +130,8 @@ are allowed to diverge, and the DTO shields the API from domain refactors.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -161,6 +165,8 @@ controls exposure. Libraries (zod, class-transformer, DTO decorators in NestJS) 
 shapes are boilerplate; they're also your API's stable contract and a security boundary.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -198,6 +204,8 @@ what lets the API surface stay stable while the domain evolves — and keeps int
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -233,6 +241,8 @@ writing the view/DTO per representation; the gain is API stability independent o
 accidental field leaks.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -276,6 +286,8 @@ contract is the payoff.
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -314,6 +326,8 @@ AutoMapper save typing but hide which fields cross the boundary, which is the ve
 control.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -421,6 +435,8 @@ outlive `user` — when it crosses a real boundary, dupe the strings with an all
 other side. Nothing is hidden; nothing is free.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

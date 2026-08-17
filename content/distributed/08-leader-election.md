@@ -102,6 +102,8 @@ Coordinator ──elect─┤
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -138,6 +140,8 @@ monotonic counter checked by the protected resource) for correctness, or use Red
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -169,6 +173,8 @@ safety you shouldn't try to reproduce with a plain lock. This is the recommended
 correctness.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -206,6 +212,8 @@ use, `kazoo` (ZooKeeper) or etcd is the sturdier choice.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -238,6 +246,8 @@ elsewhere on failure. For partition-tolerant, correct handoff you graduate to `H
 needed for the common case — a genuine BEAM advantage.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -273,6 +283,8 @@ but that's already there in that environment, and it gives you proven consensus 
 hand-rolled lock.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -352,6 +364,8 @@ and the fencing term is the part teams skip and later regret, because a paused-a
 holding a stale term is how two leaders act at once.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -535,6 +549,8 @@ away is the fencing term — the protected work must check it, or a crashed-and-
 still holding term 1 would act beside the term-2 leader.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

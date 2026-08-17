@@ -73,6 +73,8 @@ Computing shape area without editing a central function per new shape.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -102,6 +104,8 @@ touching it. The `switch` is gone. The judgment: this pays off because shapes cl
 only ever two existed and never grew, the branch would be simpler.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -141,6 +145,8 @@ def total_area(shapes: list[Shape]) -> float:
 editing the generic function.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -184,6 +190,8 @@ extends `Shape.area/1` to a new type in a new file, without reopening the protoc
 implementations. This is cleaner than adding `area/1` clauses to one module.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -232,6 +240,8 @@ extension point cheap — no shape needs to declare it implements `Shape`.
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -278,6 +288,8 @@ is the whole `TotalArea`. C# could also close the set — a sealed hierarchy plu
 arrive as new files, the switch when the set genuinely won't grow.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -426,6 +438,8 @@ for it only when new shapes must arrive without touching the switch. When the se
 compile time, `anytype`/comptime generics give the same openness with static dispatch.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

@@ -86,6 +86,8 @@ Wrapping a `fetch`-like data source with logging and caching.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -137,6 +139,8 @@ features compose at runtime and new ones don't touch existing classes. The price
 objects and order sensitivity — here logging sees every call, caching short-circuits repeats.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -190,6 +194,8 @@ the object cousin of Express middleware; when the concerns are purely functional
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -241,6 +247,8 @@ thing you're layering is a stateful component.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -290,6 +298,8 @@ to hold the state, since functions are pure; that's the one place the functional
 than an object field.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -359,6 +369,8 @@ components you can also decorate with a `func` type (the common middleware patte
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -422,6 +434,8 @@ short-circuits repeats). The BCL ships this exact shape as `DelegatingHandler` c
 instead, but the classes read better once a decorator carries state like the cache.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -619,6 +633,8 @@ the arena turns cleanup into one `defer`. If the wrapper set is closed, a tagged
 arrive from outside.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

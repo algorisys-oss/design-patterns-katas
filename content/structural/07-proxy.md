@@ -79,6 +79,8 @@ A virtual proxy that lazy-loads an expensive image.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -122,6 +124,8 @@ level.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -157,6 +161,8 @@ go. The hard part is invalidation: a TTL is the simple choice, but stale reads a
 the window or clear entries on write.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -201,6 +207,8 @@ to hand-forward every method.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -242,6 +250,8 @@ state that persists across calls, back the proxy with a `GenServer` (or `Task`/`
 — the process holds the loaded data.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -294,6 +304,8 @@ with a `sync.Once` or mutex if a proxy may be displayed from multiple goroutines
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -340,6 +352,8 @@ which generates an interface implementation at runtime and funnels every call th
 interfaces. For one small interface, the hand-written wrapper is clearer and faster.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -502,6 +516,8 @@ behind one type, reach for a tagged union with an exhaustive `switch` (closed se
 the `*anyopaque` + function-pointer vtable when the set must stay open.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

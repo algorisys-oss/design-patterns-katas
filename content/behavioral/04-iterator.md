@@ -79,6 +79,8 @@ Iterating a custom range/collection lazily.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -112,6 +114,8 @@ lazily. Rolling your own `next()`/`hasNext()` API instead would fight the langua
 protocol is almost always the right call.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -150,6 +154,8 @@ the iteration, so you must close it in a `finally` if the consumer breaks early.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -187,6 +193,8 @@ plain generator function is often the whole pattern — you rarely write an expl
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -222,6 +230,8 @@ custom sequence without a backing list, so it works over infinite or generated d
 the `Enumerable` protocol for a custom collection to plug into the whole `Enum`/`Stream` toolbox.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -265,6 +275,8 @@ Before 1.23, the idioms were a `Next() (T, bool)` method or a channel; the new f
 the language loop the way the other languages' protocols do.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -311,6 +323,8 @@ inventing a `HasNext`/`Next` API of your own. For streamed sources — the Node.
 close-the-cursor caveat.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -442,6 +456,8 @@ get is generator sugar: there's no `yield`, so an iterator that walks a tree mus
 explicit stack in the struct — the state a JS generator or C# iterator method hides for you.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

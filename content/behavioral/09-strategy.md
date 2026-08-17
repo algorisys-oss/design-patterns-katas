@@ -111,6 +111,8 @@ The same example in every language: a payment context that delegates to a paymen
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -170,6 +172,8 @@ class version pays off when a strategy carries its own configuration or state.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -210,6 +214,8 @@ gateways. The looseness is the same duck-typing bargain: an unknown key must be 
 explicitly, since nothing verifies the map is complete.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -275,6 +281,8 @@ to enforce the contract. For one method, a callable is the Pythonic choice.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -332,6 +340,8 @@ a named contract and a compile-time warning when a module forgets to implement a
 the cost of one module per strategy.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -410,6 +420,8 @@ interface when a strategy needs fields or more than one method.
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -467,6 +479,8 @@ C# often skips the interface entirely and stores a `Func<int, string>` — the p
 collapses into a delegate, which is Strategy in all but name.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -613,6 +627,8 @@ idiomatic Zig — zero indirection, and the compiler flags every unhandled case.
 pointer form pays off only when new strategies must arrive without touching the switch.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

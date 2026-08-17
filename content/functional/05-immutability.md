@@ -97,6 +97,8 @@ State v1 { value: 1 } ──update(fn)──► State v2 { value: 2 }
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -132,6 +134,8 @@ ceremony by letting you write mutations against a draft while producing a truly 
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -158,6 +162,8 @@ prevents the classic Node bug where one request mutates state another is using. 
 state, `immer` or `immutable.js` (structural sharing) keep it correct and cheap.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -195,6 +201,8 @@ Frozen dataclasses also become hashable, so they work as dict keys and in sets.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -224,6 +232,8 @@ data because there's no shared mutable data. You pay nothing extra for it; the o
 unlearning mutation. It's the reference implementation of this pattern.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -255,6 +265,8 @@ structures in the standard library, so immutability is a discipline with real co
 selectively (value objects, config) rather than pervasively.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -300,6 +312,8 @@ unchanged parts. For small values, `readonly record struct` gives immutability w
 allocation at all.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -395,6 +409,8 @@ ownership of the old version's memory a real question. No structural sharing in 
 so pervasive immutability is expensive; Zig code uses it for snapshots and config, not everything.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

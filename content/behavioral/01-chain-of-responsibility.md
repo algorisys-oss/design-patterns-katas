@@ -100,6 +100,8 @@ stopping the chain) or passes it to the next. If all pass, the field is valid.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -137,6 +139,8 @@ handler needs per-instance state or must decide dynamically *which* handler come
 class-based linked chain (or the `(req, next) =>` middleware form below) carries its weight better.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -178,6 +182,8 @@ doesn't end the response) hangs the request forever — the "forgetting to forwa
 concrete.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -225,6 +231,8 @@ rate limiter holding counters, an approver holding a spending limit — promote 
 with a `handle` method and an explicit `_next` reference, which is the classic object chain.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -276,6 +284,8 @@ anywhere. When handlers are long-lived or must run concurrently, model each as a
 becomes a supervised pipeline instead of a fold.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -339,6 +349,8 @@ than a slice.
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -388,6 +400,8 @@ run once one handles. And the pattern is already in the platform: ASP.NET Core m
 `app.Use(...)` with its `next` delegate — is this exact chain.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -528,6 +542,8 @@ pointer, the `std.mem.Allocator` shape). The messages also stay static slices �
 "email is required" at runtime would mean threading an allocator through the chain.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

@@ -95,6 +95,8 @@ Service ──uses──► «UserRepository»  find(id) / save(u)
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -137,6 +139,8 @@ overhead for a one-query CRUD endpoint.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -167,6 +171,8 @@ repository framework, so you hand-roll the module — lighter than a full ORM's 
 you own the mapping and the connection handling.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -207,6 +213,8 @@ repository can feel redundant — worth it when you want the domain framework-fr
 ORM-centric apps.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -252,6 +260,8 @@ and skip the extra behaviour — fine until you actually need to swap or fake th
 
 ### Go
 
+*Targets Go 1.26.*
+
 **❌ Naive**
 
 ```go
@@ -292,6 +302,8 @@ consumer-defined interfaces). The explicit mapping between DB rows and `User`, a
 in `main`, are the costs; there's no ORM magic, but also no magic to fight.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -342,6 +354,8 @@ it in `IUserRepository` is a classic over-abstraction. Add the interface when yo
 free of EF types or genuinely expect a second store; skip it when EF *is* the persistence story.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -469,6 +483,8 @@ since Zig has no ORM to escape, the repository here isn't about framework indepe
 it's purely the test seam, which is reason enough.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

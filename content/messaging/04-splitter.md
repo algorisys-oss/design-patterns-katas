@@ -93,6 +93,8 @@ Composite Message { items: [a, b, c] } ──► [ Splitter ] ──► Message(
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -124,6 +126,8 @@ the important part — without it, split elements are orphans. In-process this i
 each element becomes a real queued message.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -159,6 +163,8 @@ it turns batch failures into isolated ones and enables per-record parallelism.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -187,6 +193,8 @@ formalize split-then-aggregate as a workflow. The correlation fields enable an a
 all rows of a batch are done.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -217,6 +225,8 @@ alone. Elixir's process isolation means an element crashing takes only its own t
 correlation carries into an aggregator or a completion tracker.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -256,6 +266,8 @@ natural; the `BatchID`/`Seq` fields are what let a downstream aggregator recombi
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -288,6 +300,8 @@ The `record` freezes each element message, so `BatchId`/`Seq` can't be mutated i
 a durable publish, and the correlation fields are what a downstream aggregator needs.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -417,6 +431,8 @@ One caution: the messages borrow `batch.id` rather than copying it, so the batch
 queue — dupe the id with the allocator if it doesn't.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

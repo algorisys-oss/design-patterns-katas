@@ -75,6 +75,8 @@ Splitting a `Report` that computes, renders, and delivers.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -113,6 +115,8 @@ new ReportMailer(mailer).send(html);
 cost is more classes; the win is that each changes for exactly one reason.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -156,6 +160,8 @@ necessarily a class. Either way, each file has one reason to change.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -194,6 +200,8 @@ concerns into a readable flow. Splitting by concern also plays to the language's
 module is a set of pure functions you can test in isolation.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -241,6 +249,8 @@ a coordinator wires them — each type now has a single axis of change.
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -286,6 +296,8 @@ the stateless `Calculator` and `Renderer` could just as well be static methods. 
 responsibility matters more than whether it's a class.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -417,6 +429,8 @@ path: only rendering returns an error union, so `try` appears exactly where fail
 happen, and the caller owns the buffer instead of every concern touching it.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

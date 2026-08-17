@@ -87,6 +87,8 @@ A factory that builds a cache backend by name.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -128,6 +130,8 @@ never changes as products grow. The cost is a lookup that can fail at runtime ra
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -166,6 +170,8 @@ driver you only load when it's selected. The price is the registry's: an unknown
 runtime, not at compile time.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -211,6 +217,8 @@ def register(name: str, cls: type) -> None:
 self-register at import. The GoF class hierarchy of creators is rarely needed here.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -258,6 +266,8 @@ attribute — fast and fixed. For runtime-extensible registries, hold the map in
 application config instead of a `@registry` attribute.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -310,6 +320,8 @@ adding one is a new file, not an edit to `Create`. You trade the compiler's exha
 check on a `switch` for runtime lookup, but gain open extensibility across packages.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -376,6 +388,8 @@ container — keyed services (`GetRequiredKeyedService<ICache>("memory")`) are t
 pattern, maintained by the framework instead of your static class.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -546,6 +560,8 @@ answer is the two-field vtable idiom (`*anyopaque` context + function pointers) 
 factory disappears entirely.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

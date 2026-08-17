@@ -98,6 +98,8 @@ Key Components:
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -148,6 +150,8 @@ for anything that lives, the isolation pays back the first time you swap the dat
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -185,6 +189,8 @@ usual wiring — modules, a bit of dependency passing — but it keeps a growing
 pile of fat route handlers.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -235,6 +241,8 @@ Python won't stop you from importing the ORM into the domain, so the discipline 
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -284,6 +292,8 @@ subtlety is context design — too many tiny contexts, or a "God context," both 
 
 ### Go
 
+*Targets Go 1.26.*
+
 **❌ Naive**
 
 ```go
@@ -329,6 +339,8 @@ explicit in `main` (no container), which is verbose but leaves the dependency gr
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -373,6 +385,8 @@ by hand — less wiring code, but the dependency graph now lives in `AddScoped` 
 in plain constructors, so it takes discipline to keep it readable.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -497,6 +511,8 @@ Swapping the store at *runtime* needs the vtable idiom instead (see the hexagona
 honest, too: small Zig programs usually layer by file and skip the generic entirely.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

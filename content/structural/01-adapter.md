@@ -77,6 +77,8 @@ Adapting a Stripe-style `charge(cents)` gateway to a `pay(dollars)` interface.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -114,6 +116,8 @@ only on `pay(dollars)` and never sees Stripe. The cost is one wrapper class per 
 and it's exactly where a vendor swap is isolated.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -159,6 +163,8 @@ to promises.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -201,6 +207,8 @@ minimal; the `Protocol` just documents and enforces the contract for readers and
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -238,6 +246,8 @@ Since there's no object to hold the adaptee, config (API keys) lives in applicat
 passed alongside.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -277,6 +287,8 @@ adapt with a function type when the target has a single method. One adapter per 
 keeps the translation contained.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -325,6 +337,8 @@ method, modern C# can shrink the adapter to a `Func<decimal, string>` — an inl
 the same translation. The class earns its place once the adapter carries config or a second method.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -460,6 +474,8 @@ pointer) that `std.mem.Allocator` uses. For a vendor known at build time, compti
 honest form.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

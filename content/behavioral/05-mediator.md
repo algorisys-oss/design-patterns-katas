@@ -77,6 +77,8 @@ Controls in a dialog coordinated by a mediator.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -111,6 +113,8 @@ other, so adding a control means teaching only the mediator. The risk is the med
 every rule — if a dialog grows huge, split the mediator or move to a state machine.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -151,6 +155,8 @@ also owns *coordination rules*, not just fan-out. The cost is indirection: the f
 readable top-to-bottom.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -196,6 +202,8 @@ not any special language feature. Keep the mediator focused so it doesn't become
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -240,6 +248,8 @@ and game rooms are built on the BEAM. The mediator process can become a bottlene
 throughput — then you shard it or use `Phoenix.PubSub` for pure fan-out.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -292,6 +302,8 @@ is a star and the rule lives in `Changed`. Go's interface keeps the colleagues t
 fake mediator. As always, guard against the mediator becoming a god object as rules multiply.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -360,6 +372,8 @@ topology. The warning is the same as everywhere — the mediator is one `switch`
 becoming a god object, so split it when the rules multiply.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -506,6 +520,8 @@ without copying, so the caller's string must outlive the mediator — dupe it wi
 when it won't.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

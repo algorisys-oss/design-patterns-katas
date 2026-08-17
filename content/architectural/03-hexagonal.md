@@ -95,6 +95,8 @@ Key Components:
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -134,6 +136,8 @@ adapter fails at runtime rather than compile time.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -168,6 +172,8 @@ adapter. You pay for a composition root that wires everything and for the wrappe
 it when providers change, overkill for a script that emails once.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -206,6 +212,8 @@ cleanest expression here — real interfaces, checked by the type checker, witho
 The mapping (`to_row`) between domain and ORM models is the recurring tax.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -246,6 +254,8 @@ runtime configuration — and gives fast, DB-free tests. The subtlety is that co
 selection (`compile_env`) versus runtime selection changes how easily you swap per-test.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -289,6 +299,8 @@ inward with no wiring framework. Tests pass a struct with a `Save` method. Verbo
 composition root in `main`, where every adapter is constructed and injected by hand.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -344,6 +356,8 @@ wiring Go writes by hand at the cost of some indirection. For a single-method po
 `IOrders` is the name.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -476,6 +490,8 @@ recompile. Stripped of language sugar, hexagonal's claim is plain here: a port i
 convention the core owns.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

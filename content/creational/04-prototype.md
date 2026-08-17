@@ -86,6 +86,8 @@ Cloning a configured object that has nested state.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -118,6 +120,8 @@ fresh nested literals is fine; reach for the deep copy exactly when nested state
 independent.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -155,6 +159,8 @@ or a copy constructor instead.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -189,6 +195,8 @@ resource handle needs special handling.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -220,6 +228,8 @@ the original freely. The pattern collapses into ordinary functional update (`put
 intact.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -265,6 +275,8 @@ the fallback.
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -308,6 +320,8 @@ immutable (`ImmutableList<>`), where sharing is always safe and cloning collapse
 into plain `with`.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -458,6 +472,8 @@ is fine because `[]const u8` can't be written through — copy what can mutate, 
 can't. The Go hazard carries over too: add a field, and you must remember to clone it.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

@@ -91,6 +91,8 @@ Message ──► [ Content Router ] ── type=B ──► Channel B
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -128,6 +130,8 @@ routing (exchange bindings) or an API gateway.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -159,6 +163,8 @@ The trade is that routing on the key (a header) is cheap and stable; routing on 
 need a code-level router consuming and re-publishing.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -195,6 +201,8 @@ discipline that stops it becoming a god-object.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -226,6 +234,8 @@ queue and dispatches. The match-based router is idiomatic and exhaustive-friendl
 routing, not processing.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -264,6 +274,8 @@ channels; across services they're broker subjects (NATS supports subject-based r
 plain and testable; keep `Route` a pure dispatch so it stays a thin chokepoint rather than a processor.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -310,6 +322,8 @@ map for a compile-time check. Across services the same rules move into broker in
 (Service Bus subscription filters, Rabbit bindings).
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -410,6 +424,8 @@ instead of dropped. When routes must stay open at runtime (loaded from config), 
 flexibility.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

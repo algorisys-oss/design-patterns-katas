@@ -96,6 +96,8 @@ Closed ───────────────────────► 
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -142,6 +144,8 @@ works if the wrapped call actually rejects on failure — pair it with a fetch t
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -175,6 +179,8 @@ and its configuration are the cost, plus the reminder that in a clustered app ea
 own breaker unless you share state.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -220,6 +226,8 @@ Either way, `requests`' own `timeout=` is essential — without it a hung call n
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -254,6 +262,8 @@ and "let it crash" plus a breaker gives layered resilience. The API is lower-lev
 `opossum`/`pybreaker`, so you wire the melt-on-failure explicitly.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -295,6 +305,8 @@ slow calls count as failures. Go's explicitness shows: you configure `ReadyToTri
 `ctx` yourself, but the breaker's behavior is entirely visible and testable.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -357,6 +369,8 @@ policies. Keep `HttpClient.Timeout` (or a `CancellationToken`) underneath either
 call counts as a failure.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -502,6 +516,8 @@ around `call` to share it — and it only sees *errors*, so the fetch must fail 
 deadline) or a hung call never trips it.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

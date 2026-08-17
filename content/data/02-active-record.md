@@ -90,6 +90,8 @@ User (Active Record) { name, email; save(), delete(), find() }
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -125,6 +127,8 @@ persistence. Sequelize/Objection give this style with far less hand-written SQL.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -157,6 +161,8 @@ grows fat if you keep loading it with business logic; MikroORM's Data Mapper mod
 richer domains.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -191,6 +197,8 @@ vs. purity, chosen per app.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -217,6 +225,8 @@ lesson lands by contrast: Active Record fits mutable, object-oriented languages;
 BEAM naturally leads to Data Mapper instead.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -250,6 +260,8 @@ for visible SQL and no reflection magic. So Active Record exists in Go but runs 
 convenience trade many Go teams decline in favor of explicitness.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -301,6 +313,8 @@ the same coupling that makes these models hard to test. Fine for a small tool; C
 persistence into a context you can scope and swap.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -416,6 +430,8 @@ Data Mapper for one argument more, and most Zig code should take that trade. The
 garbage-collected framework languages; in Zig it's a shape to recognize, not one to reach for.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

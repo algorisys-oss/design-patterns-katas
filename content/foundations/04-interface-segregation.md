@@ -119,6 +119,8 @@ Splitting a fat `Machine` into `Printer`, `Scanner`, `Fax`.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -153,6 +155,8 @@ printAll(new SimplePrinter(), ["a"]);  // no scan/fax stubs in sight
 scanner. The role boundary lives in what the function asks for, not in a declared interface.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -201,6 +205,8 @@ so `SimplePrinter` fits without pretending to scan. A device that does more just
 protocols — composition of roles, not one fat ABC with throwing stubs.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -257,6 +263,8 @@ only `Printer` — no module is forced to stub a callback it can't honor.
 
 ### Go
 
+*Targets Go 1.26.*
+
 **❌ Naive**
 
 ```go
@@ -307,6 +315,8 @@ func PrintAll(p Printer, docs []string) []string {
 `Printer` and nothing forces a `Scan`. Larger capabilities compose by embedding small interfaces.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -360,6 +370,8 @@ the `ISomethingManager` with a dozen members; split it by who calls what, not by
 implementing class happens to contain.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -501,6 +513,8 @@ dispatch must be runtime, keep each vtable role-sized the way `std.mem.Allocator
 never one fat vtable padded with panicking function pointers.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

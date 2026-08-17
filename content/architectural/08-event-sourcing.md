@@ -96,6 +96,8 @@ Command ──► Aggregate ──emits──► Event Store  (append-only log)
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -137,6 +139,8 @@ you'll eventually need snapshots and event versioning — real work you skip wit
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -167,6 +171,8 @@ Postgres. You now own optimistic concurrency (the `seq`), projections, and snaps
 — which is why dedicated stores (EventStoreDB) exist for heavier use.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -215,6 +221,8 @@ plan for the event shapes, since those tuples/dicts are your permanent schema.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -246,6 +254,8 @@ a full event-sourced/CQRS framework. The write side is elegant; the operational 
 projections, snapshots) is the same everywhere.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -298,6 +308,8 @@ mechanics, so the event flow is obvious and testable. You build the store, concu
 projections yourself — the usual Go bargain of clarity for hand-written plumbing.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -366,6 +378,8 @@ does better here). For real systems, Marten turns Postgres into an event store a
 the dedicated one — the versioning and snapshot work remains yours either way.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -539,6 +553,8 @@ problem visible instead of deferred. Commands return error unions, `apply` retur
 decide/apply split, in the signatures.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

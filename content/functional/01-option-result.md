@@ -100,6 +100,8 @@ run(x) ──► Result<T, E> = Ok(T) | Err(E)
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -141,6 +143,8 @@ yours to keep.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -175,6 +179,8 @@ cost is the wrapping at every boundary and interop with the rest of Node, which 
 at the edges. `neverthrow`/`Effect` formalize this for larger codebases.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -224,6 +230,8 @@ presence/absence case idiomatically.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -266,6 +274,8 @@ in the ecosystem — tuple-returning `find/2` vs. raising `find!/2` — so you p
 bang variant per situation.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -312,6 +322,8 @@ The trade is the famous `if err != nil` verbosity — explicit at every step rat
 the failure case is impossible to overlook.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -363,6 +375,8 @@ closed, so exhaustiveness needs a discard arm. The generic ceremony is real; man
 domain-specific result (or use `OneOf`/`LanguageExt`) and keep exceptions for genuine bugs.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -474,6 +488,8 @@ no allocation, no generics — which is very Zig: the pattern at its cheapest, m
 of a rich `Err(e)`.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

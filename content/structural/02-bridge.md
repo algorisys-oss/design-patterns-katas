@@ -82,6 +82,8 @@ Shapes (abstraction) that render via a `Renderer` (implementation).
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -119,6 +121,8 @@ adding WebGL is one renderer, no combinatorial blowup. The cost is the up-front 
 only when both axes really change; for a single axis this is just needless indirection.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -158,6 +162,8 @@ its keep only because both axes really grow here — for a single transport it w
 indirection.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -207,6 +213,8 @@ contract without forcing an inheritance relationship between renderers.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -253,6 +261,8 @@ extend independently — a new renderer module or a new `draw/1` clause — with
 
 ### Go
 
+*Targets Go 1.26.*
+
 **❌ Naive**
 
 ```go
@@ -297,6 +307,8 @@ compose without inheritance (Go has none anyway). Because interfaces are implici
 renderer or a shape is fully independent — the canonical "composition over a subclass matrix."
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -352,6 +364,8 @@ the bridge pays only when both axes really grow. With a single renderer, `Circle
 is indirection with nothing to show for it.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -478,6 +492,8 @@ the renderer set is closed and small, a tagged union plus `switch` inside each s
 plainer Zig — take the bridge only when the backend axis genuinely keeps growing.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

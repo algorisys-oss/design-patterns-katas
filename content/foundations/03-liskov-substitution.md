@@ -77,6 +77,8 @@ The bird that can't fly — model capability by behavior, not taxonomy.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -111,6 +113,8 @@ code that expects flight. Nothing overrides a method into a lie. When behavior d
 hierarchy, change the hierarchy — or use a capability interface — rather than throwing.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -152,6 +156,8 @@ def migrate(flyers: list[Flyer]) -> list[str]:
 lets ability, not ancestry, decide substitutability — very much the Pythonic answer to LSP.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -198,6 +204,8 @@ is never substitutable where a `Flyer` is expected — the contract is honest by
 
 ### Go
 
+*Targets Go 1.26.*
+
 **❌ Naive**
 
 ```go
@@ -237,6 +245,8 @@ actually has `Fly()`. Not giving `Penguin` a `Fly` method means the compiler ref
 substitute it where a `Flyer` is required — the honest relationship is enforced at build time.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -289,6 +299,8 @@ C# developers meet the violation early. `sealed` on the leaves also stops the ne
 from re-introducing a lying override.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -406,6 +418,8 @@ wrong thing still compiles, so the contract beyond the signature lives in doc co
 tests.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

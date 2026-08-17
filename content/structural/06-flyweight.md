@@ -79,6 +79,8 @@ A glyph factory sharing tree/character objects across many positions.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -123,6 +125,8 @@ once.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -155,6 +159,8 @@ caches and compiled-regex reuse. The shared object must stay immutable, and watc
 unbounded map keyed by dynamic schemas is a memory leak, so bound it or key by a stable id.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -192,6 +198,8 @@ become lightweight tuples of position plus a shared reference; profile to confir
 actually helps before adding the machinery.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -231,6 +239,8 @@ processes. The BEAM's structural sharing does a lot of Flyweight's job for free;
 explicit factory mainly to avoid rebuilding identical intrinsic terms.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -284,6 +294,8 @@ be treated as immutable. Guard the cache with a mutex if trees are created concu
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -332,6 +344,8 @@ so the shared-state bug is hard to even write. The runtime plays the same trick 
 open-ended, or it becomes a leak.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -504,6 +518,8 @@ free its duplicate key, bookkeeping that GC languages hide. Back the factory wit
 `deinit`.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

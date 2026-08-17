@@ -102,6 +102,8 @@ for `1 + 2 * 3` interprets to `7`.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -140,6 +142,8 @@ expr.interpret(); // 7
 the Expression Problem, and it's exactly what Visitor trades the other way.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -183,6 +187,8 @@ feature-flag and pricing engines work. The moment you need real syntax (operator
 arbitrary nesting, helpful parse errors), stop hand-rolling and reach for a parser library.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -233,6 +239,8 @@ here Python's structural pattern matching makes the data-oriented side the natur
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -265,6 +273,8 @@ new node types touch every clause — the same Expression-Problem tradeoff, made
 data-first style.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -314,6 +324,8 @@ here — the method-per-node form is the one to reach for.
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -357,6 +369,8 @@ classic alternative — an abstract `Interpret()` on `Expr` — flips the axis: 
 expensive new operations. Pick the axis you expect to grow.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -476,6 +490,8 @@ touch every switch — the data-first side of the Expression Problem, shared wit
 Elixir tabs.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

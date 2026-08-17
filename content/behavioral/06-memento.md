@@ -79,6 +79,8 @@ An editor that snapshots and restores its own state.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -121,6 +123,8 @@ needs incremental diffs instead.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -156,6 +160,8 @@ version's bug was aliasing, not copying). For large or persistent state, snapsho
 storage or use append-only event logs rather than in-memory copies.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -204,6 +210,8 @@ state. The originator owns `save`/`restore`; the history just stacks opaque `Mem
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -243,6 +251,8 @@ caretaker only stores opaque terms. Undo is a list of past values. For a live st
 the `GenServer` holds the history in its own state and hands back a prior value on `:undo`.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -295,6 +305,8 @@ fields keep the state opaque to the `History` caretaker. Watch copy cost if the 
 slices/maps — those need explicit deep copies.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -370,6 +382,8 @@ type inside `Editor`. In practice the record's immutability, not secrecy, is wha
 snapshot.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -563,6 +577,8 @@ manual-memory language. Zig struct fields are always public, so the memento is o
 convention and file scope, not enforcement.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

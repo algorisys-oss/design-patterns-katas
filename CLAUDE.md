@@ -122,6 +122,12 @@ to use it. No AI slop (LOOPS.md XX).
 
 ## Porting Rules (per language)
 
+Every language tab opens with an italic `*Targets <language/toolchain version>.*` line
+(directly under the `### <Language>` heading) so readers know which version the code was
+written and tested against. Current targets: modern JavaScript (ES2015+), Node.js 24,
+Python 3.12, Elixir 1.18, Go 1.26, Java 25, C# 14 / .NET 10, Rust 1.95 (2024 edition),
+Zig 0.17-dev. Bump the lines when the toolchains move.
+
 - **JavaScript** — ES6 classes for the class-based patterns; object literals / closures where
   that is the JS-native form. Source from the articles.
 - **Python** — first-class functions and `typing.Protocol`/`abc` where a real interface helps.
@@ -150,9 +156,8 @@ to use it. No AI slop (LOOPS.md XX).
   where allocation happens. Zig is pre-1.0 and churns: snippets target the repo's local
   toolchain — **0.17-dev (master, via asdf)** — and must compile on it. That generation
   moved blocking primitives behind the `std.Io` capability (`std.Io.Threaded` provides
-  the `io`; `Io.Mutex`, `Io.Condition`, `io.sleep`, `io.now`) — thread `io` explicitly,
-  same philosophy as allocators. Every `### Zig` tab opens with the italic line
-  `*Targets Zig 0.17-dev.*` so readers know which API generation they're seeing.
+  the `io`; `Io.Mutex`, `Io.Condition`, `io.sleep`, `Io.Timestamp.now`) — thread `io`
+  explicitly, same philosophy as allocators.
 
 ## Git
 

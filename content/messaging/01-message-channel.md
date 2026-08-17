@@ -93,6 +93,8 @@ Producer ──send──► [ Message Channel ] ──deliver──► Consumer
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -124,6 +126,8 @@ channel (BroadcastChannel, WebSocket, or a broker). The shift is from "call the 
 message on the channel."
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -157,6 +161,8 @@ workers. You now run RabbitMQ and handle acks/redelivery (at-least-once → idem
 gain is resilience the direct `fetch` can't offer; the cost is broker operations and async semantics.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -192,6 +198,8 @@ trade is the broker dependency and async delivery, versus the simple-but-coupled
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -218,6 +226,8 @@ and backpressure. The BEAM gives you in-memory channels cheaply; you reach for a
 you need persistence or cross-stack integration.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -253,6 +263,8 @@ named subject; the code shape stays "send to a channel, range over it," but you 
 give up in-memory simplicity.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -290,6 +302,8 @@ pub-sub means one channel per subscriber or a broker topic. The producer holds o
 the consumer only the `Reader` — the split halves make the decoupling visible in the types.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -410,6 +424,8 @@ exactly why this version teaches what a channel *is*. Cross-process, same story 
 swap the queue for a broker client on a named subject.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

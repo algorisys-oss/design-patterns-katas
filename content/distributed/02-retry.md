@@ -93,6 +93,8 @@ attempt 1 ──fail──► wait 100ms±j ──► attempt 2 ──fail──
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -131,6 +133,8 @@ doesn't know when a service is truly *down*, which is what a circuit breaker add
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -164,6 +168,8 @@ Combine with a breaker so a sustained upstream outage stops the retries.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -195,6 +201,8 @@ to transient errors avoids retrying validation failures. The library is the idio
 one thing it can't decide for you is idempotency — that's a property of the operation.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -231,6 +239,8 @@ you `let it crash` and a supervisor restarts the worker, or you push the job to 
 with backoff durably. The `retry` library packages the inline version when you want it.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -274,6 +284,8 @@ framework needed, though `cenkalti/backoff` packages the schedule. The verbosity
 about when it stops and how it interacts with `context`.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -326,6 +338,8 @@ timeout and circuit-breaker strategies — but the loop above is the whole idea.
 the operation's problem, not the wrapper's.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -446,6 +460,8 @@ last error. The PRNG is explicit and locally seeded: no global state, and fixing
 jitter reproducible in tests.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

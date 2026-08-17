@@ -83,6 +83,8 @@ Familiar Tool ──force-fit──► "queue problem" · "cache problem" · "gr
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ The Smell**
 
 ```js
@@ -115,6 +117,8 @@ matching the tool to the need: local state for local concerns, a store when stat
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ The Smell**
 
 ```python
@@ -141,6 +145,8 @@ to the powerful familiar tool regardless of scale. Right-size: the standard libr
 when the data and operations actually warrant it.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ The Smell**
 
@@ -171,6 +177,8 @@ enormous operational overhead for a task a cron-run binary handles. The fix is r
 program for a scheduled job. Reach for the service architecture when the problem is actually a service.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ The Smell**
 
@@ -209,6 +217,8 @@ interfaces"; it's writing them at real seams (I/O, external services, genuine po
 code be plain. If the interface will only ever have one implementation and no test needs to swap it, delete it.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ The Smell**
 
@@ -298,6 +308,8 @@ code. Zig's own culture backs the fix: the standard library keeps things concret
 the issue, and so should you. Ask for the second instantiation; if it doesn't exist, neither should the generic.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ The Smell**
 
