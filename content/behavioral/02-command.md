@@ -78,6 +78,8 @@ Actions as objects with undo, driven by an invoker with history.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -115,6 +117,8 @@ behind every text editor and design tool. The cost is capturing enough state to 
 here knows the inserted length); richer edits may store a snapshot (that's Memento's job).
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -157,6 +161,8 @@ similar job queues model tasks). The tradeoff is serializing commands if the que
 (Redis/DB), since a closure can't be persisted but a plain command object can.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -208,6 +214,8 @@ functions mean simple, undo-less commands can just be callables on a queue; you 
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -241,6 +249,8 @@ audit log, and event sourcing all fall out for free — and the commands seriali
 handling, unlike closures.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -286,6 +296,8 @@ value or sends work over a channel to a worker pool — the interface earns its 
 undo or command metadata.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -342,6 +354,8 @@ variant of this pattern, write commands into a `System.Threading.Channels.Channe
 and let a worker drain it: the same shape as the Node.js tab, with backpressure built in.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -495,6 +509,8 @@ the two-field vtable (`*anyopaque` context plus function pointers, the `std.mem.
 shape).
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

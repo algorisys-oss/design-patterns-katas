@@ -89,6 +89,8 @@ A `CacheManager` that the whole app shares.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -131,6 +133,8 @@ keep the internals from being poked at.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -162,6 +166,8 @@ cold starts reset it, so anything that must be single *across* processes (a lock
 external coordination like Redis.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -207,6 +213,8 @@ creation, wrap it in a function with `functools.lru_cache` or a module-level `_i
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -243,6 +251,8 @@ instance" guarantee comes from the name registry, and you get supervision and cr
 for free — but state lives in a process you must start, not a value you can just import.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -305,6 +315,8 @@ no lazy requirement, a plain package-level variable initialized in `init()` is s
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -356,6 +368,8 @@ mutable state, so callers depend on it invisibly and tests share its leftovers. 
 static form for truly ambient facts, the way `TimeProvider.System` is.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -495,6 +509,8 @@ default — allocators are threaded through every call as parameters. Do that wi
 cache unless it's truly ambient.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

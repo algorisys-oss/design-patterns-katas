@@ -92,6 +92,8 @@ Container ──creates──► OrderService ──depends on──► «Gatewa
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -130,6 +132,8 @@ fails at call time rather than compile time.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -163,6 +167,8 @@ explicit, no container, and trivially faked in tests. It keeps dependencies out 
 price of the indirection and startup magic those bring.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -201,6 +207,8 @@ when an app grows — useful, but constructor injection covers the 90% case with
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -232,6 +240,8 @@ implicitness — the dependency is resolved inside the module rather than handed
 as function arguments is often clearer for library code.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -268,6 +278,8 @@ Go you can read top to bottom. For very large graphs, code generators (Google's 
 the wiring while keeping it compile-time and explicit, avoiding runtime reflection containers.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -319,6 +331,8 @@ registration surfaces at startup, not compile time — the container trades visi
 convenience. For a library or a small app, plain `new` in `Main` is still the clearest root.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -460,6 +474,8 @@ two-field vtable idiom (`*anyopaque` context + function pointer) that `std.mem.A
 uses — which is Zig injecting its most important dependency, the allocator, by hand everywhere.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

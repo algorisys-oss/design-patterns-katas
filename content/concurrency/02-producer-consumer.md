@@ -92,6 +92,8 @@ Producer ──put──►  [ ▢ ▢ ▢ ▢ ]  ──take──►  Consumer
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -140,6 +142,8 @@ data, Node's streams (next tab) give you the same semantics with far less code.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -175,6 +179,8 @@ when the consumer lags, the producer is paused for you. You give up the explicit
 (harder to inspect depth), but gain correct flow control across the whole pipeline for free.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -212,6 +218,8 @@ across threads. For CPU-bound work the GIL still applies — reach for `multipro
 across processes, or `asyncio.Queue` if you're already in an event loop.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -253,6 +261,8 @@ so the producer can never outrun them. It's more ceremony than a channel, but it
 principled backpressure across a whole pipeline (and Flow/Broadway build on it).
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -298,6 +308,8 @@ goroutines ranging over the same channel. The cost is Go's usual one — you own
 `WaitGroup`; forget to close and the consumers block forever.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -346,6 +358,8 @@ the same semantics by blocking real threads. Adding consumers is just more tasks
 the same channel.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -486,6 +500,8 @@ itself is a capability: mutex and condition live in `std.Io`, so the queue takes
 the same way allocating code takes an allocator — whoever calls you decides how you block.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

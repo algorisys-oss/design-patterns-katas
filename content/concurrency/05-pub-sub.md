@@ -95,6 +95,8 @@ Publisher ──publish("orders", m)──►  [ Broker ]  ──► Subscriber 
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -138,6 +140,8 @@ right tool for decoupling UI modules; cross-tab or cross-service needs a real br
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -169,6 +173,8 @@ same-process, synchronous emit, no durability. Crossing processes or machines sw
 for a broker (Redis, NATS, Kafka) while keeping the exact publish/subscribe shape.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -208,6 +214,8 @@ Celery/Redis take it cross-process. Start simple, graduate when you cross a boun
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -240,6 +248,8 @@ across a cluster is a library call. The trade is buying into OTP's process/regis
 is the native grain anyway.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -289,6 +299,8 @@ subscriber policy explicit: drop rather than block the whole bus. It's more code
 yours, which is exactly what you want when delivery semantics matter.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -359,6 +371,8 @@ Elixir's `Phoenix.PubSub` gets cluster-wide delivery from the runtime, .NET cros
 by swapping this class for Redis or NATS behind the same Publish/Subscribe shape.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -520,6 +534,8 @@ explicitly like an allocator. On the BEAM
 this whole layered build is one `Registry` call, because pub/sub lives in the runtime.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

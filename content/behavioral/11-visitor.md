@@ -86,6 +86,8 @@ Operations (area, SVG) over a stable shape hierarchy.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -130,6 +132,8 @@ stable — the reverse of a normal method.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -170,6 +174,8 @@ operation is a self-contained visitor. The known cost — adding a node kind tou
 is why compilers weigh Visitor against a plain recursive switch or pattern matching.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -215,6 +221,8 @@ Pythonic Visitor, and it reads far cleaner than the classic OO form.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -254,6 +262,8 @@ the operation extensible per-type across files. Either way the functional form i
 the OO one.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -295,6 +305,8 @@ plain `switch v := shape.(type)` type switch — simpler, and fine when operatio
 the full Visitor interface when you have many operations and want each grouped and type-checked.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -368,6 +380,8 @@ every visitor at compile time, while the switch needs a `_` arm or a runtime thr
 operations: match. Many operations over a stable tree: Visitor.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -514,6 +528,8 @@ runtime — then you're building `*anyopaque` + function-pointer vtables by hand
 be sure the openness is worth it.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

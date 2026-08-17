@@ -95,6 +95,8 @@ Producer ──────► [ Future ] ◄──────────  (pe
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -132,6 +134,8 @@ and there's no clean "stop this one." You trade control for ergonomics.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -168,6 +172,8 @@ caveat matches browser JS: eager, non-cancellable promises.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -201,6 +207,8 @@ have to opt into.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -228,6 +236,8 @@ The flip side: a `Task` is tied to its owner process and has an await timeout, s
 scoped concurrency, not long-lived background work (use a GenServer for that).
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -264,6 +274,8 @@ chaining, and errors travel as a second channel value or a struct — but it com
 `select` for timeouts and cancellation via `context`.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -310,6 +322,8 @@ it once. The classic hazard is sync-over-async — `.Result` or `.Wait()` on a c
 is exactly the "blocking the thread that must resolve it" deadlock from Common Mistakes.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -410,6 +424,8 @@ the future's slot an error union, and "many futures at once" is `std.Io.Group` �
 worker pool from kata 01.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

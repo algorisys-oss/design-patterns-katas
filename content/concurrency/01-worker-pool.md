@@ -100,6 +100,8 @@ Producer ──► [ Task Queue ] ─────► [ Worker 2 ] ─┼──�
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -140,6 +142,8 @@ nothing for CPU-bound work, which still blocks the single event loop — reach f
 the Node version below.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -211,6 +215,8 @@ pure I/O, skip it — the promise pool above is lighter and just as effective.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -248,6 +254,8 @@ process boundaries.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -277,6 +285,8 @@ worker lifecycle to write. When you need workers that outlive a single batch (a 
 named pool), you graduate to Poolboy or a `DynamicSupervisor`.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -329,6 +339,8 @@ Go bargain: no framework, but you own the concurrency.
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -374,6 +386,8 @@ a capped batch; the channel version earns its keep when the pool outlives a sing
 tasks are submitted from elsewhere.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -508,6 +522,8 @@ queue from the next kata. For spawn-shaped batches, the std-shipped pool is now
 `defer` pair is the usual Zig tax: you see every byte the pool owns.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

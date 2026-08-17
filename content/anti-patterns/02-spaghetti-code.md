@@ -84,6 +84,8 @@ Module A ↔ Module B ↔ Module C ↔ A  (everything calls everything)
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ The Smell**
 
 ```js
@@ -133,6 +135,8 @@ flatten — but it's the difference between unreadable and obvious.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ The Smell**
 
 ```python
@@ -181,6 +185,8 @@ I/O. Python's comprehensions make the flattened version clearer still. The mess 
 it was missing structure, which extraction restores.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ The Smell**
 
@@ -234,6 +240,8 @@ nested blocks, and `validate` is a testable unit. Go's `if err != nil { return }
 as verbose, is exactly what keeps control flow flat and followable.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ The Smell**
 
@@ -290,6 +298,8 @@ rest — the `ok`/`err`/`dto` flags disappear because each branch exits the mome
 `Validate` is now a pure function you can unit test with five one-line cases, no HTTP anywhere.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ The Smell**
 
@@ -400,6 +410,8 @@ moment a check fails, so the flags and the trailing `if (ok)` reconciliation van
 `validate` is now a plain function with an honest signature: it gives you an email or tells you exactly why not.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ The Smell**
 

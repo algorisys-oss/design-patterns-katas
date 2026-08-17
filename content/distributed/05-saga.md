@@ -98,6 +98,8 @@ cancel order ◄── refund ◄─────┘            ← compensations
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -142,6 +144,8 @@ process crash — production sagas persist their state.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -175,6 +179,8 @@ Durable delivery (a real broker) and idempotent handlers are non-negotiable, sin
 redelivered.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -223,6 +229,8 @@ mid-saga resumes rather than stranding state — the in-memory version can't.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -255,6 +263,8 @@ models the workflow as explicit state with OTP supervision. Either way you still
 compensations.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -300,6 +310,8 @@ distribution are yours to add: for crash-safe, long-running sagas, teams reach f
 SDK, which persists workflow state and replays it, rather than an in-memory loop.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -360,6 +372,8 @@ Temporal's .NET SDK, MassTransit saga state machines, or the Durable Task Framew
 persist progress and resume.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -488,6 +502,8 @@ fn-pointer idiom instead. Same caveat as every tab here: in-memory only, and com
 still have to be idempotent.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

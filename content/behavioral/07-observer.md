@@ -87,6 +87,8 @@ A subject that notifies subscribers when its value changes.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -126,6 +128,8 @@ offHeader();        // header unsubscribes — no leak
 they opt in. The risk shifts to remembering to call the returned cleanup when a component unmounts.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -167,6 +171,8 @@ The caution is the same lapsed-listener leak (`removeListener`/`off`) plus unbou
 Node warns past 10 on one event, a hint you may be leaking subscriptions.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -212,6 +218,8 @@ same semantics.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -252,6 +260,8 @@ topic, so a crashing observer doesn't take the subject down — supervision repl
 unsubscribe discipline you need in the OO versions.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -312,6 +322,8 @@ on), which decouples timing but adds buffering and goroutine-lifecycle decisions
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -363,6 +375,8 @@ delegate's reference to it. For push streams that need completion and errors,
 `IObservable<T>`/`IObserver<T>` (and Rx on top) formalize the same idea.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -519,6 +533,8 @@ a growable list and you take on an explicit allocator, plus the question of who 
 subscriptions.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

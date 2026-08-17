@@ -94,6 +94,8 @@ call ──race──┤
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -126,6 +128,8 @@ subtlety JS shares with everyone: aborting the client doesn't guarantee the serv
 subsequent retry needs idempotency.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -161,6 +165,8 @@ downstream `AbortSignal` so the total stays bounded.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -190,6 +196,8 @@ indefinitely. Make it a lint rule.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -216,6 +224,8 @@ makes that clean). The lesson mirrors the others: never pass `:infinity` to some
 the outside world.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -249,6 +259,8 @@ promptly. It's more threading of `ctx` through signatures than other languages, 
 first-class rather than bolted on.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -288,6 +300,8 @@ the token when you can. `HttpClient.Timeout` is a real backstop, but it doesn't 
 call chain the way one shared token does.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -406,6 +420,8 @@ pushing the deadline into the OS (`SO_RCVTIMEO` via `std.posix.setsockopt`) so t
 itself returns an error.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

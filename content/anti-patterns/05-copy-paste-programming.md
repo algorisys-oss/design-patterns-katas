@@ -85,6 +85,8 @@ Original Block ──copied──► Copy 1 (drifted) · Copy 2 (bug fixed only 
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ The Smell**
 
 ```js
@@ -125,6 +127,8 @@ knowledge.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ The Smell**
 
 ```python
@@ -160,6 +164,8 @@ everywhere. The difference between the sites (there wasn't one — pure duplicat
 extraction. Python's functions make the shared abstraction cheap.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ The Smell**
 
@@ -201,6 +207,8 @@ difference. Now a fix to the transaction handling (say, adding a `defer` for pan
 Go's first-class functions make this "extract the boilerplate, pass the difference" refactor idiomatic.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ The Smell**
 
@@ -257,6 +265,8 @@ production you'd likely hand this job to a resilience library like Polly — but
 the same: one home for the retry knowledge, the difference passed in as a delegate.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ The Smell**
 
@@ -364,6 +374,8 @@ sibling had. Extraction in Zig costs a little more ceremony than a closure would
 the moment two copies start to disagree.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ The Smell**
 

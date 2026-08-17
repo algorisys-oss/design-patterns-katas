@@ -84,6 +84,8 @@ A file system where `File` (leaf) and `Folder` (composite) both report `size()`.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -124,6 +126,8 @@ build the tree.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -163,6 +167,8 @@ other pipelines to any depth and the caller never inspects types. Sequencing liv
 `ParallelPipeline` using `Promise.all` would slot in the same way — the uniform tree is the point.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -207,6 +213,8 @@ alike. Keeping `add` on `Folder` only preserves the invariant that files hold no
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -242,6 +250,8 @@ branch. There are no objects sharing an interface; the "uniform treatment" is th
 `total_size/1` accepts either shape. This is often clearer than the OO version for pure data.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -296,6 +306,8 @@ only, keeping child-management off leaves — Go's implicit interfaces make the 
 fall out naturally.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -353,6 +365,8 @@ the same safe placement as the JS version, now enforced by the compiler rather t
 convention.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -476,6 +490,8 @@ An open node set would need the vtable idiom; for pure data like this, the union
 right call.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

@@ -82,6 +82,8 @@ A report exporter whose flow is fixed but whose format steps vary.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -134,6 +136,8 @@ first-class functions make easy.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -181,6 +185,8 @@ middleware), which avoids a class hierarchy and composes better — pick inherit
 steps truly belong together.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -230,6 +236,8 @@ functional alternative when inheritance feels heavy.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -275,6 +283,8 @@ Idiomatic Elixir often skips even this and just passes the varying steps as func
 that's Strategy, and for many cases it's the cleaner choice on the BEAM.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -334,6 +344,8 @@ default step methods and let callers override by shadowing — but the function-
 the more idiomatic Go.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -400,6 +412,8 @@ independently, modern C# passes them in as `Func<Row, string>` delegates instead
 Strategy, and it composes where inheritance stacks.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -552,6 +566,8 @@ type. And because the format is picked at compile time, you can't choose one fro
 for that, fall back to function pointers per step — which is Strategy again.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

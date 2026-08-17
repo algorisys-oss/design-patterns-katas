@@ -95,6 +95,8 @@ Client ──route┤
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -127,6 +129,8 @@ limits and accepting that A's idle slots can't help a busy B.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -154,6 +158,8 @@ storm can only exhaust its own 5 connections, leaving the 15 transactional ones 
 throughput on each path for the guarantee that reports can't take down checkout.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -187,6 +193,8 @@ reserved-but-idle threads in one pool don't help another — the isolation/utili
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -213,6 +221,8 @@ process cheapness tempts you to skip pooling entirely — but external *connecti
 so bulkheading them matters.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -248,6 +258,8 @@ dozen lines and completely explicit. You size and wire each bulkhead yourself; t
 hiding it, which is very Go and makes the isolation boundaries obvious in the code.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -297,6 +309,8 @@ hand-rolled version shows there isn't much under the hood. The standing trade re
 idle slots can't help a busy B.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -426,6 +440,8 @@ silently ignored. Bare fn pointers cover stateless jobs; a job that carries data
 queue is LIFO for brevity — a ring buffer makes it fair.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

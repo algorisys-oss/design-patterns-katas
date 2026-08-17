@@ -93,6 +93,8 @@ Producer ──► [ Main Queue ] ──► Consumer ──success──► done
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -127,6 +129,8 @@ context for triage. The metadata (`error`, `attempts`) is what makes the DLQ act
 monitoring and a replay tool, or the DLQ just accumulates.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -164,6 +168,8 @@ dead-letter exchange plus a delivery limit auto-routes exhausted/rejected messag
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -196,6 +202,8 @@ terminal queue, so the framework enforces the boundary between transient-retry a
 way, the DLQ needs a dashboard/alert and a replay task to matter.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -230,6 +238,8 @@ failure reason. The BEAM's "let it crash" pairs with it — a supervised process
 captures the message that caused the crash. You still add DLQ monitoring and replay.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -269,6 +279,8 @@ returns an error. Either way, Go leaves the operational pieces — alerting on D
 command — explicitly to you.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -314,6 +326,8 @@ Service Bus and SQS ship the same thing as infrastructure (`MaxDeliveryCount` pl
 like the RabbitMQ tab — and either way you still owe alerting and replay.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -427,6 +441,8 @@ There's no broker to lean on — the queues are structs you wrote — so the ope
 pattern (depth alerts, a replay loop) is also code you must write, which at least keeps it visible.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

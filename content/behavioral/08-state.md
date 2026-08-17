@@ -86,6 +86,8 @@ A media player whose behavior and transitions depend on its state.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -138,6 +140,8 @@ all. The price is a class per state — worth it once the machine has more than 
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -181,6 +185,8 @@ illegal transitions fail loudly. Use the object-per-state form when each state c
 behavior; use a table when states are mostly about which transitions are legal (orders, workflows).
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -240,6 +246,8 @@ form pays off when each state has substantial behavior beyond "which state comes
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -274,6 +282,8 @@ clause. For long-running stateful entities, `:gen_statem` (OTP's state-machine b
 this with supervision, timeouts, and events built in.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -331,6 +341,8 @@ transition-heavy workflows Go code often uses a `map[state]map[event]state` tabl
 tradeoff as the Node version.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -407,6 +419,8 @@ expression per action reads like the transition table and keeps the whole machin
 The class form earns its keep when states carry rich behavior, not just a next-state rule.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -578,6 +592,8 @@ form would need the vtable idiom (`*anyopaque` + function pointers); pay that on
 must plug in at runtime.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

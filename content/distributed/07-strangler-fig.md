@@ -98,6 +98,8 @@ Client ──► Facade ───┤
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -126,6 +128,8 @@ snippet hides is the real work — making `/checkout` in the new system read and
 data the legacy system uses during the overlap.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -158,6 +162,8 @@ to legacy if the new service misbehaves — turning a risky cutover into a safe 
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -184,6 +190,8 @@ a legacy Django app behind it. The routing is a few lines; the migration's subst
 ownership and keeping both apps consistent, which no dispatcher solves for you.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -217,6 +225,8 @@ the shared-data problem any easier, though — that's still the migration's crux
 
 ### Go
 
+*Targets Go 1.26.*
+
 **❌ Naive**
 
 ```go
@@ -248,6 +258,8 @@ backend with a timeout/circuit breaker for automatic fallback. The migration lis
 config or a feature-flag service so flipping a route needs no redeploy.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -314,6 +326,8 @@ place once backends grow config or health checks. Routing stays the easy half; t
 during the overlap is still yours to solve.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -468,6 +482,8 @@ strangler facade in the wild is a proxy in front of two deployed systems; this s
 the seam, and the routing was never the hard part — the shared data is.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

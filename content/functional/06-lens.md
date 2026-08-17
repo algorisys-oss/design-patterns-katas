@@ -97,6 +97,8 @@ over(zipLens, up, state)  =  a new state with only the zip transformed
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -135,6 +137,8 @@ earns them.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -163,6 +167,8 @@ updates honest and DRY. The dependency and the concept are the cost; for a codeb
 touches deep nesting, a small helper or `structuredClone`-then-edit-a-draft (Immer) may be lighter.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -204,6 +210,8 @@ domain models updated in many places, lenses remove real repetition. For shallow
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -232,6 +240,8 @@ the common case natively. For richer optics (prisms, traversals) libraries exist
 "focus and update nested immutable data" is first-class.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -273,6 +283,8 @@ carefully) rather than building optics — value semantics make shallow copies c
 favors explicitness over the abstraction. Lenses are a curiosity here more than a staple.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -321,6 +333,8 @@ abstraction pays only when the same deep path is read and written across many ca
 nested `with` wins.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -422,6 +436,8 @@ and pointer fields (the strings here) are shared views, so the value copy is sha
 while they're treated as read-only, `dupe` them explicitly if not.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

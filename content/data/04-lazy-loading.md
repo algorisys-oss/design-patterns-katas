@@ -93,6 +93,8 @@ Order { customer: Proxy } ──access .customer──► [ Lazy Proxy ] ──f
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -132,6 +134,8 @@ more complexity.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -161,6 +165,8 @@ and the backbone of GraphQL resolvers. You get lazy's on-demand benefit without 
 is the extra loader abstraction and remembering to route lazy loads through it.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -199,6 +205,8 @@ pick lazy vs. eager per access pattern rather than accept the default blindly.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -230,6 +238,8 @@ conscious choice rather than a hidden default. "Lazy" in Elixir means *you* deci
 sidesteps the surprise-query and closed-session problems the other ecosystems fight.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -267,6 +277,8 @@ plain Go prefers this visible on-demand pattern, and you batch (an `IN` query) y
 iterating.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -315,6 +327,8 @@ lazy-loading proxies do this per navigation property, with the same N+1 trap: re
 you know you'll iterate the relation.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -426,6 +440,8 @@ an explicit `io`, the same handed-in-capability move Zig makes with allocators),
 N+1 is a query you write yourself.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

@@ -95,6 +95,8 @@ Client ──► [ Cache ] ──hit──► return
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -126,6 +128,8 @@ shown is the stampede risk — if a hot key expires under load, many requests mi
 single-flight lock around the load fixes it when traffic warrants.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -166,6 +170,8 @@ get/set, justified precisely for hot keys under load.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -202,6 +208,8 @@ for shared, invalidatable data. Stampede protection (a Redis lock) is the add-on
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -233,6 +241,8 @@ stampede protection. Raw ETS works too for the simplest cases. The BEAM makes a 
 trivial; for cross-node sharing you still reach for Redis or a distributed cache.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -274,6 +284,8 @@ wire the cache and invalidation explicitly, which keeps the behavior obvious.
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -314,6 +326,8 @@ which has stampede protection built in — covers TTL and eviction so you keep o
 aside logic.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -448,6 +462,8 @@ memory or `dupe` the key with the allocator, or the entry outlives its key. Expi
 map in a `std.Io.Mutex` before sharing it across threads.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

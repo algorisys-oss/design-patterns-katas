@@ -84,6 +84,8 @@ OrderManager (God Object) ──extract──► OrderValidator · PaymentServic
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ The Smell**
 
 ```js
@@ -130,6 +132,8 @@ and changeable. This is SRP applied.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ The Smell**
 
 ```python
@@ -169,6 +173,8 @@ each a single reason to change and lets you test/deploy/reason about them indepe
 the focused services; don't centralize.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ The Smell**
 
@@ -217,6 +223,8 @@ small-interface culture pushes this way naturally — a struct that accumulates 
 and focused structs composed at `main` are the cure.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ The Smell**
 
@@ -284,6 +292,8 @@ pain, not the problem. After the split, `Pricing` tests with no Stripe and no da
 reason to change. Watch for the tell in C# codebases: a `Manager` or `Service` whose constructor keeps growing.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ The Smell**
 
@@ -413,6 +423,8 @@ makes that cheap — `Pricing` needs no state at all, so it becomes a namespaced
 idiomatic Zig shape; the God struct is what takes effort to maintain.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ The Smell**
 

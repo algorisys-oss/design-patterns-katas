@@ -99,6 +99,8 @@ Client ───────────────► Write Model      Read Mo
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -138,6 +140,8 @@ lags the write — worth it for read-heavy screens, needless for a simple form.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -169,6 +173,8 @@ projection lag are the honest signal that reads are eventually consistent. It's 
 (a bus, a projector, a read store) — justified when read load threatens writes, overkill otherwise.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -207,6 +213,8 @@ own store (even Redis or a materialized view). It's more classes than a fat mode
 two sides truly diverge, not for every entity.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -248,6 +256,8 @@ consistency lag between the broadcast and the projection is the same trade CQRS 
 
 ### Go
 
+*Targets Go 1.26.*
+
 **❌ Naive**
 
 ```go
@@ -284,6 +294,8 @@ sourcing; the "projection" can be a synchronous upsert into a read table. You ow
 consistency handling, but the read/write separation is plain and inspectable.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -327,6 +339,8 @@ SQL on the read side (fast, shaped rows) — two data-access styles in one app, 
 half. The projection step and the consistency lag are the usual price.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -479,6 +493,8 @@ mutex, and a queue you build yourself. No bus, no framework — CQRS in Zig is j
 made visible in the types.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

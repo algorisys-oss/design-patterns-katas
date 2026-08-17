@@ -81,6 +81,8 @@ An `OrderFacade` over inventory, payment, and shipping subsystems.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -120,6 +122,8 @@ callers depend on `checkout()` alone. It doesn't lock the subsystems away — ad
 still use them directly — which keeps the facade a convenience, not a cage.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -162,6 +166,8 @@ convenience, not a wall.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -199,6 +205,8 @@ importing globals) keeps the facade testable. Python often expresses a lightweig
 single module-level function too — reach for a class when the coordinator carries dependencies.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -238,6 +246,8 @@ orchestration — any failing step short-circuits with its error tuple, which th
 version lacked.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -287,6 +297,8 @@ right place to handle failures once, instead of every caller repeating the check
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -331,6 +343,8 @@ moment `Checkout` starts making business decisions it stops being a facade and s
 being the whole app.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -436,6 +450,8 @@ subsystem, make the facade generic over the subsystem types with comptime parame
 static polymorphism, no vtables — rather than inventing an interface Zig doesn't have.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

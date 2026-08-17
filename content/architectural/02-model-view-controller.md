@@ -93,6 +93,8 @@ User ─────────► Controller ─────────► Mo
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -131,6 +133,8 @@ same model with zero changes to the logic.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -164,6 +168,8 @@ HTML page and a JSON endpoint, and lets a designer own the template. The cost is
 conventions and a bit of ceremony for the simplest pages.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -203,6 +209,8 @@ yours to keep; the payoff is a rule you can unit-test with no GUI.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -240,6 +248,8 @@ holds.
 
 ### Go
 
+*Targets Go 1.26.*
+
 **❌ Naive**
 
 ```go
@@ -273,6 +283,8 @@ explicitness is very Go — no magic wiring — and the model tests with a plain
 is that nothing enforces the boundaries, so team discipline keeps handlers from growing fat.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -317,6 +329,8 @@ names the three roles outright, while WPF and MAUI prefer MVVM, where data bindi
 hand-wired subscription — same separation, the binding engine does the notifying.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -420,6 +434,8 @@ where it earns its keep is embedded and immediate-mode rendering, where "update 
 "draw the model" are already separate phases and MVC just names them.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

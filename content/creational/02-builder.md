@@ -85,6 +85,8 @@ Building an `HttpRequest` with several optional parts.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -132,6 +134,8 @@ and a mutable staging object; for a two-field object this ceremony isn't worth i
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -175,6 +179,8 @@ and most query builders. The cost is the builder class; for a fixed one-line que
 parameterized string is simpler.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -221,6 +227,8 @@ conditional (assembling a query across method calls), not merely "many optional 
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -264,6 +272,8 @@ matches to validate. For simple cases you'd just write a struct literal or `stru
 functions earn their place when construction is conditional or spread across a pipeline.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -314,6 +324,8 @@ that keep the constructor open to new options without growing its signature. Use
 when steps are ordered or validated together; use options for "many optional settings."
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -369,6 +381,8 @@ exactly what the builders you meet in .NET (`StringBuilder`, `ConfigurationBuild
 `HostApplicationBuilder`) are doing: accumulating state across calls, not naming parameters.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -512,6 +526,8 @@ it carries an explicit allocator, a `deinit`, and a `try build()` returning an e
 the paths that can fail.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

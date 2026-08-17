@@ -96,6 +96,8 @@ Message(c, batch=1) ──┘   (buffers by correlation id, waits for completion
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -135,6 +137,8 @@ groups on crash; production aggregators persist the partial state.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -165,6 +169,8 @@ the group is one request. For cross-message aggregation over a broker, you need 
 correlated version.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -199,6 +205,8 @@ first-class workflow (a group of tasks with a callback). The `sweep`/timeout is 
 groups from leaking; persist `groups` if a crash mustn't lose them.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -235,6 +243,8 @@ supervision. If durability matters, back it with ETS/a database so a restart doe
 Commanded/Broadway offer higher-level aggregation for event-sourced and streaming systems.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -283,6 +293,8 @@ explicit and testable. As always in Go, durability is yours to add — this in-m
 partial groups on crash, so persist them if the groups are precious.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -343,6 +355,8 @@ a message* — a `PeriodicTimer` task writes `Sweep` into the same channel, and 
 still in-memory: groups die with the process, so persist them if they matter.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -496,6 +510,8 @@ the time, exactly like the allocator beside it. Watch the keys:
 allocator if the source message doesn't stick around.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

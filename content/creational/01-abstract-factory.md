@@ -86,6 +86,8 @@ A cross-platform UI factory making a matching `Button` and `Checkbox`.
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -126,6 +128,8 @@ implement.
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -165,6 +169,8 @@ you swap clouds by swapping one object at startup. As always in JS the shared in
 convention — a typed codebase would make `InfraFactory` an interface both providers implement.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -210,6 +216,8 @@ the concretes decoupled while a type checker still catches a factory that forgot
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -254,6 +262,8 @@ factory module misses a callback. No instance state means the factory is just a 
 constructors.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -302,6 +312,8 @@ the factory value and the whole set changes. Adding a new product kind, though, 
 the `Factory` interface and every implementer.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -363,6 +375,8 @@ the interface reads better. Adding a new product kind still ripples through ever
 that's the pattern's tax in any language.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -519,6 +533,8 @@ need the `*anyopaque` + function-pointer vtable idiom `std.mem.Allocator` uses. 
 pointer form only when families must arrive at runtime, from outside the compiled set.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

@@ -96,6 +96,8 @@ Sender B ──send──►┘     mailbox        handles one msg at a time
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -137,6 +139,8 @@ the lost-update bug is gone. It's cooperative, not parallel — one event loop �
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -174,6 +178,8 @@ round-trip to model request/reply; it's worth it for CPU-bound or crash-isolated
 for coordinating a little in-process state.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -213,6 +219,8 @@ parallelizing CPU. Libraries like Pykka or Ray provide fuller actor systems when
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -249,6 +257,8 @@ stateful becomes a process with an async protocol — but on the BEAM that's the
 it rarely feels forced.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -295,6 +305,8 @@ also barer: no supervision, no addresses, no location transparency. You get the 
 and wire the rest yourself.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -365,6 +377,8 @@ When you need that fuller story in .NET (addresses, supervision, distribution), 
 or Orleans; this hand-rolled loop covers the common in-process case.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -525,6 +539,8 @@ mutex and condition sit behind `std.Io`, so the mailbox takes an `io` the way al
 code takes an allocator.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

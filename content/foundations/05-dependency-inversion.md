@@ -76,6 +76,8 @@ An `OrderService` that depends on a `Store` abstraction, not a concrete database
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -111,6 +113,8 @@ tested with `InMemoryStore` and re-pointed at any backend by injection. The depe
 inverted: the detail conforms to what the service needs, not the other way around.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -155,6 +159,8 @@ injection plus structural typing gives DIP with no framework — just pass the d
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -193,6 +199,8 @@ abstraction both sides depend on; tests inject a fake module. Config-based injec
 common production form — swap the store without editing `OrderService`.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -235,6 +243,8 @@ Injecting the store via the constructor makes it trivially testable with a fake 
 production. This "accept interfaces, return structs" habit is DIP by default.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -289,6 +299,8 @@ mirror of the vendor SDK. And when the dependency is a single method, a `Func<Or
 injected directly does the same inversion without declaring an interface at all.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -447,6 +459,8 @@ When the store can be fixed at build time, the cheaper Zig form is comptime inje
 service generic over the store type (`fn OrderService(comptime S: type)`) and skip the vtable.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

@@ -98,6 +98,8 @@ Session ──get(id)──► [ Identity Map { id → object } ]
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -132,6 +134,8 @@ critical discipline is lifecycle: a `Session` per request, discarded at the end 
 would leak and serve stale objects. In practice an ORM's session provides this for you.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -169,6 +173,8 @@ for when you're not using one.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -201,6 +207,8 @@ Python because the ORM handles it; the hand-rolled `UnitOfWork` shows the mechan
 `Session`'s lifetime is the map's scope — one per request/transaction, closed at the end.
 
 ### Elixir
+
+*Targets Elixir 1.18.*
 
 **❌ Naive**
 
@@ -235,6 +243,8 @@ you get with an explicit request-scoped cache (a threaded map or an Agent). The 
 pattern is moot on the BEAM; the query-dedup half you add when it pays.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -274,6 +284,8 @@ for visible lifecycles. The rule is the same everywhere: one `Session` per reque
 goroutines/requests.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -326,6 +338,8 @@ hand-rolled `Session` shows the mechanism, and `ReferenceEquals` is the proof th
 edits through `a` are visible through `b` because there is only one object.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -464,6 +478,8 @@ garbage-collected languages get implicitly (drop the session, objects collected)
 hand — and that explicitness *is* the discipline this pattern's mistakes list keeps warning about.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

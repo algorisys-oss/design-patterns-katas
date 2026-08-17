@@ -94,6 +94,8 @@ Source ──fan-out─► Worker 2 ─┼─fan-in─► [ merged results ]
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -125,6 +127,8 @@ The catch is *un*boundedness — `all` over ten thousand URLs opens ten thousand
 large batches wrap the fan-out in the worker pool to cap concurrency.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -162,6 +166,8 @@ route the fan-out through a bounded pool rather than a thread per file.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -192,6 +198,8 @@ the "map." Bound the width (a semaphore for asyncio, `max_workers` for the pool)
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -216,6 +224,8 @@ generalizes it across stages. It's the most batteries-included version here; the
 learning its options.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -269,6 +279,8 @@ bounds width by the worker count. The price is Go's usual bookkeeping — the ex
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -310,6 +322,8 @@ so when partial failure matters, inspect the task states (or `Task.WhenEach`) in
 one fault mask the others.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -426,6 +440,8 @@ bounded, ordered version in one line on a scheduler of cheap processes; Zig make
 every thread, and shows you exactly what that line costs.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

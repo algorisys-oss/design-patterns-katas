@@ -88,6 +88,8 @@ Source ─pipe─► [Filter: parse] ─pipe─► [Filter: enrich] ─pipe─�
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -117,6 +119,8 @@ synchronous function composition; for large data you'd use streaming filters (as
 transform streams) so it processes incrementally rather than materializing everything.
 
 ### Node.js
+
+*Targets Node.js 24.*
 
 **❌ Naive**
 
@@ -154,6 +158,8 @@ ceremony and per-stage error handling, worth it for large or continuous data.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ Naive**
 
 ```python
@@ -186,6 +192,8 @@ framework (Celery chains, Airflow, or `multiprocessing` pipelines), trading simp
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -215,6 +223,8 @@ adds durable ingestion from brokers. The language makes the sequential form triv
 upgrade path to parallel.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -249,6 +259,8 @@ pipes-and-filters in the standard library — the cost is wiring channels and cl
 usual Go bargain of explicitness.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ Naive**
 
@@ -293,6 +305,8 @@ is already lazy pipes-and-filters in-process. TPL Dataflow packages this same id
 and parallelism knobs when the hand-rolled version grows.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -394,6 +408,8 @@ each filter a thread and use the mutex+condvar bounded queue from Message Channe
 Go's shape, hand-assembled.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 

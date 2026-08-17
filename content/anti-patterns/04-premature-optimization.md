@@ -86,6 +86,8 @@ Requirement ──optimize before measuring──► complex "fast" code
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ The Smell**
 
 ```js
@@ -117,6 +119,8 @@ imaginary microseconds.
 
 ### Python
 
+*Targets Python 3.12.*
+
 **❌ The Smell**
 
 ```python
@@ -147,6 +151,8 @@ profiling later proves a function is both hot *and* expensive, `functools.lru_ca
 cleanly. Optimization is a response to measurement, not a reflex.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ The Smell**
 
@@ -186,6 +192,8 @@ optimization. The simple loop wins on both speed and clarity. Concurrency pays o
 heavy and measured; here it's pure overhead. Benchmark (`go test -bench`) before reaching for it.
 
 ### CSharp
+
+*Targets C# 14 / .NET 10.*
 
 **❌ The Smell**
 
@@ -227,6 +235,8 @@ Write `numbers.Sum()`; when a real hotspot shows up, BenchmarkDotNet is how you 
 right to go lower — and it will usually tell you the JIT got there first.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ The Smell**
 
@@ -324,6 +334,8 @@ version's speed is observable. Zig's low-level reach exists for the measured 3%;
 obvious loop until a profiler points here.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ The Smell**
 

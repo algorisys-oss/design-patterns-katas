@@ -95,6 +95,8 @@ f(a, b, c)  ──partial(a)──►  g(b, c)        (a fixed; g awaits b, c)
 
 ### JavaScript
 
+*Targets modern JavaScript (ES2015+).*
+
 **❌ Naive**
 
 ```js
@@ -127,6 +129,8 @@ clarifies, but stacking it into fully point-free pipelines can become write-only
 
 ### Node.js
 
+*Targets Node.js 24.*
+
 **❌ Naive**
 
 ```js
@@ -154,6 +158,8 @@ needed. It also builds tidy, composable logging/middleware. The same restraint a
 levels reads well; deeply nested `f(a)(b)(c)(d)` chains obscure intent, so name the specializations.
 
 ### Python
+
+*Targets Python 3.12.*
 
 **❌ Naive**
 
@@ -187,6 +193,8 @@ un-Pythonic.
 
 ### Elixir
 
+*Targets Elixir 1.18.*
+
 **❌ Naive**
 
 ```elixir
@@ -216,6 +224,8 @@ the unary functions it produces. It fits the language's functional grain. Full c
 idiomatic reach.
 
 ### Go
+
+*Targets Go 1.26.*
 
 **❌ Naive**
 
@@ -252,6 +262,8 @@ producing specialized handlers it's clean and common.
 
 ### CSharp
 
+*Targets C# 14 / .NET 10.*
+
 **❌ Naive**
 
 ```csharp
@@ -287,6 +299,8 @@ specialization a name; curried *public* APIs read foreign, and DI containers alr
 "fix the dependencies once" case for anything bigger.
 
 ### Rust
+
+*Targets Rust 1.95 (2024 edition).*
 
 **❌ Naive**
 
@@ -391,6 +405,8 @@ write anyway. Most of the time, don't bother: pass both arguments. Reach for the
 API demands a bare `fn (f64) f64` or the same pairing repeats everywhere.
 
 ### Java
+
+*Targets Java 25.*
 
 **❌ Naive**
 
