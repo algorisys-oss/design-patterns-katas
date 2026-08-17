@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Routes, Route, Navigate, useParams, Link } from "react-router-dom";
+import { Routes, Route, Navigate, useParams, Link, useNavigate } from "react-router-dom";
 import { Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Sidebar } from "@/components/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getKata, katas } from "@/lib/content";
 import { categoryLabel } from "@/lib/categories";
-import { useLessonsProgress } from "@/lib/lessons";
+import { useLessonsProgress, Lessons } from "@/lib/lessons";
+import { getQueryParam, getRemoteProgress } from "@/lib/skillzengine-bridge";
 
 // Injected by Vite (define) from frontend/package.json.
 declare const __APP_VERSION__: string;
@@ -30,6 +31,71 @@ const firstKataId = katas[0]?.id ?? "";
 export default function App() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = usePersistedBool("sidebar-collapsed", false);
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    async function syncProgress() {
+      // 1. Check if progress clear is requested
+      const progress = getQueryParam("se_progress");
+      if (progress === "0") {
+        console.log("[SkillzEngine App] Clearing local progress as requested by se_progress=0");
+        Lessons.reset();
+      } else {
+        // 2. Fetch remote progress and sync silently
+        const remoteCompleted = await getRemoteProgress();
+        if (remoteCompleted) {
+          console.log("[SkillzEngine App] Syncing remote progress:", remoteCompleted);
+          for (const kataId of remoteCompleted) {
+            Lessons.complete(kataId, true); // silent = true
+          }
+        }
+      }
+
+      // 3. Handle deep linking
+      const seKata = getQueryParam("se_kata");
+      if (seKata) {
+        console.log("[SkillzEngine App] Deep linking to kata:", seKata);
+        navigate(`/kata/${seKata}`, { replace: true });
+      }
+
+      // 4. Strip se_ query parameters from the address bar to clean the URL
+      const cleanUrl = () => {
+        const url = new URL(window.location.href);
+        const keysToRemove: string[] = [];
+        url.searchParams.forEach((_, key) => {
+          if (key.startsWith("se_")) {
+            keysToRemove.push(key);
+          }
+        });
+        keysToRemove.forEach((key) => url.searchParams.delete(key));
+
+        // Clear query parameters from hash
+        let hash = url.hash;
+        const hashQueryStart = hash.indexOf("?");
+        if (hashQueryStart !== -1) {
+          const hashPath = hash.substring(0, hashQueryStart);
+          const hashParams = new URLSearchParams(hash.substring(hashQueryStart));
+          const hashKeysToRemove: string[] = [];
+          hashParams.forEach((_, key) => {
+            if (key.startsWith("se_")) {
+              hashKeysToRemove.push(key);
+            }
+          });
+          hashKeysToRemove.forEach((key) => hashParams.delete(key));
+          const hashParamStr = hashParams.toString();
+          hash = hashPath + (hashParamStr ? "?" + hashParamStr : "");
+        }
+        url.hash = hash;
+
+        window.history.replaceState({}, "", url.href);
+      };
+
+      cleanUrl();
+    }
+
+    // Wait for lessons db to be ready before syncing
+    void Lessons.ready.then(syncProgress);
+  }, [navigate]);
 
   return (
     <div className={cn("grid min-h-screen grid-cols-1", !collapsed && "md:grid-cols-[264px_minmax(0,1fr)]")}>
