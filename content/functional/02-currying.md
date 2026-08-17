@@ -330,6 +330,8 @@ adapters and builder structs carry that weight instead.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

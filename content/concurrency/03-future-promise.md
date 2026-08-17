@@ -355,6 +355,8 @@ And when you need the resolve-by-hand half, a one-shot `mpsc` channel plays the 
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -379,33 +381,33 @@ fn orderTotal(id: u32) u32 {
 ```zig
 const std = @import("std");
 
-// No future type in stable Zig: a thread handle + a result slot you own IS the future.
-fn orderTotal(id: u32, slot: *u32) void {
+// std ships the future now, behind the Io capability: async starts, await joins.
+fn orderTotal(id: u32) u32 {
     const user = getUser(id);
     const orders = getOrders(user);
-    slot.* = getTotal(orders);
+    return getTotal(orders);
 }
 
-pub fn main() !void {
-    var a: u32 = 0;
-    var b: u32 = 0;
+pub fn main(init: std.process.Init) !void {
+    const io = init.io; // the concurrency capability — passed explicitly, like an allocator
 
-    const ta = try std.Thread.spawn(.{}, orderTotal, .{ 1, &a }); // start — pending
-    const tb = try std.Thread.spawn(.{}, orderTotal, .{ 2, &b }); // both in flight
+    var a = io.async(orderTotal, .{1}); // start — pending
+    var b = io.async(orderTotal, .{2}); // both in flight
 
-    ta.join(); // await: blocks until the slot is written
-    tb.join();
-    std.debug.print("total: {d}\n", .{a + b});
+    const total = a.await(io) + b.await(io); // await: blocks until the result is ready
+    std.debug.print("total: {d}\n", .{total});
 }
 ```
 
-**🧠 Tradeoff** — stable Zig has no promise type, and its async is in flux pre-1.0, so the
-future decomposes into its parts: the thread handle is the pending state, the slot is the
-eventual value, `spawn` is start, `join` is await. The slot lives in the caller's frame
-because it must outlive the thread — a generic `Future(T)` struct storing its own slot
-would dangle the moment it moved, which is why std doesn't ship one. It's manual, but
-nothing hides: a fallible task makes the slot an error union, and "many futures at once"
-converges on the worker pool from kata 01.
+**🧠 Tradeoff** — Zig grew a real future in 0.17-dev, but behind the `std.Io` capability:
+`io.async` starts the work, `await` and `cancel` settle it, and every one of those calls
+takes the `io` you were handed — concurrency is something the caller grants you, exactly
+like an allocator. The type hides nothing: `Future(u32)` is a pending handle plus the
+result slot, the same two parts you'd wire by hand with `std.Thread.spawn` and a `*u32`.
+One honest subtlety: `async` means *may* run concurrently — the runtime is free to run it
+inline — while `io.concurrent` demands real parallelism or fails. A fallible task makes
+the future's slot an error union, and "many futures at once" is `std.Io.Group` — or the
+worker pool from kata 01.
 
 ### Java
 

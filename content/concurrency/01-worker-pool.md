@@ -444,6 +444,8 @@ line or two — the std version shows what those wrap.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -501,8 +503,9 @@ fn workerPool(allocator: std.mem.Allocator, tasks: []const Task, results: []Out,
 cursor: one `fetchAdd`, no mutex, no condvar, and each worker claims indices until the list
 runs out. That's the honest Zig move — the cheapest primitive that's still safe. It only
 works because nothing is produced live; tasks arriving over time need the mutex + condition
-queue from the next kata. For spawn-shaped batches, std also ships `std.Thread.Pool`, and
-the explicit allocator + `defer` pair is the usual Zig tax: you see every byte the pool owns.
+queue from the next kata. For spawn-shaped batches, the std-shipped pool is now
+`std.Io.Threaded` — `io.async` dispatches onto its threads — and the explicit allocator +
+`defer` pair is the usual Zig tax: you see every byte the pool owns.
 
 ### Java
 

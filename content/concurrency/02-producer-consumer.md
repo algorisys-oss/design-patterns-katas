@@ -406,6 +406,8 @@ std's `Receiver` is single-consumer, so scaling consumers means sharing it behin
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -422,54 +424,56 @@ var count: usize = 0;
 const std = @import("std");
 
 // The textbook bounded buffer: a ring, one mutex, two condition variables.
+// Blocking primitives live behind std.Io now, so every operation takes io.
 fn BoundedQueue(comptime T: type, comptime capacity: usize) type {
     return struct {
         buffer: [capacity]T = undefined,
         head: usize = 0,
         len: usize = 0,
         closed: bool = false,
-        mutex: std.Thread.Mutex = .{},
-        not_full: std.Thread.Condition = .{},
-        not_empty: std.Thread.Condition = .{},
+        mutex: std.Io.Mutex = .init,
+        not_full: std.Io.Condition = .init,
+        not_empty: std.Io.Condition = .init,
 
         const Self = @This();
 
-        fn put(self: *Self, item: T) void {
-            self.mutex.lock();
-            defer self.mutex.unlock();
-            while (self.len == capacity) self.not_full.wait(&self.mutex); // backpressure
+        fn put(self: *Self, io: std.Io, item: T) !void {
+            try self.mutex.lock(io);
+            defer self.mutex.unlock(io);
+            while (self.len == capacity) try self.not_full.wait(io, &self.mutex); // backpressure
             self.buffer[(self.head + self.len) % capacity] = item;
             self.len += 1;
-            self.not_empty.signal();
+            self.not_empty.signal(io);
         }
 
         // null means closed and drained — the consumer should stop.
-        fn take(self: *Self) ?T {
-            self.mutex.lock();
-            defer self.mutex.unlock();
+        fn take(self: *Self, io: std.Io) !?T {
+            try self.mutex.lock(io);
+            defer self.mutex.unlock(io);
             while (self.len == 0) {
                 if (self.closed) return null;
-                self.not_empty.wait(&self.mutex);
+                try self.not_empty.wait(io, &self.mutex);
             }
             const item = self.buffer[self.head];
             self.head = (self.head + 1) % capacity;
             self.len -= 1;
-            self.not_full.signal();
+            self.not_full.signal(io);
             return item;
         }
 
-        fn close(self: *Self) void {
-            self.mutex.lock();
-            defer self.mutex.unlock();
+        fn close(self: *Self, io: std.Io) !void {
+            try self.mutex.lock(io);
+            defer self.mutex.unlock(io);
             self.closed = true;
-            self.not_empty.broadcast(); // wake blocked consumers so they can exit
+            self.not_empty.broadcast(io); // wake blocked consumers so they can exit
         }
     };
 }
 
+// pub fn main(init: std.process.Init) — const io = init.io; hand it to both threads.
 // var q = BoundedQueue(Item, 100){};
-// producer thread: for (source) |item| q.put(item); then q.close();
-// consumer thread: while (q.take()) |item| handle(item);
+// producer thread: for (source) |item| try q.put(io, item); then try q.close(io);
+// consumer thread: while (try q.take(io)) |item| handle(item);
 ```
 
 **🧠 Tradeoff** — every `wait` sits in a `while` loop because condition variables can wake
@@ -477,7 +481,9 @@ spuriously, and `close` + `broadcast` is the shutdown other languages hand you a
 Nothing is hidden, which is the point: this queue is exactly what Go's buffered channel and
 C#'s bounded `Channel` wrap for you. The `comptime` capacity keeps the ring inline in the
 struct — the whole queue is one allocation-free value — at the cost of fixing the bound at
-compile time; a runtime capacity means taking an allocator.
+compile time; a runtime capacity means taking an allocator. And since 0.17-dev, blocking
+itself is a capability: mutex and condition live in `std.Io`, so the queue takes an `io`
+the same way allocating code takes an allocator — whoever calls you decides how you block.
 
 ### Java
 

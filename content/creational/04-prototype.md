@@ -382,6 +382,8 @@ all-value structs can opt into cheap implicit copies with `Copy` instead.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

@@ -540,6 +540,8 @@ must stay open. A closure `Box<dyn Fn(u32) -> String>` covers the single-method 
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

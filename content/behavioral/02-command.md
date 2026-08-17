@@ -414,6 +414,8 @@ free. Keep `Box<dyn Command>` when new commands must arrive from outside the cra
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

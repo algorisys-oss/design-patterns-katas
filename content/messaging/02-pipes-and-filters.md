@@ -345,6 +345,8 @@ the sender drops gives clean shutdown.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -373,11 +375,13 @@ fn redact(e: Event) Event { var out = e; out.ip = ""; return out; }
 // reorder, insert, or drop stages here — the filters never change:
 const stages = [_]Filter{ stamp, locate, redact };
 
-var lines = std.mem.tokenizeScalar(u8, log, '\n');
-while (lines.next()) |line| {
-    var event = parse(line);                  // source adapter: bytes → Event
-    for (stages) |filter| event = filter(event); // the pipe: each stage transforms
-    writeRow(event);                          // sink: Event → csv row
+fn run(log: []const u8) void {
+    var lines = std.mem.tokenizeScalar(u8, log, '\n');
+    while (lines.next()) |line| {
+        var event = parse(line);                  // source adapter: bytes → Event
+        for (stages) |filter| event = filter(event); // the pipe: each stage transforms
+        writeRow(event);                          // sink: Event → csv row
+    }
 }
 ```
 

@@ -457,6 +457,8 @@ request" a path the caller must handle, not a runtime surprise.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

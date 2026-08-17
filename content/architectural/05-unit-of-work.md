@@ -429,6 +429,8 @@ one-shot boundary. The boxed closures cost a heap allocation and dynamic dispatc
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

@@ -438,6 +438,8 @@ broker away in Rust.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -462,12 +464,12 @@ const Subscriber = struct {
 };
 
 const Bus = struct {
-    mu: std.Thread.Mutex = .{},
-    subs: [8]?Subscriber = [_]?Subscriber{null} ** 8, // fixed slots — capacity is explicit
+    mu: std.Io.Mutex = .init,
+    subs: [8]?Subscriber = @splat(null), // fixed slots — capacity is explicit
 
-    fn subscribe(self: *Bus, sub: Subscriber) !void {
-        self.mu.lock();
-        defer self.mu.unlock();
+    fn subscribe(self: *Bus, io: std.Io, sub: Subscriber) !void {
+        try self.mu.lock(io);
+        defer self.mu.unlock(io);
         for (&self.subs) |*slot| {
             if (slot.* == null) {
                 slot.* = sub;
@@ -477,9 +479,9 @@ const Bus = struct {
         return error.BusFull;
     }
 
-    fn publish(self: *Bus, topic: []const u8, msg: []const u8) void {
-        self.mu.lock();
-        defer self.mu.unlock();
+    fn publish(self: *Bus, io: std.Io, topic: []const u8, msg: []const u8) !void {
+        try self.mu.lock(io);
+        defer self.mu.unlock(io);
         for (self.subs) |slot| {
             const sub = slot orelse continue;
             if (std.mem.eql(u8, sub.topic, topic))
@@ -498,11 +500,12 @@ const Mailer = struct {
     }
 };
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
+    const io = init.io; // the bus lock needs the Io capability — threaded in like an allocator
     var bus = Bus{};
     var mailer = Mailer{};
-    try bus.subscribe(.{ .topic = "order.placed", .ctx = &mailer, .onMsg = Mailer.onMsg });
-    bus.publish("order.placed", "order #42"); // email for: order #42
+    try bus.subscribe(io, .{ .topic = "order.placed", .ctx = &mailer, .onMsg = Mailer.onMsg });
+    try bus.publish(io, "order.placed", "order #42"); // email for: order #42
 }
 ```
 
@@ -511,7 +514,9 @@ pair — exactly what a closure compiles down to elsewhere, spelled by hand. Fix
 capacity a visible decision. The honest catch: handlers run *under the lock*, so one slow
 subscriber stalls every publish — the exact hazard this kata warns about, which the Go tab
 dodges with per-subscriber channels. Fixing it here means giving each subscriber a mailbox and
-a thread, at which point you've rebuilt the Actor kata — and that's the lesson. On the BEAM
+a thread, at which point you've rebuilt the Actor kata — and that's the lesson. Since
+0.17-dev even the lock takes an `io` — blocking moved behind the `std.Io` capability, passed
+explicitly like an allocator. On the BEAM
 this whole layered build is one `Registry` call, because pub/sub lives in the runtime.
 
 ### Java

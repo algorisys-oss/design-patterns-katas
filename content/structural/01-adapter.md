@@ -392,6 +392,8 @@ the choice that Go's interface values hide.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

@@ -416,6 +416,8 @@ visible and tests isolated; keep statics for genuine process-wide facts like par
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -456,22 +458,27 @@ const CacheManager = struct {
 // File-scope state is one-per-process by construction. The only work left
 // is guarding the first init, since it needs a runtime allocator.
 var instance: ?CacheManager = null;
-var init_mutex: std.Thread.Mutex = .{};
+var init_mutex: std.Io.Mutex = .init;
 
-fn cache(allocator: std.mem.Allocator) *CacheManager {
-    init_mutex.lock();
-    defer init_mutex.unlock();
+// Blocking is a capability here, so the guard needs an `io` — the accessor
+// names both things it uses, exactly as it names its allocator.
+fn cache(io: std.Io, allocator: std.mem.Allocator) !*CacheManager {
+    try init_mutex.lock(io);
+    defer init_mutex.unlock(io);
     if (instance == null) instance = CacheManager.init(allocator);
     return &instance.?;
 }
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
+    var threaded: std.Io.Threaded = .init(allocator, .{});
+    defer threaded.deinit();
+    const io = threaded.io();
 
-    const a = cache(allocator);
+    const a = try cache(io, allocator);
     try a.store.put("token", "abc");
 
-    const b = cache(allocator);
+    const b = try cache(io, allocator);
     std.debug.print("{s}\n", .{b.store.get("token").?}); // abc — same cache
 }
 ```
@@ -479,7 +486,9 @@ pub fn main() !void {
 **🧠 Tradeoff** — Zig needs no pattern for "exists once": a file-scope `var` already is
 one per process. The only real work is guarding first initialization — a mutex when init
 needs runtime data (here, an allocator), or nothing at all when the initial value is known
-at compile time (`var instance = CacheManager{ ... }` exists before `main` runs). What the
+at compile time (`var instance = CacheManager{ ... }` exists before `main` runs). Note the
+mutex itself now takes a `std.Io`: blocking is a capability you pass in, the same move the
+language already makes with allocators. What the
 guard can't fix is the smell: file-scope mutable state is a global, so callers reach it
 without declaring it and tests stomp each other's entries. Zig's own std shows the better
 default — allocators are threaded through every call as parameters. Do that with your

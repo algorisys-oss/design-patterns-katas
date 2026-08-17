@@ -376,6 +376,8 @@ undefined behavior here: the borrow checker rejects it at compile time.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

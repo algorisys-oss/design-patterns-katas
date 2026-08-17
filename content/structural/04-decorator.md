@@ -507,6 +507,8 @@ cache in `RefCell` (or `Mutex` across threads) and accept the runtime borrow che
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

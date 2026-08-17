@@ -370,6 +370,8 @@ visible call, and N+1 stays a conscious batching decision.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -419,8 +421,9 @@ pub fn main() void {
 hidden: `?Customer` is the load state, the `if` is the trigger, the assignment is the memoization. Note
 the signature — Zig has no interior mutability, so lazy loading needs `*Order`, and a `const` order simply
 can't do it. That visibility is very Zig: a field read can never do I/O; only a method taking a mutable
-pointer can. Thread safety is yours to add (`std.Thread.Mutex` around the check-and-load), and batching to
-dodge N+1 is a query you write yourself.
+pointer can. Thread safety is yours to add (`std.Io.Mutex` around the check-and-load — its lock takes
+an explicit `io`, the same handed-in-capability move Zig makes with allocators), and batching to dodge
+N+1 is a query you write yourself.
 
 ### Java
 

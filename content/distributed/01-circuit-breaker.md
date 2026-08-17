@@ -430,6 +430,8 @@ checker won't let you forget it.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -447,7 +449,7 @@ const std = @import("std");
 // The three states are a closed set: a tagged union, switched exhaustively.
 const State = union(enum) {
     closed: struct { failures: u32 },
-    open: struct { since_ms: i64 },
+    open: struct { since: std.Io.Timestamp },
     half_open,
 };
 
@@ -456,10 +458,11 @@ const CircuitBreaker = struct {
     threshold: u32,
     cooldown_ms: i64,
 
-    pub fn call(self: *CircuitBreaker, f: *const fn () anyerror!f64) anyerror!f64 {
+    pub fn call(self: *CircuitBreaker, io: std.Io, f: *const fn () anyerror!f64) anyerror!f64 {
         switch (self.state) {
             .open => |o| {
-                if (std.time.milliTimestamp() - o.since_ms < self.cooldown_ms)
+                const waited = o.since.durationTo(.now(io, .awake));
+                if (waited.toMilliseconds() < self.cooldown_ms)
                     return error.CircuitOpen; // fail fast
                 self.state = .half_open; // cooldown over — allow one trial call
             },
@@ -469,13 +472,13 @@ const CircuitBreaker = struct {
             switch (self.state) {
                 .closed => |c| {
                     self.state = if (c.failures + 1 >= self.threshold)
-                        State{ .open = .{ .since_ms = std.time.milliTimestamp() } }
+                        State{ .open = .{ .since = .now(io, .awake) } }
                     else
                         State{ .closed = .{ .failures = c.failures + 1 } };
                 },
                 // A failed trial call re-opens the breaker.
                 .half_open, .open => self.state = State{
-                    .open = .{ .since_ms = std.time.milliTimestamp() },
+                    .open = .{ .since = .now(io, .awake) },
                 },
             }
             return err;
@@ -486,15 +489,17 @@ const CircuitBreaker = struct {
 };
 
 // var breaker = CircuitBreaker{ .threshold = 5, .cooldown_ms = 10_000 };
-// const rate = try breaker.call(fetchRate);
+// const rate = try breaker.call(io, fetchRate);
 ```
 
 **🧠 Tradeoff** — Same shape as the Rust version: a tagged union with exhaustive `switch`es, so the
-compiler flags any transition you forget. `anyerror` keeps `call` generic over whatever the wrapped
-function fails with; narrowing to a named error set would document the failure modes at the cost of
-flexibility. The breaker is single-threaded as written — put a `std.Thread.Mutex` around `call` to
-share it — and it only sees *errors*, so the fetch must fail on slowness (a socket deadline) or a
-hung call never trips it.
+compiler flags any transition you forget. The clock comes in through `io`: 0.17 moved time behind
+the `std.Io` capability, so who controls time is as explicit as who controls memory — hand `call` a
+fake `Io` and the cooldown is testable without waiting. `anyerror` keeps `call` generic over
+whatever the wrapped function fails with; narrowing to a named error set would document the failure
+modes at the cost of flexibility. The breaker is single-threaded as written — put a `std.Io.Mutex`
+around `call` to share it — and it only sees *errors*, so the fetch must fail on slowness (a socket
+deadline) or a hung call never trips it.
 
 ### Java
 

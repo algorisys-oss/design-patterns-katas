@@ -394,6 +394,8 @@ infrastructure, and the shared-data problem is untouched by either.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

@@ -416,6 +416,8 @@ Durability is still yours: this unwinds in memory, and a crash mid-saga strands 
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

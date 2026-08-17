@@ -330,6 +330,8 @@ or a broker.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -343,32 +345,34 @@ inventory.reserve(order); // synchronous, one hard-wired receiver
 const std = @import("std");
 
 // Zig ships no channel type — the honest form is an explicit bounded queue.
+// Blocking is an io capability in 0.17: put/take ask for an `io` the way
+// containers ask for an allocator.
 fn Channel(comptime T: type, comptime cap: usize) type {
     return struct {
         buf: [cap]T = undefined,
         head: usize = 0,
         len: usize = 0,
-        mutex: std.Thread.Mutex = .{},
-        not_empty: std.Thread.Condition = .{},
-        not_full: std.Thread.Condition = .{},
+        mutex: std.Io.Mutex = .init,
+        not_empty: std.Io.Condition = .init,
+        not_full: std.Io.Condition = .init,
 
-        pub fn put(self: *@This(), item: T) void {
-            self.mutex.lock();
-            defer self.mutex.unlock();
-            while (self.len == cap) self.not_full.wait(&self.mutex); // backpressure
+        pub fn put(self: *@This(), io: std.Io, item: T) void {
+            self.mutex.lockUncancelable(io);
+            defer self.mutex.unlock(io);
+            while (self.len == cap) self.not_full.waitUncancelable(io, &self.mutex); // backpressure
             self.buf[(self.head + self.len) % cap] = item;
             self.len += 1;
-            self.not_empty.signal();
+            self.not_empty.signal(io);
         }
 
-        pub fn take(self: *@This()) T {
-            self.mutex.lock();
-            defer self.mutex.unlock();
-            while (self.len == 0) self.not_empty.wait(&self.mutex);
+        pub fn take(self: *@This(), io: std.Io) T {
+            self.mutex.lockUncancelable(io);
+            defer self.mutex.unlock(io);
+            while (self.len == 0) self.not_empty.waitUncancelable(io, &self.mutex);
             const item = self.buf[self.head];
             self.head = (self.head + 1) % cap;
             self.len -= 1;
-            self.not_full.signal();
+            self.not_full.signal(io);
             return item;
         }
     };
@@ -376,22 +380,31 @@ fn Channel(comptime T: type, comptime cap: usize) type {
 
 const OrderChannel = Channel(Order, 100);
 
-fn consume(orders: *OrderChannel) void {
-    while (true) reserveInventory(orders.take());
-}
-
 var orders: OrderChannel = .{}; // the named channel
 
-// consumer (its own thread; spawn more to scale):
-const consumer = try std.Thread.spawn(.{}, consume, .{&orders});
+fn consume(io: std.Io) void {
+    while (true) reserveInventory(orders.take(io));
+}
 
-// producer — knows only the channel:
-orders.put(order);
+// the composition root makes one io for the whole app (like one allocator):
+//   var threaded: std.Io.Threaded = .init(gpa, .{});
+//   const io = threaded.io();
+
+fn produce(io: std.Io, order: Order) !void {
+    // consumer (its own thread; spawn more to scale):
+    const consumer = try std.Thread.spawn(.{}, consume, .{io});
+    consumer.detach();
+
+    // producer — knows only the channel:
+    orders.put(io, order);
+}
 ```
 
-**🧠 Tradeoff** — Zig hands you the parts (`Mutex`, `Condition`, `Thread`), not the channel; a
+**🧠 Tradeoff** — Zig hands you the parts (`Io.Mutex`, `Io.Condition`, `Thread`), not the channel; a
 ring buffer plus two condition variables buys a bounded, blocking `put`/`take` with real
-backpressure, generic over the message type through comptime. What Go's `chan` hides, you now own:
+backpressure, generic over the message type through comptime. In 0.17 blocking itself is a
+capability: the channel asks for an `std.Io` the way a container asks for an allocator, so every
+signature that can block says so. What Go's `chan` hides, you now own:
 shutdown needs an explicit close flag, and every delivery guarantee is a line you wrote — which is
 exactly why this version teaches what a channel *is*. Cross-process, same story as everywhere:
 swap the queue for a broker client on a named subject.

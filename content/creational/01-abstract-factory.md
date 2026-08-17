@@ -433,6 +433,8 @@ the trait earns its keep when families are many or arrive from outside the crate
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

@@ -454,6 +454,8 @@ today's variants, not last year's bytes on disk.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

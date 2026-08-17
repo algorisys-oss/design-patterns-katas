@@ -369,6 +369,8 @@ to a trait the service owns.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

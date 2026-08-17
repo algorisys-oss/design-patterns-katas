@@ -344,6 +344,8 @@ the decorator feel (`#[cached]`) when you want it; for sharing across threads, w
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

@@ -353,6 +353,8 @@ closes the message set — the worker's `match` won't compile until every varian
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

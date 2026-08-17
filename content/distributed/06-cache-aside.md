@@ -369,6 +369,8 @@ For shared or cross-process caching you still reach for Redis, exactly as in the
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -386,13 +388,14 @@ const std = @import("std");
 const Product = struct { id: u32, name: []const u8 };
 
 const Cache = struct {
-    const Entry = struct { value: Product, expires_ms: i64 };
+    const Entry = struct { value: Product, expires: std.Io.Timestamp };
 
     entries: std.StringHashMap(Entry),
-    ttl_ms: i64,
+    io: std.Io, // the clock capability, threaded in like the allocator
+    ttl: std.Io.Duration,
 
-    fn init(allocator: std.mem.Allocator, ttl_ms: i64) Cache {
-        return .{ .entries = std.StringHashMap(Entry).init(allocator), .ttl_ms = ttl_ms };
+    fn init(allocator: std.mem.Allocator, io: std.Io, ttl: std.Io.Duration) Cache {
+        return .{ .entries = std.StringHashMap(Entry).init(allocator), .io = io, .ttl = ttl };
     }
 
     fn deinit(self: *Cache) void {
@@ -400,13 +403,14 @@ const Cache = struct {
     }
 
     fn getProduct(self: *Cache, key: []const u8) !Product {
+        const now = std.Io.Timestamp.now(self.io, .awake); // monotonic clock
         if (self.entries.get(key)) |entry| {
-            if (std.time.milliTimestamp() < entry.expires_ms) return entry.value; // hit
+            if (now.compare(.lt, entry.expires)) return entry.value; // hit
         }
         const product = try queryProduct(key); // miss → load
         try self.entries.put(key, .{
             .value = product,
-            .expires_ms = std.time.milliTimestamp() + self.ttl_ms,
+            .expires = now.addDuration(self.ttl),
         }); // populate with TTL
         return product;
     }
@@ -422,7 +426,10 @@ fn queryProduct(key: []const u8) !Product {
 }
 
 pub fn main() !void {
-    var cache = Cache.init(std.heap.page_allocator, 5 * std.time.ms_per_min);
+    var threaded: std.Io.Threaded = .init(std.heap.page_allocator, .{});
+    defer threaded.deinit();
+
+    var cache = Cache.init(std.heap.page_allocator, threaded.io(), .fromMilliseconds(5 * std.time.ms_per_min));
     defer cache.deinit();
 
     _ = try cache.getProduct("product:42"); // miss → database, then cached
@@ -432,11 +439,13 @@ pub fn main() !void {
 ```
 
 **🧠 Tradeoff** — The allocator is a parameter, so the cache's memory is an explicit budget
-you pick and release (`defer cache.deinit()`) rather than ambient heap a GC deals with.
-One sharp edge: `StringHashMap` stores the key *slice* you pass — hand it stable memory or
-`dupe` the key with the allocator, or the entry outlives its key. Expiry is lazy (checked
-on read) and eviction-on-write bounds staleness, same as the other tabs; wrap the map in a
-`std.Thread.Mutex` before sharing it across threads.
+you pick and release (`defer cache.deinit()`) rather than ambient heap a GC deals with. As
+of 0.17 the clock works the same way: there's no ambient `milliTimestamp()` anymore — the
+cache holds a `std.Io` and asks *it* for the time, an explicit capability exactly like the
+allocator. One sharp edge: `StringHashMap` stores the key *slice* you pass — hand it stable
+memory or `dupe` the key with the allocator, or the entry outlives its key. Expiry is lazy
+(checked on read) and eviction-on-write bounds staleness, same as the other tabs; wrap the
+map in a `std.Io.Mutex` before sharing it across threads.
 
 ### Java
 

@@ -390,6 +390,8 @@ production.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -414,31 +416,34 @@ fn isTransient(err: FetchError) bool {
     };
 }
 
-fn withRetry(f: *const fn () FetchError!f64) FetchError!f64 {
+fn withRetry(io: std.Io, f: *const fn () FetchError!f64) FetchError!f64 {
     const attempts = 4;
     const base_ms: u64 = 200;
-    var prng = std.Random.DefaultPrng.init(@intCast(std.time.milliTimestamp()));
+    const seed: u64 = @bitCast(std.Io.Timestamp.now(io, .real).toMilliseconds());
+    var prng = std.Random.DefaultPrng.init(seed);
     var i: u32 = 0;
     while (true) {
         return f() catch |err| {
             if (!isTransient(err) or i == attempts - 1) return err; // permanent, or out of attempts
             const backoff = base_ms << @intCast(i); // 200, 400, 800…
             const jitter = prng.random().uintLessThan(u64, backoff); // desynchronize
-            std.Thread.sleep((backoff + jitter) * std.time.ns_per_ms);
+            io.sleep(.fromMilliseconds(@intCast(backoff + jitter)), .awake) catch return err;
             i += 1;
             continue;
         };
     }
 }
 
-// const rate = try withRetry(doFetch);
+// const rate = try withRetry(io, doFetch);
 ```
 
 **🧠 Tradeoff** — Error sets give the same guarantee as Rust's enum: the `switch` in `isTransient`
 is exhaustive, so a new error can't sneak past classification. `catch` is plain control flow — no
-unwinding, no hidden cost — which keeps the retry loop readable top to bottom. `std.Thread.sleep`
-blocks the OS thread, the stable answer while Zig's async story settles. The PRNG is explicit and
-locally seeded: no global state, and fixing the seed makes the jitter reproducible in tests.
+unwinding, no hidden cost — which keeps the retry loop readable top to bottom. Sleeping goes
+through the `io` you pass in — 0.17 makes blocking a capability, threaded explicitly like an
+allocator — and with `std.Io.Threaded` it blocks the OS thread; a canceled sleep gives up with the
+last error. The PRNG is explicit and locally seeded: no global state, and fixing the seed makes the
+jitter reproducible in tests.
 
 ### Java
 

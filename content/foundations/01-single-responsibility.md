@@ -349,6 +349,8 @@ instead of every concern borrowing from one shared `self`.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

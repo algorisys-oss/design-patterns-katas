@@ -400,6 +400,8 @@ static and monomorphized; reach for `Box<dyn UserRepo>` only when the store is c
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -446,7 +448,7 @@ const InMemoryUsers = struct {
 };
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
     var repo = InMemoryUsers{ .map = std.StringHashMap(User).init(gpa.allocator()) };
     defer repo.map.deinit();

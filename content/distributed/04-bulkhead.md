@@ -360,14 +360,16 @@ twice the knobs to get wrong.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
-// One shared std.Thread.Pool for every dependency — A's slow jobs hold all the threads.
-var pool: std.Thread.Pool = undefined;
-try pool.init(.{ .allocator = allocator, .n_jobs = 20 });
+// One shared Io.Threaded pool for every dependency — A's slow jobs hold all the threads.
+var pool: std.Io.Threaded = .init(allocator, .{ .concurrent_limit = .limited(20) });
 defer pool.deinit();
-// try pool.spawn(callA, .{});  try pool.spawn(callB, .{});  // same 20 threads
+const io = pool.io();
+// var a = try io.concurrent(callA, .{});  var b = try io.concurrent(callB, .{});  // same 20 slots
 ```
 
 **✅ Idiomatic**
@@ -377,48 +379,51 @@ const std = @import("std");
 
 // A bounded worker pool per dependency: fixed threads, fixed queue, no allocation.
 const Bulkhead = struct {
-    mutex: std.Thread.Mutex = .{},
-    cond: std.Thread.Condition = .{},
+    mutex: std.Io.Mutex = .init,
+    cond: std.Io.Condition = .init,
     jobs: [8]*const fn () void = undefined,
     len: usize = 0,
 
-    fn start(self: *Bulkhead, workers: usize) !void {
-        for (0..workers) |_| (try std.Thread.spawn(.{}, worker, .{self})).detach();
+    fn start(self: *Bulkhead, io: std.Io, workers: usize) !void {
+        for (0..workers) |_| (try std.Thread.spawn(.{}, worker, .{ self, io })).detach();
     }
 
-    fn worker(self: *Bulkhead) void {
+    fn worker(self: *Bulkhead, io: std.Io) void {
         while (true) {
-            self.mutex.lock();
-            while (self.len == 0) self.cond.wait(&self.mutex);
+            self.mutex.lockUncancelable(io); // plain threads sit outside task cancelation
+            while (self.len == 0) self.cond.waitUncancelable(io, &self.mutex);
             self.len -= 1;
             const job = self.jobs[self.len];
-            self.mutex.unlock();
+            self.mutex.unlock(io);
             job(); // run outside the lock
         }
     }
 
     // A full partition is an error, not an unbounded queue.
-    fn submit(self: *Bulkhead, job: *const fn () void) error{PartitionFull}!void {
-        self.mutex.lock();
-        defer self.mutex.unlock();
+    fn submit(self: *Bulkhead, io: std.Io, job: *const fn () void) error{PartitionFull}!void {
+        self.mutex.lockUncancelable(io);
+        defer self.mutex.unlock(io);
         if (self.len == self.jobs.len) return error.PartitionFull; // fail fast
         self.jobs[self.len] = job;
         self.len += 1;
-        self.cond.signal();
+        self.cond.signal(io);
     }
 };
 
-// var bulk_a = Bulkhead{};  try bulk_a.start(10);
-// var bulk_b = Bulkhead{};  try bulk_b.start(10);
+// var bulk_a = Bulkhead{};  try bulk_a.start(io, 10);
+// var bulk_b = Bulkhead{};  try bulk_b.start(io, 10);
 // A filling its 8-deep queue gets error.PartitionFull; B's threads never notice.
 ```
 
 **🧠 Tradeoff** — Fixed arrays mean this bulkhead never allocates — no allocator parameter,
-capacity decided at compile time, which is a very Zig way to make the limit real. The error
-union puts rejection in `submit`'s signature: callers must `try` or `catch`, so a full
-partition can't be silently ignored. Bare fn pointers cover stateless jobs; a job that
-carries data needs the `*anyopaque` context + fn-pointer pair, the same idiom
-`std.mem.Allocator` uses. The demo queue is LIFO for brevity — a ring buffer makes it fair.
+capacity decided at compile time, which is a very Zig way to make the limit real. It does
+take an `io`: 0.17 routes locks and condvars through the `std.Io` capability, threaded as
+explicitly as the allocator these fixed arrays avoid, and the `Uncancelable` variants keep
+`submit`'s error set down to the one rejection that matters. That error union puts rejection
+in `submit`'s signature: callers must `try` or `catch`, so a full partition can't be
+silently ignored. Bare fn pointers cover stateless jobs; a job that carries data needs the
+`*anyopaque` context + fn-pointer pair, the same idiom `std.mem.Allocator` uses. The demo
+queue is LIFO for brevity — a ring buffer makes it fair.
 
 ### Java
 

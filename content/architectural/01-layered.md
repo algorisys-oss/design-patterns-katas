@@ -432,6 +432,8 @@ chosen at runtime.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -476,7 +478,7 @@ const InMemoryOrders = struct {
 };
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
     var store = std.StringHashMap(i64).init(gpa.allocator());
     defer store.deinit();

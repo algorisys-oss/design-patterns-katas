@@ -389,6 +389,8 @@ values, skip the identity map — values instead of objects sidesteps the consis
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

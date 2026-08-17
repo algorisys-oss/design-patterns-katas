@@ -334,6 +334,8 @@ exactly why timeout plus retry needs idempotency.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -350,53 +352,56 @@ const std = @import("std");
 
 // Race the call against the clock: a worker fills a slot; we wait with a deadline.
 const Slot = struct {
-    mutex: std.Thread.Mutex = .{},
-    cond: std.Thread.Condition = .{},
+    mutex: std.Io.Mutex = .init,
+    cond: std.Io.Condition = .init,
     done: bool = false,
     abandoned: bool = false, // the waiter gave up; the worker owns cleanup
     quote: f64 = 0,
 
-    fn run(self: *Slot, allocator: std.mem.Allocator) void {
+    fn run(self: *Slot, allocator: std.mem.Allocator, io: std.Io) void {
         const q = blockingFetch(); // may take as long as it likes
-        self.mutex.lock();
+        self.mutex.lockUncancelable(io); // the handoff must finish even if the task is canceled
         self.quote = q;
         self.done = true;
         const orphaned = self.abandoned;
-        self.cond.signal();
-        self.mutex.unlock();
+        self.cond.signal(io);
+        self.mutex.unlock(io);
         if (orphaned) allocator.destroy(self); // nobody is waiting — free ourselves
     }
 };
 
-fn getQuote(allocator: std.mem.Allocator, limit_ns: u64) !f64 {
+fn getQuote(io: std.Io, allocator: std.mem.Allocator, limit: std.Io.Duration) !f64 {
     const slot = try allocator.create(Slot);
     slot.* = .{};
-    const worker = try std.Thread.spawn(.{}, Slot.run, .{ slot, allocator });
+    const worker = try std.Thread.spawn(.{}, Slot.run, .{ slot, allocator, io });
     worker.detach(); // no join — the deadline decides who cleans up
 
-    slot.mutex.lock();
+    slot.mutex.lockUncancelable(io); // bailing here would leave the slot with no owner
+    const deadline: std.Io.Timeout = .{ .duration = .{ .raw = limit, .clock = .awake } };
     while (!slot.done) {
-        slot.cond.timedWait(&slot.mutex, limit_ns) catch {
-            // Deadline hit. std can't kill the thread — the fetch keeps running,
-            // so ownership of the slot passes to the worker.
+        slot.cond.waitTimeout(io, &slot.mutex, deadline) catch |err| {
+            // Deadline hit (or the wait was canceled). std can't kill the thread —
+            // the fetch keeps running, so ownership of the slot passes to the worker.
             slot.abandoned = true;
-            slot.mutex.unlock();
-            return error.Timeout;
+            slot.mutex.unlock(io);
+            return err;
         };
     }
     const quote = slot.quote;
-    slot.mutex.unlock();
+    slot.mutex.unlock(io);
     allocator.destroy(slot); // result seen — the slot is ours to free
     return quote;
 }
 
-// const quote = try getQuote(allocator, 3 * std.time.ns_per_s);
+// const quote = try getQuote(io, allocator, .fromSeconds(3));
 ```
 
 **🧠 Tradeoff** — Zig makes the ugly truth of timeouts explicit: you can stop *waiting*, but you
 can't stop the *thread*, so a timeout is really an ownership handoff — the `abandoned` flag decides
 whether the waiter or the orphaned worker frees the slot. Runtimes in other languages run this same
-machinery; Zig just refuses to hide it, allocator and all. For sockets, the cleaner route is
+machinery; Zig just refuses to hide it, allocator and all. In 0.17 the wait itself is a capability
+too: the mutex, condition, and clock all go through `io`, and the `Uncancelable` variants mark the
+two lock sites where the handoff must not be interrupted. For sockets, the cleaner route is
 pushing the deadline into the OS (`SO_RCVTIMEO` via `std.posix.setsockopt`) so the blocking read
 itself returns an error.
 

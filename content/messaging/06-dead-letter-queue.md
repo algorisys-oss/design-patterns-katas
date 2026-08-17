@@ -370,6 +370,8 @@ in-process — durability, alerting, and replay are still yours.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -395,25 +397,25 @@ const DeadLetter = struct { body: []const u8, attempts: u32, err: ProcessError, 
 const max_attempts = 5;
 
 // Queue(T) is any explicit FIFO you own — a comptime-generic ring buffer, say.
-fn consume(msg: Msg, retry: *Queue(Msg), dlq: *Queue(DeadLetter)) !void {
+fn consume(io: std.Io, msg: Msg, retry: *Queue(Msg), dlq: *Queue(DeadLetter)) !void {
     process(msg.body) catch |err| switch (err) {
         error.Transient => {
             if (msg.attempts < max_attempts) {
                 try retry.push(.{ .body = msg.body, .attempts = msg.attempts + 1 }); // retry
             } else {
-                try deadLetter(dlq, msg, err); // retry budget spent
+                try deadLetter(io, dlq, msg, err); // retry budget spent
             }
         },
-        error.Permanent => try deadLetter(dlq, msg, err), // never retry a malformed message
+        error.Permanent => try deadLetter(io, dlq, msg, err), // never retry a malformed message
     };
 }
 
-fn deadLetter(dlq: *Queue(DeadLetter), msg: Msg, err: ProcessError) !void {
+fn deadLetter(io: std.Io, dlq: *Queue(DeadLetter), msg: Msg, err: ProcessError) !void {
     try dlq.push(.{                                  // give up → DLQ, preserved with context
         .body = msg.body,
         .attempts = msg.attempts,
         .err = err,
-        .failed_at = std.time.milliTimestamp(),
+        .failed_at = std.Io.Timestamp.now(io, .real).toMilliseconds(), // the clock is an io capability
     });
 }
 ```

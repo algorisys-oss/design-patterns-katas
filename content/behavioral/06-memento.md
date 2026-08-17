@@ -465,6 +465,8 @@ with no copy; `save` pays the one clone.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

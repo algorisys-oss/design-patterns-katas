@@ -368,6 +368,8 @@ so mass-assigning `password_hash` isn't even expressible.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

@@ -345,6 +345,8 @@ quietly breaks every sort that trusted it. Shape is enforced; honesty is still o
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

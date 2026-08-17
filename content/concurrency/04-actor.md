@@ -438,6 +438,8 @@ just a dead thread until you build restart logic around it.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -446,11 +448,11 @@ const std = @import("std");
 // Shared globals guarded by a mutex — correct only while every caller
 // remembers to take the lock. Nothing enforces it.
 var balance: i64 = 0;
-var mu: std.Thread.Mutex = .{};
+var mu: std.Io.Mutex = .init;
 
-fn deposit(n: i64) void {
-    mu.lock();
-    defer mu.unlock();
+fn deposit(io: std.Io, n: i64) !void {
+    try mu.lock(io); // locking itself needs the io capability now
+    defer mu.unlock(io);
     balance += n;
 }
 ```
@@ -465,24 +467,24 @@ const Msg = union(enum) { deposit: i64, stop };
 // The mailbox: a ring buffer guarded by mutex + condition. Senders only ever
 // touch the queue; the actor thread is its only reader.
 const Mailbox = struct {
-    mu: std.Thread.Mutex = .{},
-    cond: std.Thread.Condition = .{},
+    mu: std.Io.Mutex = .init,
+    cond: std.Io.Condition = .init,
     buf: [16]Msg = undefined, // bounded: 16 slots (a real one errors when full)
     head: usize = 0,
     len: usize = 0,
 
-    fn send(self: *Mailbox, msg: Msg) void {
-        self.mu.lock();
-        defer self.mu.unlock();
+    fn send(self: *Mailbox, io: std.Io, msg: Msg) !void {
+        try self.mu.lock(io);
+        defer self.mu.unlock(io);
         self.buf[(self.head + self.len) % self.buf.len] = msg;
         self.len += 1;
-        self.cond.signal();
+        self.cond.signal(io);
     }
 
-    fn recv(self: *Mailbox) Msg {
-        self.mu.lock();
-        defer self.mu.unlock();
-        while (self.len == 0) self.cond.wait(&self.mu);
+    fn recv(self: *Mailbox, io: std.Io) !Msg {
+        try self.mu.lock(io);
+        defer self.mu.unlock(io);
+        while (self.len == 0) try self.cond.wait(io, &self.mu);
         const msg = self.buf[self.head];
         self.head = (self.head + 1) % self.buf.len;
         self.len -= 1;
@@ -490,10 +492,10 @@ const Mailbox = struct {
     }
 };
 
-fn account(mailbox: *Mailbox) void {
+fn account(io: std.Io, mailbox: *Mailbox) !void {
     var balance: i64 = 0; // on this thread's stack — unreachable from outside
     while (true) {
-        switch (mailbox.recv()) { // one message at a time
+        switch (try mailbox.recv(io)) { // one message at a time
             .deposit => |n| balance += n,
             .stop => break,
         }
@@ -501,12 +503,13 @@ fn account(mailbox: *Mailbox) void {
     std.debug.print("final balance: {d}\n", .{balance});
 }
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
+    const io = init.io; // blocking is a capability — threaded in like an allocator
     var mailbox = Mailbox{};
-    const actor = try std.Thread.spawn(.{}, account, .{&mailbox});
-    mailbox.send(.{ .deposit = 100 });
-    mailbox.send(.{ .deposit = 50 });
-    mailbox.send(.stop);
+    const actor = try std.Thread.spawn(.{}, account, .{ io, &mailbox });
+    try mailbox.send(io, .{ .deposit = 100 });
+    try mailbox.send(io, .{ .deposit = 50 });
+    try mailbox.send(io, .stop);
     actor.join(); // final balance: 150
 }
 ```
@@ -517,7 +520,9 @@ touches `balance`") is a convention — nothing enforces it, unlike Rust's owner
 BEAM's process isolation. In the Elixir tab this entire file collapses into `use GenServer`,
 because there the actor model *is* the runtime. What Zig buys back is that every byte is
 visible: the mailbox is 16 slots you declared, so backpressure is an explicit decision in your
-code, not an unbounded default you inherit.
+code, not an unbounded default you inherit. Since 0.17-dev the blocking is visible too —
+mutex and condition sit behind `std.Io`, so the mailbox takes an `io` the way allocating
+code takes an allocator.
 
 ### Java
 

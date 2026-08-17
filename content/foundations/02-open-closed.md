@@ -343,6 +343,8 @@ you don't own — other crates can `impl Shape` but can't add variants to your e
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

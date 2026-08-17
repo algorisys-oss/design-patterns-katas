@@ -147,7 +147,12 @@ to use it. No AI slop (LOOPS.md XX).
 - **Zig** — no interfaces, no closures: use comptime generics for static polymorphism and
   the function-pointer vtable idiom (like `std.mem.Allocator`) when dispatch must be
   runtime. Tagged unions + `switch` for closed variant sets. Pass allocators explicitly
-  where allocation happens. Zig is pre-1.0 — keep to stable core-language features.
+  where allocation happens. Zig is pre-1.0 and churns: snippets target the repo's local
+  toolchain — **0.17-dev (master, via asdf)** — and must compile on it. That generation
+  moved blocking primitives behind the `std.Io` capability (`std.Io.Threaded` provides
+  the `io`; `Io.Mutex`, `Io.Condition`, `io.sleep`, `io.now`) — thread `io` explicitly,
+  same philosophy as allocators. Every `### Zig` tab opens with the italic line
+  `*Targets Zig 0.17-dev.*` so readers know which API generation they're seeing.
 
 ## Git
 

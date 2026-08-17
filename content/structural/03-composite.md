@@ -409,6 +409,8 @@ allocation and dynamic dispatch per node. Reach for `dyn` only when the set must
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

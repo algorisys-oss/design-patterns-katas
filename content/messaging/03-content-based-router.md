@@ -362,6 +362,8 @@ is where your real dead-letter policy lives.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

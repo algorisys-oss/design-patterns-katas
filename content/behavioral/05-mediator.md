@@ -431,6 +431,8 @@ when they live on other threads.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

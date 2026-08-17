@@ -349,6 +349,8 @@ that's explicit in each signature.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ The Smell**
 
 ```zig
@@ -361,10 +363,10 @@ const App = struct {
     // ...everything
 
     pub fn placeOrder(self: *App, cart: Cart, user: User) !void {
-        // validate + charge + save + email, all inline
+        _ = .{ self, cart, user }; // validate + charge + save + email, all inline
     }
     pub fn register(self: *App, user: User) !void {
-        // ...
+        _ = .{ self, user }; // ...
     }
     // ...50 methods on one struct
 };

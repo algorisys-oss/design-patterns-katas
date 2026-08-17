@@ -434,6 +434,8 @@ Across threads, the more Rusty broadcast is a channel per observer, same as Go's
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

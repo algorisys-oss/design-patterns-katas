@@ -252,6 +252,8 @@ type genuinely arrives, the borrow checker makes the mechanical generalization s
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ The Smell**
 
 ```zig

@@ -404,6 +404,8 @@ shutdown of a group too: you check completion while borrowing, then `remove` in 
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig
@@ -429,8 +431,13 @@ const Group = struct { parts: []?Item, filled: usize, deadline: i64 };
 
 const Aggregator = struct {
     allocator: std.mem.Allocator,
+    io: std.Io, // the clock is a capability too — threaded in like the allocator
     groups: std.StringHashMap(Group),
     timeout_ms: i64,
+
+    fn nowMs(self: *Aggregator) i64 {
+        return std.Io.Timestamp.now(self.io, .real).toMilliseconds();
+    }
 
     fn handle(self: *Aggregator, msg: Msg) !void {
         switch (msg) {
@@ -445,7 +452,7 @@ const Aggregator = struct {
             entry.value_ptr.* = .{
                 .parts = try self.allocator.alloc(?Item, p.total), // one slot per seq
                 .filled = 0,
-                .deadline = std.time.milliTimestamp() + self.timeout_ms,
+                .deadline = self.nowMs() + self.timeout_ms,
             };
             @memset(entry.value_ptr.parts, null);
         }
@@ -464,7 +471,7 @@ const Aggregator = struct {
         var n: usize = 0;
         var it = self.groups.iterator();
         while (it.next()) |e| {
-            if (std.time.milliTimestamp() > e.value_ptr.deadline and n < stale_ids.len) {
+            if (self.nowMs() > e.value_ptr.deadline and n < stale_ids.len) {
                 stale_ids[n] = e.key_ptr.*;
                 n += 1;
             }
@@ -482,7 +489,9 @@ const Aggregator = struct {
 **🧠 Tradeoff** — everything the pattern needs is spelled out: the `parts` slice is allocated per
 group (one slot per `seq`, so out-of-order arrival is literal indexing) and freed the moment the
 group resolves. There's no runtime, so the timeout isn't a timer — `sweep` is a message you feed in
-from your own loop, which is honest about what Go's ticker was doing for you. Watch the keys:
+from your own loop, which is honest about what Go's ticker was doing for you. The clock is honest
+too: 0.17 has no ambient `milliTimestamp`, so the aggregator carries an `std.Io` and asks it for
+the time, exactly like the allocator beside it. Watch the keys:
 `StringHashMap` doesn't copy `batch_id`, so the id must outlive the group — dupe it with the
 allocator if the source message doesn't stick around.
 

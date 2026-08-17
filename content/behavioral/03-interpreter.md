@@ -411,6 +411,8 @@ add nodes — otherwise you're paying dynamic dispatch to give up exhaustiveness
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

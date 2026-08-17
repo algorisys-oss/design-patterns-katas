@@ -454,6 +454,8 @@ If the rule set were closed, an enum of rules matched in the loop would drop the
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

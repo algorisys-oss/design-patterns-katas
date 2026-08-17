@@ -306,6 +306,8 @@ burden is.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ The Smell**
 
 ```zig

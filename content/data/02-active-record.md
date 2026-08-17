@@ -361,6 +361,8 @@ Learn the pattern here; write Data Mapper in real Rust.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

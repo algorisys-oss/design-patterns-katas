@@ -418,6 +418,8 @@ reintroduces the panic you were avoiding — reserve it for cases you can prove 
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

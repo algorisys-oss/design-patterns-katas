@@ -468,6 +468,8 @@ function `fn export<E: Exporter>(e: &E, data: &[Row])` and keep only the steps i
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

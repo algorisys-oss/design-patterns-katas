@@ -406,6 +406,8 @@ value, so the core hands data outward and keeps no strings attached.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

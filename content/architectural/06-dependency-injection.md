@@ -391,6 +391,8 @@ missing or wrong dependency is a build error, not a startup surprise.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

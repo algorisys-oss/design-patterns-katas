@@ -412,6 +412,8 @@ that copy-in/copy-out contract.
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **❌ Naive**
 
 ```zig

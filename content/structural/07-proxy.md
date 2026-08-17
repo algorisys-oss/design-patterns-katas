@@ -422,6 +422,8 @@ drop-in next to real images. Rust's standard library is itself full of proxies â
 
 ### Zig
 
+*Targets Zig 0.17-dev.*
+
 **âŒ Naive**
 
 ```zig
