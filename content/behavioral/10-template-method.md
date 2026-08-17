@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [behavioral, algorithm-skeleton, hooks, inversion-of-control, reuse]
 related: [strategy, factory-method]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -332,6 +332,302 @@ a skeleton function — which is composition, i.e. Strategy. That's the point: t
 converge when you can't (or won't) subclass. If you want a partial default, embed a struct with
 default step methods and let callers override by shadowing — but the function-fields form above is
 the more idiomatic Go.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The shared flow is copy-pasted per format.
+var data = new[] { new Row(1, "Ada"), new Row(2, "Linus") };
+Console.WriteLine(ExportCsv(data));
+Console.WriteLine(ExportJson(data));
+
+static string ExportCsv(Row[] data) =>
+    string.Join("\n", data.Select(r => $"{r.Id},{r.Name}").Prepend("id,name"));
+
+static string ExportJson(Row[] data) => // same skeleton, copied
+    "[" + string.Join(",", data.Select(r => $$"""{"id":{{r.Id}},"name":"{{r.Name}}"}""")) + "]";
+
+public record Row(int Id, string Name);
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Top-level statements: the demo runs first, the types follow.
+var data = new[] { new Row(1, "Ada"), new Row(2, "Linus") };
+Console.WriteLine(new CsvExporter().Export(data));
+// id,name
+// 1,Ada
+// 2,Linus
+
+public record Row(int Id, string Name);
+
+public abstract class Exporter
+{
+    public string Export(IEnumerable<Row> data) // the template method — fixed, not virtual
+    {
+        var lines = new List<string>();
+        if (Header() is { Length: > 0 } h) lines.Add(h);
+        lines.AddRange(data.Select(RowLine));
+        return Wrap(lines);
+    }
+
+    protected virtual string Header() => "";  // hook with a default
+    protected abstract string RowLine(Row r); // required step
+    protected virtual string Wrap(List<string> lines) => string.Join("\n", lines);
+}
+
+public sealed class CsvExporter : Exporter
+{
+    protected override string Header() => "id,name";
+    protected override string RowLine(Row r) => $"{r.Id},{r.Name}";
+}
+
+public sealed class JsonExporter : Exporter
+{
+    protected override string RowLine(Row r) => $$"""{"id":{{r.Id}},"name":"{{r.Name}}"}""";
+    protected override string Wrap(List<string> lines) => "[" + string.Join(",", lines) + "]";
+}
+```
+
+**🧠 Tradeoff** — this is Template Method on home turf. `Export` is non-virtual, so no subclass
+can rewrite the flow; `abstract` marks the step every format must supply, `protected virtual`
+marks the hooks. The compiler enforces the split that JS and Python only document. The cost is
+the usual one: single inheritance, and variants welded to the base. When the steps vary
+independently, modern C# passes them in as `Func<Row, string>` delegates instead — that's
+Strategy, and it composes where inheritance stacks.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+struct Row { id: u32, name: &'static str }
+
+// The shared flow is copy-pasted per format.
+fn export_csv(data: &[Row]) -> String {
+    let mut lines = vec!["id,name".to_string()];
+    lines.extend(data.iter().map(|r| format!("{},{}", r.id, r.name)));
+    lines.join("\n")
+}
+
+fn export_json(data: &[Row]) -> String { // same skeleton, copied
+    let parts: Vec<String> = data.iter()
+        .map(|r| format!(r#"{{"id":{},"name":"{}"}}"#, r.id, r.name))
+        .collect();
+    format!("[{}]", parts.join(","))
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+struct Row { id: u32, name: &'static str }
+
+// The trait's default method IS the template: fixed flow, overridable steps.
+trait Exporter {
+    fn header(&self) -> Option<String> { None } // hook with a default
+    fn row(&self, r: &Row) -> String;           // required step
+    fn wrap(&self, lines: Vec<String>) -> String { lines.join("\n") }
+
+    fn export(&self, data: &[Row]) -> String {  // the template method
+        let mut lines = Vec::new();
+        if let Some(h) = self.header() { lines.push(h); }
+        lines.extend(data.iter().map(|r| self.row(r)));
+        self.wrap(lines)
+    }
+}
+
+struct Csv;
+impl Exporter for Csv {
+    fn header(&self) -> Option<String> { Some("id,name".into()) }
+    fn row(&self, r: &Row) -> String { format!("{},{}", r.id, r.name) }
+}
+
+struct Json;
+impl Exporter for Json {
+    fn row(&self, r: &Row) -> String { format!(r#"{{"id":{},"name":"{}"}}"#, r.id, r.name) }
+    fn wrap(&self, lines: Vec<String>) -> String { format!("[{}]", lines.join(",")) }
+}
+
+fn main() {
+    let data = [Row { id: 1, name: "Ada" }, Row { id: 2, name: "Linus" }];
+    println!("{}", Csv.export(&data));  // id,name / 1,Ada / 2,Linus (one per line)
+    println!("{}", Json.export(&data)); // [{"id":1,"name":"Ada"},{"id":2,"name":"Linus"}]
+}
+```
+
+**🧠 Tradeoff** — a trait with default methods gives Template Method without inheritance: the
+trait is both the contract (`row` has no body, so every format must supply it) and the skeleton
+(`export` has one). Dispatch is static — each impl compiles to its own specialized `export`, no
+vtable. One honest gap versus C#: Rust can't seal a single method, so an impl *may* override
+`export` and rewrite the flow. If the sequence must be untouchable, move it out to a free
+function `fn export<E: Exporter>(e: &E, data: &[Row])` and keep only the steps in the trait.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const Row = struct { id: u32, name: []const u8 };
+
+// The shared flow is copy-pasted per format.
+fn exportCsv(data: []const Row) void {
+    std.debug.print("id,name\n", .{});
+    for (data) |r| std.debug.print("{d},{s}\n", .{ r.id, r.name });
+}
+
+fn exportJson(data: []const Row) void { // same skeleton, copied
+    std.debug.print("[", .{});
+    for (data, 0..) |r, i| {
+        if (i > 0) std.debug.print(",", .{});
+        std.debug.print("{{\"id\":{d},\"name\":\"{s}\"}}", .{ r.id, r.name });
+    }
+    std.debug.print("]\n", .{});
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Row = struct { id: u32, name: []const u8 };
+
+// The skeleton is generic over a comptime format type — duck typing, but checked
+// at compile time: pass a type missing a step and the build fails.
+fn exportWith(comptime Format: type, data: []const Row) void {
+    Format.open();
+    for (data, 0..) |r, i| {
+        if (i > 0) std.debug.print("{s}", .{Format.separator});
+        Format.row(r);
+    }
+    Format.close();
+}
+
+const Csv = struct {
+    const separator = "\n";
+    fn open() void {
+        std.debug.print("id,name\n", .{});
+    }
+    fn row(r: Row) void {
+        std.debug.print("{d},{s}", .{ r.id, r.name });
+    }
+    fn close() void {
+        std.debug.print("\n", .{});
+    }
+};
+
+const Json = struct {
+    const separator = ",";
+    fn open() void {
+        std.debug.print("[", .{});
+    }
+    fn row(r: Row) void {
+        std.debug.print("{{\"id\":{d},\"name\":\"{s}\"}}", .{ r.id, r.name });
+    }
+    fn close() void {
+        std.debug.print("]\n", .{});
+    }
+};
+
+pub fn main() void {
+    const data = [_]Row{ .{ .id = 1, .name = "Ada" }, .{ .id = 2, .name = "Linus" } };
+    exportWith(Csv, &data);  // id,name / 1,Ada / 2,Linus (one per line)
+    exportWith(Json, &data); // [{"id":1,"name":"Ada"},{"id":2,"name":"Linus"}]
+}
+```
+
+**🧠 Tradeoff** — `comptime Format: type` is Zig's version of Go's function-fields form, minus
+the runtime cost: each format stamps out its own specialized `exportWith`, and a type missing
+`row` or `separator` is a compile error. The catch is that the contract is implicit — nothing in
+the code names the required steps, so the error shows up at the call site, not on the format
+type. And because the format is picked at compile time, you can't choose one from user input;
+for that, fall back to function pointers per step — which is Strategy again.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.util.List;
+import java.util.stream.Collectors;
+
+record Row(int id, String name) {}
+
+// The shared flow is copy-pasted per format.
+class Export {
+    static String csv(List<Row> data) {
+        var out = new StringBuilder("id,name");
+        for (var r : data) out.append("\n").append(r.id()).append(",").append(r.name());
+        return out.toString();
+    }
+
+    static String json(List<Row> data) { // same skeleton, copied
+        return data.stream()
+            .map(r -> "{\"id\":%d,\"name\":\"%s\"}".formatted(r.id(), r.name()))
+            .collect(Collectors.joining(",", "[", "]"));
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+record Row(int id, String name) {}
+
+// The base owns the flow; `final` means no subclass can rewrite it.
+abstract class Exporter {
+    final String export(List<Row> data) { // the template method — fixed sequence
+        var lines = new ArrayList<String>();
+        if (!header().isEmpty()) lines.add(header());
+        for (var r : data) lines.add(row(r));
+        return wrap(lines);
+    }
+
+    String header() { return ""; }                              // hook with a default
+    abstract String row(Row r);                                 // required step
+    String wrap(List<String> lines) { return String.join("\n", lines); }
+}
+
+class CsvExporter extends Exporter {
+    String header() { return "id,name"; }
+    String row(Row r) { return r.id() + "," + r.name(); }
+}
+
+class JsonExporter extends Exporter {
+    String row(Row r) { return "{\"id\":%d,\"name\":\"%s\"}".formatted(r.id(), r.name()); }
+    String wrap(List<String> lines) { return "[" + String.join(",", lines) + "]"; }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var data = List.of(new Row(1, "Ada"), new Row(2, "Linus"));
+        System.out.println(new CsvExporter().export(data));
+        // id,name
+        // 1,Ada
+        // 2,Linus
+        System.out.println(new JsonExporter().export(data));
+        // [{"id":1,"name":"Ada"},{"id":2,"name":"Linus"}]
+    }
+}
+```
+
+**🧠 Tradeoff** — This is the pattern Java's frameworks were built on: `HttpServlet.service`
+calling your `doGet`, JUnit's setup/teardown, `AbstractList` needing only `get` and `size`. The
+abstract-class form is textbook here, and the keywords carry the design: `final` on `export`
+means no subclass can rewrite the flow, `abstract` marks the one step every format owes, and
+plain overridable methods are the hooks. The cost is the classic one — single inheritance, and
+every variant welded to the base. When steps vary independently, modern Java passes them in as
+`Function<Row, String>` lambdas instead; that's Strategy, and it's the right call the moment a
+variant would need two bases.
 
 ## Applications
 

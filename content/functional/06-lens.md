@@ -10,7 +10,7 @@ frequency: low
 difficulty: advanced
 tags: [functional, immutability, nested-data, composition, optics]
 related: [immutability, function-composition, provider]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -271,6 +271,212 @@ needs a hand-written getter/setter (Go has no field-access reflection sugar), so
 heavy. Idiomatic Go usually just copies structs by value at each level (the naive version, written
 carefully) rather than building optics — value semantics make shallow copies cheap, and Go culture
 favors explicitness over the abstraction. Lenses are a curiosity here more than a staple.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// `with` copies one level, so a deep update nests a `with` per level.
+var next = state with
+{
+    User = state.User with
+    {
+        Address = state.User.Address with { Zip = "94016" }
+    }
+};
+```
+
+**✅ Idiomatic**
+
+```csharp
+var state = new State(new User("Ann", new Address("SF", "94103")), "pro");
+
+var userL = new Lens<State, User>(s => s.User, (s, u) => s with { User = u });
+var addrL = new Lens<User, Address>(u => u.Address, (u, a) => u with { Address = a });
+var zipL  = new Lens<Address, string>(a => a.Zip, (a, z) => a with { Zip = z });
+
+var zip = userL.Then(addrL).Then(zipL);   // one lens onto state.User.Address.Zip
+var s2 = zip.Set(state, "94016");         // deep immutable set, no pyramid
+var s3 = zip.Over(state, z => z.Trim());  // deep modify
+
+public sealed record Address(string City, string Zip);
+public sealed record User(string Name, Address Address);
+public sealed record State(User User, string Plan);
+
+public sealed record Lens<S, A>(Func<S, A> Get, Func<S, A, S> Set)
+{
+    public S Over(S s, Func<A, A> f) => Set(s, f(Get(s)));
+    public Lens<S, B> Then<B>(Lens<A, B> inner) =>
+        new(s => inner.Get(Get(s)),
+            (s, b) => Set(s, inner.Set(Get(s), b)));
+}
+```
+
+**🧠 Tradeoff** — a lens in C# is just a record of two `Func`s, and `Then` chains the path-copy, so
+a deep path becomes one reusable, type-checked value. But be honest about the bar: records already
+give you `with`, so the "naive" nested version is what most C# teams write, and at two levels it's
+perfectly clear. Each leaf lens is hand-written boilerplate (no field-reference sugar), so the
+abstraction pays only when the same deep path is read and written across many call sites — otherwise
+nested `with` wins.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Struct update syntax (`..base`) is Rust's `with` — and it pyramids the same way.
+fn set_zip(s: &State, zip: String) -> State {
+    State {
+        user: User {
+            address: Address { zip, ..s.user.address.clone() },
+            ..s.user.clone()
+        },
+        ..s.clone()
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+#[derive(Clone)]
+struct Address { city: String, zip: String }
+
+#[derive(Clone)]
+struct User { name: String, address: Address }
+
+#[derive(Clone)]
+struct State { user: User, plan: String }
+
+// Clone once, then mutate the owned copy — the original can't be touched.
+fn set_zip(s: &State, zip: &str) -> State {
+    let mut next = s.clone();
+    next.user.address.zip = zip.to_string();
+    next
+}
+
+// let s2 = set_zip(&s1, "94016");
+// println!("{} {}", s1.user.address.zip, s2.user.address.zip); // 94103 94016
+```
+
+**🧠 Tradeoff** — Rust's ownership dissolves most of the lens's job. Clone-then-mutate gives exactly
+the guarantee a lens setter promises — a new value, the original untouched — because mutating an
+owned copy *cannot* reach the caller's `s1`, and the write path reads like the read path. The naive
+pyramid clones each level anyway, so it buys nothing over one `clone`. A real `Lens` type (get/set
+function pairs) is writable but fights the borrow checker over references versus values for little
+gain; lens crates earn their keep mainly in GUI data-binding (druid), where a focus must travel as a
+value. Elsewhere, skip the abstraction.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Rebuilding every level by hand, spread-style — unnecessary in Zig.
+fn setZip(s: State, zip: []const u8) State {
+    return .{
+        .user = .{
+            .name = s.user.name,
+            .address = .{ .city = s.user.address.city, .zip = zip },
+        },
+        .plan = s.plan,
+    };
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Address = struct { city: []const u8, zip: []const u8 };
+const User = struct { name: []const u8, address: Address };
+const State = struct { user: User, plan: []const u8 };
+
+// Structs are values: the copy is one assignment; poke the copy and return it.
+fn setZip(s: State, zip: []const u8) State {
+    var next = s; // parameters are immutable; this copies every level
+    next.user.address.zip = zip;
+    return next;
+}
+
+pub fn main() void {
+    const s1 = State{
+        .user = .{ .name = "Ann", .address = .{ .city = "SF", .zip = "94103" } },
+        .plan = "pro",
+    };
+    const s2 = setZip(s1, "94016");
+    std.debug.print("{s} {s}\n", .{ s1.user.address.zip, s2.user.address.zip }); // 94103 94016
+}
+```
+
+**🧠 Tradeoff** — Zig's value semantics dissolve the problem lenses solve: `var next = s` copies the
+whole nested struct in one assignment, the write path looks exactly like the read path, and the
+original is untouched because `next` is a genuinely separate value. There is no spread pyramid to
+escape. You *could* build a reusable focus with comptime field-name paths and `@field`, but it would
+be machinery in search of a problem — a lens abstraction isn't worth it in Zig. The one caveat: slice
+and pointer fields (the strings here) are shared views, so the value copy is shallow for them — fine
+while they're treated as read-only, `dupe` them explicitly if not.
+
+### Java
+
+**❌ Naive**
+
+```java
+// No `with` in Java — a deep update rebuilds every level by hand, listing every field.
+static State setZip(State s, String zip) {
+    return new State(
+        new User(s.user().name(),
+            new Address(s.user().address().city(), zip)),
+        s.plan());
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
+
+public class Demo {
+    public static void main(String[] args) {
+        var userL = new Lens<State, User>(State::user, (s, u) -> new State(u, s.plan()));
+        var addrL = new Lens<User, Address>(User::address, (u, a) -> new User(u.name(), a));
+        var zipL  = new Lens<Address, String>(Address::zip, (a, z) -> new Address(a.city(), z));
+
+        var zip = userL.then(addrL).then(zipL);  // one lens onto state.user.address.zip
+        var s1 = new State(new User("Ann", new Address("SF", "94103")), "pro");
+        var s2 = zip.set(s1, "94016");           // deep immutable set, no pyramid
+        var s3 = zip.over(s1, String::trim);     // deep modify
+        System.out.println(s1.user().address().zip() + " " + s2.user().address().zip()); // 94103 94016
+    }
+}
+
+record Address(String city, String zip) {}
+record User(String name, Address address) {}
+record State(User user, String plan) {}
+
+record Lens<S, A>(Function<S, A> get, BiFunction<S, A, S> set) {
+    S set(S s, A a) { return set.apply(s, a); }
+    S over(S s, UnaryOperator<A> f) { return set.apply(s, f.apply(get.apply(s))); }
+    <B> Lens<S, B> then(Lens<A, B> inner) {
+        return new Lens<>(
+            s -> inner.get().apply(get().apply(s)),
+            (s, b) -> set().apply(s, inner.set().apply(get().apply(s), b)));
+    }
+}
+```
+
+**🧠 Tradeoff** — the `Lens` record is small and `then` chains the path-copy into one reusable,
+type-checked value. But be honest about what it's built from: Java has no `with` expression, so every
+leaf setter rebuilds its record by listing every field — `(u, a) -> new User(u.name(), a)` — which is
+exactly the boilerplate the lens was supposed to remove, now relocated. That's why Java teams
+overwhelmingly write the nested-rebuild helper (the naive version), name it `withZip`, and move on —
+at two or three levels it's perfectly clear. A lens type earns its keep only when the same deep path
+is read and written across many call sites, or when the focus must travel as a value. If derived
+record creation (`with`) lands in a future Java, plain rebuilds win even more often.
 
 ## Applications
 

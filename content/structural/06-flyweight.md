@@ -10,7 +10,7 @@ frequency: low
 difficulty: advanced
 tags: [structural, memory, sharing, intrinsic-extrinsic, performance]
 related: [factory-method, singleton, prototype]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -281,6 +281,287 @@ type Tree struct {
 **🧠 Tradeoff** — A `map[string]*TreeType` caches one shared value per key; every `Tree` holds a
 `*TreeType` pointer, so the texture bytes exist once. Sharing a pointer means the `TreeType` must
 be treated as immutable. Guard the cache with a mutex if trees are created concurrently.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Every tree carries its own copy of the heavy type data.
+var forest = new List<Tree>();
+for (var i = 0; i < 1_000_000; i++)
+    forest.Add(new Tree(i, 0, "Oak", "green", bigTexture)); // duplicated per tree
+
+public sealed record Tree(int X, int Y, string Name, string Color, byte[] Texture);
+```
+
+**✅ Idiomatic**
+
+```csharp
+using System.Collections.Concurrent;
+
+// One shared TreeType per (name, color); each tree keeps only its position.
+var forest = new List<Tree>(capacity: 1_000_000);
+for (var i = 0; i < 1_000_000; i++)
+    forest.Add(new Tree(i, 0, TreeTypes.Get("Oak", "green")));
+
+Console.WriteLine(forest[0].Type.Draw(forest[0].X, forest[0].Y)); // Oak at 0,0
+
+// Records are immutable by default — safe to share.
+public sealed record TreeType(string Name, string Color, byte[] Texture)
+{
+    public string Draw(int x, int y) => $"{Name} at {x},{y}"; // extrinsic x,y passed in
+}
+
+// Each tree is position + a reference to the shared type.
+public readonly record struct Tree(int X, int Y, TreeType Type);
+
+public static class TreeTypes
+{
+    private static readonly ConcurrentDictionary<string, TreeType> Cache = new();
+
+    public static TreeType Get(string name, string color) =>
+        Cache.GetOrAdd($"{name}:{color}", _ => new TreeType(name, color, LoadTexture(name)));
+}
+```
+
+**🧠 Tradeoff** — `GetOrAdd` makes the factory thread-safe in one line, and a `record`
+makes the flyweight immutable by default — `with` expressions copy instead of mutating,
+so the shared-state bug is hard to even write. The runtime plays the same trick itself:
+`string.Intern` is a flyweight factory for strings. Bound the cache if the key space is
+open-ended, or it becomes a leak.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+struct Tree {
+    x: u32,
+    y: u32,
+    name: String,
+    color: String,
+    texture: Vec<u8>, // duplicated per tree
+}
+
+fn main() {
+    // a million clones of the same texture bytes
+    let forest: Vec<Tree> = (0..1_000_000)
+        .map(|i| Tree {
+            x: i,
+            y: 0,
+            name: "Oak".to_string(),
+            color: "green".to_string(),
+            texture: big_texture.clone(),
+        })
+        .collect();
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+
+struct TreeType {
+    name: String,
+    color: String,
+    texture: Vec<u8>, // heavy, shared
+}
+
+impl TreeType {
+    fn draw(&self, x: u32, y: u32) -> String {
+        format!("{} at {x},{y}", self.name) // extrinsic x,y passed in
+    }
+}
+
+// The factory interns one &'static TreeType per (name, color) — leaked once, shared forever.
+fn tree_type(name: &str, color: &str) -> &'static TreeType {
+    static CACHE: OnceLock<Mutex<HashMap<String, &'static TreeType>>> = OnceLock::new();
+    let mut cache = CACHE.get_or_init(|| Mutex::new(HashMap::new())).lock().unwrap();
+    *cache.entry(format!("{name}:{color}")).or_insert_with(|| {
+        Box::leak(Box::new(TreeType {
+            name: name.to_string(),
+            color: color.to_string(),
+            texture: load_texture(name),
+        }))
+    })
+}
+
+struct Tree {
+    x: u32,
+    y: u32,
+    kind: &'static TreeType, // just a pointer — the texture exists once
+}
+
+fn main() {
+    let forest: Vec<Tree> = (0..1_000_000)
+        .map(|i| Tree { x: i, y: 0, kind: tree_type("Oak", "green") })
+        .collect();
+    println!("{}", forest[0].kind.draw(0, 0)); // Oak at 0,0
+}
+```
+
+**🧠 Tradeoff** — `Box::leak` is the honest form for flyweights that live as long as the
+process: every tree holds a plain `&'static TreeType` — no reference counting, no
+lifetime plumbing. And where other languages ask for discipline, Rust enforces the rule:
+a shared `&T` cannot be mutated, so "corrupt every oak at once" doesn't compile. If the
+flyweights must ever be dropped, swap `&'static` for `Rc` (or `Arc` across threads) and
+accept the count.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const Tree = struct {
+    x: i32,
+    y: i32,
+    name: []const u8,
+    color: []const u8,
+    texture: []const u8, // duplicated per tree
+};
+
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+    const forest = try allocator.alloc(Tree, 1_000_000);
+    for (forest, 0..) |*tree, i| {
+        // a million copies of the same texture bytes
+        tree.* = .{
+            .x = @intCast(i),
+            .y = 0,
+            .name = "Oak",
+            .color = "green",
+            .texture = try loadTexture(allocator, "Oak"),
+        };
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const TreeType = struct {
+    name: []const u8,
+    color: []const u8,
+    texture: []const u8, // heavy, shared
+
+    pub fn draw(self: *const TreeType, x: i32, y: i32) void {
+        std.debug.print("{s} at {d},{d}\n", .{ self.name, x, y }); // extrinsic x,y passed in
+    }
+};
+
+// Each tree is position + a pointer to the shared type.
+const Tree = struct { x: i32, y: i32, kind: *const TreeType };
+
+// The factory interns one TreeType per "name:color" key.
+const TreeTypes = struct {
+    allocator: std.mem.Allocator,
+    cache: std.StringHashMap(*TreeType),
+
+    pub fn init(allocator: std.mem.Allocator) TreeTypes {
+        return .{ .allocator = allocator, .cache = std.StringHashMap(*TreeType).init(allocator) };
+    }
+
+    pub fn get(self: *TreeTypes, name: []const u8, color: []const u8) !*const TreeType {
+        const key = try std.fmt.allocPrint(self.allocator, "{s}:{s}", .{ name, color });
+        const entry = try self.cache.getOrPut(key);
+        if (entry.found_existing) {
+            self.allocator.free(key); // already interned — drop the duplicate key
+        } else {
+            const t = try self.allocator.create(TreeType);
+            t.* = .{ .name = name, .color = color, .texture = try loadTexture(self.allocator, name) };
+            entry.value_ptr.* = t;
+        }
+        return entry.value_ptr.*;
+    }
+};
+
+pub fn main() !void {
+    var types = TreeTypes.init(std.heap.page_allocator);
+
+    const oak_a = try types.get("Oak", "green");
+    const oak_b = try types.get("Oak", "green");
+    std.debug.print("shared: {}\n", .{oak_a == oak_b}); // shared: true
+
+    const tree = Tree{ .x = 0, .y = 0, .kind = oak_a };
+    tree.kind.draw(tree.x, tree.y); // Oak at 0,0
+}
+```
+
+**🧠 Tradeoff** — The explicit allocator is the point: Flyweight is a memory pattern, and
+Zig makes you look at every allocation it saves. Sharing is `*const TreeType` — read-only
+at the type level. The subtle part is ownership of the interned keys: a cache hit must
+free its duplicate key, bookkeeping that GC languages hide. Back the factory with a
+`std.heap.ArenaAllocator` and the whole cache — keys, structs, textures — frees in one
+`deinit`.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Every tree carries its own copy of the heavy type data.
+record Tree(int x, int y, String name, String color, byte[] texture) {}
+
+public class Naive {
+    public static void main(String[] args) {
+        var forest = new java.util.ArrayList<Tree>();
+        for (int i = 0; i < 1_000_000; i++)
+            forest.add(new Tree(i, 0, "Oak", "green", bigTexture)); // duplicated per tree
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+// The flyweight — a record, immutable by construction, safe to share.
+record TreeType(String name, String color, byte[] texture) {
+    String draw(int x, int y) { return "%s at %d,%d".formatted(name, x, y); } // extrinsic x,y passed in
+}
+
+// Each tree is position + a reference to the shared type.
+record Tree(int x, int y, TreeType type) {}
+
+class TreeTypes {
+    private static final Map<String, TreeType> CACHE = new ConcurrentHashMap<>();
+
+    static TreeType get(String name, String color) {
+        return CACHE.computeIfAbsent(name + ":" + color,
+            key -> new TreeType(name, color, loadTexture(name)));
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var forest = new ArrayList<Tree>(1_000_000);
+        for (int i = 0; i < 1_000_000; i++)
+            forest.add(new Tree(i, 0, TreeTypes.get("Oak", "green")));
+
+        System.out.println(forest.get(0).type().draw(0, 0)); // Oak at 0,0
+        System.out.println(forest.get(0).type() == forest.get(1).type()); // true — shared
+    }
+}
+```
+
+**🧠 Tradeoff** — the JDK runs this pattern under your feet: `Integer.valueOf` returns
+cached instances for -128..127, and `String.intern()` is a flyweight factory for strings —
+that's why `Integer.valueOf(100) == Integer.valueOf(100)` is true and `new Integer(100)`
+was deprecated into removal. Here, `computeIfAbsent` on a `ConcurrentHashMap` is the whole
+thread-safe factory, and a record makes the flyweight immutable so sharing is safe by
+construction. One caveat records don't fix: the `byte[]` inside is still mutable — wrap it
+or copy on the way out if callers can't be trusted. Bound the cache if the key space is
+open-ended.
 
 ## Applications
 

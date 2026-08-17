@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [data, persistence, orm, separation-of-concerns, domain-model]
 related: [active-record, repository, identity-map]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -284,6 +284,281 @@ mapper (usually called a repository) — the standard-library `database/sql` sty
 generates. Go's culture strongly favors this explicit Data-Mapper approach over Active-Record ORMs
 (GORM offers the latter). The manual `Scan` mapping is the cost; the benefit is a domain struct with no
 database dependency and SQL you can see.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The model writes itself into the store — schema knowledge welded to the domain.
+public sealed class User(int id, string name)
+{
+    public int Id { get; } = id;
+    public string Name { get; set; } = name;
+
+    public void Save(Dictionary<int, string> table) => table[Id] = Name; // model knows storage
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Top-level statements: the demo runs first, the types follow.
+var mapper = new UserMapper();
+mapper.Save(new User(1, "Ada"));         // seed the in-memory "users table"
+
+var user = mapper.Find(1)!;
+user.Rename("Grace");                    // pure domain behavior — no storage in sight
+mapper.Save(user);
+Console.WriteLine(mapper.Find(1)!.Name); // Grace
+
+// Pure domain object — fields and rules, nothing about rows.
+public sealed class User(int id, string name)
+{
+    public int Id { get; } = id;
+    public string Name { get; private set; } = name;
+
+    public void Rename(string name) =>
+        Name = string.IsNullOrEmpty(name) ? throw new ArgumentException("empty") : name;
+}
+
+// The row shape belongs to storage, not the domain.
+public sealed record UserRow(int Id, string Name);
+
+// The mapper owns the table and the translation in both directions.
+public sealed class UserMapper
+{
+    private readonly Dictionary<int, UserRow> _table = new(); // stands in for the database
+
+    private static User ToDomain(UserRow row) => new(row.Id, row.Name);
+    private static UserRow ToRow(User u) => new(u.Id, u.Name);
+
+    public User? Find(int id) => _table.TryGetValue(id, out var row) ? ToDomain(row) : null;
+    public void Save(User u) => _table[u.Id] = ToRow(u);
+}
+```
+
+**🧠 Tradeoff** — EF Core *is* a Data Mapper: entities are plain classes and the `DbContext` does the
+translating and tracking, so C# teams usually get this pattern from the framework — the hand mapper
+shows what that machinery does. The type system makes the split visible: `UserRow` is an immutable
+`record` snapshot of storage, `User` is a mutable class with behavior, and only the mapper knows both.
+The cost is two types plus translation per aggregate; the payoff is that `Rename` unit-tests with no
+storage at all.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+use std::collections::HashMap;
+
+// The model writes itself into the store — persistence welded to the struct.
+struct User { id: u32, name: String }
+
+impl User {
+    fn save(&self, table: &mut HashMap<u32, String>) {
+        table.insert(self.id, self.name.clone()); // model knows the storage shape
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+
+// Pure domain struct — fields and rules, no storage in sight.
+struct User { id: u32, name: String }
+
+impl User {
+    fn rename(&mut self, name: &str) -> Result<(), String> {
+        if name.is_empty() { return Err("empty".into()); }
+        self.name = name.to_string();
+        Ok(())
+    }
+}
+
+// The row shape belongs to storage, not the domain.
+struct UserRow { id: u32, name: String }
+
+// The mapper owns the table and the translation both ways.
+struct UserMapper { table: HashMap<u32, UserRow> } // stands in for the database
+
+impl UserMapper {
+    fn to_domain(row: &UserRow) -> User { User { id: row.id, name: row.name.clone() } }
+    fn to_row(u: &User) -> UserRow { UserRow { id: u.id, name: u.name.clone() } }
+
+    fn find(&self, id: u32) -> Option<User> { self.table.get(&id).map(Self::to_domain) }
+    fn save(&mut self, u: &User) { self.table.insert(u.id, Self::to_row(u)); }
+}
+
+fn main() {
+    let mut mapper = UserMapper { table: HashMap::new() };
+    mapper.save(&User { id: 1, name: "Ada".into() }); // seed the in-memory "users table"
+
+    let mut user = mapper.find(1).unwrap();
+    user.rename("Grace").unwrap();               // pure behavior, testable with no store
+    mapper.save(&user);
+    println!("{}", mapper.find(1).unwrap().name); // Grace
+}
+```
+
+**🧠 Tradeoff** — ownership makes Data Mapper the natural Rust shape: `find` hands you an *owned*
+`User` translated out of the row, nothing links it back to the table, and only an explicit `save`
+writes it home. There's no fight with the borrow checker because the pattern never asks for shared
+mutable state between object and store — which is exactly why Rust's ORMs (Diesel, SeaORM) are
+mapper-shaped rather than Active Record. The `clone()`s in the translation are the visible price of
+that copy-in/copy-out contract.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// The model writes itself into the store — persistence welded to the struct.
+const Table = struct { names: [8]?[]const u8 };
+
+const User = struct {
+    id: u32,
+    name: []const u8,
+
+    fn save(self: User, table: *Table) void {
+        table.names[self.id] = self.name; // the "domain" knows the storage layout
+    }
+};
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Pure domain struct — fields and rules, nothing about storage.
+const User = struct {
+    id: u32,
+    name: []const u8,
+
+    fn rename(self: *User, name: []const u8) !void {
+        if (name.len == 0) return error.EmptyName;
+        self.name = name;
+    }
+};
+
+// The row shape belongs to storage, not the domain.
+const UserRow = struct { id: u32, name: []const u8 };
+
+// The mapper owns the table and the translation both ways.
+const UserMapper = struct {
+    rows: [8]?UserRow = @splat(null), // the "users table", keyed by id
+
+    fn toDomain(row: UserRow) User {
+        return .{ .id = row.id, .name = row.name };
+    }
+    fn toRow(u: User) UserRow {
+        return .{ .id = u.id, .name = u.name };
+    }
+
+    fn find(self: UserMapper, id: u32) ?User {
+        const row = self.rows[id] orelse return null;
+        return toDomain(row);
+    }
+    fn save(self: *UserMapper, u: User) void {
+        self.rows[u.id] = toRow(u);
+    }
+};
+
+pub fn main() !void {
+    var mapper = UserMapper{};
+    mapper.save(.{ .id = 1, .name = "Ada" }); // seed the in-memory "users table"
+
+    var user = mapper.find(1).?;
+    try user.rename("Grace");                 // pure behavior, testable with no store
+    mapper.save(user);
+    std.debug.print("{s}\n", .{mapper.find(1).?.name}); // Grace
+}
+```
+
+**🧠 Tradeoff** — in Zig, Data Mapper is less a technique than a filing decision: a row struct, a
+domain struct, and two small translation functions, with no ORM to hide any of it. `find` returns a
+copy by value — which is precisely the pattern's contract, not a workaround. The honest caveat: for a
+struct this small, `User` and `UserRow` are identical shapes and the split reads as ceremony; it earns
+its keep once the storage layout (packed fields, foreign keys) and the domain shape start to diverge.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.util.Map;
+
+// The model writes itself into the store — schema knowledge welded to the domain.
+class User {
+    int id;
+    String name;
+
+    void save(Map<Integer, String> table) { table.put(id, name); } // model knows storage
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+// Pure domain object — fields and rules, nothing about rows.
+class User {
+    final int id;
+    private String name;
+
+    User(int id, String name) { this.id = id; this.name = name; }
+
+    String name() { return name; }
+    void rename(String name) {
+        if (name == null || name.isEmpty()) throw new IllegalArgumentException("empty");
+        this.name = name;
+    }
+}
+
+// The row shape belongs to storage, not the domain.
+record UserRow(int id, String name) {}
+
+// The mapper owns the table and the translation in both directions.
+class UserMapper {
+    private final Map<Integer, UserRow> table = new HashMap<>(); // stands in for the database
+
+    private static User toDomain(UserRow row) { return new User(row.id(), row.name()); }
+    private static UserRow toRow(User u) { return new UserRow(u.id, u.name()); }
+
+    User find(int id) {
+        var row = table.get(id);
+        return row == null ? null : toDomain(row);
+    }
+    void save(User u) { table.put(u.id, toRow(u)); }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var mapper = new UserMapper();
+        mapper.save(new User(1, "Ada"));           // seed the in-memory "users table"
+
+        var user = mapper.find(1);
+        user.rename("Grace");                      // pure domain behavior — no storage in sight
+        mapper.save(user);
+        System.out.println(mapper.find(1).name()); // Grace
+    }
+}
+```
+
+**🧠 Tradeoff** — this is Hibernate's home ground: JPA's `EntityManager` is a Data Mapper plus a Unit
+of Work — entities are plain classes, `find`/`persist` do the translating, and the mapping lives in
+annotations instead of a hand-written `toRow`. The hand mapper shows the machinery the framework hides.
+The `record` makes the split visible: `UserRow` is an immutable storage snapshot, `User` a mutable
+object with behavior, and only the mapper knows both. The cost is two types plus translation per
+aggregate; the payoff — `rename` unit-tests with no database — is the argument Hibernate has been
+making since 2001.
 
 ## Applications
 

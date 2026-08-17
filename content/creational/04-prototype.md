@@ -10,7 +10,7 @@ frequency: low
 difficulty: intermediate
 tags: [creational, cloning, copy, deep-copy, object-template]
 related: [factory-method, abstract-factory]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -262,6 +262,270 @@ maps, and pointers copy only their headers, so you clone reference fields by han
 method. That's explicit and fast, but easy to get wrong as the struct grows — add a field, and
 you must remember to copy it. For deep graphs, a generics helper or serialization round-trip is
 the fallback.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// `with` copies a record shallowly — the List reference is shared, not copied.
+var template = new Player("player", new Stats(100, 50), ["dash"]);
+
+var clone = template with { };     // shallow: clone.Skills IS template.Skills
+clone.Skills.Add("hack");
+Console.WriteLine(template.Skills.Count); // 2 — leaked through the shared list
+
+public record Stats(int Hp, int Mp);
+public record Player(string Name, Stats Stats, List<string> Skills);
+```
+
+**✅ Idiomatic**
+
+```csharp
+var template = new Player("player", new Stats(100, 50), ["dash"]);
+
+var clone = template.Clone();
+clone.Skills.Add("blink");
+
+Console.WriteLine(template.Skills.Count); // 1 — untouched
+Console.WriteLine(clone.Skills.Count);    // 2 — independent list
+
+public sealed record Stats(int Hp, int Mp);
+
+public sealed record Player(string Name, Stats Stats, List<string> Skills)
+{
+    // Deep where it matters: fresh List, shared immutable Stats.
+    public Player Clone() => this with { Skills = [.. Skills] };
+}
+```
+
+**🧠 Tradeoff** — records give you `with`-cloning for free, but it's shallow: immutable
+fields (`Stats` is a record of ints) are safe to share, while a mutable `List<>` leaks.
+So the deep clone is `with` plus a fresh copy of each mutable field — `[.. Skills]` — and
+a deliberate share of everything immutable. Skip `ICloneable`: it returns `object` and
+never says whether the copy is deep. The cleaner escape is making the whole graph
+immutable (`ImmutableList<>`), where sharing is always safe and cloning collapses back
+into plain `with`.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+use std::cell::RefCell;
+use std::rc::Rc;
+
+// Rc makes sharing easy — and cloning an Rc copies the HANDLE, not the data.
+#[derive(Clone)]
+struct Stats {
+    hp: u32,
+    mp: u32,
+}
+
+#[derive(Clone)]
+struct Player {
+    name: String,
+    stats: Rc<RefCell<Stats>>, // shared pointer hiding inside the struct
+}
+
+fn main() {
+    let template = Player {
+        name: "player".to_string(),
+        stats: Rc::new(RefCell::new(Stats { hp: 100, mp: 50 })),
+    };
+
+    let clone = template.clone(); // clone.stats points at the SAME RefCell
+    clone.stats.borrow_mut().hp = 10;
+    println!("{}", template.stats.borrow().hp); // 10 — leaked through the shared Rc
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// With plain owned fields, derive(Clone) is a true deep copy.
+#[derive(Clone, Debug)]
+struct Stats {
+    hp: u32,
+    mp: u32,
+}
+
+#[derive(Clone, Debug)]
+struct Player {
+    name: String,
+    stats: Stats,
+    skills: Vec<String>,
+}
+
+fn main() {
+    let template = Player {
+        name: "player".to_string(),
+        stats: Stats { hp: 100, mp: 50 },
+        skills: vec!["dash".to_string()],
+    };
+
+    let mut clone = template.clone(); // deep: fresh String, Stats, and Vec
+    clone.stats.hp = 10;
+    clone.skills.push("blink".to_string());
+
+    println!("{}", template.stats.hp); // 100 — untouched
+    println!("{:?}", template.skills); // ["dash"] — independent
+}
+```
+
+**🧠 Tradeoff** — ownership makes Prototype nearly automatic: `#[derive(Clone)]` deep-copies
+every owned field, and the borrow checker won't let a stray alias mutate the original behind
+your back. The shallow-copy bug only re-enters through `Rc<RefCell<_>>`, where `.clone()`
+copies the handle *by design* — if a struct hides one, its derived clone shares state. The
+cost is honest and visible: every `.clone()` you type is an allocation you chose, and small
+all-value structs can opt into cheap implicit copies with `Copy` instead.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const Stats = struct { hp: u32, mp: u32 };
+const Player = struct {
+    name: []const u8,
+    stats: Stats,
+    skills: [][]const u8, // slice header copies; backing memory is shared
+};
+
+pub fn main() void {
+    var skills = [_][]const u8{"dash"};
+    const template = Player{
+        .name = "player",
+        .stats = .{ .hp = 100, .mp = 50 },
+        .skills = &skills,
+    };
+
+    var clone = template; // shallow: clone.skills points at the same array
+    clone.skills[0] = "hack";
+    std.debug.print("{s}\n", .{template.skills[0]}); // hack — leaked
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Stats = struct { hp: u32, mp: u32 };
+
+const Player = struct {
+    name: []const u8,
+    stats: Stats,
+    skills: [][]const u8,
+
+    // Deep clone: value fields copy; the slice gets fresh memory from the allocator.
+    fn clone(self: Player, allocator: std.mem.Allocator) !Player {
+        var cp = self;
+        cp.skills = try allocator.dupe([]const u8, self.skills);
+        return cp;
+    }
+};
+
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+
+    var skills = [_][]const u8{"dash"};
+    const template = Player{
+        .name = "player",
+        .stats = .{ .hp = 100, .mp = 50 },
+        .skills = &skills,
+    };
+
+    var clone = try template.clone(allocator);
+    defer allocator.free(clone.skills);
+    clone.stats.hp = 10;
+    clone.skills[0] = "hack";
+
+    // dash 100 — the template is untouched
+    std.debug.print("{s} {d}\n", .{ template.skills[0], template.stats.hp });
+}
+```
+
+**🧠 Tradeoff** — Zig behaves like Go here — assignment copies value fields, slice headers
+share their backing memory — but adds one honest demand: a deep clone must name its
+allocator, and the caller owns the result (`defer allocator.free`). Nothing allocates
+behind your back. Note that `dupe` copies one level: the inner strings stay shared, which
+is fine because `[]const u8` can't be written through — copy what can mutate, share what
+can't. The Go hazard carries over too: add a field, and you must remember to clone it.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+// Cloneable's default clone() is SHALLOW — the List is copied by reference.
+class Player implements Cloneable {
+    String name;
+    List<String> skills;
+
+    Player(String name, List<String> skills) { this.name = name; this.skills = skills; }
+
+    @Override public Player clone() {
+        try {
+            return (Player) super.clone(); // field-by-field copy; skills is the SAME list
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError(e);
+        }
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var template = new Player("player", new ArrayList<>(List.of("dash")));
+        var clone = template.clone();
+        clone.skills.add("hack");
+        System.out.println(template.skills); // [dash, hack] — leaked through the shared list
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+record Stats(int hp, int mp) {} // immutable — always safe to share
+
+record Player(String name, Stats stats, List<String> skills) {
+    // The copy method: deep where it matters — fresh list, shared immutable Stats.
+    Player copy() {
+        return new Player(name, stats, new ArrayList<>(skills));
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var template = new Player("player", new Stats(100, 50),
+                new ArrayList<>(List.of("dash")));
+
+        var clone = template.copy();
+        clone.skills().add("blink");
+
+        System.out.println(template.skills()); // [dash] — untouched
+        System.out.println(clone.skills());    // [dash, blink] — independent
+    }
+}
+```
+
+**🧠 Tradeoff** — Java's built-in answer is the one to avoid: `Cloneable` is a marker
+interface with no `clone()` in it, `Object.clone()` is protected, shallow, skips
+constructors, and throws a checked exception — Effective Java's verdict is simply don't.
+A copy constructor or copy method is the honest form: plain code, and each field's depth is
+a visible decision — fresh `ArrayList` because it mutates, shared `Stats` because it can't.
+The cleaner escape is making the whole graph immutable (`List.copyOf` in a record's compact
+constructor); then sharing is always safe and "clone" collapses into handing out the same
+value. Until then the Go hazard applies: add a field, remember to copy it.
 
 ## Applications
 

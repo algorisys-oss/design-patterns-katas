@@ -10,7 +10,7 @@ frequency: medium
 difficulty: advanced
 tags: [architecture, ports-adapters, dependency-inversion, testability, boundaries]
 related: [layered, repository, dependency-inversion]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -287,6 +287,258 @@ func (r PostgresOrders) Save(o Order) error { _, err := r.db.Exec("INSERT ...");
 `Orders`, and the postgres package implements it by importing the *core* — so dependencies point
 inward with no wiring framework. Tests pass a struct with a `Save` method. Verbosity lives in the
 composition root in `main`, where every adapter is constructed and injected by hand.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The use case news up the database client — core welded to infrastructure.
+public sealed class PlaceOrder
+{
+    public async Task DoAsync(Cart cart)
+    {
+        if (cart.Items.Count == 0) throw new EmptyCartException();
+        await using var db = new NpgsqlConnection(connString); // infrastructure, hard-wired
+        await db.ExecuteAsync("INSERT INTO orders ...");
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Core project — owns the port and the rule; references no other project.
+public record Order(Cart Cart, string Status);
+
+public interface IOrders                       // driven port, owned by the core
+{
+    Task SaveAsync(Order order);
+}
+
+public sealed class PlaceOrder(IOrders orders)
+{
+    public async Task DoAsync(Cart cart)
+    {
+        if (cart.Items.Count == 0) throw new EmptyCartException();
+        await orders.SaveAsync(new Order(cart, "placed"));
+    }
+}
+
+// Infrastructure project — references the core, never the reverse.
+public sealed class PostgresOrders(NpgsqlDataSource db) : IOrders
+{
+    public Task SaveAsync(Order order) =>
+        db.ExecuteAsync("INSERT INTO orders ...", order);   // SQL stays here
+}
+
+// Composition root: builder.Services.AddScoped<IOrders, PostgresOrders>();
+// Tests: new PlaceOrder(new InMemoryOrders()) — no container, no database.
+```
+
+**🧠 Tradeoff** — The assembly boundary makes "dependencies point inward" compiler-enforced: the
+core project has zero package references, so an EF or Npgsql import in the domain is a build
+error, not a code-review catch. ASP.NET's DI container is the composition root, which trims the
+wiring Go writes by hand at the cost of some indirection. For a single-method port a
+`Func<Order, Task>` would technically do — but hexagonal is about *naming* the seams, and
+`IOrders` is the name.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// The use case takes the concrete client — core tied to the database crate.
+fn place_order(db: &mut postgres::Client, cart: &Cart) -> Result<(), Error> {
+    if cart.items.is_empty() {
+        return Err(Error::EmptyCart);
+    }
+    db.execute("INSERT INTO orders ...", &[])?; // infrastructure in the core
+    Ok(())
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// core/ — owns the port (a trait) and the rule; no infrastructure imports.
+struct Cart { items: Vec<String> }
+struct Order { cart: Cart, status: &'static str }
+
+trait Orders {                          // driven port, owned by the core
+    fn save(&mut self, order: Order) -> Result<(), String>;
+}
+
+struct PlaceOrder<O: Orders> { orders: O }
+
+impl<O: Orders> PlaceOrder<O> {
+    fn call(&mut self, cart: Cart) -> Result<(), String> {
+        if cart.items.is_empty() {
+            return Err("empty cart".into());
+        }
+        self.orders.save(Order { cart, status: "placed" })
+    }
+}
+
+// adapters/ — depends on the core and implements its trait.
+struct InMemoryOrders { saved: Vec<Order> }
+
+impl Orders for InMemoryOrders {
+    fn save(&mut self, order: Order) -> Result<(), String> {
+        self.saved.push(order);
+        Ok(())
+    }
+}
+
+fn main() {
+    let mut place = PlaceOrder { orders: InMemoryOrders { saved: vec![] } };
+    place.call(Cart { items: vec!["book".into()] }).unwrap();
+    println!("saved: {}", place.orders.saved.len()); // saved: 1
+}
+```
+
+**🧠 Tradeoff** — The trait is the port, and crate boundaries enforce the direction: a core crate
+whose `Cargo.toml` lists no database dependency provably can't depend on one. Rust then makes you
+pick what Go and C# hide — `PlaceOrder<O: Orders>` monomorphizes each adapter to static-dispatch
+code but fixes it at compile time, while `Box<dyn Orders>` lets config choose the adapter at
+runtime for a vtable hop. Ownership is a bonus at the boundary: `save` takes the `Order` by
+value, so the core hands data outward and keeps no strings attached.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// The use case calls the concrete store directly — core knows the storage type.
+fn placeOrder(store: *PostgresStore, items: []const []const u8) !void {
+    if (items.len == 0) return error.EmptyCart;
+    try store.insert(items); // swap the store, edit the core
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Order = struct { items: []const []const u8, status: []const u8 };
+
+// The port. Zig has no interfaces, so we build one from a context pointer
+// plus a function pointer — the same idiom std.mem.Allocator uses.
+const Orders = struct {
+    ctx: *anyopaque,
+    saveFn: *const fn (ctx: *anyopaque, order: Order) anyerror!void,
+
+    pub fn save(self: Orders, order: Order) !void {
+        return self.saveFn(self.ctx, order);
+    }
+};
+
+// The core use case depends on the port only.
+fn placeOrder(orders: Orders, items: []const []const u8) !void {
+    if (items.len == 0) return error.EmptyCart;
+    try orders.save(.{ .items = items, .status = "placed" });
+}
+
+// A driven adapter: an in-memory store that hands out itself as a port.
+const InMemoryOrders = struct {
+    saved: usize = 0,
+    last_status: []const u8 = "",
+
+    fn save(ctx: *anyopaque, order: Order) anyerror!void {
+        const self: *InMemoryOrders = @ptrCast(@alignCast(ctx));
+        self.saved += 1;
+        self.last_status = order.status;
+    }
+
+    pub fn port(self: *InMemoryOrders) Orders {
+        return .{ .ctx = self, .saveFn = save };
+    }
+};
+
+pub fn main() !void {
+    var store = InMemoryOrders{};
+    try placeOrder(store.port(), &.{"book"});
+    std.debug.print("saved {d}, status {s}\n", .{ store.saved, store.last_status });
+    // saved 1, status placed
+}
+```
+
+**🧠 Tradeoff** — Zig won't give you an interface, so the port is built by hand: an `*anyopaque`
+context, a function pointer, and an `@ptrCast` back on the adapter side. That's more ceremony
+than `interface`/`trait` — and more honest, because the indirection you pay is sitting right
+there in the source. When every adapter is known at compile time, a comptime generic
+(`orders: anytype`) gives the same seam with static dispatch and no casts; the vtable earns its
+keep when the adapter is picked at runtime — config in production, a fake in tests, no
+recompile. Stripped of language sugar, hexagonal's claim is plain here: a port is just a calling
+convention the core owns.
+
+### Java
+
+**❌ Naive**
+
+```java
+// The use case opens its own connection — core welded to JDBC and the schema.
+class PlaceOrder {
+    void call(List<String> items) throws SQLException {
+        if (items.isEmpty()) throw new IllegalStateException("empty cart");
+        try (var conn = DriverManager.getConnection(DB_URL)) {
+            conn.prepareStatement("INSERT INTO orders ...").executeUpdate(); // infra in the core
+        }
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+// core — owns the port and the rule; imports no infrastructure.
+record Order(List<String> items, String status) {}
+
+interface Orders {                       // driven port, owned by the core
+    void save(Order order);
+}
+
+class PlaceOrder {
+    private final Orders orders;
+    PlaceOrder(Orders orders) { this.orders = orders; }
+
+    void call(List<String> items) {
+        if (items.isEmpty()) throw new IllegalStateException("empty cart");
+        orders.save(new Order(items, "placed"));
+    }
+}
+
+// adapter — implements the core's port; depends inward, never the reverse.
+class InMemoryOrders implements Orders {
+    final List<Order> saved = new ArrayList<>();
+    public void save(Order order) { saved.add(order); }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var store = new InMemoryOrders();
+        new PlaceOrder(store).call(List.of("book"));
+        System.out.println("saved: " + store.saved.size()); // saved: 1
+
+        // Orders is a single method — a functional interface — so a fake is a lambda:
+        new PlaceOrder(order -> System.out.println("status: " + order.status()))
+            .call(List.of("pen")); // status: placed
+    }
+}
+```
+
+**🧠 Tradeoff** — Java's `interface` was built for exactly this seam, and putting the core in its
+own build module makes the direction enforceable: a core module with zero dependencies provably
+can't import JDBC. JPMS goes one step further — `module-info.java` exporting only the ports is
+the architecture written as code — but a Maven/Gradle module split is where most teams sensibly
+stop. Two modern touches earn their keep here: the `Order` record crosses the port as an immutable
+value, so no adapter can mutate core state, and a single-method port is a functional interface, so
+the test fake is a lambda instead of a stub class. The mapping tax and the hand-wired (or
+DI-container-wired) composition root remain — that part no language sugar removes.
 
 ## Applications
 

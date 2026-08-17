@@ -10,7 +10,7 @@ frequency: low
 difficulty: advanced
 tags: [behavioral, double-dispatch, operations, ast, open-closed]
 related: [composite, interpreter, iterator]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -293,6 +293,300 @@ func (AreaVisitor) VisitSquare(s Square) any { return s.S * s.S }
 double dispatch to add operations without editing the shapes. In practice Go code often prefers a
 plain `switch v := shape.(type)` type switch — simpler, and fine when operations are few. Reach for
 the full Visitor interface when you have many operations and want each grouped and type-checked.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Every new operation adds a method to every shape.
+public sealed class Circle(double r)
+{
+    public double Area() => Math.PI * r * r;
+    public string ToSvg() => $"<circle r=\"{r}\"/>"; // and BoundingBox(), ToJson()... it grows
+}
+
+public sealed class Square(double s)
+{
+    public double Area() => s * s;
+    public string ToSvg() => $"<rect width=\"{s}\"/>";
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Shapes accept a visitor; each operation is its own visitor class.
+Shape[] shapes = [new Circle(2), new Square(3)];
+var area = new AreaVisitor();
+var svg = new SvgVisitor();
+foreach (var s in shapes)
+    Console.WriteLine($"{s.Accept(area)} {s.Accept(svg)}");
+// 12.566... <circle r="2"/>
+// 9 <rect width="3"/>
+
+public interface IVisitor<out T>
+{
+    T VisitCircle(Circle c);
+    T VisitSquare(Square s);
+}
+
+public abstract record Shape
+{
+    public abstract T Accept<T>(IVisitor<T> v);
+}
+
+public sealed record Circle(double R) : Shape
+{
+    public override T Accept<T>(IVisitor<T> v) => v.VisitCircle(this);
+}
+
+public sealed record Square(double S) : Shape
+{
+    public override T Accept<T>(IVisitor<T> v) => v.VisitSquare(this);
+}
+
+public sealed class AreaVisitor : IVisitor<double>
+{
+    public double VisitCircle(Circle c) => Math.PI * c.R * c.R;
+    public double VisitSquare(Square s) => s.S * s.S;
+}
+
+public sealed class SvgVisitor : IVisitor<string>
+{
+    public string VisitCircle(Circle c) => $"<circle r=\"{c.R}\"/>";
+    public string VisitSquare(Square s) => $"<rect width=\"{s.S}\"/>";
+}
+```
+
+**🧠 Tradeoff** — the generic `Accept<T>` lets each operation pick its own result type; this is
+the shape of Roslyn's `CSharpSyntaxVisitor<TResult>`, C#'s most famous visitor. But be honest
+about the alternative: on a sealed hierarchy, a pattern-matching switch expression
+(`shape switch { Circle c => ..., Square s => ... }`) puts one operation in one place with none
+of the `Accept` ceremony. What the interface still buys is exhaustiveness — a new shape breaks
+every visitor at compile time, while the switch needs a `_` arm or a runtime throw. Few
+operations: match. Many operations over a stable tree: Visitor.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Every new operation grows this trait — and edits every shape's impl.
+trait Shape {
+    fn area(&self) -> f64;
+    fn to_svg(&self) -> String;
+    // bounding_box()? to_json()? each addition touches every impl below
+}
+
+struct Circle { r: f64 }
+impl Shape for Circle {
+    fn area(&self) -> f64 { std::f64::consts::PI * self.r * self.r }
+    fn to_svg(&self) -> String { format!(r#"<circle r="{}"/>"#, self.r) }
+}
+
+struct Square { s: f64 }
+impl Shape for Square {
+    fn area(&self) -> f64 { self.s * self.s }
+    fn to_svg(&self) -> String { format!(r#"<rect width="{}"/>"#, self.s) }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// A closed set of shapes is an enum; each operation is one function with an
+// exhaustive match. This IS Rust's Visitor — no accept(), no double dispatch.
+enum Shape {
+    Circle { r: f64 },
+    Square { s: f64 },
+}
+
+fn area(shape: &Shape) -> f64 {
+    match shape {
+        Shape::Circle { r } => std::f64::consts::PI * r * r,
+        Shape::Square { s } => s * s,
+    }
+}
+
+// A new operation is a new function — the shapes never change.
+fn to_svg(shape: &Shape) -> String {
+    match shape {
+        Shape::Circle { r } => format!(r#"<circle r="{r}"/>"#),
+        Shape::Square { s } => format!(r#"<rect width="{s}"/>"#),
+    }
+}
+
+fn main() {
+    let shapes = [Shape::Circle { r: 2.0 }, Shape::Square { s: 3.0 }];
+    for s in &shapes {
+        println!("{} {}", area(s), to_svg(s));
+        // 12.566... <circle r="2"/>
+        // 9 <rect width="3"/>
+    }
+}
+```
+
+**🧠 Tradeoff** — Rust barely needs the pattern: an enum plus exhaustive `match` already gives
+"one operation, one place, shapes untouched", and the compiler turns Visitor's weak spot into a
+strength — add a `Triangle` variant and every `match` fails to compile until it's handled, a
+checklist instead of a runtime surprise. What you give up is openness: downstream crates can't
+add shapes to your enum. The trait-object route (an `accept` on `dyn Shape`) buys that openness
+back, and crates like `syn` ship trait visitors for huge ASTs where default walk methods matter.
+For a closed set, reach for `match` first.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// Every new operation adds a method to every shape type.
+const Circle = struct {
+    r: f64,
+    fn area(self: Circle) f64 {
+        return std.math.pi * self.r * self.r;
+    }
+    fn toSvg(self: Circle) void {
+        std.debug.print("<circle r=\"{d}\"/>\n", .{self.r});
+    }
+};
+
+const Square = struct {
+    s: f64,
+    fn area(self: Square) f64 {
+        return self.s * self.s;
+    }
+    fn toSvg(self: Square) void {
+        std.debug.print("<rect width=\"{d}\"/>\n", .{self.s});
+    }
+};
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// A closed set of shapes is a tagged union; each operation is one function with
+// an exhaustive switch. This is Zig's Visitor — no accept, no vtables.
+const Shape = union(enum) {
+    circle: struct { r: f64 },
+    square: struct { s: f64 },
+};
+
+fn area(shape: Shape) f64 {
+    return switch (shape) {
+        .circle => |c| std.math.pi * c.r * c.r,
+        .square => |s| s.s * s.s,
+    };
+}
+
+// A new operation is a new function — the union never changes.
+fn printSvg(shape: Shape) void {
+    switch (shape) {
+        .circle => |c| std.debug.print("<circle r=\"{d}\"/>\n", .{c.r}),
+        .square => |s| std.debug.print("<rect width=\"{d}\"/>\n", .{s.s}),
+    }
+}
+
+pub fn main() void {
+    const shapes = [_]Shape{
+        .{ .circle = .{ .r = 2 } },
+        .{ .square = .{ .s = 3 } },
+    };
+    for (shapes) |s| {
+        std.debug.print("{d} -> ", .{area(s)}); // 12.566... then 9
+        printSvg(s);                            // <circle r="2"/> then <rect width="3"/>
+    }
+}
+```
+
+**🧠 Tradeoff** — same verdict as Rust, and worth saying plainly: in Zig the tagged union *is*
+the pattern. A `switch` over a `union(enum)` must be exhaustive, so adding a `.triangle` breaks
+every operation at compile time — the "edit every visitor" cost, converted into a compiler
+checklist. There's no double dispatch because there's nothing to dispatch: the tag is right
+there in the value. The classic OO Visitor only resurfaces if the shape set must stay open at
+runtime — then you're building `*anyopaque` + function-pointer vtables by hand, and you should
+be sure the openness is worth it.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Every new operation adds a method to every shape.
+class Circle {
+    final double r;
+    Circle(double r) { this.r = r; }
+    double area() { return Math.PI * r * r; }
+    String toSvg() { return "<circle r=\"%s\"/>".formatted(r); } // and boundingBox(), toJson()... it grows
+}
+
+class Square {
+    final double s;
+    Square(double s) { this.s = s; }
+    double area() { return s * s; }
+    String toSvg() { return "<rect width=\"%s\"/>".formatted(s); }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.List;
+
+// A closed set of shapes is a sealed interface; each operation is one
+// exhaustive pattern-matching switch. This is modern Java's Visitor — no accept.
+sealed interface Shape permits Circle, Square {}
+record Circle(double r) implements Shape {}
+record Square(double s) implements Shape {}
+
+class Operations {
+    static double area(Shape shape) {
+        return switch (shape) {
+            case Circle c -> Math.PI * c.r() * c.r();
+            case Square sq -> sq.s() * sq.s();
+        };
+    }
+
+    // A new operation is a new method — the shapes never change.
+    static String toSvg(Shape shape) {
+        return switch (shape) {
+            case Circle c -> "<circle r=\"%s\"/>".formatted(c.r());
+            case Square sq -> "<rect width=\"%s\"/>".formatted(sq.s());
+        };
+    }
+}
+
+// The classic double dispatch survives as the OPEN-set form: when shapes must
+// be addable outside this file, accept()/visit() replaces the sealed switch.
+interface Visitor<T> {
+    T visitCircle(Circle c);
+    T visitSquare(Square s);
+}
+// each shape then adds:  <T> T accept(Visitor<T> v) { return v.visitCircle(this); }
+
+public class Demo {
+    public static void main(String[] args) {
+        var shapes = List.of(new Circle(2), new Square(3));
+        for (Shape s : shapes)
+            System.out.println(Operations.area(s) + " " + Operations.toSvg(s));
+        // 12.566... <circle r="2.0"/>
+        // 9.0 <rect width="3.0"/>
+    }
+}
+```
+
+**🧠 Tradeoff** — Be honest: sealed interfaces plus pattern-matching `switch` (Java 21) took
+over Visitor's job for closed hierarchies. One operation is one exhaustive `switch`; add a
+`Triangle` to the sealed set and every switch fails to compile until it handles it — the same
+guarantee the `Visitor` interface used to buy with an `accept` method on every node and a
+`visitX` on every operation. The classic double dispatch is now the *open-set* form: reach for
+it when node types must be addable outside your sealed file, which is why javac's
+`com.sun.source` tree visitors and ASM's `ClassVisitor` still work that way. GoF wrote Visitor
+for languages without pattern matching; Java has it now, so start with the switch.
 
 ## Applications
 

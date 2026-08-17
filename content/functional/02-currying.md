@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [functional, higher-order-functions, specialization, composition, closures]
 related: [function-composition, memoization, strategy]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -249,6 +249,197 @@ application, and it's the standard way to bake a dependency (`db`) or config (`r
 handler. It's more verbose than curried languages — you write the closure explicitly — and Go
 programmers use it sparingly, favoring plain functions and structs; but for fixing config and
 producing specialized handlers it's clean and common.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Repeating the fixed rate everywhere; a wrapper lambda just to fix one argument.
+decimal[] cart = [100m, 250m];
+var totals = cart.Select(a => Price(0.2m, a));    // 0.2 repeated, wrapper needed
+var receipt = cart.Select(a => Price(0.2m, a));   // again
+
+static decimal Price(decimal rate, decimal amount) => amount + amount * rate;
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Curried lambdas: fix the rate once, get a unary function LINQ takes directly.
+Func<decimal, Func<decimal, decimal>> price = rate => amount => amount + amount * rate;
+var withVat = price(0.2m);                        // partial application → named unary function
+
+decimal[] cart = [100m, 250m];
+Console.WriteLine(string.Join(", ", cart.Select(withVat))); // 120.0, 300.0
+
+// The same idiom bakes a dependency in — injection without a container:
+Func<HttpClient, Func<string, Task<string>>> makeFetch =
+    http => url => http.GetStringAsync(url);
+var fetch = makeFetch(new HttpClient());          // client fixed; hand `fetch` around
+```
+
+**🧠 Tradeoff** — lambdas and closures make currying expressible in C#, and a specialized
+`Func<decimal, decimal>` slots straight into LINQ with no wrapper. But the type spells the cost
+out loud: `Func<decimal, Func<decimal, decimal>>` is noise where JS reads clean. Idiomatic C#
+uses partial application at the edges — fixing a dependency or a config value — and gives the
+specialization a name; curried *public* APIs read foreign, and DI containers already cover the
+"fix the dependencies once" case for anything bigger.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Threading the same rate through every call site.
+fn price(rate: f64, amount: f64) -> f64 {
+    amount + amount * rate
+}
+
+fn main() {
+    let cart = [100.0, 250.0];
+    let totals: Vec<f64> = cart.iter().map(|&a| price(0.2, a)).collect(); // 0.2 + wrapper
+    println!("{totals:?}");
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// A function returning a closure: fix the rate, get back a unary function.
+fn price(rate: f64) -> impl Fn(f64) -> f64 {
+    move |amount| amount + amount * rate   // `move`: the closure owns its config
+}
+
+fn main() {
+    let with_vat = price(0.2);             // partial application
+    println!("{}", with_vat(100.0));       // 120
+
+    let cart = [100.0, 250.0];
+    let totals: Vec<f64> = cart.into_iter().map(&with_vat).collect(); // no wrapper
+    println!("{totals:?}");                // [120.0, 300.0]
+}
+```
+
+**🧠 Tradeoff** — Rust has no auto-currying; a function returning `impl Fn` is the
+partial-application idiom, and `move` makes the captured config's ownership explicit — the
+borrow checker forces you to say who owns `rate`, which JS never asks. Returning different
+closures from different branches needs `Box<dyn Fn>` (one heap hop). Rust code reaches for this
+shape to bake in config or dependencies; deep `f(a)(b)(c)` chains are un-idiomatic — iterator
+adapters and builder structs carry that weight instead.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// Threading the same rate through every call.
+fn price(rate: f64, amount: f64) f64 {
+    return amount + amount * rate;
+}
+
+pub fn main() void {
+    const cart = [_]f64{ 100.0, 250.0 };
+    var total: f64 = 0;
+    for (cart) |a| total += price(0.2, a); // 0.2 repeated at every call site
+    std.debug.print("{d}\n", .{total});
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Compile-time partial application: rate is baked into a generated function.
+fn priceWith(comptime rate: f64) fn (f64) f64 {
+    return struct {
+        fn call(amount: f64) f64 {
+            return amount + amount * rate;
+        }
+    }.call;
+}
+
+// Runtime partial application: no closures, so the environment is an explicit struct.
+const Price = struct {
+    rate: f64,
+    pub fn apply(self: Price, amount: f64) f64 {
+        return amount + amount * self.rate;
+    }
+};
+
+pub fn main() void {
+    const withVat = priceWith(0.2);              // a plain fn (f64) f64, zero overhead
+    std.debug.print("{d}\n", .{withVat(100.0)}); // 120
+
+    const vat = Price{ .rate = 0.2 };            // rate could arrive at runtime
+    var total: f64 = 0;
+    for ([_]f64{ 100.0, 250.0 }) |a| total += vat.apply(a);
+    std.debug.print("{d}\n", .{total});          // 420
+}
+```
+
+**🧠 Tradeoff** — be honest: Zig has no closures, so currying doesn't survive the port intact.
+The `comptime` form generates a real specialized function at zero runtime cost, but only for
+config known at compile time. The struct form is what a closure *is* underneath — the captured
+environment made explicit — and it's just "a struct with a method," which Zig would tell you to
+write anyway. Most of the time, don't bother: pass both arguments. Reach for these only when an
+API demands a bare `fn (f64) f64` or the same pairing repeats everywhere.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.util.List;
+
+// Repeating the fixed rate everywhere; a wrapper lambda just to fix one argument.
+public class Demo {
+    static double price(double rate, double amount) { return amount + amount * rate; }
+
+    public static void main(String[] args) {
+        var cart = List.of(100.0, 250.0);
+        var totals = cart.stream().map(a -> price(0.2, a)).toList();  // 0.2 repeated, wrapper needed
+        var receipt = cart.stream().map(a -> price(0.2, a)).toList(); // again
+        System.out.println(totals); // [120.0, 300.0]
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.List;
+import java.util.function.Function;
+
+public class Demo {
+    // Curried: fix the rate once, get back a unary function streams take directly.
+    static Function<Double, Function<Double, Double>> price =
+        rate -> amount -> amount + amount * rate;
+
+    public static void main(String[] args) {
+        var withVat = price.apply(0.2);           // partial application → a named unary function
+        System.out.println(withVat.apply(100.0)); // 120.0
+
+        var cart = List.of(100.0, 250.0);
+        System.out.println(cart.stream().map(withVat).toList()); // [120.0, 300.0]
+
+        // andThen/compose chain the unary functions currying produces:
+        var withShipping = withVat.andThen(total -> total + 10);
+        System.out.println(withShipping.apply(100.0)); // 130.0
+    }
+}
+```
+
+**🧠 Tradeoff** — lambdas capture like closures, so currying works, and `Function.andThen`/
+`compose` chain the unary results — that's the composition payoff. The cost is written in the
+type: `Function<Double, Function<Double, Double>>` is noise where JS reads clean, and every
+`Double` boxes (the primitive specializations — `DoubleUnaryOperator` and friends — avoid the
+boxing but don't curry). So idiomatic Java partial-applies at the edges: fix a dependency or a
+config value, give the result a name, and hand streams a method reference. Curried *public* APIs
+read foreign here; nobody should need `.apply().apply()` to call your code.
 
 ## Applications
 

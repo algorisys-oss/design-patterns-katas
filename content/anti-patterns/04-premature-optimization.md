@@ -11,7 +11,7 @@ frequency: high
 difficulty: beginner
 tags: [anti-pattern, performance, profiling, readability, yagni]
 related: [memoization, golden-hammer, spaghetti-code]
-languages: [javascript, python, go]
+languages: [javascript, python, go, csharp, rust, zig, java]
 ---
 
 ## The Anti-Pattern
@@ -184,6 +184,192 @@ func sum(nums []int) int {
 "parallelize" adding integers makes the code *slower* and far harder to read — concurrency as premature
 optimization. The simple loop wins on both speed and clarity. Concurrency pays off when per-item work is
 heavy and measured; here it's pure overhead. Benchmark (`go test -bench`) before reaching for it.
+
+### CSharp
+
+**❌ The Smell**
+
+```csharp
+// Ref arithmetic and inlining hints — for a dozen items on a cold path.
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+int[] numbers = [3, 1, 4, 1, 5, 9, 2, 6];
+Console.WriteLine(FastSum(numbers)); // 31
+
+[MethodImpl(MethodImplOptions.AggressiveInlining)]
+static int FastSum(ReadOnlySpan<int> values)
+{
+    ref int start = ref MemoryMarshal.GetReference(values);
+    int total = 0;
+    for (int i = 0; i < values.Length; i++)
+        total += Unsafe.Add(ref start, i);   // "skips the bounds check"
+    return total;
+}
+```
+
+**✅ The Refactor**
+
+```csharp
+// Clear, obvious, and it states the intent. Optimize only when a profiler says so.
+int[] numbers = [3, 1, 4, 1, 5, 9, 2, 6];
+Console.WriteLine(numbers.Sum()); // 31
+
+// If BenchmarkDotNet shows a genuinely hot, large-array path where Sum() matters,
+// a plain loop over the array is the next step — measured, and commented as to why.
+```
+
+**🧠 The Fix** — `Unsafe.Add` dodges a bounds check the JIT already removes for a plain loop
+over an array, so the unsafe ceremony bought nothing measurable — it just made a three-line
+sum unreadable and gave it a way to read out of bounds. The same goes for reflexive
+class-to-struct rewrites and `ref readonly` sprinkling done "for the GC" on cold paths.
+Write `numbers.Sum()`; when a real hotspot shows up, BenchmarkDotNet is how you earn the
+right to go lower — and it will usually tell you the JIT got there first.
+
+### Rust
+
+**❌ The Smell**
+
+```rust
+// unsafe to "skip bounds checks" in a sum the compiler already optimizes.
+fn sum(nums: &[i32]) -> i32 {
+    let ptr = nums.as_ptr();
+    let mut total = 0;
+    for i in 0..nums.len() {
+        // SAFETY: i < len — true today, one refactor away from UB.
+        total += unsafe { *ptr.add(i) };
+    }
+    total
+}
+
+fn main() {
+    println!("{}", sum(&[3, 1, 4, 1, 5, 9, 2, 6])); // 31
+}
+```
+
+**✅ The Refactor**
+
+```rust
+// Safe AND fast — the iterator never emits a per-element bounds check to begin with.
+fn sum(nums: &[i32]) -> i32 {
+    nums.iter().sum()
+}
+
+fn main() {
+    println!("{}", sum(&[3, 1, 4, 1, 5, 9, 2, 6])); // 31
+}
+// If perf or cargo flamegraph flags a real hotspot, read the generated code first —
+// the optimizer usually got there before you did.
+```
+
+**🧠 The Fix** — The `unsafe` block traded away Rust's core guarantee to skip a bounds check
+that `iter().sum()` never emits — more dangerous, and not faster. Unmeasured `unsafe` is
+Rust's signature form of this anti-pattern: you pay the risk up front and never collect the
+speed. Reach for `unsafe` only in the measured 3%, after profiling the safe version and
+inspecting its assembly — and even then it carries a `SAFETY:` comment stating an invariant
+someone actually checked.
+
+### Zig
+
+**❌ The Smell**
+
+```zig
+const std = @import("std");
+
+// Hand-rolled SIMD for a dozen integers on a cold path.
+fn sum(nums: []const i32) i32 {
+    const Vec = @Vector(4, i32);
+    var acc: Vec = @splat(0);
+    var i: usize = 0;
+    while (i + 4 <= nums.len) : (i += 4) {
+        const chunk: Vec = nums[i..][0..4].*;
+        acc += chunk;
+    }
+    var total: i32 = @reduce(.Add, acc);
+    while (i < nums.len) : (i += 1) total += nums[i]; // remainder loop
+    return total;
+}
+
+pub fn main() void {
+    std.debug.print("{d}\n", .{sum(&.{ 3, 1, 4, 1, 5, 9, 2, 6 })}); // 31
+}
+```
+
+**✅ The Refactor**
+
+```zig
+const std = @import("std");
+
+// The obvious loop. The optimizer auto-vectorizes it when it's worth doing.
+fn sum(nums: []const i32) i32 {
+    var total: i32 = 0;
+    for (nums) |n| total += n;
+    return total;
+}
+
+pub fn main() void {
+    std.debug.print("{d}\n", .{sum(&.{ 3, 1, 4, 1, 5, 9, 2, 6 })}); // 31
+}
+// If profiling shows a real hot loop, @Vector is there — added after measurement,
+// with the numbers in a comment.
+```
+
+**🧠 The Fix** — Zig hands you `@Vector` and even inline assembly, so this temptation sits
+closer to the surface than in most languages. But the hand-vectorized sum guesses a lane
+width, drags along a remainder loop (a classic off-by-one home), and LLVM auto-vectorizes
+the plain `for` anyway when the data is big enough to matter — on a dozen items neither
+version's speed is observable. Zig's low-level reach exists for the measured 3%; keep the
+obvious loop until a profiler points here.
+
+### Java
+
+**❌ The Smell**
+
+```java
+// Manual unrolling with four accumulators — for a dozen ints on a cold path.
+class Demo {
+    static int fastSum(int[] values) {
+        int s0 = 0, s1 = 0, s2 = 0, s3 = 0;   // four accumulators to "hide latency"
+        int i = 0;
+        for (; i + 4 <= values.length; i += 4) {
+            s0 += values[i];     s1 += values[i + 1];
+            s2 += values[i + 2]; s3 += values[i + 3];
+        }
+        int total = s0 + s1 + s2 + s3;
+        for (; i < values.length; i++) total += values[i]; // remainder loop
+        return total;
+    }
+
+    public static void main(String[] args) {
+        int[] numbers = { 3, 1, 4, 1, 5, 9, 2, 6 };
+        System.out.println(fastSum(numbers)); // 31
+    }
+}
+```
+
+**✅ The Refactor**
+
+```java
+import java.util.stream.IntStream;
+
+// Clear and obvious. Optimize only when a profiler says so.
+class Demo {
+    public static void main(String[] args) {
+        int[] numbers = { 3, 1, 4, 1, 5, 9, 2, 6 };
+        System.out.println(IntStream.of(numbers).sum()); // 31
+    }
+}
+// If JMH shows a genuinely hot, large-array path where the stream matters,
+// a plain for loop is the next step — measured, and commented as to why.
+```
+
+**🧠 The Fix** — The JIT's C2 compiler unrolls and auto-vectorizes the obvious loop once it's hot, so the
+hand-unrolled version competes with machinery that already does this — and on eight cold-path integers
+neither is observable anyway. Java has an extra trap here: naive timing harnesses lie (dead-code
+elimination, warmup, on-stack replacement), which is exactly why JMH exists. Write the stream; if a real
+hotspot shows up, JMH is how you earn the plain loop — and it will usually report the JIT got there first.
+The same discipline applies to the reflexive "streams are slow" rewrite: measured on a hot path, or not at
+all.
 
 ## Related Patterns
 

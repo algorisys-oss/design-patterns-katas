@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [concurrency, parallelism, scatter-gather, pipeline, merge]
 related: [worker-pool, future-promise, producer-consumer]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -266,6 +266,214 @@ func fanOutIn(items []Item, workers int) <-chan Result {
 signals "all done." It streams results as they're produced (no waiting for the whole batch) and
 bounds width by the worker count. The price is Go's usual bookkeeping — the extra goroutine to
 `Wait` then `close(out)`, and results arrive unordered unless you carry an index.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Serial: each await completes before the next starts — total time is the sum.
+async Task<List<Result>> ProcessAll(IEnumerable<Item> items)
+{
+    var results = new List<Result>();
+    foreach (var item in items)
+        results.Add(await ProcessAsync(item)); // one at a time
+    return results;
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Select fans out (every task starts immediately); Task.WhenAll fans in,
+// preserving input order.
+async Task<Result[]> ProcessAll(IEnumerable<Item> items) =>
+    await Task.WhenAll(items.Select(ProcessAsync));
+
+// Large batch? Bound the width — and writing each result into its own
+// indexed slot keeps input order without sorting.
+async Task<Result[]> ProcessAllBounded(IReadOnlyList<Item> items, int workers)
+{
+    var results = new Result[items.Count];
+    await Parallel.ForAsync(0, items.Count,
+        new ParallelOptions { MaxDegreeOfParallelism = workers },
+        async (i, _) => results[i] = await ProcessAsync(items[i]));
+    return results;
+}
+```
+
+**🧠 Tradeoff** — `Select` + `Task.WhenAll` is .NET's `Promise.all`: unbounded fan-out, ordered
+fan-in, right for a modest batch of I/O. `Parallel.ForAsync` is the bounded form — width is one
+option away, close to what Elixir's `Task.async_stream` bakes in as flags. Mind the failure
+policy: `WhenAll` throws only the *first* exception and leaves the rest sitting on their tasks,
+so when partial failure matters, inspect the task states (or `Task.WhenEach`) instead of letting
+one fault mask the others.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Serial loop — independent items run one at a time; total time is the sum.
+fn process_all(items: &[u32]) -> Vec<String> {
+    items.iter().map(|&item| process(item)).collect()
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::thread;
+
+fn process(item: u32) -> String {
+    format!("processed {item}") // stand-in for real work
+}
+
+// Fan-out: scoped threads borrow items directly — no Arc, no clones, because
+// the compiler knows every thread joins before the scope ends.
+// Fan-in: joining the handles, which also preserves input order.
+fn process_all(items: &[u32]) -> Vec<String> {
+    thread::scope(|s| {
+        let handles: Vec<_> = items
+            .iter()
+            .map(|&item| s.spawn(move || process(item)))
+            .collect(); // collect first: all threads start before any join
+        handles.into_iter().map(|h| h.join().unwrap()).collect()
+    })
+}
+
+// Bounded width: a thread per chunk, not per item.
+fn process_all_bounded(items: &[u32], workers: usize) -> Vec<String> {
+    let chunk = items.len().div_ceil(workers).max(1);
+    thread::scope(|s| {
+        let handles: Vec<_> = items
+            .chunks(chunk)
+            .map(|c| s.spawn(move || c.iter().map(|&i| process(i)).collect::<Vec<_>>()))
+            .collect();
+        handles.into_iter().flat_map(|h| h.join().unwrap()).collect()
+    })
+}
+
+fn main() {
+    let results = process_all(&[1, 2, 3]);
+    println!("{results:?}"); // ["processed 1", "processed 2", "processed 3"]
+}
+```
+
+**🧠 Tradeoff** — `thread::scope` is the load-bearing choice: scoped threads may borrow `items`
+because the compiler proves they join before the borrow ends — no `Arc`, no cloning the input.
+Joining handles in spawn order makes the fan-in order-preserving for free. But these are OS
+threads, not goroutines: a thread per item only makes sense for small batches, so the chunked
+version is the honest std-only way to bound width. (In crates-land, rayon's
+`par_iter().map().collect()` is this whole tab in one line — much as `Task.async_stream` is for
+Elixir.)
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Serial loop — one item at a time; total time is the sum of all items.
+fn processAll(items: []const u64, out: []u64) void {
+    for (items, out) |item, *slot| slot.* = process(item);
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+fn process(item: u64) u64 {
+    return item * item; // stand-in for real work
+}
+
+fn worker(items: []const u64, out: []u64) void {
+    for (items, out) |item, *slot| slot.* = process(item);
+}
+
+// Fan-out: N threads, each owning a disjoint chunk of input AND output — no
+// mutex, because no two threads ever share a slot. Fan-in: join; the results
+// are already in input order.
+pub fn main() !void {
+    const items = [_]u64{ 1, 2, 3, 4, 5, 6, 7, 8 };
+    var results: [items.len]u64 = undefined;
+
+    const workers = 4;
+    const chunk = items.len / workers;
+    var threads: [workers]std.Thread = undefined;
+
+    for (&threads, 0..) |*t, w| {
+        const lo = w * chunk;
+        const hi = if (w == workers - 1) items.len else lo + chunk;
+        t.* = try std.Thread.spawn(.{}, worker, .{ items[lo..hi], results[lo..hi] });
+    }
+    for (threads) |t| t.join(); // fan-in: wait for every worker
+
+    std.debug.print("{any}\n", .{results}); // { 1, 4, 9, 16, 25, 36, 49, 64 }
+}
+```
+
+**🧠 Tradeoff** — No channels at all: partition the input *and* the output so no two threads
+share a slot, and the merge disappears — `results` is complete and in input order the moment
+`join` returns. That's the Zig-shaped answer: make the race structurally impossible with plain
+slices instead of guarding it with locks. The costs are being honest about threads (OS threads
+are expensive, hence a thread per chunk, never per item) and the static shapes here — a real
+batch takes an allocator and a runtime worker count. Elixir's `Task.async_stream` gives you the
+bounded, ordered version in one line on a scheduler of cheap processes; Zig makes you place
+every thread, and shows you exactly what that line costs.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.util.List;
+
+// Serial: each item finishes before the next starts — total time is the sum.
+class Serial {
+    static List<Result> processAll(List<Item> items) {
+        return items.stream().map(Serial::process).toList();
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+// Fan-out: one virtual thread per item — cheap enough that thread-per-task
+// is the idiom, not the bug. Fan-in: invokeAll waits for all, in input order.
+class FanOutIn {
+    static List<Result> processAll(List<Item> items) throws InterruptedException {
+        try (var pool = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Callable<Result>> tasks = items.stream()
+                    .<Callable<Result>>map(item -> () -> process(item))
+                    .toList();
+            return pool.invokeAll(tasks).stream()
+                    .map(Future::resultNow) // every future is already settled here
+                    .toList();
+        }
+    }
+
+    // CPU-bound instead? The one-liner fans out across the cores:
+    //   items.parallelStream().map(FanOutIn::process).toList();
+}
+```
+
+**🧠 Tradeoff** — virtual threads (Java 21) flipped the old advice. Before them, fan-out
+meant rationing platform threads through a pool; now, for I/O work, a thread per item *is*
+the plain idiom, and the width bound moves to a `Semaphore` — or simply to whatever limit
+the downstream imposes. `invokeAll` is a tidy fan-in: it waits for everything and returns
+futures in input order, and failures stay on their own `Future`, so partial-failure policy
+is a per-task decision (`resultNow` throws for the tasks that failed). CPU-bound work still
+wants width equal to cores — `parallelStream` or a fixed pool. `StructuredTaskScope`
+(still in preview) is where this shape is headed: fan-out/fan-in as a scoped block with
+cancel-on-first-failure built in.
 
 ## Applications
 

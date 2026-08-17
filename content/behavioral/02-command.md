@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [behavioral, encapsulation, undo, queue, decoupling, actions]
 related: [memento, strategy, chain-of-responsibility, observer]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -284,6 +284,284 @@ func (h *History) Undo() {
 `[]Command` of mixed actions. For fire-and-forget commands (no undo), Go often uses a `func()`
 value or sends work over a channel to a worker pool — the interface earns its keep when you need
 undo or command metadata.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The action is a lambda, gone after it runs; nothing to store, undo, or replay.
+var text = "";
+Action onClick = () => text += "hello";
+onClick();
+// undo? redo? replay? there's no object representing the action.
+```
+
+**✅ Idiomatic**
+
+```csharp
+var editor = new Editor();
+var history = new History();
+
+history.Run(new InsertText(editor, "hello"));
+Console.WriteLine(editor.Text);                              // hello
+history.Undo();
+Console.WriteLine(editor.Text is "" ? "(empty)" : editor.Text); // (empty)
+
+public interface ICommand
+{
+    void Execute();
+    void Undo();
+}
+
+public sealed class Editor
+{
+    public string Text { get; set; } = "";
+}
+
+// Primary constructor binds the receiver and parameters; Execute/Undo do the work.
+public sealed class InsertText(Editor editor, string str) : ICommand
+{
+    public void Execute() => editor.Text += str;
+    public void Undo() => editor.Text = editor.Text[..^str.Length];
+}
+
+public sealed class History
+{
+    private readonly Stack<ICommand> _done = new();
+
+    public void Run(ICommand cmd) { cmd.Execute(); _done.Push(cmd); }
+    public void Undo() { if (_done.TryPop(out var cmd)) cmd.Undo(); }
+}
+```
+
+**🧠 Tradeoff** — the interface earns its keep for the paired `Undo`; for fire-and-forget
+work, C# reaches for a bare delegate (`Action`), which is a command with no reverse gear.
+`History` is just a `Stack<ICommand>` — a redo stack is a second one. For the backend-queue
+variant of this pattern, write commands into a `System.Threading.Channels.Channel<ICommand>`
+and let a worker drain it: the same shape as the Node.js tab, with backpressure built in.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// The action is a closure, gone after it runs; nothing to store, undo, or replay.
+fn main() {
+    let mut text = String::new();
+    let mut on_click = || text.push_str("hello");
+    on_click();
+    // undo? redo? replay? there's no value representing the action.
+    println!("{text}"); // hello
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+struct Editor { text: String }
+
+// The command trait: the receiver is passed in, not stored.
+trait Command {
+    fn execute(&self, editor: &mut Editor);
+    fn undo(&self, editor: &mut Editor);
+}
+
+struct InsertText { str: String }
+
+impl Command for InsertText {
+    fn execute(&self, editor: &mut Editor) {
+        editor.text.push_str(&self.str);
+    }
+    fn undo(&self, editor: &mut Editor) {
+        let keep = editor.text.len() - self.str.len();
+        editor.text.truncate(keep);
+    }
+}
+
+struct History { done: Vec<Box<dyn Command>> }
+
+impl History {
+    fn run(&mut self, editor: &mut Editor, cmd: Box<dyn Command>) {
+        cmd.execute(editor);
+        self.done.push(cmd);
+    }
+    fn undo(&mut self, editor: &mut Editor) {
+        if let Some(cmd) = self.done.pop() {
+            cmd.undo(editor);
+        }
+    }
+}
+
+fn main() {
+    let mut editor = Editor { text: String::new() };
+    let mut history = History { done: Vec::new() };
+
+    history.run(&mut editor, Box::new(InsertText { str: "hello".into() }));
+    println!("{}", editor.text); // hello
+
+    history.undo(&mut editor);
+    println!("{:?}", editor.text); // ""
+}
+```
+
+**🧠 Tradeoff** — the receiver goes *into* `execute`/`undo` rather than living in the command:
+a command holding `&mut Editor` would keep the editor mutably borrowed for as long as the
+history lives, and the borrow checker rightly refuses. That nudge is useful — commands become
+receiver-free data. Take the hint further and a closed command set becomes
+`enum Command { Insert(String) }` with a `match`: the Elixir tab's data form, serializable for
+free. Keep `Box<dyn Command>` when new commands must arrive from outside the crate.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// The action is inlined in the handler; nothing to store, undo, or replay.
+fn handleClick(editor: *Editor) void {
+    editor.insert("hello"); // the action runs and is gone — no undo, no replay
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// A command is data: a tagged union the receiver knows how to apply and reverse.
+const Command = union(enum) {
+    insert: []const u8,
+};
+
+const Editor = struct {
+    buf: [64]u8 = undefined,
+    len: usize = 0,
+
+    fn apply(self: *Editor, cmd: Command) void {
+        switch (cmd) {
+            .insert => |str| {
+                @memcpy(self.buf[self.len..][0..str.len], str);
+                self.len += str.len;
+            },
+        }
+    }
+    fn unapply(self: *Editor, cmd: Command) void {
+        switch (cmd) {
+            .insert => |str| self.len -= str.len,
+        }
+    }
+    fn text(self: *const Editor) []const u8 {
+        return self.buf[0..self.len];
+    }
+};
+
+// The invoker: runs commands and keeps the done stack for undo.
+const History = struct {
+    done: [16]Command = undefined,
+    count: usize = 0,
+
+    fn run(self: *History, editor: *Editor, cmd: Command) void {
+        editor.apply(cmd);
+        self.done[self.count] = cmd;
+        self.count += 1;
+    }
+    fn undo(self: *History, editor: *Editor) void {
+        if (self.count == 0) return;
+        self.count -= 1;
+        editor.unapply(self.done[self.count]);
+    }
+};
+
+pub fn main() void {
+    var editor = Editor{};
+    var history = History{};
+
+    history.run(&editor, .{ .insert = "hello" });
+    std.debug.print("{s}\n", .{editor.text()}); // hello
+
+    history.undo(&editor);
+    std.debug.print("{d} chars\n", .{editor.text().len}); // 0 chars
+}
+```
+
+**🧠 Tradeoff** — with no closures, Zig's natural command is a tagged union — the same
+commands-as-data shape as the Elixir tab, and plain bytes, so a durable queue or an audit log
+serializes it with no ceremony. The exhaustive `switch` means adding a `delete` variant makes
+the compiler point at every place that must handle it. The cost is a closed set: outside code
+can't add commands without editing the union. If the set must stay open, the runtime route is
+the two-field vtable (`*anyopaque` context plus function pointers, the `std.mem.Allocator`
+shape).
+
+### Java
+
+**❌ Naive**
+
+```java
+// The action is a lambda, gone after it runs; nothing to store, undo, or replay.
+public class Demo {
+    static String text = "";
+
+    public static void main(String[] args) {
+        Runnable onClick = () -> text += "hello";
+        onClick.run();
+        // undo? redo? replay? there's no object representing the action.
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayDeque;
+import java.util.Deque;
+
+interface Command {
+    void execute();
+    void undo();
+}
+
+class Editor { String text = ""; }
+
+// Binds the receiver and parameters; execute/undo do the work.
+class InsertText implements Command {
+    private final Editor editor;
+    private final String str;
+
+    InsertText(Editor editor, String str) { this.editor = editor; this.str = str; }
+
+    public void execute() { editor.text += str; }
+    public void undo()    { editor.text = editor.text.substring(0, editor.text.length() - str.length()); }
+}
+
+// The invoker: runs commands and keeps the done stack for undo.
+class History {
+    private final Deque<Command> done = new ArrayDeque<>();
+
+    void run(Command cmd) { cmd.execute(); done.push(cmd); }
+    void undo() { if (!done.isEmpty()) done.pop().undo(); }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var editor = new Editor();
+        var history = new History();
+
+        history.run(new InsertText(editor, "hello"));
+        System.out.println(editor.text);   // hello
+
+        history.undo();
+        System.out.println(editor.text.isEmpty() ? "(empty)" : editor.text); // (empty)
+    }
+}
+```
+
+**🧠 Tradeoff** — Java already collapsed the fire-and-forget half of this pattern into
+`Runnable`: every `executor.submit(() -> ...)` is a command on a queue, and an
+`ExecutorService` draining a `BlockingQueue<Runnable>` is the Node.js tab's job queue shipped
+in `java.util.concurrent`. So the lambda is the default. The two-method interface earns its
+keep exactly where a lambda can't follow — the paired `undo` — which is why undo history is
+where the classic form still gets written out (Swing's `UndoableEdit` is the same shape).
+`History` is a `Deque` used as a stack; redo is a second one.
 
 ## Applications
 

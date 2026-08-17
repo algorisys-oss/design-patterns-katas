@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [creational, single-instance, global-access, shared-state, lazy-init]
 related: [factory-method, abstract-factory]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -302,6 +302,265 @@ func (m *manager) Get(k string) string {
 exactly once even under concurrent access, solving the double-init race that naive lazy code
 has. The unexported type keeps callers going through `Instance()`. For a package-wide value with
 no lazy requirement, a plain package-level variable initialized in `init()` is simpler.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Anyone can `new` a cache — nothing enforces "one".
+var a = new CacheManager();
+var b = new CacheManager();
+a.Set("token", "abc");
+Console.WriteLine(b.Get("token") ?? "null"); // null — different instances
+
+public class CacheManager
+{
+    private readonly Dictionary<string, string> _store = [];
+    public void Set(string key, string value) => _store[key] = value;
+    public string? Get(string key) => _store.GetValueOrDefault(key);
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+using System.Collections.Concurrent;
+
+// Every access point returns the same lazily-built instance.
+CacheManager.Instance.Set("token", "abc");
+Console.WriteLine(CacheManager.Instance.Get("token")); // abc — shared everywhere
+Console.WriteLine(ReferenceEquals(CacheManager.Instance, CacheManager.Instance)); // True
+
+public sealed class CacheManager
+{
+    // Lazy<T> is thread-safe by default: the factory runs exactly once,
+    // even when two threads race to be first.
+    private static readonly Lazy<CacheManager> Holder = new(() => new CacheManager());
+    public static CacheManager Instance => Holder.Value;
+
+    private readonly ConcurrentDictionary<string, string> _store = new();
+    private CacheManager() { } // no `new` from outside
+
+    public void Set(string key, string value) => _store[key] = value;
+    public string? Get(string key) => _store.GetValueOrDefault(key);
+}
+```
+
+**🧠 Tradeoff** — `Lazy<T>` gives thread-safe, once-only construction without hand-rolled
+double-checked locking, and the private constructor makes "one instance" a compile-time
+fact. But modern .NET rarely writes this class: `services.AddSingleton<CacheManager>()`
+gets the same lifetime from the DI container with the dependency *injected* — visible in
+constructors, swappable in tests. That's the smell to name: a `static` singleton is global
+mutable state, so callers depend on it invisibly and tests share its leftovers. Keep the
+static form for truly ambient facts, the way `TimeProvider.System` is.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+use std::collections::HashMap;
+
+struct CacheManager {
+    store: HashMap<String, String>,
+}
+
+impl CacheManager {
+    // A constructor — so every caller builds their own cache.
+    fn new() -> Self {
+        Self { store: HashMap::new() }
+    }
+}
+
+fn main() {
+    let mut a = CacheManager::new();
+    let b = CacheManager::new();
+    a.store.insert("token".into(), "abc".into());
+    println!("{:?}", b.store.get("token")); // None — different caches
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
+
+// One process-wide cache, built on first touch. A static is visible to every
+// thread, so Rust REQUIRES the Mutex — unsynchronized globals don't compile.
+static CACHE: LazyLock<Mutex<HashMap<String, String>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn set(key: &str, value: &str) {
+    CACHE.lock().unwrap().insert(key.to_string(), value.to_string());
+}
+
+fn get(key: &str) -> Option<String> {
+    CACHE.lock().unwrap().get(key).cloned()
+}
+
+fn main() {
+    set("token", "abc");
+    println!("{:?}", get("token")); // Some("abc") — every caller sees the same cache
+}
+```
+
+**🧠 Tradeoff** — Rust puts the singleton's cost in plain sight: a `static` is reachable
+from every thread, so the compiler forces the state behind a `Mutex` (or something else
+`Sync`) — the data race other languages let you write is a compile error here. `LazyLock`
+handles lazy once-only init; reach for `OnceLock::get_or_init` when construction needs
+runtime data. Read the ceremony as the lesson: global mutable state is exactly what
+ownership exists to discourage. Passing `&cache` (or an `Arc`) down keeps the dependency
+visible and tests isolated; keep statics for genuine process-wide facts like parsed config.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const CacheManager = struct {
+    store: std.StringHashMap([]const u8),
+
+    fn init(allocator: std.mem.Allocator) CacheManager {
+        return .{ .store = std.StringHashMap([]const u8).init(allocator) };
+    }
+};
+
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+
+    // Each init() builds a separate cache — nothing is shared.
+    var a = CacheManager.init(allocator);
+    var b = CacheManager.init(allocator);
+    try a.store.put("token", "abc");
+    std.debug.print("{?s}\n", .{b.store.get("token")}); // null — different caches
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const CacheManager = struct {
+    store: std.StringHashMap([]const u8),
+
+    fn init(allocator: std.mem.Allocator) CacheManager {
+        return .{ .store = std.StringHashMap([]const u8).init(allocator) };
+    }
+};
+
+// File-scope state is one-per-process by construction. The only work left
+// is guarding the first init, since it needs a runtime allocator.
+var instance: ?CacheManager = null;
+var init_mutex: std.Thread.Mutex = .{};
+
+fn cache(allocator: std.mem.Allocator) *CacheManager {
+    init_mutex.lock();
+    defer init_mutex.unlock();
+    if (instance == null) instance = CacheManager.init(allocator);
+    return &instance.?;
+}
+
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+
+    const a = cache(allocator);
+    try a.store.put("token", "abc");
+
+    const b = cache(allocator);
+    std.debug.print("{s}\n", .{b.store.get("token").?}); // abc — same cache
+}
+```
+
+**🧠 Tradeoff** — Zig needs no pattern for "exists once": a file-scope `var` already is
+one per process. The only real work is guarding first initialization — a mutex when init
+needs runtime data (here, an allocator), or nothing at all when the initial value is known
+at compile time (`var instance = CacheManager{ ... }` exists before `main` runs). What the
+guard can't fix is the smell: file-scope mutable state is a global, so callers reach it
+without declaring it and tests stomp each other's entries. Zig's own std shows the better
+default — allocators are threaded through every call as parameters. Do that with your
+cache unless it's truly ambient.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+// The classic lazy getter — two threads can both see null and build two caches.
+class CacheManager {
+    private static CacheManager instance;
+    private final Map<String, String> store = new HashMap<>();
+
+    private CacheManager() {}
+
+    static CacheManager getInstance() {
+        if (instance == null) {            // thread A and thread B both pass this check…
+            instance = new CacheManager(); // …and each builds its own "singleton"
+        }
+        return instance;
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+// The holder idiom: the JVM initializes Holder on first use, exactly once,
+// under its own class-loading lock — lazy and thread-safe with no sync code.
+final class CacheManager {
+    private final Map<String, String> store = new ConcurrentHashMap<>();
+    private CacheManager() {} // no `new` from outside
+
+    private static final class Holder {
+        static final CacheManager INSTANCE = new CacheManager();
+    }
+
+    static CacheManager instance() { return Holder.INSTANCE; }
+
+    void set(String key, String value) { store.put(key, value); }
+    String get(String key) { return store.get(key); }
+}
+
+// The enum form: one constant, proof against serialization and reflection too.
+enum Cache {
+    INSTANCE;
+
+    private final Map<String, String> store = new ConcurrentHashMap<>();
+
+    public void set(String key, String value) { store.put(key, value); }
+    public String get(String key) { return store.get(key); }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        CacheManager.instance().set("token", "abc");
+        System.out.println(CacheManager.instance().get("token")); // abc — shared everywhere
+
+        Cache.INSTANCE.set("token", "xyz");
+        System.out.println(Cache.INSTANCE.get("token")); // xyz — one instance, guaranteed
+    }
+}
+```
+
+**🧠 Tradeoff** — both idioms let the JVM do the guarding. The holder rides class loading:
+`Holder` isn't initialized until `instance()` first touches it, and class initialization is
+already once-only and thread-safe, so the double-init race from the naive version can't
+happen. The enum goes further — the JVM enforces one instance even against serialization
+and reflection, which is why Effective Java calls it the best singleton. But name the
+reality: most Java singletons today aren't hand-rolled at all. They're container lifetimes —
+a Spring bean is a singleton by default — with the dependency visible in constructors and
+swappable in tests, which fixes exactly what the static form breaks. Keep these idioms for
+genuinely ambient facts; let the container handle the rest.
 
 ## Applications
 

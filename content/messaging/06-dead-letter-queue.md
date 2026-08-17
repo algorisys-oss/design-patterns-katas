@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [messaging, integration, error-handling, resilience, poison-message]
 related: [retry, message-channel, circuit-breaker]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -267,6 +267,215 @@ exhaustion give a clear, testable dead-letter path. With managed brokers (SQS, N
 you configure a redelivery limit and DLQ at the infrastructure level instead, and the consumer just
 returns an error. Either way, Go leaves the operational pieces — alerting on DLQ depth and a replay
 command — explicitly to you.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// On error, either requeue forever or drop the message.
+static async Task Consume(Msg msg)
+{
+    try { Process(msg.Body); }
+    catch { await queue.Writer.WriteAsync(msg); } // poison message loops indefinitely
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Retry transient errors up to a limit; exception filters route the rest to the DLQ.
+static async Task Consume(Msg msg, ChannelWriter<Msg> retry, ChannelWriter<DeadLetter> dlq)
+{
+    try
+    {
+        Process(msg.Body);
+    }
+    catch (Exception err) when (msg.Attempts < MaxAttempts && IsTransient(err))
+    {
+        await retry.WriteAsync(msg with { Attempts = msg.Attempts + 1 }); // retry
+    }
+    catch (Exception err)
+    {
+        await dlq.WriteAsync(new DeadLetter(         // give up → DLQ, preserved with context
+            msg.Body, msg.Attempts, err.Message, DateTime.UtcNow));
+    }
+}
+
+public sealed record Msg(string Body, int Attempts = 0);
+public sealed record DeadLetter(string Body, int Attempts, string Error, DateTime FailedAt);
+```
+
+**🧠 Tradeoff** — exception filters put the retry decision into the catch dispatch itself: the
+`when` clause retries transient failures with budget left, and the plain `catch` below is the
+terminal DLQ path — the control flow reads exactly like the policy. `with` produces the
+incremented-attempts copy without mutating the original. The channels here are in-process; Azure
+Service Bus and SQS ship the same thing as infrastructure (`MaxDeliveryCount` plus a built-in DLQ),
+like the RabbitMQ tab — and either way you still owe alerting and replay.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// On error, requeue forever — the poison message never leaves.
+fn consume(msg: Msg, queue: &mpsc::Sender<Msg>) {
+    if process(&msg.body).is_err() {
+        queue.send(msg).unwrap(); // redelivered indefinitely
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::sync::mpsc;
+use std::time::SystemTime;
+
+// Transient vs permanent is a type, not a heuristic.
+enum ProcessError {
+    Transient(String), // network blip, lock timeout — worth retrying
+    Permanent(String), // malformed payload — will never succeed
+}
+
+struct Msg { body: String, attempts: u32 }
+struct DeadLetter { body: String, attempts: u32, error: String, failed_at: SystemTime }
+
+const MAX_ATTEMPTS: u32 = 5;
+
+fn consume(msg: Msg, retry: &mpsc::Sender<Msg>, dlq: &mpsc::Sender<DeadLetter>) {
+    match process(&msg.body) {
+        Ok(()) => {}
+        Err(ProcessError::Transient(_)) if msg.attempts < MAX_ATTEMPTS => {
+            retry.send(Msg { attempts: msg.attempts + 1, ..msg }).unwrap(); // retry
+        }
+        Err(ProcessError::Transient(reason)) | Err(ProcessError::Permanent(reason)) => {
+            dlq.send(DeadLetter {                    // give up → DLQ, preserved with context
+                body: msg.body,
+                attempts: msg.attempts,
+                error: reason,
+                failed_at: SystemTime::now(),
+            }).unwrap();
+        }
+    }
+}
+```
+
+**🧠 Tradeoff** — the real move is the error enum: `Transient` vs `Permanent` is a type, not an
+`is_transient()` string check, and the exhaustive `match` won't compile until every failure kind has
+a destination — add a variant and the compiler walks you to each unrouted site. The guard plus
+or-pattern reads like the policy: transient with budget → retry; everything else → DLQ. `..msg`
+struct-update moves the body into the retried message with no clone. As in Go, the queues are
+in-process — durability, alerting, and replay are still yours.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// On error, requeue forever — the poison message never leaves the loop.
+fn consume(msg: Msg) !void {
+    process(msg.body) catch {
+        try main_queue.push(msg); // redelivered indefinitely
+    };
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// The failure kinds are a closed error set — the switch below must route every one.
+const ProcessError = error{ Transient, Permanent };
+
+const Msg = struct { body: []const u8, attempts: u32 };
+const DeadLetter = struct { body: []const u8, attempts: u32, err: ProcessError, failed_at: i64 };
+
+const max_attempts = 5;
+
+// Queue(T) is any explicit FIFO you own — a comptime-generic ring buffer, say.
+fn consume(msg: Msg, retry: *Queue(Msg), dlq: *Queue(DeadLetter)) !void {
+    process(msg.body) catch |err| switch (err) {
+        error.Transient => {
+            if (msg.attempts < max_attempts) {
+                try retry.push(.{ .body = msg.body, .attempts = msg.attempts + 1 }); // retry
+            } else {
+                try deadLetter(dlq, msg, err); // retry budget spent
+            }
+        },
+        error.Permanent => try deadLetter(dlq, msg, err), // never retry a malformed message
+    };
+}
+
+fn deadLetter(dlq: *Queue(DeadLetter), msg: Msg, err: ProcessError) !void {
+    try dlq.push(.{                                  // give up → DLQ, preserved with context
+        .body = msg.body,
+        .attempts = msg.attempts,
+        .err = err,
+        .failed_at = std.time.milliTimestamp(),
+    });
+}
+```
+
+**🧠 Tradeoff** — Zig's error sets do what Rust's enum did: `error{Transient, Permanent}` is a
+closed set, and `catch |err| switch (err)` must handle every member, so an unrouted failure kind is
+a compile error. The `DeadLetter` struct carries the error value itself, not a stringified guess.
+There's no broker to lean on — the queues are structs you wrote — so the operational half of the
+pattern (depth alerts, a replay loop) is also code you must write, which at least keeps it visible.
+
+### Java
+
+**❌ Naive**
+
+```java
+// On error, requeue forever — the poison message never leaves.
+static void consume(Msg msg, BlockingQueue<Msg> queue) throws InterruptedException {
+    try { process(msg.body()); }
+    catch (Exception err) { queue.put(msg); } // redelivered indefinitely
+}
+```
+
+**✅ Idiomatic**
+
+```java
+// Transient vs permanent is a checked exception type — the catch dispatch IS the routing policy.
+sealed abstract class ProcessException extends Exception
+        permits TransientException, PermanentException {}
+final class TransientException extends ProcessException {}  // network blip — worth retrying
+final class PermanentException extends ProcessException {}  // malformed — will never succeed
+
+record Msg(String body, int attempts) {}
+record DeadLetter(String body, int attempts, String error, Instant failedAt) {}
+
+static final int MAX_ATTEMPTS = 5;
+
+static void consume(Msg msg, BlockingQueue<Msg> retry, BlockingQueue<DeadLetter> dlq)
+        throws InterruptedException {
+    try {
+        process(msg.body());
+    } catch (ProcessException err) {
+        switch (err) {                                          // sealed → exhaustive, no default
+            case TransientException _ when msg.attempts() < MAX_ATTEMPTS ->
+                retry.put(new Msg(msg.body(), msg.attempts() + 1)); // retry
+            case TransientException _, PermanentException _ ->  // budget spent, or malformed
+                dlq.put(new DeadLetter(                         // give up → DLQ, preserved with context
+                    msg.body(), msg.attempts(), err.toString(), Instant.now()));
+        }
+    }
+}
+```
+
+**🧠 Tradeoff** — making transient-vs-permanent a checked exception type puts the policy in
+`process`'s signature: callers can't compile without handling it, and because the set is `sealed`,
+the switch over the caught exception is exhaustive with no `default` — add a third failure kind and
+every consumer breaks until it routes it, exactly Rust's enum guarantee. The guarded case plus the
+two-pattern case reads like the policy: transient with budget → retry, everything else → DLQ. In
+production Java this tab is usually broker configuration instead — a JMS redelivery policy moves the
+message to `ActiveMQ.DLQ` after `maximumRedeliveries`, and an SQS redrive policy shifts it to the DLQ
+once `maxReceiveCount` deliveries fail. There the consumer just throws, and the broker's counting
+survives restarts in a way a hand-carried `attempts` field doesn't. Either way you still owe alerting
+on DLQ depth and a replay path.
 
 ## Applications
 

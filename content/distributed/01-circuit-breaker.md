@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [distributed, resilience, fault-tolerance, fail-fast, cascading-failure]
 related: [retry, timeout, bulkhead]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -293,6 +293,279 @@ func getRate(ctx context.Context) (Rate, error) {
 `ErrOpenState` immediately when tripped — clean, idiomatic, and paired with a `context` timeout so
 slow calls count as failures. Go's explicitness shows: you configure `ReadyToTrip` and thread
 `ctx` yourself, but the breaker's behavior is entirely visible and testable.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Every request awaits the failing upstream; slow failures pile up in every caller.
+using var http = new HttpClient(); // no breaker, no shedding
+var rate = decimal.Parse(await http.GetStringAsync("https://fx.example.com/rate"));
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Top-level statements: the demo runs first, the state machine follows.
+var breaker = new CircuitBreaker(threshold: 5, cooldown: TimeSpan.FromSeconds(10));
+var rate = await breaker.Call(GetRate); // fails fast with "circuit open" while tripped
+
+static async Task<decimal> GetRate()
+{
+    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) }; // slow = failure
+    return decimal.Parse(await http.GetStringAsync("https://fx.example.com/rate"));
+}
+
+enum State { Closed, Open, HalfOpen }
+
+sealed class CircuitBreaker(int threshold, TimeSpan cooldown)
+{
+    private State _state = State.Closed;
+    private int _failures;
+    private DateTime _openedAt;
+
+    public async Task<T> Call<T>(Func<Task<T>> fn)
+    {
+        if (_state is State.Open)
+        {
+            if (DateTime.UtcNow - _openedAt < cooldown)
+                throw new InvalidOperationException("circuit open"); // fail fast
+            _state = State.HalfOpen; // cooldown over — allow one trial call
+        }
+        try
+        {
+            var result = await fn();
+            (_failures, _state) = (0, State.Closed); // success closes it
+            return result;
+        }
+        catch
+        {
+            if (++_failures >= threshold || _state is State.HalfOpen)
+                (_state, _openedAt) = (State.Open, DateTime.UtcNow);
+            throw;
+        }
+    }
+}
+```
+
+**🧠 Tradeoff** — The enum plus two guarded transitions is the entire machine, and the generic
+`Call` wraps any `Func<Task<T>>`. As written it isn't thread-safe — two concurrent calls can both
+slip through half-open — which is one reason production C# reaches for Polly: its circuit-breaker
+strategy adds the locking, error-rate thresholds, and metrics, and composes with retry and timeout
+policies. Keep `HttpClient.Timeout` (or a `CancellationToken`) underneath either way, so a hung
+call counts as a failure.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Every caller tries the failing service; nothing is counted, nothing is shed.
+fn get_rate() -> Result<f64, String> {
+    fetch_fx_rate() // down for ten minutes? every call still waits out the full failure
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::time::{Duration, Instant};
+
+// The three states are a closed set — an enum with exhaustive matches, not a trait.
+#[derive(Clone, Copy)]
+enum State {
+    Closed { failures: u32 },
+    Open { since: Instant },
+    HalfOpen,
+}
+
+struct CircuitBreaker {
+    state: State,
+    threshold: u32,
+    cooldown: Duration,
+}
+
+impl CircuitBreaker {
+    fn new(threshold: u32, cooldown: Duration) -> Self {
+        Self { state: State::Closed { failures: 0 }, threshold, cooldown }
+    }
+
+    fn call<T>(&mut self, f: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
+        match self.state {
+            State::Open { since } if since.elapsed() < self.cooldown => {
+                return Err("circuit open".into()); // fail fast
+            }
+            State::Open { .. } => self.state = State::HalfOpen, // cooldown over — one trial
+            State::Closed { .. } | State::HalfOpen => {}
+        }
+        match f() {
+            Ok(v) => {
+                self.state = State::Closed { failures: 0 }; // success closes it
+                Ok(v)
+            }
+            Err(e) => {
+                self.state = match self.state {
+                    State::Closed { failures } if failures + 1 < self.threshold => {
+                        State::Closed { failures: failures + 1 }
+                    }
+                    _ => State::Open { since: Instant::now() }, // threshold hit, or trial failed
+                };
+                Err(e)
+            }
+        }
+    }
+}
+
+// let mut breaker = CircuitBreaker::new(5, Duration::from_secs(10));
+// let rate = breaker.call(fetch_fx_rate)?;
+```
+
+**🧠 Tradeoff** — The enum is doing more than naming states: each variant carries only the data
+valid in it (a failure count exists only in `Closed`, a trip time only in `Open`), so impossible
+combinations don't compile, and the exhaustive `match` means a new state can't be half-handled.
+That's why enum + match — not a trait object — is the natural Rust form here: the state set is
+closed. Sharing the breaker across threads means `Arc<Mutex<CircuitBreaker>>`, and the borrow
+checker won't let you forget it.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Every caller tries the failing service; nothing is counted, nothing is shed.
+fn getRate() !f64 {
+    return fetchRate(); // down for ten minutes? every call still eats the full failure
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// The three states are a closed set: a tagged union, switched exhaustively.
+const State = union(enum) {
+    closed: struct { failures: u32 },
+    open: struct { since_ms: i64 },
+    half_open,
+};
+
+const CircuitBreaker = struct {
+    state: State = .{ .closed = .{ .failures = 0 } },
+    threshold: u32,
+    cooldown_ms: i64,
+
+    pub fn call(self: *CircuitBreaker, f: *const fn () anyerror!f64) anyerror!f64 {
+        switch (self.state) {
+            .open => |o| {
+                if (std.time.milliTimestamp() - o.since_ms < self.cooldown_ms)
+                    return error.CircuitOpen; // fail fast
+                self.state = .half_open; // cooldown over — allow one trial call
+            },
+            .closed, .half_open => {},
+        }
+        const result = f() catch |err| {
+            switch (self.state) {
+                .closed => |c| {
+                    self.state = if (c.failures + 1 >= self.threshold)
+                        State{ .open = .{ .since_ms = std.time.milliTimestamp() } }
+                    else
+                        State{ .closed = .{ .failures = c.failures + 1 } };
+                },
+                // A failed trial call re-opens the breaker.
+                .half_open, .open => self.state = State{
+                    .open = .{ .since_ms = std.time.milliTimestamp() },
+                },
+            }
+            return err;
+        };
+        self.state = .{ .closed = .{ .failures = 0 } }; // success closes it
+        return result;
+    }
+};
+
+// var breaker = CircuitBreaker{ .threshold = 5, .cooldown_ms = 10_000 };
+// const rate = try breaker.call(fetchRate);
+```
+
+**🧠 Tradeoff** — Same shape as the Rust version: a tagged union with exhaustive `switch`es, so the
+compiler flags any transition you forget. `anyerror` keeps `call` generic over whatever the wrapped
+function fails with; narrowing to a named error set would document the failure modes at the cost of
+flexibility. The breaker is single-threaded as written — put a `std.Thread.Mutex` around `call` to
+share it — and it only sees *errors*, so the fetch must fail on slowness (a socket deadline) or a
+hung call never trips it.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Every request calls the failing upstream; nothing is counted, nothing is shed.
+double getRate() throws Exception {
+    var req = HttpRequest.newBuilder(URI.create("https://fx.example.com/rate")).build();
+    var resp = http.send(req, HttpResponse.BodyHandlers.ofString()); // no breaker
+    return Double.parseDouble(resp.body());
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.Callable;
+
+// The three states are a closed set — an enum, switched on in two places.
+enum State { CLOSED, OPEN, HALF_OPEN }
+
+class CircuitBreaker {
+    private final int threshold;
+    private final Duration cooldown;
+    private State state = State.CLOSED;
+    private int failures = 0;
+    private Instant openedAt = Instant.EPOCH;
+
+    CircuitBreaker(int threshold, Duration cooldown) {
+        this.threshold = threshold;
+        this.cooldown = cooldown;
+    }
+
+    <T> T call(Callable<T> fn) throws Exception {
+        if (state == State.OPEN) {
+            if (Duration.between(openedAt, Instant.now()).compareTo(cooldown) < 0)
+                throw new IllegalStateException("circuit open"); // fail fast
+            state = State.HALF_OPEN; // cooldown over — allow one trial call
+        }
+        try {
+            T result = fn.call();
+            failures = 0;
+            state = State.CLOSED; // success closes it
+            return result;
+        } catch (Exception e) {
+            failures++;
+            if (failures >= threshold || state == State.HALF_OPEN) {
+                state = State.OPEN;
+                openedAt = Instant.now();
+            }
+            throw e;
+        }
+    }
+}
+
+// var breaker = new CircuitBreaker(5, Duration.ofSeconds(10));
+// double rate = breaker.call(() -> getRate());
+```
+
+**🧠 Tradeoff** — The enum plus two guarded transitions is the whole machine, and `Callable<T>` is
+already a functional interface, so any call wraps in a lambda. If you want each state to carry only
+its own data — a failure count that exists only in CLOSED, a trip time only in OPEN — a sealed
+interface with record states and a pattern-matching `switch` gives you the Rust shape; the enum
+with two fields is the plainer Java. As written it isn't thread-safe, and a real service shares one
+breaker across many request threads — the first reason production Java reaches for Resilience4j,
+whose `CircuitBreaker` adds the atomic state machine, sliding-window failure rates, half-open
+permits, and metrics, and composes with its `Retry` and `TimeLimiter`. Keep a request timeout
+underneath either way, so a hung call counts as a failure.
 
 ## Applications
 

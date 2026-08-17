@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [behavioral, algorithms, open-closed, runtime-swap, composition]
 related: [state, template-method, factory-method]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, java, csharp, rust, zig]
 ---
 
 ## Intent
@@ -407,6 +407,276 @@ implements `PaymentStrategy`, it just has the method. That keeps strategies deco
 interface. For a single-method strategy you can skip the structs and use a function type
 (`type PaymentStrategy func(int) string`), which is often the leaner Go form — use the
 interface when a strategy needs fields or more than one method.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// A switch that grows with every new payment type.
+Console.WriteLine(Pay("credit", 100));
+Console.WriteLine(Pay("paypal", 200));
+
+static string Pay(string method, int amount) => method switch
+{
+    "credit" => $"Paid {amount} using Credit Card.",
+    "paypal" => $"Paid {amount} using PayPal.",
+    _ => throw new ArgumentException($"Unknown payment method: {method}"),
+};
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Top-level statements: the demo runs first, the types follow.
+var context = new PaymentContext(new CreditCard());
+Console.WriteLine(context.Pay(100)); // Paid 100 using Credit Card.
+
+context.SetStrategy(new PayPal());
+Console.WriteLine(context.Pay(200)); // Paid 200 using PayPal.
+
+public interface IPaymentStrategy
+{
+    string Pay(int amount);
+}
+
+public sealed class CreditCard : IPaymentStrategy
+{
+    public string Pay(int amount) => $"Paid {amount} using Credit Card.";
+}
+
+public sealed class PayPal : IPaymentStrategy
+{
+    public string Pay(int amount) => $"Paid {amount} using PayPal.";
+}
+
+// Primary constructor — the context takes its starting strategy up front.
+public sealed class PaymentContext(IPaymentStrategy strategy)
+{
+    private IPaymentStrategy _strategy = strategy;
+
+    public void SetStrategy(IPaymentStrategy s) => _strategy = s;
+    public string Pay(int amount) => _strategy.Pay(amount);
+}
+```
+
+**🧠 Tradeoff** — unlike JS duck typing, `IPaymentStrategy` is checked at compile time:
+you cannot hand the context an object without a `Pay`. The classical form above earns its
+keep when a strategy carries configuration or several members. For a single method, modern
+C# often skips the interface entirely and stores a `Func<int, string>` — the pattern
+collapses into a delegate, which is Strategy in all but name.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// A match that grows with every new payment type.
+fn pay(method: &str, amount: u32) -> String {
+    match method {
+        "credit" => format!("Paid {amount} using Credit Card."),
+        "paypal" => format!("Paid {amount} using PayPal."),
+        other => panic!("unknown payment method: {other}"),
+    }
+}
+
+fn main() {
+    println!("{}", pay("credit", 100));
+    println!("{}", pay("paypal", 200));
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// The strategy contract is a trait.
+trait PaymentStrategy {
+    fn pay(&self, amount: u32) -> String;
+}
+
+struct CreditCard;
+impl PaymentStrategy for CreditCard {
+    fn pay(&self, amount: u32) -> String {
+        format!("Paid {amount} using Credit Card.")
+    }
+}
+
+struct PayPal;
+impl PaymentStrategy for PayPal {
+    fn pay(&self, amount: u32) -> String {
+        format!("Paid {amount} using PayPal.")
+    }
+}
+
+// Box<dyn ...> so the strategy can be swapped at runtime.
+struct PaymentContext {
+    strategy: Box<dyn PaymentStrategy>,
+}
+
+impl PaymentContext {
+    fn set_strategy(&mut self, strategy: Box<dyn PaymentStrategy>) {
+        self.strategy = strategy;
+    }
+    fn pay(&self, amount: u32) -> String {
+        self.strategy.pay(amount)
+    }
+}
+
+fn main() {
+    let mut context = PaymentContext { strategy: Box::new(CreditCard) };
+    println!("{}", context.pay(100)); // Paid 100 using Credit Card.
+
+    context.set_strategy(Box::new(PayPal));
+    println!("{}", context.pay(200)); // Paid 200 using PayPal.
+}
+```
+
+**🧠 Tradeoff** — `Box<dyn PaymentStrategy>` buys runtime swapping at the cost of a heap
+allocation and dynamic dispatch. A generic `PaymentContext<S: PaymentStrategy>` compiles
+each strategy to zero-overhead code but fixes it at compile time — Rust makes you pick,
+where Go and C# hide the choice. And when the set of strategies is closed, plain Rust
+often prefers an enum with a `match` over trait objects; reach for `dyn` when the set
+must stay open. A closure `Box<dyn Fn(u32) -> String>` covers the single-method case.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const Method = enum { credit, paypal };
+
+// A switch that grows with every new payment type.
+fn pay(method: Method, amount: u32) void {
+    switch (method) {
+        .credit => std.debug.print("Paid {d} using Credit Card.\n", .{amount}),
+        .paypal => std.debug.print("Paid {d} using PayPal.\n", .{amount}),
+    }
+}
+
+pub fn main() void {
+    pay(.credit, 100);
+    pay(.paypal, 200);
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Zig has no interfaces or closures — the strategy is a function pointer.
+const PaymentStrategy = struct {
+    payFn: *const fn (amount: u32) void,
+
+    pub fn pay(self: PaymentStrategy, amount: u32) void {
+        self.payFn(amount);
+    }
+};
+
+fn payCredit(amount: u32) void {
+    std.debug.print("Paid {d} using Credit Card.\n", .{amount});
+}
+
+fn payPayPal(amount: u32) void {
+    std.debug.print("Paid {d} using PayPal.\n", .{amount});
+}
+
+const PaymentContext = struct {
+    strategy: PaymentStrategy,
+
+    pub fn setStrategy(self: *PaymentContext, s: PaymentStrategy) void {
+        self.strategy = s;
+    }
+    pub fn pay(self: PaymentContext, amount: u32) void {
+        self.strategy.pay(amount);
+    }
+};
+
+pub fn main() void {
+    var context = PaymentContext{ .strategy = .{ .payFn = payCredit } };
+    context.pay(100); // Paid 100 using Credit Card.
+
+    context.setStrategy(.{ .payFn = payPayPal });
+    context.pay(200); // Paid 200 using PayPal.
+}
+```
+
+**🧠 Tradeoff** — a bare function pointer covers stateless strategies; once a strategy
+needs its own state, Zig's answer is the two-field vtable idiom (`*anyopaque` context +
+function pointer) that `std.mem.Allocator` uses. Be honest about the naive version,
+though: when the set of strategies is closed, the enum + exhaustive `switch` *is*
+idiomatic Zig — zero indirection, and the compiler flags every unhandled case. The
+pointer form pays off only when new strategies must arrive without touching the switch.
+
+### Java
+
+**❌ Naive**
+
+```java
+// A conditional that grows with every new payment type.
+class PaymentService {
+    String pay(String method, int amount) {
+        return switch (method) {
+            case "credit" -> "Paid %d using Credit Card.".formatted(amount);
+            case "paypal" -> "Paid %d using PayPal.".formatted(amount);
+            default -> throw new IllegalArgumentException("Unknown method: " + method);
+        };
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+// The strategy contract — a single method, so it's a functional interface.
+interface PaymentStrategy {
+    String pay(int amount);
+}
+
+class CreditCard implements PaymentStrategy {
+    public String pay(int amount) {
+        return "Paid %d using Credit Card.".formatted(amount);
+    }
+}
+
+class PayPal implements PaymentStrategy {
+    public String pay(int amount) {
+        return "Paid %d using PayPal.".formatted(amount);
+    }
+}
+
+class PaymentContext {
+    private PaymentStrategy strategy;
+
+    PaymentContext(PaymentStrategy strategy) { this.strategy = strategy; }
+
+    void setStrategy(PaymentStrategy strategy) { this.strategy = strategy; }
+    String pay(int amount) { return strategy.pay(amount); }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var context = new PaymentContext(new CreditCard());
+        System.out.println(context.pay(100)); // Paid 100 using Credit Card.
+
+        context.setStrategy(new PayPal());
+        System.out.println(context.pay(200)); // Paid 200 using PayPal.
+
+        // Single-method interface — a lambda IS a strategy:
+        context.setStrategy(amount -> "Paid %d using Crypto.".formatted(amount));
+        System.out.println(context.pay(300)); // Paid 300 using Crypto.
+    }
+}
+```
+
+**🧠 Tradeoff** — this is the GoF book's home language, and the classical form fits with
+no translation: interface, concrete classes, context. What modern Java changes is the
+floor. Since any single-method interface is a functional interface, a lambda replaces the
+strategy class — `Comparator` passed to `sort` is the standard library doing exactly this.
+Write the class when a strategy carries configuration or state; reach for the lambda when
+it's one stateless method, which is most of the time.
 
 ## Applications
 

@@ -10,7 +10,7 @@ frequency: medium
 difficulty: beginner
 tags: [messaging, integration, routing, decoupling, dispatch]
 related: [message-channel, splitter, chain-of-responsibility]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -262,6 +262,203 @@ func (r Router) Route(e Event) {
 explicit, so producers call `Route` without knowing destinations. In-process the destinations are Go
 channels; across services they're broker subjects (NATS supports subject-based routing natively). It's
 plain and testable; keep `Route` a pure dispatch so it stays a thin chokepoint rather than a processor.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The producer decides destinations inline — and silently drops unknown types.
+void Emit(Event e)
+{
+    if (e.Type == "payment") paymentCh.Writer.TryWrite(e);
+    else if (e.Type == "shipping") shippingCh.Writer.TryWrite(e); // every producer repeats this
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// The router owns the type → channel map and an explicit fallback.
+using System.Threading.Channels;
+
+public sealed record Event(string Type, string Payload);
+
+public sealed class Router(
+    IReadOnlyDictionary<string, ChannelWriter<Event>> routes,
+    ChannelWriter<Event> fallback)
+{
+    public ValueTask RouteAsync(Event e) =>
+        routes.TryGetValue(e.Type, out var ch)
+            ? ch.WriteAsync(e)
+            : fallback.WriteAsync(e); // default route — nothing is lost
+}
+
+// var router = new Router(new Dictionary<string, ChannelWriter<Event>>
+// {
+//     ["payment"] = paymentCh.Writer,
+//     ["shipping"] = shippingCh.Writer,
+// }, unroutableCh.Writer);
+// producers: await router.RouteAsync(e) — they know nothing about destinations
+```
+
+**🧠 Tradeoff** — the router holds only `ChannelWriter`s, the write half of each destination, so
+consumers own their readers and the topology stays one dictionary you can build from config. The
+primary constructor and expression-bodied `RouteAsync` keep it thin — a lookup and a write, nothing
+more. If the type set were closed, a pattern-matching `switch` expression would trade the runtime
+map for a compile-time check. Across services the same rules move into broker infrastructure
+(Service Bus subscription filters, Rabbit bindings).
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Producer matches on type and sends to specific channels.
+fn emit(e: Event) {
+    match e.kind.as_str() {
+        "payment" => payment_tx.send(e).unwrap(),
+        "shipping" => shipping_tx.send(e).unwrap(), // routing embedded in the producer
+        _ => {} // unknown kinds silently vanish
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+use std::sync::mpsc::Sender;
+
+// The router owns the rules and the sending half of every destination.
+struct Router {
+    routes: HashMap<String, Sender<Event>>,
+    fallback: Sender<Event>,
+}
+
+impl Router {
+    fn route(&self, e: Event) {
+        let dest = self.routes.get(&e.kind).unwrap_or(&self.fallback);
+        dest.send(e).expect("destination hung up"); // default route — never dropped
+    }
+}
+
+// let router = Router {
+//     routes: HashMap::from([
+//         ("payment".into(), payment_tx),
+//         ("shipping".into(), shipping_tx),
+//     ]),
+//     fallback: dlq_tx,
+// };
+// producers call router.route(e) — they hold no destination senders at all.
+```
+
+**🧠 Tradeoff** — ownership does the decoupling: producers hold a `Router`, never a destination
+`Sender`, so they *can't* address consumers directly. The `HashMap` form suits an open, config-
+driven route set; when the kinds are a closed set, an enum plus exhaustive `match` is the more
+idiomatic Rust router — the compiler forces a decision for every variant and silent drops become
+impossible. A failed `send` means the consumer hung up; handling that `Err` instead of unwrapping
+is where your real dead-letter policy lives.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Producer compares strings and pushes to specific queues.
+fn emit(e: Event) void {
+    if (std.mem.eql(u8, e.kind, "payment")) {
+        payment_q.put(e);
+    } else if (std.mem.eql(u8, e.kind, "shipping")) {
+        shipping_q.put(e); // routing in the producer; unknown kinds vanish
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Parse the wire string into an enum once, at the edge…
+const Kind = enum { payment, shipping, email };
+
+// …then the router is an exhaustive switch: a missing arm won't compile.
+fn route(e: Event) void {
+    const kind = std.meta.stringToEnum(Kind, e.kind) orelse {
+        unroutable_q.put(e); // default route — nothing is lost
+        return;
+    };
+    switch (kind) {
+        .payment => payment_q.put(e),
+        .shipping => shipping_q.put(e),
+        .email => email_q.put(e),
+    }
+}
+// producers call route(e); the queues are the bounded mutex+condvar
+// channels from Message Channel — each consumer takes from its own.
+```
+
+**🧠 Tradeoff** — for a closed set of kinds, enum + exhaustive `switch` *is* the idiomatic Zig
+router: add a variant to `Kind` and the compiler lists every switch you must extend, so a routing
+rule can't be forgotten. The only genuinely unknown input is the wire string, handled once at the
+edge — `stringToEnum` returning null is the unroutable case, routed to the dead-letter queue
+instead of dropped. When routes must stay open at runtime (loaded from config), a
+`StringHashMap` of queue pointers is the dynamic form; you trade the compile-time check for
+flexibility.
+
+### Java
+
+**❌ Naive**
+
+```java
+// The producer decides destinations inline — and silently drops unknown types.
+void emit(Event e) {
+    switch (e.type()) {
+        case "payment" -> paymentQ.add(e);
+        case "shipping" -> shippingQ.add(e); // every producer repeats this
+        default -> {} // unknown types silently vanish
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+
+record Event(String type, String payload) {}
+
+// The router owns the type → queue map and an explicit dead-letter queue.
+class Router {
+    private final Map<String, BlockingQueue<Event>> routes;
+    private final BlockingQueue<Event> deadLetter;
+
+    Router(Map<String, BlockingQueue<Event>> routes, BlockingQueue<Event> deadLetter) {
+        this.routes = routes;
+        this.deadLetter = deadLetter;
+    }
+
+    void route(Event e) throws InterruptedException {
+        routes.getOrDefault(e.type(), deadLetter).put(e); // default route — nothing is lost
+    }
+}
+
+// var router = new Router(
+//     Map.of("payment", paymentQ, "shipping", shippingQ),
+//     dlq);
+// producers: router.route(e) — they know nothing about destinations
+```
+
+**🧠 Tradeoff** — `Map.of` builds an immutable route table, and `getOrDefault` makes the
+dead-letter path a single expression instead of a forgettable else-branch. Producers hold only the
+`Router`, never a destination queue — the topology is one map you can assemble from config. When
+the kind set is closed, do what the Zig tab does: parse the wire string into an enum (or model
+messages as a sealed interface) once at the edge, then route with a pattern-matching `switch` the
+compiler checks for exhaustiveness — adding a kind becomes a compile error at every router you
+forgot. Either way, keep `route` a lookup and a `put`; the moment it transforms messages it has
+stopped being a router.
 
 ## Applications
 

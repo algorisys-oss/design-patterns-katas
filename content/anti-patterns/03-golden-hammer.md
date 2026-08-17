@@ -11,7 +11,7 @@ frequency: high
 difficulty: beginner
 tags: [anti-pattern, tooling, judgment, over-engineering, fit]
 related: [strategy, premature-optimization, singleton]
-languages: [javascript, python, go]
+languages: [javascript, python, go, csharp, rust, zig, java]
 ---
 
 ## The Anti-Pattern
@@ -169,6 +169,178 @@ func main() {
 services; wrapping a nightly batch job in an HTTP service plus container orchestration is the Golden Hammer —
 enormous operational overhead for a task a cron-run binary handles. The fix is right-sizing: a scheduled
 program for a scheduled job. Reach for the service architecture when the problem is actually a service.
+
+### CSharp
+
+**❌ The Smell**
+
+```csharp
+// An interface, a class, and a DI registration — to sum a list of prices.
+public interface ITotalCalculator
+{
+    decimal Total(IEnumerable<decimal> prices);
+}
+
+public sealed class TotalCalculator : ITotalCalculator
+{
+    public decimal Total(IEnumerable<decimal> prices) => prices.Sum();
+}
+
+// Program.cs
+builder.Services.AddScoped<ITotalCalculator, TotalCalculator>();
+// ...then injected through two constructors to reach the one line that uses it
+```
+
+**✅ The Refactor**
+
+```csharp
+// The right-sized tool: call Sum where you need it.
+var total = cart.Items.Sum(i => i.Price);
+
+// An interface earns its keep at a real seam — a payment gateway you fake in
+// tests, a storage backend with two implementations. A pure one-line calculation
+// isn't a seam; it's just an expression.
+```
+
+**🧠 The Fix** — "Interface for everything" is C#'s house Golden Hammer, trained in by DI-container habits:
+one implementation, one mechanical `I`-prefixed twin, registration ceremony, and an extra indirection for
+every reader — with nothing bought, since a pure calculation needs no faking. The fix isn't "never write
+interfaces"; it's writing them at real seams (I/O, external services, genuine polymorphism) and letting plain
+code be plain. If the interface will only ever have one implementation and no test needs to swap it, delete it.
+
+### Rust
+
+**❌ The Smell**
+
+```rust
+// A trait, a generic, and a lifetime — to add up a list of prices.
+trait Summable {
+    fn value(&self) -> u32;
+}
+
+impl Summable for u32 {
+    fn value(&self) -> u32 { *self }
+}
+
+fn total<'a, T, I>(items: I) -> u32
+where
+    T: Summable + 'a,
+    I: IntoIterator<Item = &'a T>,
+{
+    items.into_iter().map(|i| i.value()).sum()
+}
+// ...called from exactly one place, with exactly one type
+```
+
+**✅ The Refactor**
+
+```rust
+// The right-sized tool: a slice and the standard library.
+fn total(prices: &[u32]) -> u32 {
+    prices.iter().sum()
+}
+
+// Generics and traits are for real variation — a second item type that exists
+// today, not one you imagine. One call site with one type is just a function.
+```
+
+**🧠 The Fix** — Rust's Golden Hammer is abstraction that costs nothing at runtime, so nothing pushes back:
+"zero-cost" traits and generics still charge for reading, compiling, and error messages, and the type-system
+puzzle is fun enough that the machinery gets built before the second use case exists. The honest test is
+variation you can point at — a second implementor, today. Until then, take the concrete type; when the second
+type genuinely arrives, the borrow checker makes the mechanical generalization safe to do late.
+
+### Zig
+
+**❌ The Smell**
+
+```zig
+// Comptime generics and a strategy struct — to add up a list of prices.
+fn Totaler(comptime T: type, comptime Weigher: type) type {
+    return struct {
+        weigher: Weigher,
+        pub fn total(self: @This(), items: []const T) T {
+            var t: T = 0;
+            for (items) |item| t += self.weigher.weight(item);
+            return t;
+        }
+    };
+}
+
+const Identity = struct {
+    pub fn weight(_: Identity, item: u32) u32 {
+        return item;
+    }
+};
+// ...instantiated once, with one type, and a "weigher" that does nothing
+```
+
+**✅ The Refactor**
+
+```zig
+// The right-sized tool: a loop.
+fn total(prices: []const u32) u32 {
+    var t: u32 = 0;
+    for (prices) |p| t += p;
+    return t;
+}
+
+// comptime earns its keep when types genuinely vary — one function stamped out
+// for many concrete types. One instantiation is just a function with extra steps.
+```
+
+**🧠 The Fix** — `comptime` is Zig's Golden Hammer: it's the language's signature feature, it's genuinely
+powerful, and that's exactly why it gets reached for before the problem asks for it. A type-returning function
+with one instantiation is a plain function wearing a costume — harder to read, harder to grep, same machine
+code. Zig's own culture backs the fix: the standard library keeps things concrete until multiple types force
+the issue, and so should you. Ask for the second instantiation; if it doesn't exist, neither should the generic.
+
+### Java
+
+**❌ The Smell**
+
+```java
+// An interface, an abstract base, a subclass, and a factory — to sum a list of prices.
+interface TotalStrategy {
+    int total(List<Integer> prices);
+}
+
+abstract class AbstractTotalCalculator implements TotalStrategy {
+    protected abstract int weight(int price);      // a hook nobody varies
+
+    public int total(List<Integer> prices) {
+        int t = 0;
+        for (int p : prices) t += weight(p);
+        return t;
+    }
+}
+
+class DefaultTotalCalculator extends AbstractTotalCalculator {
+    protected int weight(int price) { return price; }
+}
+
+class TotalCalculatorFactory {
+    static TotalStrategy create() { return new DefaultTotalCalculator(); } // only one, ever
+}
+// ...one implementation of everything, called from exactly one place
+```
+
+**✅ The Refactor**
+
+```java
+// The right-sized tool: the standard library.
+int total = prices.stream().mapToInt(Integer::intValue).sum();
+
+// A strategy earns its keep when behavior actually varies — a second calculator
+// that exists today. Until then, a pure calculation is just an expression.
+```
+
+**🧠 The Fix** — Java's Golden Hammer is the abstraction layer cake — the reflex that gave the world
+Spring's real `AbstractSingletonProxyFactoryBean`. The GoF vocabulary is so at home in Java that
+Abstract/Factory/Strategy scaffolding goes up before anyone asks whether behavior varies, and every layer
+with one implementation is pure reading tax. Modern Java already dissolved most of the ceremony: a lambda
+is a strategy, a stream is the template method's loop. Keep the patterns for real variation — a second
+implementor you can point at today — and when an abstract base has one subclass, inline it.
 
 ## Related Patterns
 

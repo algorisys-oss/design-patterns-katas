@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [creational, step-by-step, fluent-api, immutability, optional-params]
 related: [abstract-factory, factory-method]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -312,6 +312,267 @@ func (b *Builder) Build() (Request, error) {
 options* (`New(url, WithMethod("POST"), WithTimeout(30))`) — variadic `func(*Request)` values
 that keep the constructor open to new options without growing its signature. Use the builder
 when steps are ordered or validated together; use options for "many optional settings."
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Telescoping construction — positional, null-padded, unreadable.
+var request = new HttpRequest("https://api", "POST", null, "{}", 30, 3);
+// which int is the timeout? which is retries? the call site won't say
+
+public sealed record HttpRequest(string Url, string Method,
+    Dictionary<string, string>? Headers, string? Body, int Timeout, int Retries);
+```
+
+**✅ Idiomatic**
+
+```csharp
+var request = new HttpRequestBuilder("https://api")
+    .Method("POST")
+    .Header("content-type", "application/json")
+    .Body("{}")
+    .Build();
+
+Console.WriteLine($"{request.Method} {request.Url}"); // POST https://api
+
+// The product is an immutable record — nothing to mutate after Build().
+public sealed record HttpRequest(string Url, string Method,
+    IReadOnlyDictionary<string, string> Headers, string? Body, int Timeout);
+
+// Primary constructor takes the one required part; every option is a named step.
+public sealed class HttpRequestBuilder(string url)
+{
+    private string _method = "GET";
+    private readonly Dictionary<string, string> _headers = new();
+    private string? _body;
+    private int _timeout = 10;
+
+    public HttpRequestBuilder Method(string m) { _method = m; return this; }
+    public HttpRequestBuilder Header(string k, string v) { _headers[k] = v; return this; }
+    public HttpRequestBuilder Body(string b) { _body = b; return this; }
+    public HttpRequestBuilder Timeout(int t) { _timeout = t; return this; }
+
+    public HttpRequest Build() =>
+        string.IsNullOrWhiteSpace(url)
+            ? throw new InvalidOperationException("url is required")
+            : new(url, _method, _headers.AsReadOnly(), _body, _timeout);
+}
+```
+
+**🧠 Tradeoff** — like Python, C# covers "many optional fields" without a builder: object
+initializers with `required` and `init` members give named, compiler-checked construction
+(`new HttpRequest { Url = "…" }` won't compile without `Url`). So the fluent class above earns
+its place only when construction is staged, conditional, or validated as a whole — which is
+exactly what the builders you meet in .NET (`StringBuilder`, `ConfigurationBuilder`,
+`HostApplicationBuilder`) are doing: accumulating state across calls, not naming parameters.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// A constructor with a long positional signature.
+fn new_request(
+    url: &str, method: &str, headers: Vec<(String, String)>,
+    body: Option<String>, timeout: u32, retries: u32,
+) -> HttpRequest {
+    // ...
+}
+
+let request = new_request("https://api", "POST", vec![], Some("{}".into()), 30, 3);
+// which u32 is the timeout? which is retries? nobody can tell
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+
+struct HttpRequest {
+    url: String,
+    method: String,
+    headers: HashMap<String, String>,
+    body: Option<String>,
+    timeout: u32,
+}
+
+struct HttpRequestBuilder {
+    url: String,
+    method: String,
+    headers: HashMap<String, String>,
+    body: Option<String>,
+    timeout: u32,
+}
+
+impl HttpRequestBuilder {
+    fn new(url: impl Into<String>) -> Self {
+        Self {
+            url: url.into(),
+            method: "GET".into(),
+            headers: HashMap::new(),
+            body: None,
+            timeout: 10,
+        }
+    }
+
+    // Each step takes and returns the builder by value — chains without cloning.
+    fn method(mut self, m: &str) -> Self { self.method = m.into(); self }
+    fn header(mut self, k: &str, v: &str) -> Self {
+        self.headers.insert(k.into(), v.into());
+        self
+    }
+    fn body(mut self, b: &str) -> Self { self.body = Some(b.into()); self }
+
+    // Validation lives here; an invalid request is unrepresentable.
+    fn build(self) -> Result<HttpRequest, String> {
+        if self.url.is_empty() {
+            return Err("url is required".into());
+        }
+        Ok(HttpRequest {
+            url: self.url, method: self.method, headers: self.headers,
+            body: self.body, timeout: self.timeout,
+        })
+    }
+}
+
+fn main() {
+    let request = HttpRequestBuilder::new("https://api")
+        .method("POST")
+        .header("content-type", "application/json")
+        .body("{}")
+        .build()
+        .unwrap();
+    println!("{} {}", request.method, request.url); // POST https://api
+}
+```
+
+**🧠 Tradeoff** — Rust has no default or named arguments, so the builder is genuinely
+load-bearing here — it's all over std (`Command`, `OpenOptions`, `thread::Builder`). The
+consuming style (`mut self` in, `Self` out) chains without borrows and makes a used-up builder
+unusable again, which the borrow checker enforces for free; switch to `&mut self` steps when you
+need to apply steps conditionally in a loop. `build()` returning `Result` makes "invalid
+request" a path the caller must handle, not a runtime surprise.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// A positional init — the call site is number soup.
+fn newRequest(url: []const u8, method: []const u8, body: ?[]const u8,
+    timeout_s: u32, retries: u32) HttpRequest {
+    return .{ .url = url, .method = method, .body = body,
+              .timeout_s = timeout_s, .retries = retries };
+}
+
+const request = newRequest("https://api", "POST", "{}", 30, 3);
+// which u32 is the timeout? which is retries? the call won't tell you
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Header = struct { name: []const u8, value: []const u8 };
+
+const HttpRequest = struct {
+    url: []const u8, // no default — omitting it is a compile error
+    method: []const u8 = "GET",
+    headers: []const Header = &.{},
+    body: ?[]const u8 = null,
+    timeout_s: u32 = 10,
+    retries: u32 = 0,
+};
+
+pub fn main() void {
+    // Named fields with defaults: the struct literal IS the builder.
+    const request = HttpRequest{
+        .url = "https://api",
+        .method = "POST",
+        .headers = &.{.{ .name = "content-type", .value = "application/json" }},
+        .body = "{}",
+    };
+    std.debug.print("{s} {s} (timeout {d}s)\n", .{
+        request.method, request.url, request.timeout_s,
+    }); // POST https://api (timeout 10s)
+}
+```
+
+**🧠 Tradeoff** — Zig's struct literal already does most of the builder's job: fields are named,
+defaults fill the gaps, and a field without a default (like `url`) *must* appear or the program
+doesn't compile — stronger than the JS builder's runtime throw, and it costs nothing. So don't
+write a builder class here; that would be cargo-culting. A real builder struct earns its place
+when construction is staged at runtime — say, accumulating headers in a growable list — and then
+it carries an explicit allocator, a `deinit`, and a `try build()` returning an error union for
+the paths that can fail.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Telescoping constructor — positional, null-padded, unreadable.
+var request = new HttpRequest("https://api", "POST", null, "{}", 30, 3);
+// which int is the timeout? which is retries? the call site won't say
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+// The product is a record — immutable, equality and accessors for free.
+record HttpRequest(String url, String method, Map<String, String> headers,
+                   String body, int timeout) {
+
+    static Builder builder(String url) { return new Builder(url); }
+
+    // The builder takes the one required part; every option is a named step.
+    static final class Builder {
+        private final String url;
+        private String method = "GET";
+        private final Map<String, String> headers = new HashMap<>();
+        private String body;
+        private int timeout = 10;
+
+        Builder(String url) { this.url = url; }
+
+        Builder method(String m) { this.method = m; return this; }
+        Builder header(String k, String v) { headers.put(k, v); return this; }
+        Builder body(String b) { this.body = b; return this; }
+        Builder timeout(int t) { this.timeout = t; return this; }
+
+        HttpRequest build() {
+            if (url == null || url.isBlank()) throw new IllegalStateException("url is required");
+            return new HttpRequest(url, method, Map.copyOf(headers), body, timeout);
+        }
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var request = HttpRequest.builder("https://api")
+                .method("POST")
+                .header("content-type", "application/json")
+                .body("{}")
+                .build();
+        System.out.println(request.method() + " " + request.url()); // POST https://api
+    }
+}
+```
+
+**🧠 Tradeoff** — Java has no named or default arguments, so the fluent builder is genuinely
+load-bearing — this is Effective Java's Item 2, and the JDK itself ships it
+(`HttpRequest.newBuilder()`, `Stream.builder()`). Records changed the product's half of the
+deal, not the builder's: `HttpRequest` gets immutability and equality for free, but its
+canonical constructor is still positional, so the builder still supplies the names, defaults,
+and the `Map.copyOf` defensive copy. In practice much of this class is generated — Lombok's
+`@Builder` writes it from one annotation — which tells you two things: the ceremony is real,
+and nobody wants to type it.
 
 ## Applications
 

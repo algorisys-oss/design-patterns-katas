@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [concurrency, throughput, backpressure, bounded-parallelism, pool]
 related: [producer-consumer, future-promise, bulkhead]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -326,6 +326,239 @@ func workerPool(tasks []Task, size int, run func(Task) Result) []Result {
 code. You do wire the pieces by hand (channel, `WaitGroup`, `close`), and correctness lives in
 those details — forget to `close(jobs)` and the workers block forever. That explicitness is the
 Go bargain: no framework, but you own the concurrency.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Every item starts at once — 10k items means 10k tasks in flight.
+static Task<Result[]> ProcessAll(IEnumerable<Item> items, Func<Item, Task<Result>> run) =>
+    Task.WhenAll(items.Select(run));
+```
+
+**✅ Idiomatic**
+
+```csharp
+using System.Threading.Channels;
+
+// A bounded channel is the queue; a fixed set of tasks are the workers.
+static async Task<Result[]> WorkerPool(
+    IReadOnlyList<Item> items, int size, Func<Item, Task<Result>> run)
+{
+    var jobs = Channel.CreateBounded<int>(size);
+    var results = new Result[items.Count];
+
+    var workers = Enumerable.Range(0, size)
+        .Select(_ => Task.Run(async () =>
+        {
+            await foreach (var i in jobs.Reader.ReadAllAsync()) // until Complete()
+                results[i] = await run(items[i]);
+        }))
+        .ToArray();
+
+    for (var i = 0; i < items.Count; i++)
+        await jobs.Writer.WriteAsync(i); // waits when the buffer is full — backpressure
+
+    jobs.Writer.Complete(); // no more jobs
+    await Task.WhenAll(workers);
+    return results;
+}
+```
+
+**🧠 Tradeoff** — `System.Threading.Channels` is Go's channel for .NET: bounded capacity,
+a `WriteAsync` that waits instead of blocking a thread, and `Complete()` as the close signal
+that ends every `ReadAllAsync` loop cleanly. The one-line alternative is
+`Parallel.ForEachAsync` with `MaxDegreeOfParallelism` — reach for that when all you need is
+a capped batch; the channel version earns its keep when the pool outlives a single batch or
+tasks are submitted from elsewhere.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+use std::thread;
+
+// One OS thread per task — thousands of tasks ask the OS for thousands of threads.
+fn process_all(tasks: Vec<Task>, run: fn(Task) -> Out) -> Vec<Out> {
+    let handles: Vec<_> = tasks
+        .into_iter()
+        .map(|t| thread::spawn(move || run(t)))
+        .collect();
+    handles.into_iter().map(|h| h.join().unwrap()).collect()
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
+
+// Fixed workers share one job receiver; a rendezvous channel is the (zero-slot) queue.
+fn worker_pool(tasks: Vec<Task>, size: usize, run: fn(Task) -> Out) -> Vec<Out> {
+    let (job_tx, job_rx) = mpsc::sync_channel(0); // send blocks until a worker takes it
+    let (out_tx, out_rx) = mpsc::channel();
+    let job_rx = Arc::new(Mutex::new(job_rx)); // std's receiver is single-consumer — share it
+
+    let workers: Vec<_> = (0..size)
+        .map(|_| {
+            let jobs = Arc::clone(&job_rx);
+            let out = out_tx.clone();
+            thread::spawn(move || loop {
+                // Hold the lock only to receive; run() happens outside it.
+                let job = jobs.lock().unwrap().recv();
+                match job {
+                    Ok((i, task)) => out.send((i, run(task))).unwrap(),
+                    Err(_) => break, // sender dropped: no more jobs
+                }
+            })
+        })
+        .collect();
+    drop(out_tx);
+
+    let count = tasks.len();
+    for (i, task) in tasks.into_iter().enumerate() {
+        job_tx.send((i, task)).unwrap(); // blocks while every worker is busy — backpressure
+    }
+    drop(job_tx); // the "close"
+
+    let mut results: Vec<Option<Out>> = (0..count).map(|_| None).collect();
+    for (i, out) in out_rx {
+        results[i] = Some(out);
+    }
+    for w in workers {
+        w.join().unwrap();
+    }
+    results.into_iter().map(Option::unwrap).collect()
+}
+```
+
+**🧠 Tradeoff** — std's `Receiver` is single-consumer, so the workers share it behind an
+`Arc<Mutex<…>>` — the exact shape the Rust book builds its `ThreadPool` from.
+`sync_channel(0)` is Go's unbuffered channel: `send` blocks until a worker is free, and
+dropping the sender is the `close`. Ownership makes the sharing explicit where Go hides it.
+In real projects, `rayon`'s `par_iter` or a crossbeam channel dissolves all of this into a
+line or two — the std version shows what those wrap.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// One OS thread per task — unbounded, and every spawn is a real kernel thread.
+fn processAll(allocator: std.mem.Allocator, tasks: []const Task, results: []Out) !void {
+    const threads = try allocator.alloc(std.Thread, tasks.len);
+    defer allocator.free(threads);
+    for (threads, tasks, results) |*t, task, *slot| {
+        t.* = try std.Thread.spawn(.{}, runOne, .{ task, slot });
+    }
+    for (threads) |t| t.join();
+}
+
+fn runOne(task: Task, slot: *Out) void {
+    slot.* = run(task);
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Fixed workers share a cursor into the task list; fetchAdd hands out indices.
+const Pool = struct {
+    tasks: []const Task,
+    results: []Out,
+    next: std.atomic.Value(usize),
+
+    fn worker(self: *Pool) void {
+        while (true) {
+            const i = self.next.fetchAdd(1, .monotonic); // claim the next task
+            if (i >= self.tasks.len) return;             // nothing left — exit
+            self.results[i] = run(self.tasks[i]);
+        }
+    }
+};
+
+fn workerPool(allocator: std.mem.Allocator, tasks: []const Task, results: []Out, size: usize) !void {
+    var pool = Pool{
+        .tasks = tasks,
+        .results = results,
+        .next = std.atomic.Value(usize).init(0),
+    };
+    const threads = try allocator.alloc(std.Thread, size);
+    defer allocator.free(threads);
+    for (threads) |*t| t.* = try std.Thread.spawn(.{}, Pool.worker, .{&pool});
+    for (threads) |t| t.join();
+}
+```
+
+**🧠 Tradeoff** — with the whole batch known up front, the queue collapses into a shared
+cursor: one `fetchAdd`, no mutex, no condvar, and each worker claims indices until the list
+runs out. That's the honest Zig move — the cheapest primitive that's still safe. It only
+works because nothing is produced live; tasks arriving over time need the mutex + condition
+queue from the next kata. For spawn-shaped batches, std also ships `std.Thread.Pool`, and
+the explicit allocator + `defer` pair is the usual Zig tax: you see every byte the pool owns.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.util.List;
+import java.util.function.Consumer;
+
+// One platform thread per task — 10k tasks ask the OS for 10k threads.
+class Naive {
+    static void processAll(List<Task> tasks, Consumer<Task> run) throws InterruptedException {
+        var threads = tasks.stream()
+                .map(t -> Thread.ofPlatform().start(() -> run.accept(t)))
+                .toList();
+        for (var t : threads) t.join();
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Function;
+
+// ExecutorService is the whole pattern in one call: fixed workers, an
+// internal task queue, and a Future per submitted task.
+class WorkerPool {
+    static <T, R> List<R> processAll(List<T> tasks, int size, Function<T, R> run)
+            throws InterruptedException, ExecutionException {
+        try (var pool = Executors.newFixedThreadPool(size)) {
+            List<Future<R>> futures = tasks.stream()
+                    .map(t -> pool.submit(() -> run.apply(t)))
+                    .toList();
+            var results = new ArrayList<R>(futures.size());
+            for (var f : futures) results.add(f.get()); // fan-in, input order
+            return results;
+        } // close() waits for every queued task to finish
+    }
+}
+```
+
+**🧠 Tradeoff** — this is where the pattern has lived since Java 5: `newFixedThreadPool`
+hands you workers, queue, and futures in one line, and the try-with-resources `close()`
+is the graceful shutdown. Two honest catches. First, the factory's internal queue is
+*unbounded* — real backpressure means building `ThreadPoolExecutor` yourself with an
+`ArrayBlockingQueue` and a `CallerRunsPolicy`. Second, virtual threads (Java 21) changed
+the question: for I/O work, `Executors.newVirtualThreadPerTaskExecutor()` makes
+one-thread-per-task the right answer again — no pool, threads are nearly free. Pooling
+survives for what it still uniquely does: capping CPU width to the cores, or protecting
+a downstream limit (which a plain `Semaphore` handles under virtual threads).
 
 ## Applications
 

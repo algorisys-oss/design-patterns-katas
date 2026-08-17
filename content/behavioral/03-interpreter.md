@@ -10,7 +10,7 @@ frequency: low
 difficulty: advanced
 tags: [behavioral, grammar, ast, dsl, rules-engine, parsing]
 related: [composite, visitor, iterator]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -311,6 +311,220 @@ idiomatic Go form — implicit satisfaction means no `extends`, just a method. L
 version, it's open to new node types and closed to new operations. Go has no pattern matching, so
 the data-first alternative (a type switch over a tagged struct) reads worse than the interface
 here — the method-per-node form is the one to reach for.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// A hard-coded evaluator: no grammar, no tree, every new expression is new code.
+Console.WriteLine(Evaluate("+", 1, Evaluate("*", 2, 3))); // 7 — nesting lives in code, not data
+
+static int Evaluate(string op, int a, int b) => op switch
+{
+    "+" => a + b,
+    "*" => a * b,
+    _ => throw new ArgumentException($"unknown op: {op}"),
+};
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Nodes are records; the interpreter is one recursive switch expression.
+var expr = new Add(new Num(1), new Mul(new Num(2), new Num(3)));
+Console.WriteLine(Interpret(expr)); // 7
+
+static int Interpret(Expr node) => node switch
+{
+    Num(var v) => v,                                    // terminal
+    Add(var l, var r) => Interpret(l) + Interpret(r),   // non-terminal
+    Mul(var l, var r) => Interpret(l) * Interpret(r),
+    _ => throw new ArgumentException($"unknown node: {node}"),
+};
+
+public abstract record Expr;
+public sealed record Num(int Value) : Expr;
+public sealed record Add(Expr Left, Expr Right) : Expr;
+public sealed record Mul(Expr Left, Expr Right) : Expr;
+```
+
+**🧠 Tradeoff** — records plus one recursive switch expression is the modern C# form: the
+interpreter reads like the grammar, and a new *operation* (pretty-print, optimize) is just
+another function. Two honest notes. C# can't check a record hierarchy for exhaustiveness, so
+the `_` arm is load-bearing where Rust's `match` would simply refuse to compile. And the
+classic alternative — an abstract `Interpret()` on `Expr` — flips the axis: cheap new nodes,
+expensive new operations. Pick the axis you expect to grow.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// A hard-coded evaluator: no grammar, no tree, nothing driven by data.
+fn evaluate(op: &str, a: i64, b: i64) -> i64 {
+    match op {
+        "+" => a + b,
+        "*" => a * b,
+        other => panic!("unknown op: {other}"),
+    }
+}
+
+fn main() {
+    println!("{}", evaluate("+", 1, evaluate("*", 2, 3))); // 7 — nesting lives in code, not data
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// The AST is an enum — one variant per grammar rule.
+enum Expr {
+    Num(i64),
+    Add(Box<Expr>, Box<Expr>), // non-terminals box their children
+    Mul(Box<Expr>, Box<Expr>),
+}
+
+// The interpreter is one exhaustive match; recursion walks the tree.
+fn interpret(node: &Expr) -> i64 {
+    match node {
+        Expr::Num(v) => *v, // terminal
+        Expr::Add(l, r) => interpret(l) + interpret(r),
+        Expr::Mul(l, r) => interpret(l) * interpret(r),
+    }
+}
+
+fn main() {
+    use Expr::*;
+    // The AST for "1 + 2 * 3" (a parser would build this from text):
+    let expr = Add(Box::new(Num(1)), Box::new(Mul(Box::new(Num(2)), Box::new(Num(3)))));
+    println!("{}", interpret(&expr)); // 7
+}
+```
+
+**🧠 Tradeoff** — an enum AST with an exhaustive `match` isn't a workaround here; it's the
+natural Rust form — the Rust compiler's own AST is built this way. No `_` arm means adding a
+`Sub` variant makes every `match` that forgets it fail to compile. The `Box` is non-negotiable:
+a recursive type needs indirection to have a known size. Trait objects (`Box<dyn Expr>` with an
+`interpret` method) exist for open node sets, but reach for them only when outside code must
+add nodes — otherwise you're paying dynamic dispatch to give up exhaustiveness.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// A hard-coded evaluator: no grammar, no tree, nothing driven by data.
+fn evaluate(op: u8, a: i64, b: i64) i64 {
+    return switch (op) {
+        '+' => a + b,
+        '*' => a * b,
+        else => unreachable, // can't nest, can't extend from data
+    };
+}
+
+pub fn main() void {
+    std.debug.print("{d}\n", .{evaluate('+', 1, evaluate('*', 2, 3))}); // 7 — nesting lives in code
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Bin = struct { l: *const Expr, r: *const Expr };
+
+// The AST is a tagged union — one variant per grammar rule.
+const Expr = union(enum) {
+    num: i64,
+    add: Bin, // non-terminals hold child pointers
+    mul: Bin,
+};
+
+// The interpreter is one exhaustive switch; recursion walks the tree.
+fn interpret(node: *const Expr) i64 {
+    return switch (node.*) {
+        .num => |v| v, // terminal
+        .add => |b| interpret(b.l) + interpret(b.r),
+        .mul => |b| interpret(b.l) * interpret(b.r),
+    };
+}
+
+pub fn main() void {
+    // The tree for "1 + 2 * 3", built as consts (a parser would allocate nodes).
+    const one = Expr{ .num = 1 };
+    const two = Expr{ .num = 2 };
+    const three = Expr{ .num = 3 };
+    const mul = Expr{ .mul = .{ .l = &two, .r = &three } };
+    const expr = Expr{ .add = .{ .l = &one, .r = &mul } };
+
+    std.debug.print("{d}\n", .{interpret(&expr)}); // 7
+}
+```
+
+**🧠 Tradeoff** — a tagged union plus exhaustive `switch` is idiomatic Zig for a closed
+grammar, and the same guarantee as Rust: no `else` branch, so a new variant flags every switch
+at compile time. The demo builds the tree as `const` nodes with address-of — no allocator in
+sight; a real parser allocates nodes with an explicit allocator, and the Zig way is an arena
+freed in one shot when evaluation ends. New operations are one more function; new node types
+touch every switch — the data-first side of the Expression Problem, shared with the Python and
+Elixir tabs.
+
+### Java
+
+**❌ Naive**
+
+```java
+// A hard-coded evaluator: no grammar, no tree, every new expression is new code.
+class Evaluator {
+    static int evaluate(String op, int a, int b) {
+        return switch (op) {
+            case "+" -> a + b;
+            case "*" -> a * b;
+            default -> throw new IllegalArgumentException("unknown op: " + op);
+        };
+    }
+}
+// Evaluator.evaluate("+", 1, Evaluator.evaluate("*", 2, 3)) == 7 — nesting lives in code, not data
+```
+
+**✅ Idiomatic**
+
+```java
+// The AST is a sealed hierarchy — one record per grammar rule.
+sealed interface Expr permits Num, Add, Mul {}
+record Num(int value) implements Expr {}
+record Add(Expr left, Expr right) implements Expr {}
+record Mul(Expr left, Expr right) implements Expr {}
+
+public class Demo {
+    // The interpreter is one exhaustive switch; recursion walks the tree.
+    static int interpret(Expr node) {
+        return switch (node) {
+            case Num(int v) -> v;                                     // terminal
+            case Add(Expr l, Expr r) -> interpret(l) + interpret(r);  // non-terminal
+            case Mul(Expr l, Expr r) -> interpret(l) * interpret(r);
+        };
+    }
+
+    public static void main(String[] args) {
+        // The AST for "1 + 2 * 3" (a parser would build this from text):
+        var expr = new Add(new Num(1), new Mul(new Num(2), new Num(3)));
+        System.out.println(interpret(expr)); // 7
+    }
+}
+```
+
+**🧠 Tradeoff** — the GoF book wrote this pattern in Java's ancestors' style: an abstract
+`Expr` with `interpret()` overridden in every node class. That still compiles, but modern Java
+has a better axis for a small DSL: a sealed interface, records for nodes, and one
+pattern-matching switch. Because the hierarchy is sealed, the switch needs no `default` — add
+a `Sub` record and every switch that forgets it fails to compile, the same guarantee as Rust's
+`match`. New operations (pretty-print, optimize) are just more functions; the node set is
+closed, which is exactly right for the small, stable grammars where Interpreter belongs at all.
 
 ## Applications
 

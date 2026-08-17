@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [behavioral, snapshot, undo, encapsulation, history]
 related: [command, prototype, state]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -293,6 +293,359 @@ func (h *History) Undo(e *Editor) {
 free — the naive bug was storing a pointer that aliased the live editor. The unexported memento
 fields keep the state opaque to the `History` caretaker. Watch copy cost if the state includes
 slices/maps — those need explicit deep copies.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Storing a reference, not a copy — the "snapshot" aliases the live editor.
+var editor = new EditorState();
+var history = new Stack<EditorState>();
+history.Push(editor);            // same object — not a snapshot
+editor.Content = "hello";
+editor = history.Pop();          // "restore" changed nothing; the backup mutated too
+Console.WriteLine(editor.Content); // hello
+
+public sealed class EditorState
+{
+    public string Content = "";
+    public int Cursor;
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+var editor = new Editor();
+var history = new History();
+
+history.Backup(editor);
+editor.Type("hello");
+Console.WriteLine(editor.Content); // hello
+
+history.Undo(editor);
+Console.WriteLine(editor.Content); // (empty again)
+
+// The memento is an immutable record; only the editor uses its contents.
+public sealed record Memento(string Content, int Cursor);
+
+public sealed class Editor
+{
+    private string _content = "";
+    private int _cursor;
+
+    public string Content => _content;
+
+    public void Type(string text)
+    {
+        _content += text;
+        _cursor += text.Length;
+    }
+
+    public Memento Save() => new(_content, _cursor);
+
+    public void Restore(Memento m) => (_content, _cursor) = (m.Content, m.Cursor);
+}
+
+// The caretaker stacks mementos but never looks inside.
+public sealed class History
+{
+    private readonly Stack<Memento> _stack = new();
+
+    public void Backup(Editor e) => _stack.Push(e.Save());
+
+    public void Undo(Editor e)
+    {
+        if (_stack.TryPop(out var m)) e.Restore(m);
+    }
+}
+```
+
+**🧠 Tradeoff** — A `record` gives an immutable snapshot in one line, so the naive aliasing bug
+can't happen: nothing can mutate a stored `Memento` out from under the history. One honest
+caveat: records expose their properties, so `History` *could* peek at `Content` — C# can't make
+the memento readable by the editor but opaque to everyone else, short of nesting it as a private
+type inside `Editor`. In practice the record's immutability, not secrecy, is what protects the
+snapshot.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// The history reaches into the editor's public fields — every snapshot
+// site knows the editor's internals.
+pub struct Editor {
+    pub content: String,
+    pub cursor: usize,
+}
+
+fn main() {
+    let mut editor = Editor { content: String::new(), cursor: 0 };
+    let mut history: Vec<(String, usize)> = Vec::new();
+
+    history.push((editor.content.clone(), editor.cursor)); // caretaker knows the shape
+    editor.content.push_str("hello");
+    editor.cursor += 5;
+
+    let (content, cursor) = history.pop().unwrap(); // and rewrites it field by field
+    editor.content = content;
+    editor.cursor = cursor;
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// editor.rs — Memento's fields are private outside this module,
+// so the caretaker can store snapshots but never read them.
+pub struct Memento {
+    content: String,
+    cursor: usize,
+}
+
+pub struct Editor {
+    content: String,
+    cursor: usize,
+}
+
+impl Editor {
+    pub fn new() -> Self {
+        Self { content: String::new(), cursor: 0 }
+    }
+
+    pub fn type_text(&mut self, text: &str) {
+        self.content.push_str(text);
+        self.cursor += text.len();
+    }
+
+    pub fn save(&self) -> Memento {
+        Memento { content: self.content.clone(), cursor: self.cursor }
+    }
+
+    // Takes the memento by value: the String moves back in, no copy.
+    pub fn restore(&mut self, m: Memento) {
+        self.content = m.content;
+        self.cursor = m.cursor;
+    }
+
+    pub fn content(&self) -> &str {
+        &self.content
+    }
+}
+
+pub struct History {
+    stack: Vec<Memento>,
+}
+
+impl History {
+    pub fn new() -> Self {
+        Self { stack: Vec::new() }
+    }
+
+    pub fn backup(&mut self, e: &Editor) {
+        self.stack.push(e.save());
+    }
+
+    pub fn undo(&mut self, e: &mut Editor) {
+        if let Some(m) = self.stack.pop() {
+            e.restore(m);
+        }
+    }
+}
+```
+
+**🧠 Tradeoff** — The pointer-aliasing bug from the Go naive version is a *compile error* in
+Rust: you can't hold a live `&mut Editor` and a stored reference to its insides at the same
+time, so the only naive sin left is broken encapsulation. Privacy is per-module — `Memento`'s
+fields are invisible outside the editor's module, so the caretaker truly can't look. And
+ownership makes undo cheap: `restore` consumes the memento by value, moving the `String` back
+with no copy; `save` pays the one clone.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const Editor = struct {
+    buf: [64]u8 = undefined,
+    len: usize = 0,
+};
+
+pub fn main() void {
+    var editor = Editor{};
+    const history = [_]*Editor{&editor}; // a pointer — not a snapshot
+    editor.buf[0] = 'h';
+    editor.len = 1;
+    editor = history[0].*; // no-op: the pointed-to value already changed
+    std.debug.print("{d}\n", .{editor.len}); // 1 — the "restore" restored nothing
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Arrays are values in Zig, so copying the struct copies the buffer.
+const Memento = struct {
+    buf: [64]u8,
+    len: usize,
+    cursor: usize,
+};
+
+const Editor = struct {
+    buf: [64]u8 = undefined,
+    len: usize = 0,
+    cursor: usize = 0,
+
+    pub fn typeText(self: *Editor, text: []const u8) void {
+        @memcpy(self.buf[self.len..][0..text.len], text); // demo: no bounds check
+        self.len += text.len;
+        self.cursor += text.len;
+    }
+
+    pub fn save(self: *const Editor) Memento {
+        return .{ .buf = self.buf, .len = self.len, .cursor = self.cursor };
+    }
+
+    pub fn restore(self: *Editor, m: Memento) void {
+        self.buf = m.buf;
+        self.len = m.len;
+        self.cursor = m.cursor;
+    }
+
+    pub fn content(self: *const Editor) []const u8 {
+        return self.buf[0..self.len];
+    }
+};
+
+const History = struct {
+    stack: [8]Memento = undefined,
+    top: usize = 0,
+
+    pub fn backup(self: *History, e: *const Editor) void {
+        self.stack[self.top] = e.save();
+        self.top += 1;
+    }
+
+    pub fn undo(self: *History, e: *Editor) void {
+        if (self.top == 0) return;
+        self.top -= 1;
+        e.restore(self.stack[self.top]);
+    }
+};
+
+pub fn main() void {
+    var editor = Editor{};
+    var history = History{};
+
+    history.backup(&editor);
+    editor.typeText("hello");
+    std.debug.print("{s}\n", .{editor.content()}); // hello
+
+    history.undo(&editor);
+    std.debug.print("[{s}]\n", .{editor.content()}); // []
+}
+```
+
+**🧠 Tradeoff** — Because arrays are values, `save` copying the struct copies the whole buffer —
+a real snapshot with zero allocation, and the naive pointer-aliasing bug can't touch it. The
+fixed `[64]u8` is the price: a real editor holds a heap slice, and then `save` must
+`allocator.dupe` the contents and `History` owns memory it has to free when snapshots are popped
+or discarded — the caretaker growing an allocator is the true cost of Memento in a
+manual-memory language. Zig struct fields are always public, so the memento is opaque by
+convention and file scope, not enforcement.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.util.ArrayDeque;
+
+// Storing a reference, not a copy — the "snapshot" aliases the live editor.
+class EditorState {
+    String content = "";
+    int cursor;
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var editor = new EditorState();
+        var history = new ArrayDeque<EditorState>();
+        history.push(editor);               // same object — not a snapshot
+        editor.content = "hello";
+        editor = history.pop();             // "restore" changed nothing; the backup mutated too
+        System.out.println(editor.content); // hello
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayDeque;
+import java.util.Deque;
+
+// The memento is an immutable record; only the editor uses its contents.
+record Memento(String content, int cursor) {}
+
+class Editor {
+    private String content = "";
+    private int cursor;
+
+    void type(String text) {
+        content += text;
+        cursor += text.length();
+    }
+
+    Memento save() { return new Memento(content, cursor); }
+
+    void restore(Memento m) {
+        content = m.content();
+        cursor = m.cursor();
+    }
+
+    String content() { return content; }
+}
+
+// The caretaker stacks mementos but never looks inside.
+class History {
+    private final Deque<Memento> stack = new ArrayDeque<>();
+
+    void backup(Editor e) { stack.push(e.save()); }
+
+    void undo(Editor e) {
+        if (!stack.isEmpty()) e.restore(stack.pop());
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var editor = new Editor();
+        var history = new History();
+
+        history.backup(editor);
+        editor.type("hello");
+        System.out.println(editor.content()); // hello
+
+        history.undo(editor);
+        System.out.println("[" + editor.content() + "]"); // []
+    }
+}
+```
+
+**🧠 Tradeoff** — A `record` makes the snapshot immutable in one line, so the naive aliasing bug
+can't happen — nothing mutates a stored `Memento` behind the history's back. The accessors are
+public, though: `History` *could* read `content()`. The GoF-strict Java fix is a marker
+interface with the real record nested privately inside `Editor`, which casts it back in
+`restore` — ceremony worth paying only when opacity is a hard requirement, since immutability
+already protects the snapshot. Watch copy depth too: `content` is an immutable `String`, but a
+mutable `List` field would need `List.copyOf` in `save`.
 
 ## Applications
 

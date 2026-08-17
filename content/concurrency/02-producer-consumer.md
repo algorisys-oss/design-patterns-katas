@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [concurrency, queue, backpressure, decoupling, pipeline]
 related: [worker-pool, pub-sub, fan-out-fan-in]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -296,6 +296,247 @@ func run(source []Item, consumers int) {
 full/empty, and `close` as the stop signal, all built in. Adding consumers is just more
 goroutines ranging over the same channel. The cost is Go's usual one — you own `close` and the
 `WaitGroup`; forget to close and the consumers block forever.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+using System.Collections.Concurrent;
+
+// Unbounded queue + polling: no backpressure, and an empty queue spins the CPU.
+var q = new ConcurrentQueue<Item>();
+// producer: q.Enqueue(item);                        // never waits — grows forever
+// consumer: while (!q.TryDequeue(out var item)) { } // busy-wait
+```
+
+**✅ Idiomatic**
+
+```csharp
+using System.Threading.Channels;
+
+// A bounded channel is the queue: WriteAsync waits when full, ReadAllAsync
+// waits when empty, and Complete() is the shutdown signal.
+var q = Channel.CreateBounded<Item>(new BoundedChannelOptions(100)
+{
+    FullMode = BoundedChannelFullMode.Wait, // producer waits — backpressure
+});
+
+var producer = Task.Run(async () =>
+{
+    foreach (var item in Source())
+        await q.Writer.WriteAsync(item); // waits when the buffer is full
+    q.Writer.Complete();                 // no more items
+});
+
+var consumers = Enumerable.Range(0, 3).Select(_ => Task.Run(async () =>
+{
+    await foreach (var item in q.Reader.ReadAllAsync()) // ends after Complete()
+        Handle(item);
+}));
+
+await Task.WhenAll(consumers.Append(producer));
+```
+
+**🧠 Tradeoff** — a bounded `Channel` is this pattern as a library type: `FullMode.Wait`
+gives backpressure, `Complete()` replaces the poison pill, and `ReadAllAsync` ends every
+consumer loop cleanly. Because the waits are `async`, a stalled producer parks a state
+machine, not a thread — that's the edge over the older `BlockingCollection`, which delivers
+the same semantics by blocking real threads. Adding consumers is just more tasks reading
+the same channel.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+
+// mpsc::channel() is UNBOUNDED — a fast producer grows the buffer without limit.
+fn run(source: Vec<Item>) {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        for item in source {
+            tx.send(item).unwrap(); // never waits, however far behind the consumer is
+        }
+    });
+    for item in rx {
+        handle(item);
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+
+// sync_channel is the bounded queue: send blocks when the buffer is full,
+// recv blocks when it's empty, and dropping the sender is the stop signal.
+fn run(source: Vec<Item>) {
+    let (tx, rx) = mpsc::sync_channel::<Item>(100);
+
+    let producer = thread::spawn(move || {
+        for item in source {
+            tx.send(item).unwrap(); // blocks at 100 waiting items — backpressure
+        }
+        // tx dropped here — the "close"
+    });
+
+    let consumer = thread::spawn(move || {
+        for item in rx { // ends when the sender is dropped and the buffer drains
+            handle(item);
+        }
+    });
+
+    producer.join().unwrap();
+    consumer.join().unwrap();
+}
+```
+
+**🧠 Tradeoff** — `sync_channel(100)` is the bounded queue with the blocking baked in:
+`send` waits on full, iteration waits on empty, and dropping the last `Sender` is the
+shutdown signal — no sentinel needed. Ownership adds a guarantee the others can't: each
+item is *moved* through the channel, so producer and consumer can never touch it at once,
+and the racy shared-list version simply doesn't compile. The limit sits on the other end —
+std's `Receiver` is single-consumer, so scaling consumers means sharing it behind a `Mutex`
+(as in the worker-pool kata) or switching to a crossbeam mpmc channel.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// One shared array, no lock, no bound — a data race Zig will happily compile.
+var buffer: [1024]Item = undefined;
+var count: usize = 0;
+// producer thread: buffer[count] = item; count += 1; // racy writes, silent overflow
+// consumer thread: while (count == 0) {}             // busy-wait burns a core
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// The textbook bounded buffer: a ring, one mutex, two condition variables.
+fn BoundedQueue(comptime T: type, comptime capacity: usize) type {
+    return struct {
+        buffer: [capacity]T = undefined,
+        head: usize = 0,
+        len: usize = 0,
+        closed: bool = false,
+        mutex: std.Thread.Mutex = .{},
+        not_full: std.Thread.Condition = .{},
+        not_empty: std.Thread.Condition = .{},
+
+        const Self = @This();
+
+        fn put(self: *Self, item: T) void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            while (self.len == capacity) self.not_full.wait(&self.mutex); // backpressure
+            self.buffer[(self.head + self.len) % capacity] = item;
+            self.len += 1;
+            self.not_empty.signal();
+        }
+
+        // null means closed and drained — the consumer should stop.
+        fn take(self: *Self) ?T {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            while (self.len == 0) {
+                if (self.closed) return null;
+                self.not_empty.wait(&self.mutex);
+            }
+            const item = self.buffer[self.head];
+            self.head = (self.head + 1) % capacity;
+            self.len -= 1;
+            self.not_full.signal();
+            return item;
+        }
+
+        fn close(self: *Self) void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            self.closed = true;
+            self.not_empty.broadcast(); // wake blocked consumers so they can exit
+        }
+    };
+}
+
+// var q = BoundedQueue(Item, 100){};
+// producer thread: for (source) |item| q.put(item); then q.close();
+// consumer thread: while (q.take()) |item| handle(item);
+```
+
+**🧠 Tradeoff** — every `wait` sits in a `while` loop because condition variables can wake
+spuriously, and `close` + `broadcast` is the shutdown other languages hand you as `close()`.
+Nothing is hidden, which is the point: this queue is exactly what Go's buffered channel and
+C#'s bounded `Channel` wrap for you. The `comptime` capacity keeps the ring inline in the
+struct — the whole queue is one allocation-free value — at the cost of fixing the bound at
+compile time; a runtime capacity means taking an allocator.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+// One shared list, no lock, no bound — races and unbounded growth.
+class Naive {
+    static final List<Item> buffer = new ArrayList<>();
+    // producer thread: buffer.add(item);            // racy, grows forever
+    // consumer thread: while (buffer.isEmpty()) {}  // busy-wait burns a core
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+
+// ArrayBlockingQueue is the bounded buffer as a library class: put blocks
+// when full, take blocks when empty, and a poison pill is the stop signal.
+class Demo {
+    static final Item POISON = new Item(); // sentinel: no more items
+
+    public static void main(String[] args) throws InterruptedException {
+        BlockingQueue<Item> q = new ArrayBlockingQueue<>(100); // thread-safe, bounded
+
+        var producer = Thread.ofVirtual().start(() -> {
+            try {
+                for (var item : source()) q.put(item); // blocks when full — backpressure
+                q.put(POISON);
+            } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        });
+
+        var consumer = Thread.ofVirtual().start(() -> {
+            try {
+                Item item;
+                while ((item = q.take()) != POISON) handle(item); // blocks when empty
+            } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        });
+
+        producer.join();
+        consumer.join();
+    }
+}
+```
+
+**🧠 Tradeoff** — `BlockingQueue` has been the JDK's textbook bounded buffer since Java 5;
+`put`/`take` give you backpressure and no busy-waiting with nothing to hand-roll. What it
+lacks is a `close()`: the poison pill is a convention, and with N consumers you must send N
+pills. The visible tax is `InterruptedException` on every blocking call — Java makes
+cancellation part of the type signature. Virtual threads (Java 21) are what make this style
+current again: blocking `put`/`take` now parks a nearly-free virtual thread instead of
+pinning an OS thread, so plain blocking producer/consumer code — the simplest form of this
+kata — is once more the idiom rather than the thing to engineer around.
 
 ## Applications
 

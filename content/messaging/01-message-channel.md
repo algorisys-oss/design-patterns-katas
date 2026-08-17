@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [messaging, integration, decoupling, queue, async]
 related: [producer-consumer, pub-sub, content-based-router]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -251,6 +251,194 @@ typed, with goroutine consumers you can scale. The producer knows only the chann
 consumers. Crossing process boundaries swaps the Go channel for a broker client (NATS/Kafka/SQS) on a
 named subject; the code shape stays "send to a channel, range over it," but you gain durability and
 give up in-memory simplicity.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Direct call couples the producer to a concrete consumer.
+inventory.Reserve(order); // synchronous, one hard-wired receiver
+```
+
+**✅ Idiomatic**
+
+```csharp
+// System.Threading.Channels: an in-process channel both ends share by name.
+using System.Threading.Channels;
+
+var orders = Channel.CreateBounded<Order>(100); // the named channel (bounded)
+
+// consumer (its own task; start more readers to scale):
+_ = Task.Run(async () =>
+{
+    await foreach (var order in orders.Reader.ReadAllAsync())
+        ReserveInventory(order);
+});
+
+// producer — knows only the channel, not who consumes:
+await orders.Writer.WriteAsync(order);
+
+// Across services, swap the Channel for a broker client (Azure Service Bus,
+// RabbitMQ, Kafka) publishing to a named queue — same shape, durable transport.
+```
+
+**🧠 Tradeoff** — `Channel<T>` is .NET's in-process message channel: typed, awaitable, and bounded,
+so a full channel makes `WriteAsync` wait — backpressure instead of an unbounded queue quietly
+growing. Multiple readers on one channel give you point-to-point (each order goes to exactly one);
+pub-sub means one channel per subscriber or a broker topic. The producer holds only the `Writer`,
+the consumer only the `Reader` — the split halves make the decoupling visible in the types.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Direct call couples the producer to a concrete consumer.
+inventory.reserve(order); // synchronous, one hard-wired receiver
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+
+// The channel is the only thing the two ends share.
+let (orders, rx) = mpsc::sync_channel::<Order>(100); // bounded = backpressure
+
+// consumer (its own thread; the receiving half moves in with it):
+thread::spawn(move || {
+    for order in rx {
+        reserve_inventory(order);
+    }
+});
+
+// producer — holds only the sending half:
+orders.send(order).unwrap();
+
+// Across services, swap mpsc for a broker client on a named subject —
+// same send/receive shape, durable transport.
+```
+
+**🧠 Tradeoff** — `mpsc` makes the channel kind structural: clone the `Sender` for as many
+producers as you like, but exactly one `Receiver` owns the taking end, so point-to-point delivery
+is enforced by ownership, not convention. The consumer's `for order in rx` ends when every sender
+drops — shutdown is ownership too, no close flag needed. `sync_channel` bounds the buffer so a
+slow consumer blocks fast producers. Pub-sub isn't in the box: that's one channel per subscriber,
+or a broker.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Direct call couples the producer to a concrete consumer.
+inventory.reserve(order); // synchronous, one hard-wired receiver
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Zig ships no channel type — the honest form is an explicit bounded queue.
+fn Channel(comptime T: type, comptime cap: usize) type {
+    return struct {
+        buf: [cap]T = undefined,
+        head: usize = 0,
+        len: usize = 0,
+        mutex: std.Thread.Mutex = .{},
+        not_empty: std.Thread.Condition = .{},
+        not_full: std.Thread.Condition = .{},
+
+        pub fn put(self: *@This(), item: T) void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            while (self.len == cap) self.not_full.wait(&self.mutex); // backpressure
+            self.buf[(self.head + self.len) % cap] = item;
+            self.len += 1;
+            self.not_empty.signal();
+        }
+
+        pub fn take(self: *@This()) T {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            while (self.len == 0) self.not_empty.wait(&self.mutex);
+            const item = self.buf[self.head];
+            self.head = (self.head + 1) % cap;
+            self.len -= 1;
+            self.not_full.signal();
+            return item;
+        }
+    };
+}
+
+const OrderChannel = Channel(Order, 100);
+
+fn consume(orders: *OrderChannel) void {
+    while (true) reserveInventory(orders.take());
+}
+
+var orders: OrderChannel = .{}; // the named channel
+
+// consumer (its own thread; spawn more to scale):
+const consumer = try std.Thread.spawn(.{}, consume, .{&orders});
+
+// producer — knows only the channel:
+orders.put(order);
+```
+
+**🧠 Tradeoff** — Zig hands you the parts (`Mutex`, `Condition`, `Thread`), not the channel; a
+ring buffer plus two condition variables buys a bounded, blocking `put`/`take` with real
+backpressure, generic over the message type through comptime. What Go's `chan` hides, you now own:
+shutdown needs an explicit close flag, and every delivery guarantee is a line you wrote — which is
+exactly why this version teaches what a channel *is*. Cross-process, same story as everywhere:
+swap the queue for a broker client on a named subject.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Direct call couples the producer to a concrete consumer.
+inventory.reserve(order); // synchronous, one hard-wired receiver
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+
+// A bounded BlockingQueue is the in-process channel both ends share.
+BlockingQueue<Order> orders = new ArrayBlockingQueue<>(100); // the named channel
+
+// consumer (its own virtual thread; start more takers to scale):
+Thread.startVirtualThread(() -> {
+    try {
+        while (true) {
+            reserveInventory(orders.take()); // blocks until a message arrives
+        }
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt(); // the shutdown signal
+    }
+});
+
+// producer — knows only the channel, not who consumes:
+orders.put(order); // blocks when full: backpressure, not unbounded growth
+
+// Across services, swap the queue for a broker client (Kafka, SQS, RabbitMQ)
+// publishing to a named topic — same shape, durable transport.
+```
+
+**🧠 Tradeoff** — `BlockingQueue` has been `java.util.concurrent`'s message channel since 2004:
+bounded, typed, with `put`/`take` that block instead of failing, so a full queue throttles the
+producer. Multiple takers on one queue give you point-to-point (each order goes to exactly one);
+pub-sub means one queue per subscriber or a broker topic. Virtual threads make a
+consumer-per-queue loop cost almost nothing. What Java doesn't give you is a closed channel —
+shutdown is interruption or a poison-pill message the consumer recognizes, a convention you have
+to write down.
 
 ## Applications
 

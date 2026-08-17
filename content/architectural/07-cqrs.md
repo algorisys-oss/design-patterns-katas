@@ -10,7 +10,7 @@ frequency: medium
 difficulty: advanced
 tags: [architecture, read-write-split, scalability, models, eventual-consistency]
 related: [event-sourcing, pub-sub, layered]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -282,6 +282,287 @@ func (q Queries) SalesRollup() ([]Rollup, error) { return q.read.Rollup() } // f
 explicit and each side independently testable and swappable — very Go. Nothing here forces event
 sourcing; the "projection" can be a synchronous upsert into a read table. You own the wiring and the
 consistency handling, but the read/write separation is plain and inspectable.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// One class, one store, both the strict write and the reporting read.
+public sealed class OrderStore(Db db)
+{
+    public Task Place(Order o) => db.Insert(o); // normalized, validated write
+    public Task<List<Row>> Dashboard() =>
+        db.Query("SELECT ... FROM orders JOIN items JOIN customers ..."); // heavy, on the write DB
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// A command is an immutable message; commands and queries take separate paths.
+public sealed record PlaceOrder(string Sku, int Total); // imperative, returns no data
+
+public sealed class Commands(IWriteStore write, IProjector projector)
+{
+    public async Task Handle(PlaceOrder cmd)
+    {
+        if (cmd.Total <= 0) throw new ArgumentException("empty order"); // write-side rule
+        var order = await write.Save(cmd);      // normalized write model
+        await projector.OnPlaced(order);        // update the read model
+    }
+}
+
+public sealed class Queries(IReadStore read)
+{
+    public Task<SalesRollup> Dashboard() => read.Rollup(); // denormalized, ready to render
+}
+```
+
+**🧠 Tradeoff** — Records make commands what they should be: immutable, equatable messages with no
+behavior. Two small classes over two store interfaces are the whole pattern — in .NET this often
+runs through MediatR (`IRequest`/`IRequestHandler`), but that's dispatch plumbing, not CQRS itself.
+The classic .NET pairing is EF Core on the write side (rules, change tracking) and Dapper or raw
+SQL on the read side (fast, shaped rows) — two data-access styles in one app, each fitting its
+half. The projection step and the consistency lag are the usual price.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// One struct, one store, both the strict write and the reporting read.
+struct OrderStore {
+    orders: Vec<Order>,
+}
+
+impl OrderStore {
+    fn place(&mut self, order: Order) {
+        self.orders.push(order); // normalized write
+    }
+    fn dashboard(&self) -> u32 {
+        self.orders.iter().map(|o| o.total).sum() // full scan on every read
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+
+struct Order {
+    day: String,
+    total: u32,
+}
+
+struct App {
+    orders: Vec<Order>,                 // write model: normalized, rule-checked
+    sales_by_day: HashMap<String, u32>, // read model: denormalized projection
+}
+
+impl App {
+    // Command: takes &mut self, changes state, returns no data.
+    fn place_order(&mut self, order: Order) -> Result<(), String> {
+        if order.total == 0 {
+            return Err("empty order".into()); // write-side rule
+        }
+        *self.sales_by_day.entry(order.day.clone()).or_insert(0) += order.total; // project
+        self.orders.push(order);
+        Ok(())
+    }
+
+    // Query: takes &self, returns shaped data, cannot change anything.
+    fn sales_rollup(&self, day: &str) -> u32 {
+        self.sales_by_day.get(day).copied().unwrap_or(0)
+    }
+}
+
+fn main() {
+    let mut app = App { orders: Vec::new(), sales_by_day: HashMap::new() };
+    app.place_order(Order { day: "2026-08-17".into(), total: 40 }).unwrap();
+    app.place_order(Order { day: "2026-08-17".into(), total: 60 }).unwrap();
+    println!("sales: {}", app.sales_rollup("2026-08-17")); // sales: 100 — a lookup, not a scan
+}
+```
+
+**🧠 Tradeoff** — In Rust the split shows up in the receivers: commands take `&mut self`, queries
+take `&self`, so the borrow checker *enforces* that the query side cannot write — a guarantee the
+other languages leave to convention. Here the projection is a synchronous map update inside the
+command, which keeps reads instantly consistent; the asynchronous version (a projector thread fed
+by `std::sync::mpsc`) buys write throughput back at the price of lag. Split `App` into separate
+command and query types when the two sides grow their own stores — the `&`/`&mut` discipline
+carries over unchanged.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// One store serves both the write and a scan-everything report.
+const OrderStore = struct {
+    orders: [16]Order = undefined,
+    len: usize = 0,
+
+    fn place(self: *OrderStore, o: Order) !void {
+        if (self.len == self.orders.len) return error.Full;
+        self.orders[self.len] = o;
+        self.len += 1;
+    }
+    fn dashboard(self: *const OrderStore) u64 {
+        var revenue: u64 = 0;
+        for (self.orders[0..self.len]) |o| revenue += o.total; // full scan on every read
+        return revenue;
+    }
+};
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Order = struct { sku: []const u8, total: u32 };
+
+const WriteStore = struct {
+    orders: [16]Order = undefined, // normalized write model (fixed-size for the demo)
+    len: usize = 0,
+};
+
+const Rollup = struct { revenue: u64 = 0, count: u32 = 0 }; // denormalized read model
+
+const Commands = struct {
+    write: *WriteStore,
+    rollup: *Rollup, // the projection the command side keeps current
+
+    fn placeOrder(self: Commands, order: Order) !void {
+        if (order.total == 0) return error.EmptyOrder; // write-side rule
+        if (self.write.len == self.write.orders.len) return error.Full;
+        self.write.orders[self.write.len] = order;
+        self.write.len += 1;
+        self.rollup.revenue += order.total; // project
+        self.rollup.count += 1;
+    }
+};
+
+const Queries = struct {
+    rollup: *const Rollup, // const pointer: the query side cannot write
+
+    fn dashboard(self: Queries) Rollup {
+        return self.rollup.*; // the pre-shaped read model — no scan
+    }
+};
+
+pub fn main() !void {
+    var write = WriteStore{};
+    var rollup = Rollup{};
+
+    const commands = Commands{ .write = &write, .rollup = &rollup };
+    const queries = Queries{ .rollup = &rollup };
+
+    try commands.placeOrder(.{ .sku = "book", .total = 40 });
+    try commands.placeOrder(.{ .sku = "pen", .total = 60 });
+
+    const dash = queries.dashboard();
+    std.debug.print("revenue {d} over {d} orders\n", .{ dash.revenue, dash.count });
+    // revenue 100 over 2 orders
+}
+```
+
+**🧠 Tradeoff** — The wiring is pointers, and the pointer types carry the rule: `Commands` holds
+mutable `*WriteStore`/`*Rollup`, `Queries` holds `*const Rollup`, so a write through the query side
+is a compile error — const-correctness doing what CQRS asks for. The projection is a synchronous
+field update, which is all most Zig programs need; an asynchronous projector means `std.Thread`, a
+mutex, and a queue you build yourself. No bus, no framework — CQRS in Zig is just data separation
+made visible in the types.
+
+### Java
+
+**❌ Naive**
+
+```java
+// One class, one store, both the strict write and the reporting read.
+class OrderStore {
+    void place(Order o) { /* normalized, validated insert */ }
+
+    List<Row> dashboard() { // heavy joins/aggregation, on the write DB
+        return query("SELECT ... FROM orders JOIN items JOIN customers ...");
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+// Commands are records — immutable messages. The sealed interface closes the set.
+sealed interface Command permits PlaceOrder, CancelOrder {}
+record PlaceOrder(String sku, int total) implements Command {}
+record CancelOrder(String sku) implements Command {}
+
+record Rollup(long revenue, int count) {} // denormalized read model
+
+class ReadStore { Rollup rollup = new Rollup(0, 0); }
+
+class Commands {
+    private final List<PlaceOrder> writeStore = new ArrayList<>(); // write model
+    private final ReadStore read;
+
+    Commands(ReadStore read) { this.read = read; }
+
+    void handle(Command cmd) {
+        switch (cmd) { // exhaustive over the sealed set — no default arm
+            case PlaceOrder p -> {
+                if (p.total() <= 0) throw new IllegalArgumentException("empty order"); // write rule
+                writeStore.add(p);
+                read.rollup = new Rollup(read.rollup.revenue() + p.total(),
+                                         read.rollup.count() + 1); // project
+            }
+            case CancelOrder c -> writeStore.stream()
+                .filter(o -> o.sku().equals(c.sku())).findFirst()
+                .ifPresent(o -> {
+                    writeStore.remove(o);
+                    read.rollup = new Rollup(read.rollup.revenue() - o.total(),
+                                             read.rollup.count() - 1);
+                });
+        }
+    }
+}
+
+class Queries {
+    private final ReadStore read;
+
+    Queries(ReadStore read) { this.read = read; }
+
+    Rollup dashboard() { return read.rollup; } // pre-shaped — no scan, no joins
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var read = new ReadStore();
+        var commands = new Commands(read);
+        var queries = new Queries(read);
+
+        commands.handle(new PlaceOrder("book", 40));
+        commands.handle(new PlaceOrder("pen", 60));
+        System.out.println(queries.dashboard()); // Rollup[revenue=100, count=2]
+
+        commands.handle(new CancelOrder("pen"));
+        System.out.println(queries.dashboard()); // Rollup[revenue=40, count=1]
+    }
+}
+```
+
+**🧠 Tradeoff** — Records make commands what CQRS wants them to be: immutable, value-equal messages
+with no behavior. Sealing the `Command` set adds what most languages here can't: the `switch` is
+exhaustive with no default arm, so adding a `RefundOrder` command fails every handler that ignores
+it at compile time. In production Java the dispatch usually runs through Spring beans or an
+Axon-style command bus — that's plumbing, not the pattern — and the classic pairing is JPA on the
+write side (rules, change tracking) with jOOQ, plain JDBC, or a materialized view on the read side:
+two data-access styles, each fitting its half. The projection step and the consistency lag are the
+usual price.
 
 ## Applications
 

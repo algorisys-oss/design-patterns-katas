@@ -11,7 +11,7 @@ frequency: medium
 difficulty: intermediate
 tags: [solid, isp, interfaces, cohesion, decoupling]
 related: [single-responsibility, liskov-substitution, dependency-inversion]
-languages: [javascript, python, elixir, go]
+languages: [javascript, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## The Principle
@@ -305,6 +305,255 @@ func PrintAll(p Printer, docs []string) []string {
 **🧠 Note** — ISP is idiomatic Go: interfaces are small (often one method — `io.Reader`,
 `io.Writer`), and `PrintAll` accepts the narrowest interface it needs. `SimplePrinter` satisfies
 `Printer` and nothing forces a `Scan`. Larger capabilities compose by embedding small interfaces.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// One fat interface every device must satisfy in full.
+public interface IMachine
+{
+    string Print(string doc);
+    string Scan(string doc);
+    string Fax(string doc);
+}
+
+public sealed class SimplePrinter : IMachine
+{
+    public string Print(string doc) => $"printing {doc}";
+    public string Scan(string doc) => throw new NotSupportedException("no scanner"); // forced
+    public string Fax(string doc) => throw new NotSupportedException("no fax");
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// The client asks for the role it needs — no stubs anywhere.
+Console.WriteLine(PrintAll(new SimplePrinter(), ["a"])[0]); // printing a
+
+static List<string> PrintAll(IPrinter printer, List<string> docs) =>
+    [.. docs.Select(printer.Print)];
+
+// One interface per role.
+public interface IPrinter { string Print(string doc); }
+public interface IScanner { string Scan(string doc); }
+
+public sealed class SimplePrinter : IPrinter
+{
+    public string Print(string doc) => $"printing {doc}";
+}
+
+// A device that does more implements more roles.
+public sealed class AllInOne : IPrinter, IScanner
+{
+    public string Print(string doc) => $"printing {doc}";
+    public string Scan(string doc) => $"scanning {doc}";
+}
+```
+
+**🧠 Note** — a C# class can implement any number of interfaces, so ISP costs nothing: declare
+one interface per role and let each device pick its set. `PrintAll` takes `IPrinter`, checked at
+compile time — through that parameter a caller can't even see `Scan`. The classic .NET smell is
+the `ISomethingManager` with a dozen members; split it by who calls what, not by what the
+implementing class happens to contain.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// One fat trait every device must implement in full.
+trait Machine {
+    fn print(&self, doc: &str) -> String;
+    fn scan(&self, doc: &str) -> String;
+    fn fax(&self, doc: &str) -> String;
+}
+
+struct SimplePrinter;
+impl Machine for SimplePrinter {
+    fn print(&self, doc: &str) -> String {
+        format!("printing {doc}")
+    }
+    fn scan(&self, _doc: &str) -> String {
+        unimplemented!("no scanner") // forced stub
+    }
+    fn fax(&self, _doc: &str) -> String {
+        unimplemented!("no fax")
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// One small trait per role — the same Go-style segregation, made explicit.
+trait Printer {
+    fn print(&self, doc: &str) -> String;
+}
+trait Scanner {
+    fn scan(&self, doc: &str) -> String;
+}
+
+struct SimplePrinter;
+impl Printer for SimplePrinter {
+    fn print(&self, doc: &str) -> String {
+        format!("printing {doc}")
+    }
+}
+
+struct AllInOne;
+impl Printer for AllInOne {
+    fn print(&self, doc: &str) -> String {
+        format!("printing {doc}")
+    }
+}
+impl Scanner for AllInOne {
+    fn scan(&self, doc: &str) -> String {
+        format!("scanning {doc}")
+    }
+}
+
+// The client bounds on exactly the role it uses.
+fn print_all(printer: &impl Printer, docs: &[&str]) -> Vec<String> {
+    docs.iter().map(|d| printer.print(d)).collect()
+}
+
+fn main() {
+    println!("{:?}", print_all(&SimplePrinter, &["a"])); // ["printing a"]
+}
+```
+
+**🧠 Note** — small traits are how Rust's std already works: `Read`, `Write`, and `Display` are
+each one role, and you bound on exactly what you call. Unlike Go's implicit satisfaction, an
+`impl` block states which roles a type plays — the compiler rejects a `SimplePrinter` handed
+where a `Scanner` is needed. Where a client genuinely needs two roles, ask for the pair at that
+one seam (`P: Printer + Scanner`) rather than gluing them into a fat supertrait everyone
+inherits.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// Zig has no interfaces — a fat vtable is the closest thing, and it forces stubs.
+const Machine = struct {
+    printFn: *const fn (doc: []const u8) void,
+    scanFn: *const fn (doc: []const u8) void,
+    faxFn: *const fn (doc: []const u8) void,
+};
+
+fn printerPrint(doc: []const u8) void {
+    std.debug.print("printing {s}\n", .{doc});
+}
+fn noScanner(doc: []const u8) void {
+    _ = doc;
+    @panic("no scanner"); // forced stub
+}
+fn noFax(doc: []const u8) void {
+    _ = doc;
+    @panic("no fax");
+}
+
+const simple_printer = Machine{ .printFn = printerPrint, .scanFn = noScanner, .faxFn = noFax };
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// The "interface" is whatever methods the client actually calls — checked at compile time.
+fn printAll(printer: anytype, docs: []const []const u8) void {
+    for (docs) |doc| printer.print(doc);
+}
+
+const SimplePrinter = struct {
+    pub fn print(_: SimplePrinter, doc: []const u8) void {
+        std.debug.print("printing {s}\n", .{doc});
+    }
+};
+
+const AllInOne = struct {
+    pub fn print(_: AllInOne, doc: []const u8) void {
+        std.debug.print("printing {s}\n", .{doc});
+    }
+    pub fn scan(_: AllInOne, doc: []const u8) void {
+        std.debug.print("scanning {s}\n", .{doc});
+    }
+};
+
+pub fn main() void {
+    printAll(SimplePrinter{}, &.{ "a", "b" }); // printing a / printing b
+    printAll(AllInOne{}, &.{"c"});             // printing c — extra roles unused
+}
+```
+
+**🧠 Note** — with `anytype`, `printAll` compiles against exactly the methods it calls, so the
+role boundary is the call site itself — segregation for free, though the contract is implicit
+and a missing `print` only surfaces as a compile error where the function is instantiated. When
+dispatch must be runtime, keep each vtable role-sized the way `std.mem.Allocator` does one job —
+never one fat vtable padded with panicking function pointers.
+
+### Java
+
+**❌ Naive**
+
+```java
+// One fat interface every device must satisfy in full.
+interface Machine {
+    String print(String doc);
+    String scan(String doc);
+    String fax(String doc);
+}
+
+class SimplePrinter implements Machine {
+    public String print(String doc) { return "printing " + doc; }
+    public String scan(String doc) { throw new UnsupportedOperationException("no scanner"); } // forced
+    public String fax(String doc) { throw new UnsupportedOperationException("no fax"); }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.List;
+
+// One interface per role; a device implements exactly its set.
+interface Printer { String print(String doc); }
+interface Scanner { String scan(String doc); }
+
+class SimplePrinter implements Printer {
+    public String print(String doc) { return "printing " + doc; }
+}
+
+class AllInOne implements Printer, Scanner {
+    public String print(String doc) { return "printing " + doc; }
+    public String scan(String doc) { return "scanning " + doc; }
+}
+
+public class Demo {
+    // The client asks only for the role it calls.
+    static List<String> printAll(Printer printer, List<String> docs) {
+        return docs.stream().map(printer::print).toList();
+    }
+
+    public static void main(String[] args) {
+        System.out.println(printAll(new SimplePrinter(), List.of("a"))); // [printing a]
+        System.out.println(printAll(new AllInOne(), List.of("b")));      // [printing b] — extra roles unused
+    }
+}
+```
+
+**🧠 Note** — a role interface with one method is a functional interface, so a test double is a
+lambda: `printAll(doc -> "fake " + doc, docs)` — no mocking library needed. Java also shows what
+it costs to grow a wide interface anyway: default methods exist because `Collection` had to gain
+`stream()` without breaking every implementer in the world — additive evolution bolted onto the
+language. Segregation makes that machinery mostly unnecessary: small role interfaces grow by
+adding new interfaces, not by patching old ones.
 
 ## Applications
 

@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [creational, object-creation, polymorphism, open-closed, decoupling]
 related: [abstract-factory, strategy, singleton]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -308,6 +308,315 @@ func init() {
 **🧠 Tradeoff** — A `map[string]func() Cache` lets each backend self-register in `init()`, so
 adding one is a new file, not an edit to `Create`. You trade the compiler's exhaustiveness
 check on a `switch` for runtime lookup, but gain open extensibility across packages.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The construction switch, copied wherever a cache is needed.
+static ICache MakeCache(string kind) => kind switch
+{
+    "memory" => new InMemoryCache(),
+    "disk" => new DiskCache(),
+    // adding "redis" means editing this — and every other copy of it
+    _ => throw new ArgumentException($"Unknown cache: {kind}"),
+};
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Register a backend without touching Create — even from another assembly.
+CacheFactory.Register("memory", () => new InMemoryCache());
+CacheFactory.Register("disk", () => new DiskCache());
+
+var cache = CacheFactory.Create("memory");
+cache.Set("user:1", "cached-value");
+Console.WriteLine(cache.Get("user:1")); // cached-value
+
+public interface ICache
+{
+    string? Get(string key);
+    void Set(string key, string value);
+}
+
+public sealed class InMemoryCache : ICache
+{
+    private readonly Dictionary<string, string> _data = new();
+    public string? Get(string key) => _data.GetValueOrDefault(key);
+    public void Set(string key, string value) => _data[key] = value;
+}
+
+public sealed class DiskCache : ICache
+{
+    public string? Get(string key) => null; // read-through elided
+    public void Set(string key, string value) { /* write to disk */ }
+}
+
+public static class CacheFactory
+{
+    // The registry maps a name to a constructor delegate.
+    private static readonly Dictionary<string, Func<ICache>> Registry = new();
+
+    public static void Register(string name, Func<ICache> ctor) => Registry[name] = ctor;
+
+    public static ICache Create(string kind) =>
+        Registry.TryGetValue(kind, out var ctor)
+            ? ctor()
+            : throw new ArgumentException($"Unknown cache: {kind}");
+}
+```
+
+**🧠 Tradeoff** — the registry holds `Func<ICache>` delegates, so there's no GoF hierarchy of
+creator classes — a constructor reference is enough. As everywhere, the registry trades the
+`switch` expression's compile-time exhaustiveness for runtime lookup and open registration.
+And be honest about where this lands in real .NET: the factory often dissolves into the DI
+container — keyed services (`GetRequiredKeyedService<ICache>("memory")`) are this exact
+pattern, maintained by the framework instead of your static class.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// The construction match, copied wherever a cache is needed.
+fn make_cache(kind: &str) -> Box<dyn Cache> {
+    match kind {
+        "memory" => Box::new(InMemoryCache::new()),
+        "disk" => Box::new(DiskCache),
+        // adding "redis" means editing this — and every other copy of it
+        other => panic!("unknown cache: {other}"),
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+
+trait Cache {
+    fn get(&self, key: &str) -> Option<String>;
+    fn set(&mut self, key: &str, value: &str);
+}
+
+struct InMemoryCache { data: HashMap<String, String> }
+impl Cache for InMemoryCache {
+    fn get(&self, key: &str) -> Option<String> { self.data.get(key).cloned() }
+    fn set(&mut self, key: &str, value: &str) {
+        self.data.insert(key.into(), value.into());
+    }
+}
+
+struct DiskCache;
+impl Cache for DiskCache {
+    fn get(&self, _key: &str) -> Option<String> { None } // read-through elided
+    fn set(&mut self, _key: &str, _value: &str) { /* write to disk */ }
+}
+
+// The registry maps a name to a constructor function.
+struct CacheFactory {
+    registry: HashMap<&'static str, fn() -> Box<dyn Cache>>,
+}
+
+impl CacheFactory {
+    fn new() -> Self {
+        let mut registry: HashMap<&'static str, fn() -> Box<dyn Cache>> = HashMap::new();
+        registry.insert("memory", || Box::new(InMemoryCache { data: HashMap::new() }));
+        registry.insert("disk", || Box::new(DiskCache));
+        Self { registry }
+    }
+
+    fn create(&self, kind: &str) -> Result<Box<dyn Cache>, String> {
+        self.registry
+            .get(kind)
+            .map(|ctor| ctor())
+            .ok_or_else(|| format!("unknown cache: {kind}"))
+    }
+}
+
+fn main() {
+    let factory = CacheFactory::new();
+    let mut cache = factory.create("memory").unwrap();
+    cache.set("user:1", "cached-value");
+    println!("{:?}", cache.get("user:1")); // Some("cached-value")
+}
+```
+
+**🧠 Tradeoff** — when the set of backends is closed, idiomatic Rust skips all of this: an
+`enum CacheKind` plus one exhaustive `match` gives you a factory the compiler checks — add a
+variant and it lists every match to update. The string-keyed registry above buys *open*
+registration (backends from config or other crates) at the price of runtime failure, so
+`create` returns `Result` and the caller must face the miss. Plain `fn` pointers suffice for
+constructors; switch to `Box<dyn Fn() -> Box<dyn Cache>>` when a constructor must capture
+config.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Stringly-typed construction, copied into every file that needs a cache.
+fn makeCache(kind: []const u8) !Cache {
+    if (std.mem.eql(u8, kind, "memory")) return .{ .memory = .{} };
+    if (std.mem.eql(u8, kind, "disk")) return .{ .disk = .{} };
+    return error.UnknownCache; // a typo'd name fails at runtime
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const InMemoryCache = struct {
+    entries: [16]Entry = undefined, // toy store: fixed slots, no allocator needed
+    len: usize = 0,
+
+    const Entry = struct { key: []const u8, value: []const u8 };
+
+    fn set(self: *InMemoryCache, key: []const u8, value: []const u8) void {
+        if (self.len == self.entries.len) return;
+        self.entries[self.len] = .{ .key = key, .value = value };
+        self.len += 1;
+    }
+    fn get(self: *InMemoryCache, key: []const u8) ?[]const u8 {
+        for (self.entries[0..self.len]) |e| {
+            if (std.mem.eql(u8, e.key, key)) return e.value;
+        }
+        return null;
+    }
+};
+
+const DiskCache = struct {
+    fn set(self: *DiskCache, key: []const u8, value: []const u8) void {
+        _ = self; _ = key; _ = value; // write to disk elided
+    }
+    fn get(self: *DiskCache, key: []const u8) ?[]const u8 {
+        _ = self; _ = key;
+        return null;
+    }
+};
+
+const Kind = enum { memory, disk };
+
+// A closed set of backends: the tagged union IS the product type.
+const Cache = union(Kind) {
+    memory: InMemoryCache,
+    disk: DiskCache,
+
+    // The factory method: the ONE place that knows how each backend is made.
+    fn create(kind: Kind) Cache {
+        return switch (kind) {
+            .memory => .{ .memory = .{} },
+            .disk => .{ .disk = .{} },
+        };
+    }
+
+    // `inline else` dispatches to each variant's methods — no vtable.
+    fn set(self: *Cache, key: []const u8, value: []const u8) void {
+        switch (self.*) {
+            inline else => |*c| c.set(key, value),
+        }
+    }
+    fn get(self: *Cache, key: []const u8) ?[]const u8 {
+        return switch (self.*) {
+            inline else => |*c| c.get(key),
+        };
+    }
+};
+
+pub fn main() void {
+    var cache = Cache.create(.memory);
+    cache.set("user:1", "cached-value");
+    std.debug.print("{?s}\n", .{cache.get("user:1")}); // cached-value
+}
+```
+
+**🧠 Tradeoff** — the tagged union is the honest Zig form for a closed set, and it inverts the
+kata's moral: instead of a registry that keeps `create` closed to edits, adding a backend makes
+the compiler flag every non-exhaustive `switch` — the Open/Closed loss *is* the safety win, and
+`.redis` can't be a typo the way `"redis"` can. Dispatch through `inline else` is a compile-time
+fan-out, no function pointers involved. When the set genuinely must stay open at runtime, Zig's
+answer is the two-field vtable idiom (`*anyopaque` context + function pointers) that
+`std.mem.Allocator` uses; when the backend is fixed per build, pass the type at comptime and the
+factory disappears entirely.
+
+### Java
+
+**❌ Naive**
+
+```java
+// The construction switch, copied wherever a cache is needed.
+static Cache makeCache(String kind) {
+    return switch (kind) {
+        case "memory" -> new InMemoryCache();
+        case "disk" -> new DiskCache();
+        // adding "redis" means editing this — and every other copy of it
+        default -> throw new IllegalArgumentException("Unknown cache: " + kind);
+    };
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
+
+interface Cache {
+    String get(String key);
+    void set(String key, String value);
+}
+
+class InMemoryCache implements Cache {
+    private final Map<String, String> data = new HashMap<>();
+    public String get(String key) { return data.get(key); }
+    public void set(String key, String value) { data.put(key, value); }
+}
+
+class DiskCache implements Cache {
+    public String get(String key) { return null; } // read-through elided
+    public void set(String key, String value) { /* write to disk */ }
+}
+
+class CacheFactory {
+    // The registry maps a name to a constructor reference.
+    private static final Map<String, Supplier<Cache>> registry = new HashMap<>();
+
+    static void register(String name, Supplier<Cache> ctor) { registry.put(name, ctor); }
+
+    static Cache create(String kind) {
+        var ctor = registry.get(kind);
+        if (ctor == null) throw new IllegalArgumentException("Unknown cache: " + kind);
+        return ctor.get();
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        // A constructor reference registers a backend without touching create().
+        CacheFactory.register("memory", InMemoryCache::new);
+        CacheFactory.register("disk", DiskCache::new);
+
+        var cache = CacheFactory.create("memory");
+        cache.set("user:1", "cached-value");
+        System.out.println(cache.get("user:1")); // cached-value
+    }
+}
+```
+
+**🧠 Tradeoff** — nobody writes the GoF hierarchy of Creator subclasses in modern Java:
+`Supplier<Cache>` is the whole factory-method contract, and a constructor reference
+(`InMemoryCache::new`) is a whole concrete creator. The registry buys open registration —
+backends can add themselves from anywhere, or be discovered via `ServiceLoader` — at the
+usual price: an unknown name fails at runtime. When the set is closed, flip the deal back:
+a sealed interface plus a pattern-matching `switch` makes the naive version the good
+version, because the compiler now flags the missing case. And in framework Java the factory
+often dissolves into the DI container — Spring's map-of-beans-by-name injection is exactly
+this registry, maintained for you.
 
 ## Applications
 

@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [data, persistence, performance, deferred, n-plus-one]
 related: [proxy, cache-aside]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -265,6 +265,223 @@ fires on first call, is memoized, and is safe if multiple goroutines call it. It
 a field), which suits Go — no hidden I/O behind a struct field. GORM offers association lazy/eager loading;
 plain Go prefers this visible on-demand pattern, and you batch (an `IN` query) yourself to avoid N+1 when
 iterating.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Eagerly load every association up front, used or not.
+var order = repo.Order(id);
+order.Customer = repo.Customer(order.CustomerId); // loaded even if the caller never reads it
+order.Items = repo.Items(id);
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Lazy<T> is the standard library's virtual proxy: loads on first .Value, once, thread-safely.
+var order = new Order(1, customerId: 42, new Repo());
+Console.WriteLine($"order {order.Id} loaded"); // no customer query yet
+Console.WriteLine(order.Customer.Name);        // SELECT fires NOW, once
+Console.WriteLine(order.Customer.Name);        // memoized — no second query
+
+public sealed record Customer(int Id, string Name);
+
+public sealed class Repo
+{
+    public Customer Customer(int id)
+    {
+        Console.WriteLine($"SELECT customer {id}"); // the expensive load
+        return new Customer(id, "Ada");
+    }
+}
+
+public sealed class Order(int id, int customerId, Repo repo)
+{
+    private readonly Lazy<Customer> _customer =
+        new(() => repo.Customer(customerId));    // deferred — not run here
+
+    public int Id { get; } = id;
+    public Customer Customer => _customer.Value; // first read triggers the load
+}
+```
+
+**🧠 Tradeoff** — `Lazy<T>` packages the whole mechanism — deferred loader, memoization, thread safety
+(`ExecutionAndPublication` by default) — into one field: Go's `sync.Once` accessor as a library type. The
+catch is that `.Value` hides I/O behind a property read, the classic lazy surprise, and `Lazy<T>` is
+synchronous — an async load wants `Lazy<Task<Customer>>` awaited at the access site. EF Core's
+lazy-loading proxies do this per navigation property, with the same N+1 trap: reach for `.Include()` when
+you know you'll iterate the relation.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Eagerly load every association up front, used or not.
+let mut order = repo.order(id);
+order.customer = Some(repo.customer(order.customer_id)); // loaded even if never read
+order.items = repo.items(id);
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::cell::OnceCell;
+
+struct Customer { name: String }
+
+struct Repo;
+impl Repo {
+    fn customer(&self, id: u32) -> Customer {
+        println!("SELECT customer {id}"); // the expensive load
+        Customer { name: "Ada".into() }
+    }
+}
+
+struct Order {
+    id: u32,
+    customer_id: u32,
+    repo: Repo,
+    customer: OnceCell<Customer>, // empty until first access
+}
+
+impl Order {
+    fn customer(&self) -> &Customer {
+        self.customer.get_or_init(|| self.repo.customer(self.customer_id)) // load once
+    }
+}
+
+fn main() {
+    let order = Order { id: 1, customer_id: 42, repo: Repo, customer: OnceCell::new() };
+    println!("order {} loaded", order.id); // no customer query yet
+    println!("{}", order.customer().name); // SELECT fires NOW, once
+    println!("{}", order.customer().name); // memoized — no second query
+}
+```
+
+**🧠 Tradeoff** — `OnceCell` gives lazy-with-memoization through `&self`: interior mutability lets
+`customer()` fill the cell on first call and hand back a plain `&Customer` whose lifetime the borrow
+checker ties to the order — no lock, no `mut` in the signature. `LazyCell` is the same idea with the
+initializer baked in at construction; across threads, swap in `OnceLock`/`LazyLock`. Rust has no ORM that
+lazy-loads behind your back, so the surprise-query problem mostly disappears — like Ecto, loading is a
+visible call, and N+1 stays a conscious batching decision.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Eagerly load every association up front, used or not.
+var order = repo.order(id);
+order.customer = repo.customer(order.customer_id); // loaded even if never read
+order.items = repo.items(id);
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Customer = struct { name: []const u8 };
+
+const Repo = struct {
+    fn customer(_: Repo, id: u32) Customer {
+        std.debug.print("SELECT customer {d}\n", .{id}); // the expensive load
+        return .{ .name = "Ada" };
+    }
+};
+
+const Order = struct {
+    id: u32,
+    customer_id: u32,
+    repo: Repo,
+    customer: ?Customer = null, // null until first access
+
+    fn getCustomer(self: *Order) Customer {
+        if (self.customer == null) {
+            self.customer = self.repo.customer(self.customer_id); // load once
+        }
+        return self.customer.?;
+    }
+};
+
+pub fn main() void {
+    var order = Order{ .id = 1, .customer_id = 42, .repo = .{} };
+    std.debug.print("order {d} loaded\n", .{order.id});     // no customer query yet
+    _ = order.getCustomer();                                // SELECT fires NOW, once
+    std.debug.print("{s}\n", .{order.getCustomer().name});  // memoized — no second query
+}
+```
+
+**🧠 Tradeoff** — an optional field plus an init-on-first-use accessor is the whole pattern with nothing
+hidden: `?Customer` is the load state, the `if` is the trigger, the assignment is the memoization. Note
+the signature — Zig has no interior mutability, so lazy loading needs `*Order`, and a `const` order simply
+can't do it. That visibility is very Zig: a field read can never do I/O; only a method taking a mutable
+pointer can. Thread safety is yours to add (`std.Thread.Mutex` around the check-and-load), and batching to
+dodge N+1 is a query you write yourself.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Eagerly load every association up front, used or not.
+var order = repo.order(id);
+order.customer = repo.customer(order.customerId); // loaded even if the caller never reads it
+order.items = repo.items(id);
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.function.Supplier;
+
+record Customer(int id, String name) {}
+
+class Repo {
+    Customer customer(int id) {
+        System.out.println("SELECT customer " + id); // the expensive load
+        return new Customer(id, "Ada");
+    }
+}
+
+// A lazy field is mutable state, so Order is a class — a record couldn't hold it.
+class Order {
+    final int id;
+    private final Supplier<Customer> loader;
+    private Customer customer;                         // null until first access
+
+    Order(int id, int customerId, Repo repo) {
+        this.id = id;
+        this.loader = () -> repo.customer(customerId); // deferred — not run here
+    }
+
+    Customer customer() {
+        if (customer == null) customer = loader.get(); // first call triggers the load
+        return customer;                               // memoized after that
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var order = new Order(1, 42, new Repo());
+        System.out.println("order " + order.id + " loaded"); // no customer query yet
+        System.out.println(order.customer().name());         // SELECT fires NOW, once
+        System.out.println(order.customer().name());         // memoized — no second query
+    }
+}
+```
+
+**🧠 Tradeoff** — the JDK has no `Lazy<T>`, so the idiom is what you see: a `Supplier` holding the
+deferred load and a null-checked accessor that memoizes — which is exactly what Hibernate generates
+behind every lazy `@ManyToOne` getter. Java is where this lesson's scars come from:
+`LazyInitializationException` *is* the load-after-session-close mistake, and lazy collections
+touched in a loop are the canonical N+1. The plain form above isn't thread-safe (two threads can
+both trigger the load); double-checked locking on a `volatile` field or Guava's `Suppliers.memoize`
+closes that gap, and the JDK is previewing `StableValue` to finally cover it in the standard
+library.
 
 ## Applications
 

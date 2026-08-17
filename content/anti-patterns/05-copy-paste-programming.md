@@ -11,7 +11,7 @@ frequency: high
 difficulty: beginner
 tags: [anti-pattern, duplication, dry, maintainability, refactoring]
 related: [function-composition, template-method, strategy]
-languages: [javascript, python, go]
+languages: [javascript, python, go, csharp, rust, zig, java]
 ---
 
 ## The Anti-Pattern
@@ -199,6 +199,239 @@ func createOrder(db *sql.DB, o Order) error {
 the *varying behavior* (what to run in the transaction) as a callback — a function parameter carrying the
 difference. Now a fix to the transaction handling (say, adding a `defer` for panics) happens in one place.
 Go's first-class functions make this "extract the boilerplate, pass the difference" refactor idiomatic.
+
+### CSharp
+
+**❌ The Smell**
+
+```csharp
+// The same retry loop pasted around every HTTP call, each drifting slightly.
+using var http = new HttpClient();
+
+async Task<string> GetUser(int id)
+{
+    for (var i = 0; ; i++)
+    {
+        try { return await http.GetStringAsync($"/api/users/{id}"); }
+        catch (HttpRequestException) when (i < 2) { await Task.Delay(200 * (1 << i)); }
+    }
+}
+
+async Task<string> GetOrder(int id)
+{
+    for (var i = 0; ; i++)                            // copy of the above
+    {
+        try { return await http.GetStringAsync($"/api/orders/{id}"); }
+        catch (HttpRequestException) when (i < 2) { } // this copy forgot the backoff
+    }
+}
+```
+
+**✅ The Refactor**
+
+```csharp
+// Extract the retry once; the varying part — the call itself — is a Func<Task<T>>.
+using var http = new HttpClient();
+
+async Task<T> WithRetry<T>(Func<Task<T>> action, int attempts = 3)
+{
+    for (var i = 0; ; i++)
+    {
+        try { return await action(); }
+        catch (HttpRequestException) when (i < attempts - 1)
+        {
+            await Task.Delay(200 * (1 << i));
+        }
+    }
+}
+
+Task<string> GetUser(int id) => WithRetry(() => http.GetStringAsync($"/api/users/{id}"));
+Task<string> GetOrder(int id) => WithRetry(() => http.GetStringAsync($"/api/orders/{id}"));
+// fix a retry bug once → every caller benefits.
+```
+
+**🧠 The Fix** — The try-catch-delay ceremony was pure duplication; `WithRetry<T>` holds it
+once and takes the varying behavior as a `Func<Task<T>>`, so the "forgot the backoff" drift
+can't recur and a policy change (attempts, delay curve) lands everywhere at once. In
+production you'd likely hand this job to a resilience library like Polly — but the move is
+the same: one home for the retry knowledge, the difference passed in as a delegate.
+
+### Rust
+
+**❌ The Smell**
+
+```rust
+// The same trim-parse-validate block pasted into every config reader.
+fn parse_port(raw: &str) -> Result<u16, String> {
+    let n: u16 = raw.trim().parse().map_err(|_| format!("bad port: {raw}"))?;
+    if n == 0 {
+        return Err("port must be nonzero".into());
+    }
+    Ok(n)
+}
+
+fn parse_timeout(raw: &str) -> Result<u16, String> {
+    let n: u16 = raw.trim().parse().map_err(|_| format!("bad timeout: {raw}"))?; // copy
+    Ok(n) // this copy forgot the zero check
+}
+```
+
+**✅ The Refactor**
+
+```rust
+// One parser; the varying bits — the field name and the extra rule — are parameters.
+fn parse_field(name: &str, raw: &str, check: impl Fn(u16) -> Result<(), String>) -> Result<u16, String> {
+    let n: u16 = raw.trim().parse().map_err(|_| format!("bad {name}: {raw}"))?;
+    check(n)?;
+    Ok(n)
+}
+
+fn parse_port(raw: &str) -> Result<u16, String> {
+    parse_field("port", raw, |n| {
+        if n == 0 { Err("port must be nonzero".into()) } else { Ok(()) }
+    })
+}
+
+fn parse_timeout(raw: &str) -> Result<u16, String> {
+    parse_field("timeout", raw, |_| Ok(())) // no extra rule — stated, not forgotten
+}
+```
+
+**🧠 The Fix** — The copies differed in two ways, and the extraction names both: the field
+name became a value parameter, the extra rule became a closure via `impl Fn`. Each call site
+now *states* its rule — `parse_timeout` visibly accepts anything instead of silently
+forgetting a check it was supposed to copy. The generic bound monomorphizes, so the
+abstraction costs nothing at runtime; the dedup lives in the source, where the maintenance
+burden is.
+
+### Zig
+
+**❌ The Smell**
+
+```zig
+const std = @import("std");
+
+// The same trim-parse-validate block pasted into every config reader.
+fn parsePort(raw: []const u8) !u16 {
+    const trimmed = std.mem.trim(u8, raw, " \t\r\n");
+    const n = try std.fmt.parseInt(u16, trimmed, 10);
+    if (n == 0) return error.ZeroValue;
+    return n;
+}
+
+fn parseTimeout(raw: []const u8) !u16 {
+    const trimmed = std.mem.trim(u8, raw, " \t\r\n"); // copy
+    return try std.fmt.parseInt(u16, trimmed, 10);    // this copy forgot the zero check
+}
+```
+
+**✅ The Refactor**
+
+```zig
+const std = @import("std");
+
+// One parser; the varying rule rides along as a plain function (Zig has no closures).
+fn parseField(raw: []const u8, check: *const fn (u16) anyerror!void) !u16 {
+    const trimmed = std.mem.trim(u8, raw, " \t\r\n");
+    const n = try std.fmt.parseInt(u16, trimmed, 10);
+    try check(n);
+    return n;
+}
+
+fn nonzero(n: u16) anyerror!void {
+    if (n == 0) return error.ZeroValue;
+}
+
+fn anyValue(_: u16) anyerror!void {}
+
+fn parsePort(raw: []const u8) !u16 {
+    return parseField(raw, nonzero);
+}
+
+fn parseTimeout(raw: []const u8) !u16 {
+    return parseField(raw, anyValue); // no extra rule — stated, not forgotten
+}
+```
+
+**🧠 The Fix** — The trim-parse ceremony lives once, and the varying rule is a plain
+`*const fn` pointer — Zig has no closures, so the rule can't capture context, which this
+one doesn't need. (A rule that did would take the `*anyopaque` context + function pointer
+shape, or a comptime parameter.) The refactor is also honest about the drift:
+`parseTimeout` now declares it accepts anything, instead of quietly missing a check its
+sibling had. Extraction in Zig costs a little more ceremony than a closure would — worth it
+the moment two copies start to disagree.
+
+### Java
+
+**❌ The Smell**
+
+```java
+// The same retry loop pasted around every HTTP call, each drifting slightly.
+class Api {
+    private final HttpClient http = HttpClient.newHttpClient();
+
+    String getUser(int id) throws Exception {
+        for (int i = 0; ; i++) {
+            try { return fetch("/api/users/" + id); }
+            catch (IOException e) {
+                if (i == 2) throw e;
+                Thread.sleep(200L * (1 << i));
+            }
+        }
+    }
+
+    String getOrder(int id) throws Exception {
+        for (int i = 0; ; i++) {                  // copy of the above
+            try { return fetch("/api/orders/" + id); }
+            catch (IOException e) {
+                if (i == 2) throw e;              // this copy forgot the backoff
+            }
+        }
+    }
+
+    private String fetch(String path) throws Exception {
+        var req = HttpRequest.newBuilder(URI.create("https://api.example.com" + path)).build();
+        return http.send(req, HttpResponse.BodyHandlers.ofString()).body();
+    }
+}
+```
+
+**✅ The Refactor**
+
+```java
+// Extract the retry once; the varying call rides in as a Callable<T>.
+class Api {
+    private final HttpClient http = HttpClient.newHttpClient();
+
+    static <T> T withRetry(Callable<T> action, int attempts) throws Exception {
+        for (int i = 0; ; i++) {
+            try { return action.call(); }
+            catch (IOException e) {
+                if (i == attempts - 1) throw e;
+                Thread.sleep(200L * (1 << i));
+            }
+        }
+    }
+
+    String getUser(int id) throws Exception {
+        return withRetry(() -> fetch("/api/users/" + id), 3);
+    }
+
+    String getOrder(int id) throws Exception {
+        return withRetry(() -> fetch("/api/orders/" + id), 3);
+    }
+
+    private String fetch(String path) throws Exception { /* as before */ }
+}
+// fix a retry bug once → every caller benefits.
+```
+
+**🧠 The Fix** — The try-catch-sleep ceremony lives once in `withRetry`, and the varying behavior arrives
+as a `Callable<T>` — chosen over `Supplier<T>` deliberately, because `call()` declares `throws Exception`
+and Java's other functional interfaces don't, which is the wrinkle that usually pushes people back to
+pasting. Now the "forgot the backoff" drift can't recur, and a policy change (attempts, delay curve) lands
+everywhere at once. In production this job often goes to a library like Resilience4j — but the move is the
+same: one home for the retry knowledge, the difference passed in as a lambda.
 
 ## Related Patterns
 

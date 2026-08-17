@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [behavioral, traversal, collection, lazy, sequence]
 related: [composite, observer, strategy]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -263,6 +263,253 @@ func Numbers(start, end int) iter.Seq[int] {
 yields values, consumed with `for range`, lazily and with early-break support via `yield`'s bool.
 Before 1.23, the idioms were a `Next() (T, bool)` method or a channel; the new form integrates with
 the language loop the way the other languages' protocols do.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Consumers reach into the internal list and index it by hand.
+var r = new NumberRange(0, 3);
+for (var i = 0; i < r.Items.Count; i++) Console.WriteLine(r.Items[i]); // knows it's a List; eager
+
+public sealed class NumberRange
+{
+    public List<int> Items { get; } = [];
+    public NumberRange(int start, int end)
+    {
+        for (var i = start; i < end; i++) Items.Add(i); // materialized up front
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+using System.Collections;
+
+// yield return implements the iterator protocol — lazy, no backing list.
+foreach (var n in new NumberRange(0, 3)) Console.WriteLine(n); // 0 1 2
+
+var doubled = new NumberRange(0, 3).Select(x => x * 2).ToList(); // LINQ plugs straight in
+
+public sealed class NumberRange(int start, int end) : IEnumerable<int>
+{
+    public IEnumerator<int> GetEnumerator()
+    {
+        for (var i = start; i < end; i++) yield return i; // produced on demand
+    }
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+```
+
+**🧠 Tradeoff** — `IEnumerable<T>`/`IEnumerator<T>` *is* the GoF Iterator shipped in the box,
+and `yield return` writes the `MoveNext` state machine you'd otherwise hand-roll — `foreach`
+and all of LINQ are its clients. So in C# the pattern means implementing the protocol, never
+inventing a `HasNext`/`Next` API of your own. For streamed sources — the Node.js tab's case —
+`IAsyncEnumerable<T>` with `await foreach` is the same pattern over async data, with the same
+close-the-cursor caveat.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Expose the backing Vec and index it — caller tied to the representation; eager.
+struct NumberRange { items: Vec<i32> }
+
+impl NumberRange {
+    fn new(start: i32, end: i32) -> Self {
+        Self { items: (start..end).collect() } // materialized up front
+    }
+}
+
+fn main() {
+    let r = NumberRange::new(0, 3);
+    for i in 0..r.items.len() {
+        println!("{}", r.items[i]);
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// The iterator holds the cursor; next() is the whole protocol.
+struct NumberRange { current: i32, end: i32 }
+
+impl NumberRange {
+    fn new(start: i32, end: i32) -> Self {
+        Self { current: start, end }
+    }
+}
+
+impl Iterator for NumberRange {
+    type Item = i32;
+
+    fn next(&mut self) -> Option<i32> {
+        if self.current < self.end {
+            let n = self.current;
+            self.current += 1;
+            Some(n) // produced on demand
+        } else {
+            None // iteration over
+        }
+    }
+}
+
+fn main() {
+    for n in NumberRange::new(0, 3) {
+        println!("{n}"); // 0 1 2 — a plain for loop
+    }
+    let doubled: Vec<i32> = NumberRange::new(0, 3).map(|x| x * 2).collect();
+    println!("{doubled:?}"); // [0, 2, 4]
+}
+```
+
+**🧠 Tradeoff** — implement one method, `next() -> Option<Item>`, and the trait's dozens of
+provided adapters (`map`, `filter`, `take`, `collect`) come along free — all lazy, and
+monomorphized down to loop-speed code. Honesty check: for numbers you'd just write `0..3`,
+which is already an `Iterator`; you implement the trait for your own structures — tree walks,
+pagers, parsers. And the "mutating during iteration" hazard from the mistakes list isn't
+undefined behavior here: the borrow checker rejects it at compile time.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// Materialize the whole range into a buffer, then walk it by index.
+const NumberRange = struct {
+    items: [16]i64 = undefined,
+    len: usize = 0,
+
+    fn init(start: i64, end: i64) NumberRange {
+        var r = NumberRange{};
+        var i = start;
+        while (i < end) : (i += 1) {
+            r.items[r.len] = i;
+            r.len += 1;
+        }
+        return r; // eager, and the caller indexes the internals
+    }
+};
+
+pub fn main() void {
+    const r = NumberRange.init(0, 3);
+    for (r.items[0..r.len]) |n| std.debug.print("{d}\n", .{n});
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// The std convention: a struct with next() returning ?T — null means done.
+const NumberRange = struct {
+    current: i64,
+    end: i64,
+
+    fn init(start: i64, end: i64) NumberRange {
+        return .{ .current = start, .end = end };
+    }
+
+    fn next(self: *NumberRange) ?i64 {
+        if (self.current >= self.end) return null; // done
+        defer self.current += 1;
+        return self.current; // produced on demand
+    }
+};
+
+pub fn main() void {
+    var range = NumberRange.init(0, 3);
+    while (range.next()) |n| {
+        std.debug.print("{d}\n", .{n}); // 0 1 2
+    }
+}
+```
+
+**🧠 Tradeoff** — the optional-returning `next()` is a convention, not a language feature, but
+it's the one std uses everywhere (`std.fs.Dir.iterate`, hash-map iterators, the string
+tokenizers), so `while (it.next()) |n|` reads as native Zig. The `?i64` collapses
+`hasNext`/`next` into one call, and the iteration is lazy with no allocation. What you don't
+get is generator sugar: there's no `yield`, so an iterator that walks a tree must carry its own
+explicit stack in the struct — the state a JS generator or C# iterator method hides for you.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+// Consumers reach into the internal list and index it by hand.
+class NumberRange {
+    final List<Integer> items = new ArrayList<>();
+
+    NumberRange(int start, int end) {
+        for (int i = start; i < end; i++) items.add(i); // eager; exposes a List
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var r = new NumberRange(0, 3);
+        for (int i = 0; i < r.items.size(); i++) {
+            System.out.println(r.items.get(i)); // knows it's a List
+        }
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+// Implement Iterable and the for-each loop works; lazy, no backing list.
+class NumberRange implements Iterable<Integer> {
+    private final int start, end;
+
+    NumberRange(int start, int end) { this.start = start; this.end = end; }
+
+    public Iterator<Integer> iterator() {
+        return new Iterator<>() {
+            private int current = start;
+
+            public boolean hasNext() { return current < end; }
+            public Integer next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                return current++; // produced on demand
+            }
+        };
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        for (var n : new NumberRange(0, 3)) {
+            System.out.println(n); // 0 1 2 — uniform for-each
+        }
+    }
+}
+```
+
+**🧠 Tradeoff** — Iterator is the GoF pattern Java shipped as a core library type:
+`java.util.Iterator` *is* the `hasNext`/`next` interface from the book, and the for-each loop
+is compiler sugar that calls `iterator()` on anything `Iterable` — so in Java the pattern
+means implementing the protocol, never inventing a cursor API of your own. Honesty check: for
+numbers you'd just write `IntStream.range(0, 3)`; you implement `Iterable` for your own
+structures so they plug into for-each and `Collection` machinery. The "mutating during
+iteration" hazard isn't undefined here — `java.util` collections fail fast with
+`ConcurrentModificationException`. What Java lacks is generator sugar: no `yield`, so a
+tree-walking iterator carries its own explicit stack, the state a JS or Python generator
+hides for you.
 
 ## Applications
 

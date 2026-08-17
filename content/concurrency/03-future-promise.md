@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [concurrency, async, composition, non-blocking, values]
 related: [worker-pool, fan-out-fan-in, actor]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -262,6 +262,207 @@ back a channel." A one-element buffered channel *is* a fulfilled-once future, an
 before receiving gives you parallelism. It's more explicit than `async/await` — no `then`
 chaining, and errors travel as a second channel value or a struct — but it composes with
 `select` for timeouts and cancellation via `context`.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Blocking, strictly sequential — the two totals never overlap.
+var total = OrderTotal(1) + OrderTotal(2);
+Console.WriteLine(total);
+
+static int OrderTotal(int id)
+{
+    var user = GetUser(id);       // blocks
+    var orders = GetOrders(user); // blocks
+    return GetTotal(orders);      // blocks
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Task IS the future: it starts hot, and await attaches the continuation.
+var a = OrderTotalAsync(1);
+var b = OrderTotalAsync(2);            // both already running
+var totals = await Task.WhenAll(a, b); // the `all` combinator
+Console.WriteLine(totals[0] + totals[1]);
+
+static async Task<int> OrderTotalAsync(int id)
+{
+    var user = await GetUserAsync(id);
+    var orders = await GetOrdersAsync(user);
+    return await GetTotalAsync(orders);
+}
+
+// Wrapping a callback API? TaskCompletionSource is the promise's producer half:
+//   var tcs = new TaskCompletionSource<int>();
+//   legacyApi.OnDone(result => tcs.SetResult(result));
+//   int value = await tcs.Task;
+```
+
+**🧠 Tradeoff** — `Task` is the future, and it's *hot* like a JS promise — running the
+moment it exists — but unlike JS it's cancellable via `CancellationToken`, and
+`Task.WhenAll`/`WhenAny` are `all`/`race`. When you're wrapping a callback API,
+`TaskCompletionSource` is the producer half: hold the source, hand out its `Task`, settle
+it once. The classic hazard is sync-over-async — `.Result` or `.Wait()` on a context thread
+is exactly the "blocking the thread that must resolve it" deadlock from Common Mistakes.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Sequential blocking calls; the two independent totals never overlap.
+fn order_total(id: u32) -> u32 {
+    let user = get_user(id);
+    let orders = get_orders(user);
+    get_total(orders)
+}
+
+fn main() {
+    let total = order_total(1) + order_total(2); // one after the other
+    println!("total: {total}");
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::thread;
+
+// In dependency-free Rust the future is a JoinHandle: spawn starts the work,
+// join() is the await.
+fn spawn_total(id: u32) -> thread::JoinHandle<u32> {
+    thread::spawn(move || order_total(id))
+}
+
+fn main() {
+    let a = spawn_total(1);
+    let b = spawn_total(2); // both threads run concurrently
+    let total = a.join().unwrap() + b.join().unwrap(); // await both
+    println!("total: {total}");
+}
+```
+
+**🧠 Tradeoff** — Rust has `async`/`await` and a `Future` trait, but std ships no executor:
+without a runtime crate (tokio, smol) an async fn never runs, so the honest std future is a
+thread and its `JoinHandle` — eager like a JS promise, joined exactly once, and a panic
+comes back as `join`'s `Err` instead of vanishing. Know the twist before reaching for real
+async: Rust futures are *lazy* — they do nothing until polled — the exact opposite of JS.
+And when you need the resolve-by-hand half, a one-shot `mpsc` channel plays the promise.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// Blocking and strictly sequential — the second total waits on the first.
+pub fn main() void {
+    const a = orderTotal(1);
+    const b = orderTotal(2);
+    std.debug.print("total: {d}\n", .{a + b});
+}
+
+fn orderTotal(id: u32) u32 {
+    const user = getUser(id);
+    const orders = getOrders(user);
+    return getTotal(orders);
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// No future type in stable Zig: a thread handle + a result slot you own IS the future.
+fn orderTotal(id: u32, slot: *u32) void {
+    const user = getUser(id);
+    const orders = getOrders(user);
+    slot.* = getTotal(orders);
+}
+
+pub fn main() !void {
+    var a: u32 = 0;
+    var b: u32 = 0;
+
+    const ta = try std.Thread.spawn(.{}, orderTotal, .{ 1, &a }); // start — pending
+    const tb = try std.Thread.spawn(.{}, orderTotal, .{ 2, &b }); // both in flight
+
+    ta.join(); // await: blocks until the slot is written
+    tb.join();
+    std.debug.print("total: {d}\n", .{a + b});
+}
+```
+
+**🧠 Tradeoff** — stable Zig has no promise type, and its async is in flux pre-1.0, so the
+future decomposes into its parts: the thread handle is the pending state, the slot is the
+eventual value, `spawn` is start, `join` is await. The slot lives in the caller's frame
+because it must outlive the thread — a generic `Future(T)` struct storing its own slot
+would dangle the moment it moved, which is why std doesn't ship one. It's manual, but
+nothing hides: a fallible task makes the slot an error union, and "many futures at once"
+converges on the worker pool from kata 01.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Blocking, strictly sequential — the two totals never overlap.
+class Demo {
+    public static void main(String[] args) {
+        var total = orderTotal(1) + orderTotal(2); // one after the other
+        System.out.println(total);
+    }
+
+    static int orderTotal(int id) {
+        var user = getUser(id);       // blocks
+        var orders = getOrders(user); // blocks
+        return getTotal(orders);      // blocks
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.concurrent.CompletableFuture;
+
+// CompletableFuture is the future: it starts hot, and then* attaches continuations.
+class Demo {
+    public static void main(String[] args) {
+        var a = orderTotalAsync(1);
+        var b = orderTotalAsync(2);                                // both already running
+        System.out.println(a.thenCombine(b, Integer::sum).join()); // await both
+    }
+
+    // supplyAsync starts the work; thenCompose chains the dependent async steps.
+    static CompletableFuture<Integer> orderTotalAsync(int id) {
+        return CompletableFuture.supplyAsync(() -> getUser(id))
+                .thenCompose(user -> CompletableFuture.supplyAsync(() -> getOrders(user)))
+                .thenApply(Demo::getTotal);
+    }
+
+    // Wrapping a callback API? CompletableFuture is its own promise half:
+    //   var cf = new CompletableFuture<Integer>();
+    //   legacyApi.onDone(cf::complete);
+    //   int value = cf.join();
+}
+```
+
+**🧠 Tradeoff** — `CompletableFuture` is both halves in one class: the future (`join`,
+`allOf`/`anyOf` as `all`/`race`, `orTimeout` for deadlines) and the promise
+(`complete`/`completeExceptionally`) — where JS hides the resolver inside the constructor
+and C# splits `Task` from `TaskCompletionSource`. Like a JS promise it's hot, starting on
+the common pool the moment it exists. Java has no `async`/`await`, so composition stays
+method chaining — `thenApply`/`thenCompose` are the callbacks flattened, not removed.
+Virtual threads (Java 21) undercut the whole style: when blocking parks a cheap virtual
+thread, the naive sequential code above — run on two virtual threads — often reads better
+than the chain. Keep `CompletableFuture` for its combinators, not to avoid blocking.
 
 ## Applications
 

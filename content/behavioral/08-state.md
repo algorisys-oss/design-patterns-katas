@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [behavioral, state-machine, transitions, polymorphism, conditionals]
 related: [strategy, observer, command]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -329,6 +329,323 @@ func (Paused) Pause(p *Player) string { return "already paused" }
 flip `p.state`. Because the states are stateless value types, they cost nothing to allocate. For
 transition-heavy workflows Go code often uses a `map[state]map[event]state` table instead — same
 tradeoff as the Node version.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// A status flag switched on in every method.
+public sealed class Player
+{
+    private string _status = "stopped";
+
+    public string Play()
+    {
+        if (_status == "playing") return "already playing";
+        _status = "playing";
+        return "playing";
+    }
+
+    public string Pause()
+    {
+        if (_status != "playing") return "can't pause";
+        _status = "paused";
+        return "paused";
+    }
+    // add "buffering" → touch every method
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+var player = new Player();
+Console.WriteLine(player.Play());  // playing
+Console.WriteLine(player.Pause()); // paused
+Console.WriteLine(player.Play());  // resumed
+
+public interface IState
+{
+    string Play(Player p);
+    string Pause(Player p);
+}
+
+// The player delegates; states flip p.State to drive transitions.
+public sealed class Player
+{
+    public IState State { get; set; } = new Stopped();
+
+    public string Play() => State.Play(this);
+    public string Pause() => State.Pause(this);
+}
+
+public sealed class Stopped : IState
+{
+    public string Play(Player p) { p.State = new Playing(); return "playing"; }
+    public string Pause(Player p) => "can't pause when stopped";
+}
+
+public sealed class Playing : IState
+{
+    public string Play(Player p) => "already playing";
+    public string Pause(Player p) { p.State = new Paused(); return "paused"; }
+}
+
+public sealed class Paused : IState
+{
+    public string Play(Player p) { p.State = new Playing(); return "resumed"; }
+    public string Pause(Player p) => "already paused";
+}
+```
+
+**🧠 Tradeoff** — The classic form maps cleanly: each `sealed` state class owns its behavior and
+flips `p.State`, so the player has no conditionals at all. The states here are stateless, so
+real code often shares `static readonly` instances instead of `new`-ing one per transition. For
+simple machines, modern C# frequently skips the classes entirely — an enum plus one `switch`
+expression per action reads like the transition table and keeps the whole machine on one screen.
+The class form earns its keep when states carry rich behavior, not just a next-state rule.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// A status flag compared as strings, checked in every method.
+struct Player {
+    status: String,
+}
+
+impl Player {
+    fn play(&mut self) -> &'static str {
+        if self.status == "playing" {
+            return "already playing";
+        }
+        self.status = "playing".to_string();
+        "playing"
+    }
+
+    fn pause(&mut self) -> &'static str {
+        if self.status != "playing" {
+            return "can't pause";
+        }
+        self.status = "paused".to_string();
+        "paused"
+    }
+    // add "buffering" → touch every method, and typos are just data
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// States are an enum; every transition is an exhaustive match.
+#[derive(Clone, Copy)]
+enum State {
+    Stopped,
+    Playing,
+    Paused,
+}
+
+struct Player {
+    state: State,
+}
+
+impl Player {
+    fn new() -> Self {
+        Self { state: State::Stopped }
+    }
+
+    fn play(&mut self) -> &'static str {
+        match self.state {
+            State::Stopped => {
+                self.state = State::Playing;
+                "playing"
+            }
+            State::Paused => {
+                self.state = State::Playing;
+                "resumed"
+            }
+            State::Playing => "already playing",
+        }
+    }
+
+    fn pause(&mut self) -> &'static str {
+        match self.state {
+            State::Playing => {
+                self.state = State::Paused;
+                "paused"
+            }
+            State::Stopped => "can't pause when stopped",
+            State::Paused => "already paused",
+        }
+    }
+}
+
+fn main() {
+    let mut player = Player::new();
+    println!("{}", player.play());  // playing
+    println!("{}", player.pause()); // paused
+    println!("{}", player.play());  // resumed
+}
+```
+
+**🧠 Tradeoff** — The trait-object form (`Box<dyn State>`) exists in Rust, but for a closed set
+of states the enum is the honest form: `Copy`, no allocation, and every `match` is checked for
+exhaustiveness — add `State::Buffering` and the compiler lists every method that must handle it,
+the exact opposite of the scattered-flag failure mode. Variants can carry data
+(`Playing { position: u32 }`) and the `match` arm extracts it. Reach for a trait only when
+downstream crates must add states your enum has never heard of.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// A status flag compared as strings, checked in every method.
+const Player = struct {
+    status: []const u8 = "stopped",
+
+    pub fn play(self: *Player) []const u8 {
+        if (std.mem.eql(u8, self.status, "playing")) return "already playing";
+        self.status = "playing";
+        return "playing";
+    }
+
+    pub fn pause(self: *Player) []const u8 {
+        if (!std.mem.eql(u8, self.status, "playing")) return "can't pause";
+        self.status = "paused";
+        return "paused";
+    }
+    // add "buffering" → touch every method, and typos compile fine
+};
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// States are an enum; every transition is an exhaustive switch.
+const State = enum { stopped, playing, paused };
+
+const Player = struct {
+    state: State = .stopped,
+
+    pub fn play(self: *Player) []const u8 {
+        switch (self.state) {
+            .stopped => {
+                self.state = .playing;
+                return "playing";
+            },
+            .paused => {
+                self.state = .playing;
+                return "resumed";
+            },
+            .playing => return "already playing",
+        }
+    }
+
+    pub fn pause(self: *Player) []const u8 {
+        switch (self.state) {
+            .playing => {
+                self.state = .paused;
+                return "paused";
+            },
+            .stopped => return "can't pause when stopped",
+            .paused => return "already paused",
+        }
+    }
+};
+
+pub fn main() void {
+    var player = Player{};
+    std.debug.print("{s}\n", .{player.play()});  // playing
+    std.debug.print("{s}\n", .{player.pause()}); // paused
+    std.debug.print("{s}\n", .{player.play()});  // resumed
+}
+```
+
+**🧠 Tradeoff** — Same verdict as Rust: for a closed set, `enum` plus exhaustive `switch` *is*
+the pattern in Zig — an unhandled state is a compile error, so adding `.buffering` turns every
+`switch` into a checklist of places to update. When a state needs its own data, upgrade the enum
+to a tagged union (`union(enum)`) and each arm captures the payload. The GoF object-per-state
+form would need the vtable idiom (`*anyopaque` + function pointers); pay that only if states
+must plug in at runtime.
+
+### Java
+
+**❌ Naive**
+
+```java
+// A status flag switched on in every method.
+class Player {
+    private String status = "stopped";
+
+    String play() {
+        if (status.equals("playing")) return "already playing";
+        status = "playing";
+        return "playing";
+    }
+
+    String pause() {
+        if (!status.equals("playing")) return "can't pause";
+        status = "paused";
+        return "paused";
+    }
+    // add "buffering" → touch every method, and typos are just data
+}
+```
+
+**✅ Idiomatic**
+
+```java
+// Each state is an enum constant with its own behavior — a singleton state object.
+enum State {
+    STOPPED {
+        String play(Player p)  { p.state = PLAYING; return "playing"; }
+        String pause(Player p) { return "can't pause when stopped"; }
+    },
+    PLAYING {
+        String play(Player p)  { return "already playing"; }
+        String pause(Player p) { p.state = PAUSED; return "paused"; }
+    },
+    PAUSED {
+        String play(Player p)  { p.state = PLAYING; return "resumed"; }
+        String pause(Player p) { return "already paused"; }
+    };
+
+    abstract String play(Player p);
+    abstract String pause(Player p);
+}
+
+// The player delegates; states flip p.state to drive transitions.
+class Player {
+    State state = State.STOPPED;
+
+    String play()  { return state.play(this); }
+    String pause() { return state.pause(this); }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var player = new Player();
+        System.out.println(player.play());  // playing
+        System.out.println(player.pause()); // paused
+        System.out.println(player.play());  // resumed
+    }
+}
+```
+
+**🧠 Tradeoff** — Enum constants with constant-specific method bodies are Java's quiet superpower
+here (it's Effective Java's own example): each constant is a singleton state object, so you get
+the GoF shape with no class hierarchy and nothing allocated per transition. Add a `BUFFERING`
+constant and the code won't compile until it supplies `play` and `pause` — the scattered-flag
+failure mode turned into a checklist. The limit is that enum constants can't carry per-instance
+data; when a state needs its own fields (a `Playing` with a position), fall back to the classic
+interface-and-classes form, which fits Java exactly as the book wrote it.
 
 ## Applications
 

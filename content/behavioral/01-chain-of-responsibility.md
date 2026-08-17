@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [behavioral, decoupling, handlers, middleware, pipeline]
 related: [command, composite, decorator]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -336,6 +336,258 @@ handler: no interface hierarchy, and the chain composes with a plain loop. For H
 canonical form of this pattern is `func(http.Handler) http.Handler` middleware, wrapped
 outside-in (`logging(auth(handler))`) — same chain, expressed as function composition rather
 than a slice.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// One method with the checks hard-coded and ordered in place.
+Console.WriteLine(Validate(new Field("email", "nope"))); // email must be an email
+
+static string? Validate(Field f)
+{
+    if (f.Value is "") return $"{f.Name} is required";
+    if (!f.Value.Contains('@')) return $"{f.Name} must be an email";
+    if (f.Value.Length > 50) return $"{f.Name} is too long";
+    return null; // valid
+}
+
+public sealed record Field(string Name, string Value);
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Each validator returns an error string (handles, stops the chain) or null (passes along).
+var validate = Chain(Required, IsEmail, MaxLen(50));
+
+Console.WriteLine(validate(new Field("email", "")));                  // email is required
+Console.WriteLine(validate(new Field("email", "nope")));              // email must be an email
+Console.WriteLine(validate(new Field("email", "a@b.co")) ?? "valid"); // valid
+
+static string? Required(Field f) => f.Value is "" ? $"{f.Name} is required" : null;
+static string? IsEmail(Field f) => f.Value.Contains('@') ? null : $"{f.Name} must be an email";
+static Func<Field, string?> MaxLen(int n) =>
+    f => f.Value.Length <= n ? null : $"{f.Name} is too long";
+
+// The chain: run validators in order, stop at the first that returns an error.
+static Func<Field, string?> Chain(params Func<Field, string?>[] validators) =>
+    field => validators
+        .Select(handle => handle(field))
+        .FirstOrDefault(err => err is not null);
+
+public sealed record Field(string Name, string Value);
+```
+
+**🧠 Tradeoff** — a single-method handler contract collapses into `Func<Field, string?>`: the
+delegate *is* the handler interface, so hold off on an `IValidator` until a handler carries
+state or several members (a rate limiter with counters earns the interface and an explicit
+`SetNext`). The lazy `Select`/`FirstOrDefault` pair short-circuits, so later validators never
+run once one handles. And the pattern is already in the platform: ASP.NET Core middleware —
+`app.Use(...)` with its `next` delegate — is this exact chain.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+struct Field { name: String, value: String }
+
+// One function with the checks hard-coded and ordered in place.
+fn validate(f: &Field) -> Option<String> {
+    if f.value.is_empty() {
+        return Some(format!("{} is required", f.name));
+    }
+    if !f.value.contains('@') {
+        return Some(format!("{} must be an email", f.name));
+    }
+    if f.value.len() > 50 {
+        return Some(format!("{} is too long", f.name));
+    }
+    None // valid
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+struct Field { name: String, value: String }
+
+// A validator handles the request by returning Some(error), or passes with None.
+type Validator = Box<dyn Fn(&Field) -> Option<String>>;
+
+// The chain: find_map runs validators in order and stops at the first Some.
+fn chain(validators: Vec<Validator>) -> impl Fn(&Field) -> Option<String> {
+    move |field| validators.iter().find_map(|handle| handle(field))
+}
+
+fn required(f: &Field) -> Option<String> {
+    f.value.is_empty().then(|| format!("{} is required", f.name))
+}
+
+fn is_email(f: &Field) -> Option<String> {
+    (!f.value.contains('@')).then(|| format!("{} must be an email", f.name))
+}
+
+fn max_len(n: usize) -> Validator {
+    Box::new(move |f| (f.value.len() > n).then(|| format!("{} is too long", f.name)))
+}
+
+fn main() {
+    let validators: Vec<Validator> = vec![Box::new(required), Box::new(is_email), max_len(50)];
+    let validate = chain(validators);
+
+    let field = Field { name: "email".into(), value: "".into() };
+    println!("{:?}", validate(&field)); // Some("email is required")
+
+    let field = Field { name: "email".into(), value: "a@b.co".into() };
+    println!("{:?}", validate(&field)); // None — valid
+}
+```
+
+**🧠 Tradeoff** — `find_map` is the chain in one call: walk the list, stop at the first
+`Some`. `Box<dyn Fn>` buys a mixed list — plain `fn`s and state-capturing closures like
+`max_len` side by side — at the price of a heap allocation and dynamic dispatch per handler.
+If the rule set were closed, an enum of rules matched in the loop would drop the boxes; keep
+`dyn` here because a validation chain is exactly the kind of set that must stay open.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const Field = struct { name: []const u8, value: []const u8 };
+
+// One function with the checks hard-coded and ordered in place.
+fn validate(f: Field) ?[]const u8 {
+    if (f.value.len == 0) return "is required";
+    if (std.mem.indexOfScalar(u8, f.value, '@') == null) return "must be an email";
+    if (f.value.len > 50) return "is too long";
+    return null; // valid
+}
+
+pub fn main() void {
+    const f = Field{ .name = "email", .value = "nope" };
+    if (validate(f)) |err| std.debug.print("{s} {s}\n", .{ f.name, err }); // email must be an email
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Field = struct { name: []const u8, value: []const u8 };
+
+// A validator handles the request by returning an error message, or passes with null.
+const Validator = *const fn (Field) ?[]const u8;
+
+// The chain is a slice of function pointers; the first non-null answer stops it.
+fn validate(validators: []const Validator, field: Field) ?[]const u8 {
+    for (validators) |handle| {
+        if (handle(field)) |err| return err;
+    }
+    return null;
+}
+
+fn required(f: Field) ?[]const u8 {
+    return if (f.value.len == 0) "is required" else null;
+}
+
+fn isEmail(f: Field) ?[]const u8 {
+    return if (std.mem.indexOfScalar(u8, f.value, '@') == null) "must be an email" else null;
+}
+
+fn maxLen50(f: Field) ?[]const u8 {
+    return if (f.value.len > 50) "is too long" else null;
+}
+
+pub fn main() void {
+    const chain = [_]Validator{ required, isEmail, maxLen50 };
+
+    const field = Field{ .name = "email", .value = "" };
+    if (validate(&chain, field)) |err| {
+        std.debug.print("{s} {s}\n", .{ field.name, err }); // email is required
+    }
+
+    const ok = Field{ .name = "email", .value = "a@b.co" };
+    if (validate(&chain, ok) == null) std.debug.print("valid\n", .{}); // valid
+}
+```
+
+**🧠 Tradeoff** — a slice of `*const fn` pointers makes the chain plain data, and the
+`?[]const u8` return is the handle-or-pass signal — `if (handle(field)) |err|` reads it in one
+line. The honest limits: Zig has no closures, so `maxLen50` bakes its limit into its name; a
+configurable validator needs the two-field vtable idiom (`*anyopaque` context plus a function
+pointer, the `std.mem.Allocator` shape). The messages also stay static slices — formatting
+"email is required" at runtime would mean threading an allocator through the chain.
+
+### Java
+
+**❌ Naive**
+
+```java
+// One method with the checks hard-coded and ordered in place.
+class FieldValidator {
+    static String validate(String name, String value) {
+        if (value.isEmpty()) return name + " is required";
+        if (!value.contains("@")) return name + " must be an email";
+        if (value.length() > 50) return name + " is too long";
+        return null; // valid — and every new rule reopens this method
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.List;
+import java.util.Optional;
+
+record Field(String name, String value) {}
+
+// A validator handles the request by returning an error, or passes with an empty Optional.
+@FunctionalInterface
+interface Validator {
+    Optional<String> check(Field f);
+}
+
+public class Demo {
+    static Validator required =
+        f -> f.value().isEmpty() ? Optional.of(f.name() + " is required") : Optional.empty();
+    static Validator isEmail =
+        f -> f.value().contains("@") ? Optional.empty() : Optional.of(f.name() + " must be an email");
+
+    static Validator maxLen(int n) {
+        return f -> f.value().length() <= n ? Optional.empty() : Optional.of(f.name() + " is too long");
+    }
+
+    // The chain is a List; the lazy stream stops at the first handler that handles.
+    static Optional<String> validate(List<Validator> chain, Field field) {
+        return chain.stream().flatMap(v -> v.check(field).stream()).findFirst();
+    }
+
+    public static void main(String[] args) {
+        var chain = List.of(required, isEmail, maxLen(50));
+
+        System.out.println(validate(chain, new Field("email", "")));       // Optional[email is required]
+        System.out.println(validate(chain, new Field("email", "nope")));   // Optional[email must be an email]
+        System.out.println(validate(chain, new Field("email", "a@b.co"))); // Optional.empty → valid
+    }
+}
+```
+
+**🧠 Tradeoff** — `Validator` has one method, so it's a functional interface: lambdas are the
+handlers and a `List` is the chain — no abstract `Handler` base, no `setNext` plumbing. The
+stream is lazy, so `findFirst` short-circuits the moment a validator handles. The GoF linked
+form survives in Java as the platform's own chains: servlet filters
+(`doFilter(request, response, chain)` — call `chain.doFilter` to forward, return without it to
+handle) and Spring's `HandlerInterceptor`s are this exact pattern, order and all. Hand-roll the
+list form for your own pipelines; promote a handler to a class implementing `Validator` when it
+carries state, and it drops into the same list.
 
 ## Applications
 

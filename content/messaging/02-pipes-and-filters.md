@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [messaging, integration, pipeline, composition, streaming]
 related: [function-composition, message-channel, producer-consumer]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -247,6 +247,199 @@ concurrently, connected by channels that provide backpressure, and you can fan-o
 workers (the Fan-out/Fan-in pattern). Generics keep it typed. It's genuinely concurrent
 pipes-and-filters in the standard library — the cost is wiring channels and closing them correctly, the
 usual Go bargain of explicitness.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Read all, transform all in memory — stages welded, nothing streams.
+var rows = File.ReadAllLines("events.log")
+    .Select(line => Format(Enrich(Parse(line)))) // parse + enrich + format inline
+    .ToList();
+File.WriteAllLines("out.csv", rows);
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Each filter is a Task reading one channel and writing the next (a pipe).
+using System.Threading.Channels;
+
+static ChannelReader<TOut> Filter<TIn, TOut>(ChannelReader<TIn> input, Func<TIn, TOut> fn)
+{
+    var output = Channel.CreateBounded<TOut>(64); // bounded pipe = backpressure
+    _ = Task.Run(async () =>
+    {
+        await foreach (var item in input.ReadAllAsync())
+            await output.Writer.WriteAsync(fn(item));
+        output.Writer.Complete(); // completion flows down the pipeline
+    });
+    return output.Reader;
+}
+
+// wire the pipeline: source → parse → enrich → format → sink
+var parsed = Filter(source, Parse);
+var enriched = Filter(parsed, Enrich);
+var formatted = Filter(enriched, Format);
+await foreach (var row in formatted.ReadAllAsync()) Write(row);
+```
+
+**🧠 Tradeoff** — `Channel<T>` pipes with a `Task` per filter are the .NET shape of Go's version:
+stages run concurrently, bounded channels throttle a fast source, and `Complete()` is the
+close-the-channel discipline that lets shutdown ripple through. When you don't need concurrency,
+don't pay for it — LINQ over `IEnumerable`/`IAsyncEnumerable` (`lines.Select(Parse).Select(Enrich)`)
+is already lazy pipes-and-filters in-process. TPL Dataflow packages this same idea with batching
+and parallelism knobs when the hand-rolled version grows.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// One loop welds every stage together over a fully collected Vec.
+let mut out = Vec::new();
+for line in lines {
+    out.push(format_row(enrich(parse(line)))); // all in memory, stages inseparable
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::io::{BufRead, BufReader};
+use std::sync::mpsc::{self, Receiver};
+use std::thread;
+
+// Iterator adapters are lazy filters: nothing runs until the sink pulls.
+let file = BufReader::new(File::open("events.log")?);
+let pipeline = file
+    .lines()
+    .map_while(Result::ok)
+    .map(parse)      // each .map is a filter; reorder/insert freely
+    .map(enrich)
+    .map(format_row);
+
+for row in pipeline {
+    write(row); // streams one line at a time, memory-flat
+}
+
+// To give a slow stage its own thread, make the pipe an mpsc channel:
+fn stage<I: Send + 'static, O: Send + 'static>(rx: Receiver<I>, f: fn(I) -> O) -> Receiver<O> {
+    let (tx, out) = mpsc::sync_channel(64); // bounded pipe = backpressure
+    thread::spawn(move || {
+        for x in rx {
+            tx.send(f(x)).unwrap();
+        }
+    });
+    out
+}
+```
+
+**🧠 Tradeoff** — iterator chains are Rust's native sequential pipes-and-filters: lazy, allocation-
+free, and each `.map` monomorphizes down to roughly the hand-written loop, so composition costs
+nothing. Concurrency isn't free the way Go's is — you make the pipe explicit with `mpsc` and a
+thread per stage, and ownership moves each message down the pipe, so stages can't share mutable
+state by accident. The bounded `sync_channel` gives the backpressure; the receiver loop ending when
+the sender drops gives clean shutdown.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// One loop welds every stage together — recomposing means editing this loop.
+while (lines.next()) |line| {
+    const parsed = parse(line);
+    const enriched = enrich(parsed);
+    writeRow(formatRow(enriched)); // parse + enrich + format inseparable
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// No closures in Zig — a filter is a plain function over one message type,
+// and the pipeline is an array of function pointers: stages as data.
+const Filter = *const fn (Event) Event;
+
+// each filter: one transform, no shared state
+fn stamp(e: Event) Event { var out = e; out.ts = now(); return out; }
+fn locate(e: Event) Event { var out = e; out.region = lookup(out.ip); return out; }
+fn redact(e: Event) Event { var out = e; out.ip = ""; return out; }
+
+// reorder, insert, or drop stages here — the filters never change:
+const stages = [_]Filter{ stamp, locate, redact };
+
+var lines = std.mem.tokenizeScalar(u8, log, '\n');
+while (lines.next()) |line| {
+    var event = parse(line);                  // source adapter: bytes → Event
+    for (stages) |filter| event = filter(event); // the pipe: each stage transforms
+    writeRow(event);                          // sink: Event → csv row
+}
+```
+
+**🧠 Tradeoff** — without closures, the honest Zig pipeline fixes one message type and makes each
+filter a `*const fn (Event) Event` in an array: the pipeline is data you can recompose at runtime,
+and type-changing work (parse, format) sits at the edges as source and sink adapters. It streams
+line by line with zero allocation in the loop. The comptime alternative — an inline chain of
+calls — has zero indirection but recomposition means editing code. For concurrent stages, give
+each filter a thread and use the mutex+condvar bounded queue from Message Channel as the pipe:
+Go's shape, hand-assembled.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Read all, transform all in memory — stages welded, nothing streams.
+var out = new ArrayList<String>();
+for (var line : Files.readAllLines(Path.of("events.log"))) {
+    out.add(format(enrich(parse(line)))); // parse + enrich + format inline
+}
+Files.write(Path.of("out.csv"), out);
+```
+
+**✅ Idiomatic**
+
+```java
+// Stream.map chains are lazy filters; the terminal operation pulls one line at a time.
+try (var lines = Files.lines(Path.of("events.log"));
+     var sink = Files.newBufferedWriter(Path.of("out.csv"))) {
+    lines.map(Pipeline::parse)      // each .map is a filter; reorder/insert freely
+         .map(Pipeline::enrich)
+         .map(Pipeline::format)
+         .forEach(row -> write(sink, row)); // streams, memory-flat
+}
+
+// To give a slow stage its own thread, make the pipe a BlockingQueue:
+static <I, O> BlockingQueue<O> stage(BlockingQueue<I> in, Function<I, O> fn) {
+    var out = new ArrayBlockingQueue<O>(64); // bounded pipe = backpressure
+    Thread.startVirtualThread(() -> {
+        try {
+            while (true) out.put(fn.apply(in.take()));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    });
+    return out;
+}
+
+// wire it: source → parse → enrich → format → sink
+// var parsed = stage(source, Pipeline::parse);
+// var enriched = stage(parsed, Pipeline::enrich);
+// var formatted = stage(enriched, Pipeline::format);
+```
+
+**🧠 Tradeoff** — `Stream` is Java's sequential pipes-and-filters: `Files.lines` is lazy, each
+`.map` a filter, and nothing runs until the terminal `forEach` pulls — huge files stream without
+materializing. `.parallel()` is one word but shares the common pool and suits CPU-bound, unordered
+work, not a pipeline with a slow stage. For that you make the pipe explicit — a bounded
+`BlockingQueue` and a virtual thread per filter, Go's shape in `java.util.concurrent` — and
+inherit the manual costs: no closed channel, so end-of-stream is a poison pill or interruption.
+Stay with streams until one stage genuinely needs its own thread.
 
 ## Applications
 

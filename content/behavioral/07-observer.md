@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [behavioral, events, pub-sub, reactive, decoupling, notifications]
 related: [mediator, command, state]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -309,6 +309,275 @@ func (s *Subject) Notify(v int) {
 the lock before calling lets observers subscribe/unsubscribe during a notify without deadlocking.
 Go's more idiomatic broadcast is often *channels* (each observer owns a channel the subject sends
 on), which decouples timing but adds buffering and goroutine-lifecycle decisions.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The store is hard-wired to each consumer.
+public sealed class Store(Header header, Badge badge)
+{
+    public void SetTotal(int total)
+    {
+        header.Render(total); // coupled — adding a consumer edits this
+        badge.Render(total);
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// C# events ARE the Observer pattern, built into the language.
+var store = new Store();
+
+store.TotalChanged += v => Console.WriteLine($"header {v}");
+void Badge(int v) => Console.WriteLine($"badge {v}");
+store.TotalChanged += Badge;
+
+store.SetTotal(42);          // both fire
+
+store.TotalChanged -= Badge; // badge unsubscribes — no leak
+store.SetTotal(43);          // only the header fires
+
+public sealed class Store
+{
+    private int _total;
+
+    public event Action<int>? TotalChanged;
+
+    public void SetTotal(int total)
+    {
+        _total = total;
+        TotalChanged?.Invoke(total); // broadcast; the store doesn't know who listens
+    }
+}
+```
+
+**🧠 Tradeoff** — You don't build the subject in C#: `event` is the language-native observer.
+`TotalChanged` is a multicast delegate list — `+=` subscribes, `-=` unsubscribes, and the
+`event` keyword means only `Store` can raise or clear it; outsiders can't `Invoke` your event.
+The lapsed-listener leak survives, though: a subscriber that never `-=`s is kept alive by the
+delegate's reference to it. For push streams that need completion and errors,
+`IObservable<T>`/`IObserver<T>` (and Rx on top) formalize the same idea.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// The store is hard-wired to each consumer.
+struct Store {
+    header: Header,
+    badge: Badge,
+}
+
+impl Store {
+    fn set_total(&mut self, total: i32) {
+        self.header.render(total); // coupled — adding a consumer edits this
+        self.badge.render(total);
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// Observers are boxed closures; unsubscribe is by id.
+struct Subject {
+    subs: Vec<(usize, Box<dyn Fn(i32)>)>,
+    next_id: usize,
+}
+
+impl Subject {
+    fn new() -> Self {
+        Self { subs: Vec::new(), next_id: 0 }
+    }
+
+    fn subscribe(&mut self, f: impl Fn(i32) + 'static) -> usize {
+        let id = self.next_id;
+        self.next_id += 1;
+        self.subs.push((id, Box::new(f)));
+        id
+    }
+
+    fn unsubscribe(&mut self, id: usize) {
+        self.subs.retain(|(sub_id, _)| *sub_id != id);
+    }
+
+    fn notify(&self, value: i32) {
+        for (_, f) in &self.subs {
+            f(value);
+        }
+    }
+}
+
+fn main() {
+    let mut total = Subject::new();
+    let header = total.subscribe(|v| println!("header {v}"));
+    total.subscribe(|v| println!("badge {v}"));
+
+    total.notify(42); // both fire
+    total.unsubscribe(header);
+    total.notify(43); // only the badge fires
+}
+```
+
+**🧠 Tradeoff** — The `+ 'static` bound is the honest part: a stored closure can't borrow local
+variables by reference, so observers must own their state (`move`) or share it through
+`Rc<RefCell<...>>` / `Arc<Mutex<...>>`. The borrow checker also forbids what other languages
+guard against at runtime: `subscribe` needs `&mut self` while `notify` holds `&self`, so an
+observer can't mutate the subscriber list mid-notification — that bug is unrepresentable, but so
+is a legitimate self-unsubscribing observer, which then needs a queued or channel-based design.
+Across threads, the more Rusty broadcast is a channel per observer, same as Go's.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// The store calls each consumer directly.
+const Store = struct {
+    total: i32 = 0,
+
+    pub fn setTotal(self: *Store, total: i32) void {
+        self.total = total;
+        renderHeader(total); // coupled — adding a consumer edits this
+        renderBadge(total);
+    }
+};
+
+fn renderHeader(v: i32) void {
+    std.debug.print("header {d}\n", .{v});
+}
+fn renderBadge(v: i32) void {
+    std.debug.print("badge {d}\n", .{v});
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Observers are function pointers; the subject keeps a fixed table of slots.
+const Callback = *const fn (value: i32) void;
+
+const Subject = struct {
+    subs: [8]?Callback = @splat(null),
+
+    pub fn subscribe(self: *Subject, cb: Callback) usize {
+        for (&self.subs, 0..) |*slot, i| {
+            if (slot.* == null) {
+                slot.* = cb;
+                return i;
+            }
+        }
+        unreachable; // demo: table full
+    }
+
+    pub fn unsubscribe(self: *Subject, id: usize) void {
+        self.subs[id] = null;
+    }
+
+    pub fn notify(self: *const Subject, value: i32) void {
+        for (self.subs) |slot| {
+            if (slot) |cb| cb(value);
+        }
+    }
+};
+
+fn header(v: i32) void {
+    std.debug.print("header {d}\n", .{v});
+}
+
+fn badge(v: i32) void {
+    std.debug.print("badge {d}\n", .{v});
+}
+
+pub fn main() void {
+    var total = Subject{};
+    const header_id = total.subscribe(header);
+    _ = total.subscribe(badge);
+
+    total.notify(42); // both fire
+    total.unsubscribe(header_id);
+    total.notify(43); // only the badge fires
+}
+```
+
+**🧠 Tradeoff** — Bare function pointers carry no state: Zig has no closures, so an observer
+that needs context must use the two-field vtable idiom (`*anyopaque` context + function
+pointer) that `std.mem.Allocator` uses. The fixed table of optional slots costs zero allocation
+and gives O(1) unsubscribe by id — a subject you could ship on an embedded target. Swap it for
+a growable list and you take on an explicit allocator, plus the question of who frees the
+subscriptions.
+
+### Java
+
+**❌ Naive**
+
+```java
+// The store is hard-wired to each consumer.
+class Store {
+    private final Header header;
+    private final Badge badge;
+
+    Store(Header header, Badge badge) { this.header = header; this.badge = badge; }
+
+    void setTotal(int total) {
+        header.render(total); // coupled — adding a consumer edits this
+        badge.render(total);
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
+
+// Observers are plain Consumers; subscribe returns a Runnable that unsubscribes.
+class Subject {
+    private final List<Consumer<Integer>> subscribers = new CopyOnWriteArrayList<>();
+
+    Runnable subscribe(Consumer<Integer> fn) {
+        subscribers.add(fn);
+        return () -> subscribers.remove(fn); // unsubscribe
+    }
+
+    void publish(int value) {
+        for (var fn : subscribers) fn.accept(value);
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var total = new Subject();
+
+        var offHeader = total.subscribe(v -> System.out.println("header " + v));
+        total.subscribe(v -> System.out.println("badge " + v));
+
+        total.publish(42);  // both fire
+        offHeader.run();    // header unsubscribes — no leak
+        total.publish(43);  // only the badge fires
+    }
+}
+```
+
+**🧠 Tradeoff** — Java has shipped three generations of this pattern: `java.util.Observer`
+(JDK 1.0, deprecated in Java 9), `java.beans.PropertyChangeListener` with
+`PropertyChangeSupport` (still the Swing and JavaBeans standard), and today's form above —
+a lambda *is* the observer, so you never write an interface of your own.
+`CopyOnWriteArrayList` exists precisely for observer lists: iteration walks a stable snapshot,
+so a subscriber can unsubscribe mid-`publish` without a `ConcurrentModificationException`, at
+the cost of copying the array on every subscribe. For push streams that need completion and
+errors, `java.util.concurrent.Flow` is the JDK's Reactive Streams contract.
 
 ## Applications
 

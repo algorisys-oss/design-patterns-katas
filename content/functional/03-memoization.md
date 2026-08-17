@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [functional, caching, performance, purity, tradeoff]
 related: [currying, cache-aside, flyweight]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -263,6 +263,190 @@ safe under concurrency. For the case where many goroutines miss the same key at 
 `golang.org/x/sync/singleflight` ensures the work runs once (the same tool as cache-aside). Go has no
 decorator sugar, so you wrap explicitly, and you own bounding — a plain map/`sync.Map` grows
 unbounded, so add an LRU (e.g. `hashicorp/golang-lru`) for open-ended inputs.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Exponential recomputation — Fib(40) makes over a billion recursive calls.
+Console.WriteLine(Fib(40));
+
+static long Fib(long n) => n < 2 ? n : Fib(n - 1) + Fib(n - 2);
+```
+
+**✅ Idiomatic**
+
+```csharp
+using System.Collections.Concurrent;
+
+// A generic memoizer over ConcurrentDictionary — thread-safe, transparent to callers.
+Func<long, long> fib = null!;
+fib = Memoize<long, long>(n => n < 2 ? n : fib(n - 1) + fib(n - 2));
+
+Console.WriteLine(fib(80)); // 23416728348467685 — subproblems cached once, linear
+
+static Func<TIn, TOut> Memoize<TIn, TOut>(Func<TIn, TOut> fn) where TIn : notnull
+{
+    var cache = new ConcurrentDictionary<TIn, TOut>();
+    return x => cache.GetOrAdd(x, fn); // hit → stored value; miss → compute, store
+}
+```
+
+**🧠 Tradeoff** — `ConcurrentDictionary.GetOrAdd` gives a thread-safe map-backed memoizer in one
+line, and generics keep it typed. C# has no decorator sugar, so you wrap delegates explicitly —
+the `null!`-then-assign dance exists so the recursive call goes through the *memoized* `fib`,
+not the raw lambda. Two cautions: `GetOrAdd` may run the factory more than once when threads
+miss the same key together (wrap values in `Lazy<T>` when compute-once matters), and the cache
+is unbounded — reach for `MemoryCache` when inputs are open-ended.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Recomputes overlapping subproblems — exponential.
+fn fib(n: u64) -> u64 {
+    if n < 2 { n } else { fib(n - 1) + fib(n - 2) }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+
+// Thread the cache explicitly — ownership makes the memo state visible in the signature.
+fn fib(n: u64, memo: &mut HashMap<u64, u64>) -> u64 {
+    if n < 2 {
+        return n;
+    }
+    if let Some(&v) = memo.get(&n) {
+        return v; // hit
+    }
+    let v = fib(n - 1, memo) + fib(n - 2, memo);
+    memo.insert(n, v); // store
+    v
+}
+
+fn main() {
+    let mut memo = HashMap::new();
+    println!("{}", fib(80, &mut memo)); // 23416728348467685 — instant
+}
+```
+
+**🧠 Tradeoff** — Rust won't let a plain closure quietly mutate a captured cache the way JS
+does; a transparent wrapper needs interior mutability (`RefCell`, or `Mutex` across threads).
+So idiomatic Rust usually threads `&mut HashMap` through the recursion — more explicit, and the
+signature now admits the function carries state, which is honest. The `cached` crate restores
+the decorator feel (`#[cached]`) when you want it; for sharing across threads, wrap the map in
+`Arc<Mutex<...>>` and you've made the hidden global every other language gave you implicitly.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// Recomputes the same subproblems — exponential.
+fn fib(n: u64) u64 {
+    if (n < 2) return n;
+    return fib(n - 1) + fib(n - 2);
+}
+
+pub fn main() void {
+    std.debug.print("{d}\n", .{fib(40)});
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// The cache is a HashMap you allocate — and inserting can fail, so fib returns !u64.
+fn fib(memo: *std.AutoHashMap(u64, u64), n: u64) !u64 {
+    if (n < 2) return n;
+    if (memo.get(n)) |v| return v; // hit
+    const a = try fib(memo, n - 1);
+    const b = try fib(memo, n - 2);
+    try memo.put(n, a + b); // store — may allocate, hence `try`
+    return a + b;
+}
+
+pub fn main() !void {
+    var memo = std.AutoHashMap(u64, u64).init(std.heap.page_allocator);
+    defer memo.deinit(); // the cache's memory is yours to free
+
+    std.debug.print("{d}\n", .{try fib(&memo, 80)}); // 23416728348467685
+}
+```
+
+**🧠 Tradeoff** — nothing is hidden: the cache takes an explicit allocator, `put` can fail so
+the memoized `fib` returns `!u64` even though the arithmetic can't, and `defer memo.deinit()`
+is you paying the memory back. That's the pattern's fine print made visible — memoization always
+costs memory somewhere; Zig makes you sign for it. No decorator form exists, and bounding is
+also yours. For a small closed domain like this one, plain Zig often skips the map entirely and
+fills a fixed `[81]u64` table — cheaper than hashing and impossible to leak.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Exponential recomputation — fib(40) makes over a billion recursive calls.
+public class Demo {
+    static long fib(long n) { return n < 2 ? n : fib(n - 1) + fib(n - 2); }
+
+    public static void main(String[] args) {
+        System.out.println(fib(40));
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
+public class Demo {
+    // The general memoizer: computeIfAbsent is check, compute, and store in one call.
+    static <K, V> Function<K, V> memoize(Function<K, V> fn) {
+        Map<K, V> cache = new HashMap<>();
+        return k -> cache.computeIfAbsent(k, fn); // for non-recursive functions
+    }
+
+    // Recursion can't go through computeIfAbsent — the mapping function would re-enter
+    // the map mid-update (ConcurrentModificationException). Use the two-step form:
+    static final Map<Long, Long> memo = new HashMap<>();
+
+    static long fib(long n) {
+        if (n < 2) return n;
+        var hit = memo.get(n);
+        if (hit != null) return hit;      // hit
+        var v = fib(n - 1) + fib(n - 2);  // compute — the recursion finishes before...
+        memo.put(n, v);                   // ...the store touches the map
+        return v;
+    }
+
+    public static void main(String[] args) {
+        Function<String, String> slug = memoize(s -> s.toLowerCase().replace(' ', '-'));
+        System.out.println(slug.apply("Design Patterns")); // computed once, cached after
+        System.out.println(fib(80)); // 23416728348467685 — subproblems cached once, linear
+    }
+}
+```
+
+**🧠 Tradeoff** — `computeIfAbsent` is the built-in memoizer, and on a `ConcurrentHashMap` it's
+thread-safe *and* runs the factory at most once per key — the compute-once guarantee C#'s
+`GetOrAdd` only gets with `Lazy<T>`. The catch is recursion: the mapping function must not touch
+the map, so a recursive `fib` inside `computeIfAbsent` throws (`ConcurrentModificationException`
+on `HashMap`, "Recursive update" on `ConcurrentHashMap`) — hence the two-step get/put form above.
+Both caches are unbounded; `LinkedHashMap` with `removeEldestEntry` is the standard library's
+pocket LRU, and Caffeine is the production answer with size and TTL bounds.
 
 ## Applications
 

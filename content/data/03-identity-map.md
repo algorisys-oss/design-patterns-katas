@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [data, persistence, caching, consistency, identity]
 related: [data-mapper, unit-of-work, cache-aside]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -272,6 +272,254 @@ through any reference are consistent and repeated loads hit the DB once. Go has 
 by default (GORM has limited support), so it's an explicit, hand-rolled boundary — which fits Go's taste
 for visible lifecycles. The rule is the same everywhere: one `Session` per request, never shared across
 goroutines/requests.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Every call builds a fresh copy — repeated loads, duplicate objects, divergent edits.
+var a = LoadUser(42);
+var b = LoadUser(42);
+Console.WriteLine(ReferenceEquals(a, b)); // False — which copy is the truth?
+
+static User LoadUser(int id) => new(id, table[id]); // user 42 here != user 42 elsewhere
+```
+
+**✅ Idiomatic**
+
+```csharp
+// One Session per request; a fresh identity map each time.
+var session = new Session();
+var a = session.GetUser(42);
+var b = session.GetUser(42);              // no second load
+Console.WriteLine(ReferenceEquals(a, b)); // True — one object per identity
+
+a.Name = "Grace";
+Console.WriteLine(b.Name);                // Grace — the edit is visible through b too
+
+public sealed class User(int id, string name)
+{
+    public int Id { get; } = id;
+    public string Name { get; set; } = name;
+}
+
+public sealed class Session
+{
+    private static readonly Dictionary<int, string> Table = new() { [42] = "Ada" }; // the "database"
+    private readonly Dictionary<int, User> _identity = new(); // scoped to this session
+
+    public User GetUser(int id)
+    {
+        if (_identity.TryGetValue(id, out var cached)) return cached; // hit → same object
+        var user = new User(id, Table[id]);                           // load once
+        _identity[id] = user;                                         // register
+        return user;
+    }
+}
+```
+
+**🧠 Tradeoff** — EF Core ships this inside `DbContext`: `Find` checks the change tracker before the
+database, so the same key returns the *same* instance for the context's lifetime — and ASP.NET's
+scoped DI (one context per request) is the lifecycle discipline turned into framework policy. The
+hand-rolled `Session` shows the mechanism, and `ReferenceEquals` is the proof the pattern promises:
+edits through `a` are visible through `b` because there is only one object.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Every call builds a fresh value — two loads, two copies, divergent edits.
+fn load_user(table: &HashMap<u32, String>, id: u32) -> User {
+    User { id, name: table[&id].clone() } // user 42 here is a new copy every time
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
+struct User { id: u32, name: String }
+
+// Many handles, one object — this is what "same object" costs in Rust.
+type Shared = Rc<RefCell<User>>;
+
+struct Session {
+    table: HashMap<u32, String>,    // stands in for the database
+    identity: HashMap<u32, Shared>, // scoped to this session
+}
+
+impl Session {
+    fn user(&mut self, id: u32) -> Shared {
+        if let Some(existing) = self.identity.get(&id) {
+            return Rc::clone(existing);             // hit → same object
+        }
+        let name = self.table[&id].clone();         // load once
+        let user = Rc::new(RefCell::new(User { id, name }));
+        self.identity.insert(id, Rc::clone(&user)); // register
+        user
+    }
+}
+
+fn main() {
+    let mut session = Session {
+        table: HashMap::from([(42, "Ada".to_string())]),
+        identity: HashMap::new(),
+    };
+
+    let a = session.user(42);
+    let b = session.user(42);           // no second load
+    println!("{}", Rc::ptr_eq(&a, &b)); // true — one object per identity
+
+    a.borrow_mut().name = "Grace".to_string();
+    println!("{} → {}", b.borrow().id, b.borrow().name); // 42 → Grace, seen through b
+}
+```
+
+**🧠 Tradeoff** — "one shared mutable object per id" is precisely the aliasing Rust's ownership rules
+exist to police, so the pattern can't hide: it must be declared in the types as `Rc<RefCell<User>>`
+(`Arc<Mutex<_>>` across threads). That's not a fight, it's a price tag — the sharing is visible and
+borrow-checked, and when the `Session` drops, its `Rc`s drop and the objects free, which is the scope
+rule enforced by lifetime instead of discipline. Note that Diesel takes the Ecto stance: return owned
+values, skip the identity map — values instead of objects sidesteps the consistency half entirely.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Every call allocates a fresh copy — duplicate objects, divergent edits.
+fn loadUser(allocator: std.mem.Allocator, id: u32) !*User {
+    const user = try allocator.create(User); // user 42 here != user 42 elsewhere
+    user.* = .{ .id = id, .name = loadRow(id) };
+    return user;
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const User = struct { id: u32, name: []const u8 };
+
+// Stands in for the users table.
+fn loadRow(id: u32) []const u8 {
+    return switch (id) {
+        42 => "Ada",
+        else => "unknown",
+    };
+}
+
+// One Session per request — init at the start, deinit at the end.
+const Session = struct {
+    allocator: std.mem.Allocator,
+    identity: std.AutoHashMap(u32, *User), // scoped to this session
+
+    fn init(allocator: std.mem.Allocator) Session {
+        return .{
+            .allocator = allocator,
+            .identity = std.AutoHashMap(u32, *User).init(allocator),
+        };
+    }
+    fn deinit(self: *Session) void {
+        var it = self.identity.valueIterator();
+        while (it.next()) |loaded| self.allocator.destroy(loaded.*);
+        self.identity.deinit(); // session over → objects and map released together
+    }
+
+    fn user(self: *Session, id: u32) !*User {
+        if (self.identity.get(id)) |existing| return existing; // hit → same pointer
+        const loaded = try self.allocator.create(User);        // load once
+        loaded.* = .{ .id = id, .name = loadRow(id) };
+        try self.identity.put(id, loaded);                     // register
+        return loaded;
+    }
+};
+
+pub fn main() !void {
+    var session = Session.init(std.heap.page_allocator);
+    defer session.deinit();
+
+    const a = try session.user(42);
+    const b = try session.user(42);      // no second load
+    std.debug.print("{}\n", .{a == b});  // true — one pointer per identity
+
+    a.name = "Grace";
+    std.debug.print("{s}\n", .{b.name}); // Grace — the edit is visible through b too
+}
+```
+
+**🧠 Tradeoff** — pointer equality is the literal Zig reading of "one object per identity": `a == b`
+because both are the same `*User`. Zig then makes the lifecycle rule physical — the session owns the
+allocations, so `deinit` at the request boundary frees the map and every loaded object together, and
+a map that outlives its session isn't just stale, it's a leak the allocator will report. What
+garbage-collected languages get implicitly (drop the session, objects collected), Zig writes out by
+hand — and that explicitness *is* the discipline this pattern's mistakes list keeps warning about.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Every call builds a fresh copy — repeated loads, duplicate objects, divergent edits.
+User loadUser(int id) {
+    return new User(id, table.get(id)); // user 42 here != user 42 elsewhere
+}
+
+var a = loadUser(42);
+var b = loadUser(42);
+System.out.println(a == b); // false — which copy is the truth?
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+class User {
+    final int id;
+    String name;
+    User(int id, String name) { this.id = id; this.name = name; }
+}
+
+// One Session per request; a fresh identity map each time.
+class Session {
+    private static final Map<Integer, String> TABLE = Map.of(42, "Ada"); // the "database"
+    private final Map<Integer, User> identity = new HashMap<>();         // scoped to this session
+
+    User user(int id) {
+        // computeIfAbsent IS the pattern: check the map, load once on a miss, register.
+        return identity.computeIfAbsent(id, key -> new User(key, TABLE.get(key)));
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var session = new Session();
+
+        var a = session.user(42);
+        var b = session.user(42);   // no second load
+        System.out.println(a == b); // true — one object per identity
+
+        a.name = "Grace";
+        System.out.println(b.name); // Grace — the edit is visible through b too
+    }
+}
+```
+
+**🧠 Tradeoff** — Hibernate calls this the first-level cache, and it isn't optional: every persistence
+context has one, so `em.find(User.class, 42)` twice returns the *same* instance, and `==` on entities
+works within a session for exactly this reason. Container-managed persistence contexts (one per
+transaction) are the lifecycle discipline turned into framework policy — the classic Hibernate bug of
+a session held open too long is precisely the stale, leaking map this pattern's mistakes list warns
+about. In the hand-rolled version, `computeIfAbsent` collapses check-load-register into one line;
+the pattern is really just that line plus a scope rule.
 
 ## Applications
 

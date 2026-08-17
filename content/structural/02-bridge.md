@@ -10,7 +10,7 @@ frequency: low
 difficulty: advanced
 tags: [structural, decoupling, composition, two-dimensions, abstraction]
 related: [abstract-factory, adapter, strategy]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -295,6 +295,251 @@ func (s Square) Draw() string { return s.R.Square() }
 **🧠 Tradeoff** — A shape struct holds a `Renderer` interface value and delegates; the two axes
 compose without inheritance (Go has none anyway). Because interfaces are implicit, adding a
 renderer or a shape is fully independent — the canonical "composition over a subclass matrix."
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// A class per (shape × backend) — the grid grows with every addition.
+public sealed class SvgCircle { public string Draw() => "<circle/>"; }
+public sealed class CanvasCircle { public string Draw() => "canvas.arc()"; }
+public sealed class SvgSquare { public string Draw() => "<rect/>"; }
+public sealed class CanvasSquare { public string Draw() => "canvas.rect()"; }
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Compose the two axes freely:
+Console.WriteLine(new Circle(new SvgRenderer()).Draw());    // <circle/>
+Console.WriteLine(new Square(new CanvasRenderer()).Draw()); // canvas.rect()
+
+// Implementor axis: renderers.
+public interface IRenderer
+{
+    string Circle();
+    string Square();
+}
+
+public sealed class SvgRenderer : IRenderer
+{
+    public string Circle() => "<circle/>";
+    public string Square() => "<rect/>";
+}
+
+public sealed class CanvasRenderer : IRenderer
+{
+    public string Circle() => "canvas.arc()";
+    public string Square() => "canvas.rect()";
+}
+
+// Abstraction axis — each shape holds a renderer and delegates the "how".
+public sealed class Circle(IRenderer renderer)
+{
+    public string Draw() => renderer.Circle();
+}
+
+public sealed class Square(IRenderer renderer)
+{
+    public string Draw() => renderer.Square();
+}
+```
+
+**🧠 Tradeoff** — same split as the JS version, but `IRenderer` is compile-time checked and
+primary constructors make each shape a three-line class. The warning carries over unchanged:
+the bridge pays only when both axes really grow. With a single renderer, `Circle(IRenderer)`
+is indirection with nothing to show for it.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// A struct per (shape × backend) — multiplies with every new option.
+struct SvgCircle;
+impl SvgCircle {
+    fn draw(&self) -> String { "<circle/>".into() }
+}
+struct CanvasCircle;
+impl CanvasCircle {
+    fn draw(&self) -> String { "canvas.arc()".into() }
+}
+// ...and the same again for every square
+```
+
+**✅ Idiomatic**
+
+```rust
+// Implementor axis: the renderer trait.
+trait Renderer {
+    fn circle(&self) -> String;
+    fn square(&self) -> String;
+}
+
+struct SvgRenderer;
+impl Renderer for SvgRenderer {
+    fn circle(&self) -> String { "<circle/>".into() }
+    fn square(&self) -> String { "<rect/>".into() }
+}
+
+struct CanvasRenderer;
+impl Renderer for CanvasRenderer {
+    fn circle(&self) -> String { "canvas.arc()".into() }
+    fn square(&self) -> String { "canvas.rect()".into() }
+}
+
+// Abstraction axis — each shape owns its renderer.
+struct Circle<R: Renderer> {
+    renderer: R,
+}
+impl<R: Renderer> Circle<R> {
+    fn draw(&self) -> String { self.renderer.circle() }
+}
+
+struct Square<R: Renderer> {
+    renderer: R,
+}
+impl<R: Renderer> Square<R> {
+    fn draw(&self) -> String { self.renderer.square() }
+}
+
+fn main() {
+    println!("{}", Circle { renderer: SvgRenderer }.draw());    // <circle/>
+    println!("{}", Square { renderer: CanvasRenderer }.draw()); // canvas.rect()
+}
+```
+
+**🧠 Tradeoff** — `Circle<R: Renderer>` monomorphizes the bridge: `Circle<SvgRenderer>` and
+`Circle<CanvasRenderer>` are distinct, fully inlined types. That's free at runtime but binds
+the backend at compile time — a scene mixing backends in one `Vec` needs `Box<dyn Renderer>`
+fields instead, paying dynamic dispatch for the flexibility. Rust makes you name when the
+axis binds; Go and JS decide it for you.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// A struct per (shape × backend) — the grid grows with every addition.
+const SvgCircle = struct {
+    fn draw(_: SvgCircle) []const u8 { return "<circle/>"; }
+};
+const CanvasCircle = struct {
+    fn draw(_: CanvasCircle) []const u8 { return "canvas.arc()"; }
+};
+// ...and the same again for every square
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Implementor axis: each renderer is a plain struct with the same method names.
+const SvgRenderer = struct {
+    fn circle(_: SvgRenderer) []const u8 { return "<circle/>"; }
+    fn square(_: SvgRenderer) []const u8 { return "<rect/>"; }
+};
+
+const CanvasRenderer = struct {
+    fn circle(_: CanvasRenderer) []const u8 { return "canvas.arc()"; }
+    fn square(_: CanvasRenderer) []const u8 { return "canvas.rect()"; }
+};
+
+// Abstraction axis — a shape is generic over its renderer (comptime bridge).
+fn Circle(comptime R: type) type {
+    return struct {
+        renderer: R,
+        fn draw(self: @This()) []const u8 { return self.renderer.circle(); }
+    };
+}
+
+fn Square(comptime R: type) type {
+    return struct {
+        renderer: R,
+        fn draw(self: @This()) []const u8 { return self.renderer.square(); }
+    };
+}
+
+pub fn main() void {
+    const c = Circle(SvgRenderer){ .renderer = .{} };
+    const s = Square(CanvasRenderer){ .renderer = .{} };
+    std.debug.print("{s}\n{s}\n", .{ c.draw(), s.draw() }); // <circle/>  canvas.rect()
+}
+```
+
+**🧠 Tradeoff** — the comptime-generic shape is a static bridge: the compiler checks each
+renderer has `circle`/`square` at instantiation and inlines every call. Choosing a backend at
+runtime needs the vtable idiom (`*anyopaque` context + function pointers) instead. And when
+the renderer set is closed and small, a tagged union plus `switch` inside each shape is
+plainer Zig — take the bridge only when the backend axis genuinely keeps growing.
+
+### Java
+
+**❌ Naive**
+
+```java
+// A class per (shape × backend) — the grid grows with every addition.
+class SvgCircle { String draw() { return "<circle/>"; } }
+class CanvasCircle { String draw() { return "canvas.arc()"; } }
+class SvgSquare { String draw() { return "<rect/>"; } }
+class CanvasSquare { String draw() { return "canvas.rect()"; } }
+```
+
+**✅ Idiomatic**
+
+```java
+// Implementor axis: renderers.
+interface Renderer {
+    String circle();
+    String square();
+}
+
+class SvgRenderer implements Renderer {
+    public String circle() { return "<circle/>"; }
+    public String square() { return "<rect/>"; }
+}
+
+class CanvasRenderer implements Renderer {
+    public String circle() { return "canvas.arc()"; }
+    public String square() { return "canvas.rect()"; }
+}
+
+// Abstraction axis — each shape holds a renderer and delegates the "how".
+abstract class Shape {
+    protected final Renderer renderer;
+
+    Shape(Renderer renderer) { this.renderer = renderer; }
+
+    abstract String draw();
+}
+
+class Circle extends Shape {
+    Circle(Renderer renderer) { super(renderer); }
+    String draw() { return renderer.circle(); }
+}
+
+class Square extends Shape {
+    Square(Renderer renderer) { super(renderer); }
+    String draw() { return renderer.square(); }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        // Compose the two axes freely:
+        System.out.println(new Circle(new SvgRenderer()).draw());    // <circle/>
+        System.out.println(new Square(new CanvasRenderer()).draw()); // canvas.rect()
+    }
+}
+```
+
+**🧠 Tradeoff** — this is the GoF diagram verbatim, and Java holds it comfortably: an abstract
+`Shape` owns a `Renderer` and the two hierarchies grow apart. AWT's peer classes were exactly
+this bridge — one widget API over per-platform implementors. Modern Java can trim the ceremony
+(a `record Circle(Renderer r)` per shape drops the abstract base), but the shape of the pattern
+doesn't change. The real caution is older than the syntax: with one renderer, the split is
+indirection with nothing to show for it.
 
 ## Applications
 

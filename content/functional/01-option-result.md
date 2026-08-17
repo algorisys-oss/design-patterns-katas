@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [functional, error-handling, null-safety, values, composition]
 related: [function-composition, immutability, retry]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -310,6 +310,232 @@ if err != nil {
 values you can wrap (`%w`) and inspect (`errors.Is/As`), giving the composability without a monad.
 The trade is the famous `if err != nil` verbosity — explicit at every step rather than chained — but
 the failure case is impossible to overlook.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// null-or-throw: the signature hides both possibilities.
+User? FindUser(string id)
+{
+    var u = Db.Get(id);
+    if (u is null) return null;                  // absence as null
+    if (u.Banned) throw new Exception("banned"); // failure as exception
+    return u;
+}
+// caller: forgets the null check → NullReferenceException far from the cause
+```
+
+**✅ Idiomatic**
+
+```csharp
+// A small Result: two sealed records under an abstract base; `switch` handles both cases.
+var db = new Dictionary<string, User> { ["42"] = new("Ada", Banned: false) };
+
+Result<User, string> FindUser(string id) =>
+    db.GetValueOrDefault(id) switch
+    {
+        null => new Err<User, string>("not_found"),
+        { Banned: true } => new Err<User, string>("banned"),
+        var u => new Ok<User, string>(u),
+    };
+
+var message = FindUser("42") switch
+{
+    Ok<User, string>(var u) => $"Hello, {u.Name}.",
+    Err<User, string>(var e) => $"Error: {e}",
+    _ => throw new InvalidOperationException(), // compiler can't see the hierarchy is closed
+};
+Console.WriteLine(message); // Hello, Ada.
+
+public abstract record Result<T, E>;
+public sealed record Ok<T, E>(T Value) : Result<T, E>;
+public sealed record Err<T, E>(E Error) : Result<T, E>;
+public sealed record User(string Name, bool Banned);
+```
+
+**🧠 Tradeoff** — C# gives you the Option half for free: with nullable reference types on,
+`User?` is a compiler-checked "might be absent," and the warnings on unchecked derefs are the
+`match` you can't skip. Failure-with-a-reason takes the small record hierarchy above, and pattern
+matching makes consuming it pleasant — but unlike Rust, the compiler can't prove the hierarchy is
+closed, so exhaustiveness needs a discard arm. The generic ceremony is real; many teams write a
+domain-specific result (or use `OneOf`/`LanguageExt`) and keep exceptions for genuine bugs.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Panicking for expected failures — the caller can't react; the process just dies.
+fn find_user(id: &str) -> User {
+    let u = db_get(id).expect("not found"); // absence → panic
+    if u.banned {
+        panic!("banned"); // failure → panic
+    }
+    u
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// Option and Result are built in — this pattern IS Rust's error model.
+#[derive(Debug)]
+enum LookupError {
+    NotFound,
+    Banned,
+}
+
+fn find_user(id: &str) -> Result<User, LookupError> {
+    match db_get(id) {                       // db_get returns Option<User>
+        None => Err(LookupError::NotFound),
+        Some(u) if u.banned => Err(LookupError::Banned),
+        Some(u) => Ok(u),
+    }
+}
+
+// `?` propagates the Err so a chain of fallible steps reads linearly:
+fn welcome(id: &str) -> Result<String, LookupError> {
+    let user = find_user(id)?;               // first Err short-circuits here
+    Ok(format!("Hello, {}!", user.name))
+}
+
+fn main() {
+    match welcome("42") {
+        Ok(msg) => println!("{msg}"),
+        Err(e) => println!("error: {e:?}"),
+    }
+}
+```
+
+**🧠 Tradeoff** — Rust doesn't implement this pattern; it ships it. There is no null: every
+absence is `Option`, every expected failure is `Result`, `?` is the chaining operator, and `match`
+is exhaustive — add a `LookupError` variant and every caller that doesn't handle it stops
+compiling. The costs are conversion between error types as calls cross layers (`From` impls, or
+`thiserror`/`anyhow` in real projects) and the temptation of `.unwrap()`, which quietly
+reintroduces the panic you were avoiding — reserve it for cases you can prove impossible.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// A value-plus-flag struct: the caller can read .user without checking .ok — C's zero-value bug.
+const Lookup = struct { user: User, ok: bool };
+
+fn findUser(id: []const u8) Lookup {
+    if (!dbHas(id)) return .{ .user = undefined, .ok = false }; // .user is garbage here
+    const u = dbFetch(id);
+    if (u.banned) @panic("banned"); // failure as panic
+    return .{ .user = u, .ok = true };
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const User = struct { name: []const u8, banned: bool };
+
+// ?T is Option; an error union (!T) is Result. Both are core language, not a library.
+fn dbGet(id: []const u8) ?User {
+    if (std.mem.eql(u8, id, "42")) return .{ .name = "Ada", .banned = false };
+    return null; // absence is explicit in the type
+}
+
+const LookupError = error{ NotFound, Banned };
+
+fn findUser(id: []const u8) LookupError!User {
+    const u = dbGet(id) orelse return error.NotFound; // unwrap-or-bail
+    if (u.banned) return error.Banned;
+    return u;
+}
+
+pub fn main() void {
+    // `catch` handles; `try` would propagate. Ignoring the error is a compile error.
+    const user = findUser("42") catch |err| {
+        std.debug.print("error: {s}\n", .{@errorName(err)});
+        return;
+    };
+    std.debug.print("Hello, {s}!\n", .{user.name}); // Hello, Ada!
+}
+```
+
+**🧠 Tradeoff** — Zig ships both halves too: `?T` for absence (unwrap with `orelse` or
+`if (x) |v|`) and `error{...}!T` for failure, with `try`/`catch` as the chaining operators — and
+using an error union without handling it doesn't compile. The honest difference from Rust: Zig
+errors are bare tags with no payload, so context (which id? what input?) travels out-of-band via a
+diagnostic out-parameter or logging. In exchange, error unions are just an int under the hood —
+no allocation, no generics — which is very Zig: the pattern at its cheapest, minus the ergonomics
+of a rich `Err(e)`.
+
+### Java
+
+**❌ Naive**
+
+```java
+// null-or-throw: the signature hides both possibilities.
+class UserService {
+    User findUser(String id) {
+        var u = db.get(id);
+        if (u == null) return null;                                // absence as null
+        if (u.banned()) throw new IllegalStateException("banned"); // failure as exception
+        return u;
+    }
+}
+// caller: forgets the null check → NullPointerException far from the cause
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.Map;
+import java.util.Optional;
+
+// Optional is Java's Option; a sealed interface plus two records is Result.
+sealed interface Result<T, E> {}
+record Ok<T, E>(T value) implements Result<T, E> {}
+record Err<T, E>(E error) implements Result<T, E> {}
+
+record User(String name, boolean banned) {}
+
+public class Demo {
+    static final Map<String, User> db = Map.of("42", new User("Ada", false));
+
+    static Optional<User> dbGet(String id) {
+        return Optional.ofNullable(db.get(id)); // absence is in the type, not a null
+    }
+
+    static Result<User, String> findUser(String id) {
+        var found = dbGet(id);
+        if (found.isEmpty()) return new Err<>("not_found");
+        var u = found.get();
+        if (u.banned()) return new Err<>("banned");
+        return new Ok<>(u);
+    }
+
+    public static void main(String[] args) {
+        var message = switch (findUser("42")) {
+            case Ok(var u) -> "Hello, %s.".formatted(u.name());
+            case Err(var e) -> "Error: " + e;
+            // no default arm — Result is sealed, so the compiler knows this is every case
+        };
+        System.out.println(message); // Hello, Ada.
+    }
+}
+```
+
+**🧠 Tradeoff** — Java ships half the pattern. `Optional` is the Option side, with an honest
+asterisk: it was designed for *return types*, and the standing guidance keeps it off fields and
+parameters — it's an extra allocation, it doesn't serialize, and the Optional reference can itself
+be null, which defeats the point. The Result side is six lines of your own: sealed plus records
+makes the `switch` exhaustive — add a variant and every switch that ignores it stops compiling,
+the check C#'s open hierarchies can't give you. What's missing is the plumbing: no `?` operator
+and no built-in `map`/`andThen`, so chains stay explicit unless you write the combinators. And
+the surrounding world throws — convert exceptions to `Err` at the boundary, and keep exceptions
+for genuine bugs.
 
 ## Applications
 

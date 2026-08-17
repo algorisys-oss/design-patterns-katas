@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [distributed, resilience, isolation, resource-management, fault-containment]
 related: [circuit-breaker, timeout, worker-pool]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -246,6 +246,235 @@ func (b *Bulkhead) Do(ctx context.Context, fn func() error) error {
 Go bulkhead — and the `select` on `ctx.Done()` gives fail-fast when a partition is full. It's a
 dozen lines and completely explicit. You size and wire each bulkhead yourself; there's no framework
 hiding it, which is very Go and makes the isolation boundaries obvious in the code.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// One SemaphoreSlim gates every outbound call — A and B share the same 20 slots.
+var sem = new SemaphoreSlim(20);
+
+async Task<string> CallA()
+{
+    await sem.WaitAsync();
+    try { return await FetchA(); } finally { sem.Release(); }
+}
+// CallB acquires from the same semaphore — when A goes slow, B starves.
+```
+
+**✅ Idiomatic**
+
+```csharp
+// A SemaphoreSlim per dependency = isolated concurrency budgets.
+var bulkheadA = new Bulkhead(10);
+var bulkheadB = new Bulkhead(10); // independent capacity
+
+// await bulkheadA.Do(FetchA, TimeSpan.FromSeconds(2));
+// await bulkheadB.Do(FetchB, TimeSpan.FromSeconds(2)); // A full? B still has its 10.
+
+public sealed class Bulkhead(int limit)
+{
+    private readonly SemaphoreSlim _slots = new(limit, limit);
+
+    public async Task<T> Do<T>(Func<Task<T>> fn, TimeSpan wait)
+    {
+        if (!await _slots.WaitAsync(wait))
+            throw new BulkheadRejectedException(); // partition full → fail fast
+        try { return await fn(); }
+        finally { _slots.Release(); }
+    }
+}
+
+public sealed class BulkheadRejectedException : Exception;
+```
+
+**🧠 Tradeoff** — `SemaphoreSlim` counts in-flight *async operations*, not threads — an
+awaiting caller holds a slot but no thread, which is exactly the isolation you want for I/O.
+`WaitAsync(wait)` returning `false` is the fail-fast: a full partition rejects instead of
+queueing forever. Polly ships this same idea as a configured concurrency limiter; the
+hand-rolled version shows there isn't much under the hood. The standing trade remains: A's
+idle slots can't help a busy B.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// One channel, one pool of 20 workers for every dependency — shared fate.
+let (tx, _rx) = std::sync::mpsc::channel::<Job>();
+// all 20 workers drain this same queue; when A's jobs go slow they hold
+// every thread, and B's jobs sit behind them
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+type Job = Box<dyn FnOnce() + Send>;
+
+// A bounded worker pool per dependency: its own threads, its own queue.
+struct Bulkhead {
+    queue: SyncSender<Job>,
+}
+
+impl Bulkhead {
+    fn new(workers: usize, depth: usize) -> Bulkhead {
+        let (tx, rx) = sync_channel::<Job>(depth);
+        let rx = Arc::new(Mutex::new(rx));
+        for _ in 0..workers {
+            let rx = Arc::clone(&rx);
+            thread::spawn(move || loop {
+                // lock only to receive; run the job unlocked
+                let job = match rx.lock().unwrap().recv() {
+                    Ok(job) => job,
+                    Err(_) => break, // pool dropped → workers exit
+                };
+                job();
+            });
+        }
+        Bulkhead { queue: tx }
+    }
+
+    fn submit(&self, job: Job) -> Result<(), Job> {
+        self.queue.try_send(job).map_err(|e| match e {
+            TrySendError::Full(job) | TrySendError::Disconnected(job) => job, // fail fast
+        })
+    }
+}
+
+// let bulk_a = Bulkhead::new(10, 5);
+// let bulk_b = Bulkhead::new(10, 5); // A saturating its queue can't touch B's threads
+```
+
+**🧠 Tradeoff** — A pool per dependency isolates real OS threads, so it contains CPU-bound
+work as well as I/O — stronger isolation than a concurrency counter over shared workers.
+`sync_channel`'s bound is the queue depth, and `try_send` turns a full partition into an
+immediate `Err` that hands the job back to the caller. The `Arc<Mutex<Receiver>>` dance is
+the std idiom because a `Receiver` can't be cloned; a crossbeam channel would tidy it, but
+the katas stay dependency-free. You now size threads *and* queue depth per partition —
+twice the knobs to get wrong.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// One shared std.Thread.Pool for every dependency — A's slow jobs hold all the threads.
+var pool: std.Thread.Pool = undefined;
+try pool.init(.{ .allocator = allocator, .n_jobs = 20 });
+defer pool.deinit();
+// try pool.spawn(callA, .{});  try pool.spawn(callB, .{});  // same 20 threads
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// A bounded worker pool per dependency: fixed threads, fixed queue, no allocation.
+const Bulkhead = struct {
+    mutex: std.Thread.Mutex = .{},
+    cond: std.Thread.Condition = .{},
+    jobs: [8]*const fn () void = undefined,
+    len: usize = 0,
+
+    fn start(self: *Bulkhead, workers: usize) !void {
+        for (0..workers) |_| (try std.Thread.spawn(.{}, worker, .{self})).detach();
+    }
+
+    fn worker(self: *Bulkhead) void {
+        while (true) {
+            self.mutex.lock();
+            while (self.len == 0) self.cond.wait(&self.mutex);
+            self.len -= 1;
+            const job = self.jobs[self.len];
+            self.mutex.unlock();
+            job(); // run outside the lock
+        }
+    }
+
+    // A full partition is an error, not an unbounded queue.
+    fn submit(self: *Bulkhead, job: *const fn () void) error{PartitionFull}!void {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        if (self.len == self.jobs.len) return error.PartitionFull; // fail fast
+        self.jobs[self.len] = job;
+        self.len += 1;
+        self.cond.signal();
+    }
+};
+
+// var bulk_a = Bulkhead{};  try bulk_a.start(10);
+// var bulk_b = Bulkhead{};  try bulk_b.start(10);
+// A filling its 8-deep queue gets error.PartitionFull; B's threads never notice.
+```
+
+**🧠 Tradeoff** — Fixed arrays mean this bulkhead never allocates — no allocator parameter,
+capacity decided at compile time, which is a very Zig way to make the limit real. The error
+union puts rejection in `submit`'s signature: callers must `try` or `catch`, so a full
+partition can't be silently ignored. Bare fn pointers cover stateless jobs; a job that
+carries data needs the `*anyopaque` context + fn-pointer pair, the same idiom
+`std.mem.Allocator` uses. The demo queue is LIFO for brevity — a ring buffer makes it fair.
+
+### Java
+
+**❌ Naive**
+
+```java
+// One shared Semaphore gates every outbound call — A and B share the same 20 permits.
+var sem = new Semaphore(20);
+
+String callA() throws InterruptedException {
+    sem.acquire();
+    try { return fetchA(); } finally { sem.release(); }
+}
+// callB acquires from the same semaphore — when A goes slow, B starves.
+```
+
+**✅ Idiomatic**
+
+```java
+import java.time.Duration;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+// A Semaphore per dependency = isolated concurrency budgets.
+final class Bulkhead {
+    private final Semaphore slots;
+    private final Duration wait;
+
+    Bulkhead(int limit, Duration wait) {
+        this.slots = new Semaphore(limit);
+        this.wait = wait;
+    }
+
+    <T> T call(Supplier<T> fn) throws InterruptedException {
+        if (!slots.tryAcquire(wait.toMillis(), TimeUnit.MILLISECONDS))
+            throw new BulkheadFullException(); // partition full → fail fast
+        try { return fn.get(); } finally { slots.release(); }
+    }
+}
+
+final class BulkheadFullException extends RuntimeException {}
+
+// var bulkA = new Bulkhead(10, Duration.ofSeconds(2));
+// var bulkB = new Bulkhead(10, Duration.ofSeconds(2)); // independent capacity
+// bulkA.call(() -> fetchA());  // A full and 2s up? Throws — B still has its 10.
+```
+
+**🧠 Tradeoff** — Historically Java bulkheaded with a `ThreadPoolExecutor` per dependency;
+virtual threads change that. Threads are now too cheap to pool, so the limit moves to a
+`Semaphore` per dependency: spawn freely, but only `limit` calls to A are in flight, and
+`tryAcquire` with a deadline makes a full partition reject instead of queueing. A permit
+is held per *call*, not per thread — the right unit for I/O isolation. Resilience4j's
+`Bulkhead` is this same semaphore with metrics, events, and config around it; the
+hand-rolled version shows how little is inside. The standing trade remains: A's idle
+permits can't help a busy B.
 
 ## Applications
 

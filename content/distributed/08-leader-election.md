@@ -10,7 +10,7 @@ frequency: medium
 difficulty: advanced
 tags: [distributed, coordination, consensus, high-availability, single-writer]
 related: [saga, circuit-breaker, actor]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -271,6 +271,353 @@ Lease) is the standard, correct answer — it's how controllers ensure one activ
 renewal and clean callbacks on gaining/losing leadership. You depend on the k8s/etcd control plane,
 but that's already there in that environment, and it gives you proven consensus rather than a
 hand-rolled lock.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Every replica schedules the job — it fires once per node, N times per night.
+using var timer = new PeriodicTimer(TimeSpan.FromHours(24));
+while (await timer.WaitForNextTickAsync())
+    RunNightlyBilling(); // all N instances bill: split brain by default
+
+static void RunNightlyBilling() => Console.WriteLine("billing run");
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Simulated cluster: a shared lease store arbitrates; nodes campaign each tick.
+var store = new LeaseStore(ttl: 3);
+var nodes = new[] { new Node("node-1", store), new Node("node-2", store) };
+
+for (var tick = 0; tick < 10; tick++)
+{
+    foreach (var node in nodes)
+        if (node.Alive) node.Campaign(tick);
+    if (tick == 4) nodes[0].Crash(); // leader stops renewing — its lease expires at tick 7
+}
+// node-1 elected leader (term 1)
+// node-1 crashed
+// node-2 elected leader (term 2)
+
+public sealed class LeaseStore(int ttl)
+{
+    private readonly Lock _gate = new();
+    private string? _holder;
+    private int _expiresAt;
+    public int Term { get; private set; }
+
+    // Atomic in the real store (etcd, a DB row); the lock stands in for that here.
+    public int? TryAcquire(string nodeId, int now)
+    {
+        lock (_gate)
+        {
+            var mine = _holder == nodeId;
+            if (mine || _holder is null || now >= _expiresAt)
+            {
+                if (!mine) Term++; // a new holder gets a new fencing term
+                (_holder, _expiresAt) = (nodeId, now + ttl);
+                return Term;
+            }
+            return null; // a live lease belongs to someone else
+        }
+    }
+}
+
+public sealed class Node(string id, LeaseStore store)
+{
+    public bool Alive { get; private set; } = true;
+    private int? _term;
+
+    public void Crash() { Alive = false; Console.WriteLine($"{id} crashed"); }
+
+    public void Campaign(int now)
+    {
+        var term = store.TryAcquire(id, now);
+        if (term is int t && t != _term)
+            Console.WriteLine($"{id} elected leader (term {t})");
+        _term = term;
+        // a non-null _term means: do the singleton work, guarded by the fencing term
+    }
+}
+```
+
+**🧠 Tradeoff** — The whole cluster fits in one process because election is just state plus rules:
+a lease, a TTL, a monotonic term. The `Lock` stands in for the atomicity a real coordination store
+gives you across machines — which is exactly what you must *not* hand-roll in production. In .NET
+that means an etcd/ZooKeeper client, a Kubernetes Lease, or a SQL-row lease like the Python tab —
+and the fencing term is the part teams skip and later regret, because a paused-and-resumed leader
+holding a stale term is how two leaders act at once.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+use std::thread;
+use std::time::Duration;
+
+fn run_nightly_billing() {
+    println!("billing run");
+}
+
+// Every replica runs this loop — the job fires once per node.
+fn main() {
+    loop {
+        run_nightly_billing(); // all N nodes bill: split brain by default
+        thread::sleep(Duration::from_secs(24 * 60 * 60));
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// Simulated cluster: node threads share one lease; the mutex plays the coordination store.
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::{Duration, Instant};
+
+struct Lease {
+    holder: Option<String>,
+    expires_at: Instant,
+    term: u64, // fencing token: bumps on every change of holder
+}
+
+impl Lease {
+    // Atomic in the real store (etcd, a DB row); the mutex stands in for that here.
+    fn try_acquire(&mut self, node: &str, ttl: Duration) -> Option<u64> {
+        let now = Instant::now();
+        let mine = self.holder.as_deref() == Some(node);
+        if mine || self.holder.is_none() || now >= self.expires_at {
+            if !mine {
+                self.term += 1; // a new holder gets a new fencing term
+            }
+            self.holder = Some(node.to_string());
+            self.expires_at = now + ttl;
+            Some(self.term)
+        } else {
+            None // a live lease belongs to someone else
+        }
+    }
+}
+
+fn campaign(lease: Arc<Mutex<Lease>>, id: &str, renewals: u32) {
+    let mut last = None;
+    for _ in 0..renewals {
+        let term = lease.lock().unwrap().try_acquire(id, Duration::from_millis(150));
+        if term.is_some() && term != last {
+            println!("{id} elected leader (term {})", term.unwrap());
+        }
+        last = term;
+        // a Some(term) means: do the singleton work, guarded by the fencing term
+        thread::sleep(Duration::from_millis(50)); // renew well inside the ttl
+    }
+    println!("{id} stopped renewing"); // a crash is just this: the lease quietly expires
+}
+
+fn main() {
+    let lease = Lease { holder: None, expires_at: Instant::now(), term: 0 };
+    let lease = Arc::new(Mutex::new(lease));
+
+    let a = { let l = Arc::clone(&lease); thread::spawn(move || campaign(l, "node-1", 4)) };
+    thread::sleep(Duration::from_millis(10)); // let node-1 win the first election
+    let b = { let l = Arc::clone(&lease); thread::spawn(move || campaign(l, "node-2", 12)) };
+
+    a.join().unwrap(); // node-1 "crashes" after 4 renewals…
+    b.join().unwrap(); // …its lease expires, and node-2 takes over
+}
+// node-1 elected leader (term 1)
+// node-1 stopped renewing
+// node-2 elected leader (term 2)
+// node-2 stopped renewing
+```
+
+**🧠 Tradeoff** — `Arc<Mutex<Lease>>` plays the coordination store: the mutex provides the atomic
+check-and-set that etcd or a DB row provides across machines, and ownership makes the sharing
+explicit — no thread touches the lease except through the lock. That's the honest limit, too: in
+one process the mutex *is* correct arbitration, but across machines nothing in the language helps,
+and this exact logic reimplemented over the network is the home-grown consensus the Common
+Mistakes section warns about. In production Rust you'd call etcd or use a Raft crate; the
+simulation's value is making leases, expiry, and fencing terms concrete.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+fn runNightlyBilling() void {
+    std.debug.print("billing run\n", .{});
+}
+
+// Deployed on N replicas, every replica runs this same loop.
+pub fn main() void {
+    var day: u32 = 0;
+    while (day < 3) : (day += 1) { // stand-in for "every night at 02:00"
+        runNightlyBilling(); // all N nodes bill: split brain by default
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Simulated cluster on a logical clock: a lease, a TTL, and a fencing term.
+const Lease = struct {
+    holder: ?[]const u8 = null,
+    expires_at: u32 = 0,
+    term: u32 = 0, // fencing token: bumps on every change of holder
+    ttl: u32,
+
+    // Atomic in the real store (etcd, a DB row); single-threaded here, so it just is.
+    fn tryAcquire(self: *Lease, node: []const u8, now: u32) ?u32 {
+        const mine = self.holder != null and std.mem.eql(u8, self.holder.?, node);
+        if (mine or self.holder == null or now >= self.expires_at) {
+            if (!mine) self.term += 1; // a new holder gets a new fencing term
+            self.holder = node;
+            self.expires_at = now + self.ttl;
+            return self.term;
+        }
+        return null; // a live lease belongs to someone else
+    }
+};
+
+const Node = struct {
+    id: []const u8,
+    alive: bool = true,
+    term: ?u32 = null,
+
+    fn campaign(self: *Node, lease: *Lease, now: u32) void {
+        const term = lease.tryAcquire(self.id, now);
+        if (term) |t| {
+            if (self.term == null or self.term.? != t)
+                std.debug.print("{s} elected leader (term {d})\n", .{ self.id, t });
+        }
+        self.term = term;
+        // a non-null term means: do the singleton work, guarded by the fencing term
+    }
+};
+
+pub fn main() void {
+    var lease = Lease{ .ttl = 3 };
+    var nodes = [_]Node{ .{ .id = "node-1" }, .{ .id = "node-2" } };
+
+    var tick: u32 = 0;
+    while (tick < 10) : (tick += 1) {
+        for (&nodes) |*node| {
+            if (node.alive) node.campaign(&lease, tick);
+        }
+        if (tick == 4) {
+            nodes[0].alive = false; // leader crashes; its lease expires at tick 7
+            std.debug.print("node-1 crashed\n", .{});
+        }
+    }
+}
+// node-1 elected leader (term 1)
+// node-1 crashed
+// node-2 elected leader (term 2)
+```
+
+**🧠 Tradeoff** — Running the cluster on a logical clock makes the demo deterministic and shows
+that election is only state plus rules — no allocation, no threads, every transition visible.
+That explicitness is Zig's teaching advantage here, and also the honest boundary: the language
+gives you nothing for the distributed part, and a Zig service in production talks to etcd or
+Consul like any other client rather than growing its own consensus. The detail worth carrying
+away is the fencing term — the protected work must check it, or a crashed-and-revived node-1
+still holding term 1 would act beside the term-2 leader.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.time.Duration;
+
+// Deployed on N replicas, every replica runs this same loop.
+public class Demo {
+    public static void main(String[] args) throws InterruptedException {
+        while (true) {
+            System.out.println("billing run"); // all N nodes bill: split brain by default
+            Thread.sleep(Duration.ofHours(24));
+        }
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+// Simulated cluster on a logical clock: a lease, a TTL, and a fencing term.
+class LeaseStore {
+    private final int ttl;
+    private String holder;
+    private int expiresAt;
+    private int term; // fencing token: bumps on every change of holder
+
+    LeaseStore(int ttl) { this.ttl = ttl; }
+
+    // Atomic in the real store (etcd, ZooKeeper, a DB row); synchronized stands in here.
+    synchronized Integer tryAcquire(String nodeId, int now) {
+        var mine = nodeId.equals(holder);
+        if (mine || holder == null || now >= expiresAt) {
+            if (!mine) term++; // a new holder gets a new fencing term
+            holder = nodeId;
+            expiresAt = now + ttl;
+            return term;
+        }
+        return null; // a live lease belongs to someone else
+    }
+}
+
+class Node {
+    final String id;
+    boolean alive = true;
+    private Integer term;
+
+    Node(String id) { this.id = id; }
+
+    void crash() { alive = false; System.out.println(id + " crashed"); }
+
+    // Campaigning every tick doubles as the heartbeat: winning renews the lease.
+    void campaign(LeaseStore store, int now) {
+        var t = store.tryAcquire(id, now);
+        if (t != null && !t.equals(term))
+            System.out.println(id + " elected leader (term " + t + ")");
+        term = t;
+        // a non-null term means: do the singleton work, guarded by the fencing term
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var store = new LeaseStore(3);
+        var nodes = new Node[] { new Node("node-1"), new Node("node-2") };
+
+        for (var tick = 0; tick < 10; tick++) {
+            for (var node : nodes)
+                if (node.alive) node.campaign(store, tick);
+            if (tick == 4) nodes[0].crash(); // leader stops renewing — its lease expires at tick 7
+        }
+        // node-1 elected leader (term 1)
+        // node-1 crashed
+        // node-2 elected leader (term 2)
+    }
+}
+```
+
+**🧠 Tradeoff** — The simulation shows that election is only state plus rules: a lease, a TTL, a
+monotonic term. `synchronized` stands in for the atomic check-and-set a real coordination store
+provides across machines — and that store is exactly what you don't hand-roll. In production Java
+you delegate: Apache Curator's `LeaderLatch`/`LeaderSelector` over ZooKeeper, an etcd client's
+election API, or a Kubernetes `Lease` when you're already on that platform. What carries over
+unchanged is the fencing term — the protected work must check it, or a paused-and-resumed node-1
+still holding term 1 acts beside the term-2 leader.
 
 ## Applications
 

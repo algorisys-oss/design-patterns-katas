@@ -10,7 +10,7 @@ frequency: medium
 difficulty: advanced
 tags: [architecture, events, audit, append-only, replay]
 related: [cqrs, pub-sub, unit-of-work]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -296,6 +296,324 @@ func Replay(events []Event) *Account {
 events for the caller to persist; `Replay` folds a slice back into state. No framework hides the
 mechanics, so the event flow is obvious and testable. You build the store, concurrency control, and
 projections yourself — the usual Go bargain of clarity for hand-written plumbing.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Only the latest balance survives; each change overwrites the last.
+public sealed class Account
+{
+    public int Balance { get; private set; }
+    public void Deposit(int n) => Balance += n;  // previous value gone
+    public void Withdraw(int n) => Balance -= n;
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Commands validate and emit events; state is a fold over them.
+var account = new Account();
+account.Deposit(100);
+account.Withdraw(30);
+Console.WriteLine(account.Balance); // 70
+
+var rebuilt = Account.Replay(account.Events); // reload = replay
+Console.WriteLine(rebuilt.Balance);           // 70
+
+public abstract record Event;
+public sealed record Deposited(int Amount) : Event;
+public sealed record Withdrew(int Amount) : Event;
+
+public sealed class Account
+{
+    public int Balance { get; private set; }
+    public List<Event> Events { get; } = [];
+
+    public void Deposit(int n) => Record(new Deposited(n));
+
+    public void Withdraw(int n)
+    {
+        if (n > Balance) throw new InvalidOperationException("insufficient"); // rule on the command
+        Record(new Withdrew(n));
+    }
+
+    private void Record(Event e) { Events.Add(e); Apply(e); } // append + apply
+
+    private void Apply(Event e) => Balance += e switch        // the fold — never rejects
+    {
+        Deposited d => d.Amount,
+        Withdrew w => -w.Amount,
+        _ => 0, // the hierarchy is open, so the compiler demands a default arm
+    };
+
+    public static Account Replay(IEnumerable<Event> events)
+    {
+        var account = new Account();
+        foreach (var e in events) account.Apply(e);
+        return account;
+    }
+}
+```
+
+**🧠 Tradeoff** — Records are the right event shape in C#: immutable, value-equal, one line each,
+and the type-pattern `switch` is the fold. The weak spot is that a record hierarchy is open — the
+compiler can't know `Deposited` and `Withdrew` are the only events, so every fold needs a default
+arm, and a newly added event type silently falls into it instead of failing the build (Rust's enum
+does better here). For real systems, Marten turns Postgres into an event store and EventStoreDB is
+the dedicated one — the versioning and snapshot work remains yours either way.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Overwrite the balance; how it got here is gone.
+struct Account {
+    balance: i64,
+}
+
+impl Account {
+    fn deposit(&mut self, n: i64) {
+        self.balance += n; // previous value gone
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// Events are an enum: a closed set of facts, matched exhaustively.
+#[derive(Clone, Debug)]
+enum Event {
+    Deposited(u32),
+    Withdrew(u32),
+}
+
+#[derive(Default)]
+struct Account {
+    balance: i64,
+    events: Vec<Event>, // the append-only log
+}
+
+impl Account {
+    fn deposit(&mut self, n: u32) {
+        self.record(Event::Deposited(n));
+    }
+
+    fn withdraw(&mut self, n: u32) -> Result<(), String> {
+        if i64::from(n) > self.balance {
+            return Err("insufficient".into()); // rule on the command
+        }
+        self.record(Event::Withdrew(n));
+        Ok(())
+    }
+
+    fn record(&mut self, e: Event) { // append + apply
+        self.apply(&e);
+        self.events.push(e);
+    }
+
+    fn apply(&mut self, e: &Event) { // the fold step — never rejects
+        match e {
+            Event::Deposited(n) => self.balance += i64::from(*n),
+            Event::Withdrew(n) => self.balance -= i64::from(*n),
+        }
+    }
+
+    fn replay(events: Vec<Event>) -> Account {
+        let mut account = Account::default();
+        for e in &events {
+            account.apply(e);
+        }
+        account.events = events;
+        account
+    }
+}
+
+fn main() {
+    let mut account = Account::default();
+    account.deposit(100);
+    account.withdraw(30).unwrap();
+    println!("balance {}", account.balance); // balance 70
+
+    let rebuilt = Account::replay(account.events.clone()); // reload = replay
+    println!("replayed {}", rebuilt.balance); // replayed 70
+}
+```
+
+**🧠 Tradeoff** — The enum is exactly what an event schema wants to be: a closed set, and the
+exhaustive `match` means adding a `TransferredOut` variant breaks every fold that doesn't handle
+it — at compile time. For a permanent, append-only schema, that's the strongest guarantee any
+language here offers. The decide/apply split falls out of the types too: `withdraw` returns
+`Result` (commands can fail), `apply` returns nothing (facts can't be rejected). Persistence means
+serializing the enum (serde) — and event versioning is still your problem; the compiler checks
+today's variants, not last year's bytes on disk.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Only the latest balance is kept; each change overwrites the last.
+const Account = struct {
+    balance: i64 = 0,
+
+    fn deposit(self: *Account, n: u32) void {
+        self.balance += n; // previous value gone
+    }
+};
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Events are a tagged union: a closed set of facts, switched exhaustively.
+const Event = union(enum) {
+    deposited: u32,
+    withdrew: u32,
+};
+
+const Account = struct {
+    balance: i64 = 0,
+    events: [32]Event = undefined, // the append-only log (fixed-size for the demo)
+    len: usize = 0,
+
+    fn deposit(self: *Account, n: u32) !void {
+        try self.record(.{ .deposited = n });
+    }
+
+    fn withdraw(self: *Account, n: u32) !void {
+        if (n > self.balance) return error.Insufficient; // rule on the command
+        try self.record(.{ .withdrew = n });
+    }
+
+    fn record(self: *Account, e: Event) !void { // append + apply
+        if (self.len == self.events.len) return error.LogFull;
+        self.events[self.len] = e;
+        self.len += 1;
+        self.apply(e);
+    }
+
+    fn apply(self: *Account, e: Event) void { // the fold step — never rejects
+        switch (e) {
+            .deposited => |n| self.balance += n,
+            .withdrew => |n| self.balance -= n,
+        }
+    }
+
+    fn replay(events: []const Event) Account {
+        var account = Account{};
+        for (events) |e| {
+            account.events[account.len] = e;
+            account.len += 1;
+            account.apply(e);
+        }
+        return account;
+    }
+};
+
+pub fn main() !void {
+    var account = Account{};
+    try account.deposit(100);
+    try account.withdraw(30);
+    std.debug.print("balance {d}\n", .{account.balance}); // balance 70
+
+    const rebuilt = Account.replay(account.events[0..account.len]); // reload = replay
+    std.debug.print("replayed {d}\n", .{rebuilt.balance}); // replayed 70
+}
+```
+
+**🧠 Tradeoff** — The tagged union gives Zig the same guarantee as Rust's enum: the event set is
+closed, and an exhaustive `switch` means a new event variant fails every fold that misses it at
+compile time — the property you most want for a schema that lives forever. The fixed array stands
+in for the log; a real store appends with an explicit allocator and writes bytes you laid out
+yourself (`std.json` or hand-packed) — no serialization magic, which makes the event-versioning
+problem visible instead of deferred. Commands return error unions, `apply` returns `void`: the
+decide/apply split, in the signatures.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Only the latest balance survives; each change overwrites the last.
+class Account {
+    private int balance;
+
+    void deposit(int n) { balance += n; } // previous value gone
+    void withdraw(int n) { balance -= n; }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+// Events are a sealed set of records: immutable facts, closed at compile time.
+sealed interface Event permits Deposited, Withdrew {}
+record Deposited(int amount) implements Event {}
+record Withdrew(int amount) implements Event {}
+
+class Account {
+    private int balance;
+    private final List<Event> events = new ArrayList<>(); // the append-only log
+
+    int balance() { return balance; }
+    List<Event> events() { return List.copyOf(events); }
+
+    void deposit(int n) { record(new Deposited(n)); }
+
+    void withdraw(int n) {
+        if (n > balance) throw new IllegalStateException("insufficient"); // rule on the command
+        record(new Withdrew(n));
+    }
+
+    private void record(Event e) { events.add(e); apply(e); } // append + apply
+
+    private void apply(Event e) {
+        balance += switch (e) { // the fold — exhaustive, no default arm needed
+            case Deposited d -> d.amount();
+            case Withdrew w -> -w.amount();
+        };
+    }
+
+    static Account replay(List<Event> history) { // reload = replay
+        var account = new Account();
+        for (var e : history) account.apply(e);
+        account.events.addAll(history);
+        return account;
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var account = new Account();
+        account.deposit(100);
+        account.withdraw(30);
+        System.out.println(account.balance()); // 70
+
+        var rebuilt = Account.replay(account.events());
+        System.out.println(rebuilt.balance()); // 70
+    }
+}
+```
+
+**🧠 Tradeoff** — The sealed interface is Java catching up to Rust's enum and Zig's tagged union:
+the event set is closed, so the pattern-matching `switch` is exhaustive with no default arm, and
+adding a `TransferredOut` event breaks every fold that ignores it — at compile time, the guarantee
+you most want for a schema that lives forever. Contrast the C# tab, where the open record hierarchy
+forces a default arm that swallows new events silently. Records keep each event to one immutable,
+value-equal line, and the decide/apply split reads clearly: `withdraw` can reject, `apply` never
+does. Persistence still means serializing the records (Jackson) into an events table or a store
+like Axon or EventStoreDB — and versioning old events stays your problem; the compiler checks
+today's types, not last year's bytes.
 
 ## Applications
 

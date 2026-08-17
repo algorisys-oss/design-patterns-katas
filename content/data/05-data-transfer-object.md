@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [data, boundaries, api, decoupling, serialization]
 related: [data-mapper, container-presentational, layered]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -273,6 +273,207 @@ the domain struct stays internal, and dedicated DTOs control JSON exposure field
 `PasswordHash` leak). It's explicit and type-safe, matching Go's preference for visible boundaries over
 reflection tricks on one shared struct. The extra structs and mapping are the cost; the clean, stable API
 contract is the payoff.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Serialize the domain object directly — every field goes over the wire.
+var user = repo.User(id);
+var json = JsonSerializer.Serialize(user); // "PasswordHash":"x9..." — leaks!
+```
+
+**✅ Idiomatic**
+
+```csharp
+using System.Text.Json;
+
+var user = new User(1, "Ada", "ada@example.com", PasswordHash: "x9...");
+Console.WriteLine(JsonSerializer.Serialize(UserResponse.From(user)));
+// {"Id":1,"Name":"Ada","Email":"ada@example.com"} — no hash in sight
+
+// Domain model — internal, free to change.
+public sealed record User(int Id, string Name, string Email, string PasswordHash);
+
+// The DTO is a record: immutable, value-equal, declared in one line.
+public sealed record UserResponse(int Id, string Name, string Email)
+{
+    public static UserResponse From(User u) => new(u.Id, u.Name, u.Email); // assembler
+}
+
+// Inbound request DTO — a separate shape, bound and validated before the domain sees it.
+public sealed record CreateUserRequest(string Name, string Email);
+```
+
+**🧠 Tradeoff** — records *are* C#'s DTO story: one line declares an immutable, value-equal shape, `with`
+builds variants, and `System.Text.Json` serializes exactly the declared fields — the boilerplate objection
+mostly evaporates. ASP.NET Core binds and validates request records for you, so the request/response split
+costs almost nothing. What remains is the mapping, and `From` is worth keeping explicit: mappers like
+AutoMapper save typing but hide which fields cross the boundary, which is the very thing a DTO exists to
+control.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Hand the domain struct itself to the boundary — every field goes with it.
+#[derive(Debug)]
+struct User { id: u32, name: String, email: String, password_hash: String }
+
+fn show(user: &User) -> String {
+    format!("{user:?}") // password_hash rides along to the client
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// Domain model — internal, free to change.
+struct User { id: u32, name: String, email: String, password_hash: String }
+
+// The DTO: a plain struct holding exactly what crosses the boundary.
+// In real code you'd add serde's #[derive(Serialize)]; the shape is the same.
+#[derive(Debug, Clone, PartialEq)]
+struct UserResponse { id: u32, name: String, email: String }
+
+impl From<&User> for UserResponse {
+    fn from(u: &User) -> Self {
+        Self { id: u.id, name: u.name.clone(), email: u.email.clone() } // assembler
+    }
+}
+
+// Inbound request DTO — a separate shape, validated into the domain.
+struct CreateUserRequest { name: String, email: String }
+
+fn main() {
+    let user = User {
+        id: 1,
+        name: "Ada".into(),
+        email: "ada@example.com".into(),
+        password_hash: "x9...".into(),
+    };
+    let dto = UserResponse::from(&user);
+    println!("{dto:?}"); // UserResponse { id: 1, name: "Ada", email: "ada@example.com" }
+}
+```
+
+**🧠 Tradeoff** — a dedicated struct plus `impl From<&User>` is the idiomatic assembler; in real services
+you'd add serde's `#[derive(Serialize, Deserialize)]` and the struct's fields *become* the wire contract
+(the katas stay dependency-free, but the shape is identical). Ownership makes the transfer cost explicit:
+the DTO clones the strings it carries, because data crossing a boundary genuinely is a copy. The type
+system pays you back on the inbound side — a parsed `CreateUserRequest` can't be confused with a `User`,
+so mass-assigning `password_hash` isn't even expressible.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Print/serialize the domain struct itself — every field goes with it.
+const user = User{ .id = 1, .name = "Ada", .email = "ada@example.com", .password_hash = "x9..." };
+std.debug.print("{any}\n", .{user}); // password_hash rides along to the client
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Domain model — internal, free to change.
+const User = struct {
+    id: u32,
+    name: []const u8,
+    email: []const u8,
+    password_hash: []const u8,
+};
+
+// The DTO: a plain struct with exactly the fields that cross the boundary.
+const UserResponse = struct {
+    id: u32,
+    name: []const u8,
+    email: []const u8,
+
+    fn from(u: User) UserResponse {
+        return .{ .id = u.id, .name = u.name, .email = u.email }; // assembler
+    }
+};
+
+// Inbound request DTO — a separate shape, checked before it touches the domain.
+const CreateUserRequest = struct { name: []const u8, email: []const u8 };
+
+pub fn main() void {
+    const user = User{ .id = 1, .name = "Ada", .email = "ada@example.com", .password_hash = "x9..." };
+    const dto = UserResponse.from(user);
+    std.debug.print("id={d} name={s} email={s}\n", .{ dto.id, dto.name, dto.email });
+    // id=1 name=Ada email=ada@example.com — no password_hash in sight
+}
+```
+
+**🧠 Tradeoff** — Zig structs are already plain data holders, so a DTO is just a second struct and a
+`from` function — the pattern costs almost nothing, and the field list is the entire contract (`std.json`
+serializes exactly the declared fields, so a dedicated DTO struct is precisely how you control exposure).
+The Zig-specific wrinkle is lifetimes: the DTO's slices borrow the domain's strings, so it must not
+outlive `user` — when it crosses a real boundary, dupe the strings with an allocator and free them on the
+other side. Nothing is hidden; nothing is free.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Hand the domain object itself to the boundary — every field rides along.
+record User(int id, String name, String email, String passwordHash) {}
+
+public class Demo {
+    public static void main(String[] args) {
+        var user = new User(1, "Ada", "ada@example.com", "x9...");
+        System.out.println(user); // User[id=1, name=Ada, email=ada@example.com, passwordHash=x9...]
+        // Jackson does the same: every component becomes a JSON field — the hash leaks.
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+// Domain model — internal, free to change.
+record User(int id, String name, String email, String passwordHash) {}
+
+// The DTO is a record: immutable, value-equal, one line — the components ARE the contract.
+record UserResponse(int id, String name, String email) {
+    static UserResponse from(User u) {
+        return new UserResponse(u.id(), u.name(), u.email()); // assembler — no internals
+    }
+}
+
+// Inbound request DTO — the compact constructor validates, so an invalid one can't exist.
+record CreateUserRequest(String name, String email) {
+    CreateUserRequest {
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("name");
+        if (email == null || !email.contains("@")) throw new IllegalArgumentException("email");
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var user = new User(1, "Ada", "ada@example.com", "x9...");
+        var dto = UserResponse.from(user);
+        System.out.println(dto); // UserResponse[id=1, name=Ada, email=ada@example.com]
+        // Jackson serializes exactly the record's components — no passwordHash in sight.
+    }
+}
+```
+
+**🧠 Tradeoff** — the DTO pattern was named in Java (Fowler, the J2EE catalogs), and its
+"boilerplate" disadvantage was earned here too: a pre-records DTO was forty lines of getters,
+`equals`, and `hashCode`. Records close that chapter — one line declares an immutable, value-equal
+shape, Jackson reads the components directly, and the compact constructor makes the inbound DTO
+validate itself at construction, so a request that mass-assigns `passwordHash` has no field to
+land in. Keep `from` handwritten while the field count is honest work; MapStruct generates the
+mappers at compile time when the volume grows, without hiding the field list the way
+runtime-reflection mappers do.
 
 ## Applications
 

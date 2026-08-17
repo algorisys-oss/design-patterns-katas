@@ -11,7 +11,7 @@ frequency: high
 difficulty: beginner
 tags: [anti-pattern, structure, coupling, control-flow, refactoring]
 related: [layered, function-composition, god-object]
-languages: [javascript, python, go]
+languages: [javascript, python, go, csharp, rust, zig, java]
 ---
 
 ## The Anti-Pattern
@@ -232,6 +232,225 @@ func handle(w http.ResponseWriter, r *http.Request) {
 returns immediately, so the happy path stays at the top indentation level with no `ok` flag threaded through
 nested blocks, and `validate` is a testable unit. Go's `if err != nil { return }` convention, often maligned
 as verbose, is exactly what keeps control flow flat and followable.
+
+### CSharp
+
+**❌ The Smell**
+
+```csharp
+// Deep nesting and flags, mutated in inner blocks and checked at the end.
+static async Task<IResult> Handle(Req? req)
+{
+    var ok = true; string? err = null; UserDto? dto = null;
+    if (req != null)
+    {
+        if (!string.IsNullOrEmpty(req.Email))
+        {
+            if (req.Email.Contains('@'))
+            {
+                var user = await FindUser(req.Email);
+                if (user != null) dto = ToDto(user);
+                else { ok = false; err = "not found"; }
+            }
+            else { ok = false; err = "invalid email"; }
+        }
+        else { ok = false; err = "email required"; }
+    }
+    else { ok = false; err = "no body"; }
+    return ok ? Results.Ok(dto) : Results.BadRequest(err);
+}
+```
+
+**✅ The Refactor**
+
+```csharp
+// Validation becomes a switch expression — a readable table, one error path.
+static string? Validate(Req? req) => req switch
+{
+    null => "no body",
+    { Email: null or "" } => "email required",
+    { Email: var e } when !e.Contains('@') => "invalid email",
+    _ => null,
+};
+
+static async Task<IResult> Handle(Req? req)
+{
+    if (Validate(req) is string err) return Results.BadRequest(err);
+
+    var user = await FindUser(req!.Email!);
+    if (user is null) return Results.NotFound();
+
+    return Results.Ok(ToDto(user)); // happy path at the top level, no flags
+}
+```
+
+**🧠 The Fix** — The switch expression turns the nested validation pyramid into a flat, readable table: each
+pattern names one failure, and `_ => null` is the single success case. Guard clauses with early returns do the
+rest — the `ok`/`err`/`dto` flags disappear because each branch exits the moment it knows the answer.
+`Validate` is now a pure function you can unit test with five one-line cases, no HTTP anywhere.
+
+### Rust
+
+**❌ The Smell**
+
+```rust
+// Nested ifs and mutable flags threaded through the blocks.
+fn handle(body: Option<&str>) -> String {
+    let mut ok = true;
+    let mut err = String::new();
+    let mut email = String::new();
+    if let Some(raw) = body {
+        if !raw.is_empty() {
+            if raw.contains('@') {
+                email = raw.to_string();
+            } else { ok = false; err = "invalid email".into(); }
+        } else { ok = false; err = "email required".into(); }
+    } else { ok = false; err = "no body".into(); }
+    if ok { format!("user: {email}") } else { format!("error: {err}") }
+}
+```
+
+**✅ The Refactor**
+
+```rust
+// Errors as values: `?` and early returns keep the happy path flat.
+fn validate(body: Option<&str>) -> Result<&str, String> {
+    let email = body.ok_or("no body")?;
+    if email.is_empty() {
+        return Err("email required".into());
+    }
+    if !email.contains('@') {
+        return Err("invalid email".into());
+    }
+    Ok(email)
+}
+
+fn handle(body: Option<&str>) -> String {
+    match validate(body) {
+        Ok(email) => format!("user: {email}"),
+        Err(err) => format!("error: {err}"),
+    }
+}
+```
+
+**🧠 The Fix** — `Result` moves the error path into the type, and `?` is early return built into the language:
+each check either passes or exits, so there's nothing left for a flag to remember. Notice the smell needed
+three `mut` variables and the refactor needs none — in Rust, spaghetti announces itself as mutable state, and
+the borrow checker makes threading it around genuinely annoying. `validate` is a pure function; its five cases
+test in five lines.
+
+### Zig
+
+**❌ The Smell**
+
+```zig
+// Nested ifs and an ok flag, set deep inside and checked at the end.
+fn handle(body: ?[]const u8) void {
+    var ok = true;
+    var err: []const u8 = "";
+    if (body) |raw| {
+        if (raw.len > 0) {
+            if (std.mem.indexOfScalar(u8, raw, '@') == null) {
+                ok = false;
+                err = "invalid email";
+            }
+        } else {
+            ok = false;
+            err = "email required";
+        }
+    } else {
+        ok = false;
+        err = "no body";
+    }
+    if (ok) {
+        std.debug.print("user: {s}\n", .{body.?});
+    } else {
+        std.debug.print("error: {s}\n", .{err});
+    }
+}
+```
+
+**✅ The Refactor**
+
+```zig
+const std = @import("std");
+
+// Error unions make failure explicit; `orelse` and early returns flatten it.
+fn validate(body: ?[]const u8) ![]const u8 {
+    const email = body orelse return error.NoBody;
+    if (email.len == 0) return error.EmailRequired;
+    if (std.mem.indexOfScalar(u8, email, '@') == null) return error.InvalidEmail;
+    return email;
+}
+
+fn handle(body: ?[]const u8) void {
+    const email = validate(body) catch |err| {
+        std.debug.print("error: {s}\n", .{@errorName(err)});
+        return;
+    };
+    std.debug.print("user: {s}\n", .{email}); // happy path, flat, no flags
+}
+```
+
+**🧠 The Fix** — Zig's error unions give failure a channel of its own: `orelse` and `return error.X` exit the
+moment a check fails, so the flags and the trailing `if (ok)` reconciliation vanish, and both locals become
+`const`. The compiler tracks the error set for you — forget to handle one at the call site and it won't build.
+`validate` is now a plain function with an honest signature: it gives you an email or tells you exactly why not.
+
+### Java
+
+**❌ The Smell**
+
+```java
+// Deep nesting and flags, mutated in inner blocks and checked at the end.
+static String handle(Req req) {
+    boolean ok = true;
+    String err = null, out = null;
+    if (req != null) {
+        if (req.email() != null && !req.email().isEmpty()) {
+            if (req.email().contains("@")) {
+                var user = findUser(req.email());
+                if (user != null) { out = "user: " + user.name(); }
+                else { ok = false; err = "not found"; }
+            } else { ok = false; err = "invalid email"; }
+        } else { ok = false; err = "email required"; }
+    } else { ok = false; err = "no body"; }
+    return ok ? out : "error: " + err;
+}
+```
+
+**✅ The Refactor**
+
+```java
+record Req(String email) {}
+
+// Validation becomes a pattern-matching switch — a readable table, one error path.
+static String validate(Req req) {
+    return switch (req) {
+        case null -> "no body";
+        case Req(String e) when e == null || e.isEmpty() -> "email required";
+        case Req(String e) when !e.contains("@") -> "invalid email";
+        default -> null;
+    };
+}
+
+static String handle(Req req) {
+    var err = validate(req);
+    if (err != null) return "error: " + err;   // guard, return early
+
+    var user = findUser(req.email());
+    if (user == null) return "error: not found";
+
+    return "user: " + user.name(); // happy path at the top level, no flags
+}
+```
+
+**🧠 The Fix** — The switch is the flattening move: record patterns with `when` guards turn the nested
+pyramid into a table where each case names one failure and `default -> null` is the single success. Note
+`case null` — a pattern switch can treat null as an ordinary case, where the classic switch would throw,
+so even the outer null check folds into the table. Guard clauses with early returns do the rest: the
+`ok`/`err`/`out` flags disappear because each branch exits the moment it knows the answer, and `validate`
+is a pure function you can test with four one-line cases.
 
 ## Related Patterns
 

@@ -16,8 +16,9 @@ const OUT_DIR = resolve(__dirname, "../src/data");
 const CATEGORY_ORDER = JSON.parse(
   readFileSync(resolve(__dirname, "../src/lib/categories.json"), "utf8"),
 ).map((c) => c.slug);
-const LANG_ORDER = ["javascript", "node-js", "python", "elixir", "go"];
-const HLJS_ALIAS = { javascript: "javascript", js: "javascript", python: "python", elixir: "elixir", go: "go" };
+const LANG_ORDER = ["javascript", "node-js", "python", "elixir", "go", "java", "csharp", "rust", "zig"];
+// zig has no hljs grammar (11.x) — its fences fall through to highlightAuto.
+const HLJS_ALIAS = { javascript: "javascript", js: "javascript", python: "python", elixir: "elixir", go: "go", java: "java", csharp: "csharp", cs: "csharp", rust: "rust" };
 
 // ---- markdown → HTML with syntax highlighting ----
 marked.use({

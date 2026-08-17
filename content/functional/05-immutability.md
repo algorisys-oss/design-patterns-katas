@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [functional, immutability, purity, concurrency-safety, predictability]
 related: [lens, unidirectional-data-flow, memento]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -253,6 +253,198 @@ for the struct itself — but slices and maps are reference-like, so you must ex
 avoid sharing the backing array (the subtle bug the naive version hides). Go has no persistent data
 structures in the standard library, so immutability is a discipline with real copy costs; it's used
 selectively (value objects, config) rather than pervasively.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// A mutable class shared by reference: every holder sees the change.
+public class Cart
+{
+    public List<Item> Items { get; } = [];
+    public decimal Total { get; set; }
+
+    public void AddItem(Item item)
+    {
+        Items.Add(item);      // mutates the caller's cart
+        Total += item.Price;
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+using System.Collections.Immutable;
+
+var c1 = new Cart([], 0m);
+var c2 = c1.Add(new Item("Book", 25m));
+Console.WriteLine($"{c1.Total} {c2.Total}"); // 0 25 — c1 unchanged
+
+public sealed record Item(string Name, decimal Price);
+
+public sealed record Cart(ImmutableList<Item> Items, decimal Total)
+{
+    public Cart Add(Item item) =>
+        this with { Items = Items.Add(item), Total = Total + item.Price };
+}
+```
+
+**🧠 Tradeoff** — records make "copy with change" one expression: `with` produces a new value and
+leaves the original alone, and records compare by value, so snapshots and change detection come
+cheap. The trap is that `with` copies *shallowly* — a record holding a `List<T>` still shares the
+mutable list, the same shallow-copy bite as the JS spread. Pair records with the immutable
+collections (`ImmutableList`, `ImmutableDictionary`), which use structural sharing so "copies" reuse
+unchanged parts. For small values, `readonly record struct` gives immutability with no heap
+allocation at all.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Opting into mutation everywhere: works, but old states are gone,
+// and every caller must hand over exclusive &mut access.
+fn add_item(cart: &mut Cart, item: Item) {
+    cart.total += item.price;
+    cart.items.push(item);
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+#[derive(Clone)]
+struct Item { name: String, price: u32 }
+
+#[derive(Clone)]
+struct Cart { items: Vec<Item>, total: u32 }
+
+// Borrow the old cart, return a new one; the original stays valid.
+fn add_item(cart: &Cart, item: Item) -> Cart {
+    let mut items = cart.items.clone();
+    let total = cart.total + item.price;
+    items.push(item);
+    Cart { items, total }
+}
+
+fn main() {
+    let c1 = Cart { items: vec![], total: 0 };
+    let c2 = add_item(&c1, Item { name: "Book".into(), price: 25 });
+    println!("{} {}", c1.total, c2.total); // 0 25 — c1 unchanged
+}
+```
+
+**🧠 Tradeoff** — immutability is Rust's *default*: `let` bindings can't change, mutation must be
+declared with `let mut`, and a `&mut` borrow is exclusive — aliasing XOR mutation. That means the
+naive version isn't actually dangerous here: shared mutable state is a compile error, not a runtime
+bug, so Rust gives you immutability's safety even in mutating code. What returning new values still
+buys is history — old carts survive as snapshots — plus lock-free sharing (`Arc<Cart>` across threads,
+no `Mutex`). The `clone` is a real O(n) copy; the `im` crate adds structural sharing when carts get
+big.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Zig makes mutation explicit: only a `var`, or a pointer to one, can change.
+// Handing out pointers reintroduces shared mutable state:
+fn addItem(cart: *Cart, item: Item) void {
+    cart.total += item.price; // every holder of this pointer sees it
+    // ...append to a shared list the same way
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Item = struct { name: []const u8, price: u32 };
+const Cart = struct { items: []const Item, total: u32 };
+
+// Return a new cart; the copy cost is explicit — you see the alloc.
+fn addItem(allocator: std.mem.Allocator, cart: Cart, item: Item) !Cart {
+    const items = try allocator.alloc(Item, cart.items.len + 1);
+    @memcpy(items[0..cart.items.len], cart.items);
+    items[cart.items.len] = item;
+    return .{ .items = items, .total = cart.total + item.price };
+}
+
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+
+    const c1 = Cart{ .items = &.{}, .total = 0 };
+    const c2 = try addItem(allocator, c1, .{ .name = "Book", .price = 25 });
+    defer allocator.free(c2.items);
+
+    std.debug.print("{d} {d}\n", .{ c1.total, c2.total }); // 0 25 — c1 unchanged
+}
+```
+
+**🧠 Tradeoff** — Zig's defaults lean immutable: `const` is the normal binding (the compiler rejects
+a `var` you never mutate), function parameters are immutable, and assigning a struct copies the
+value. Mutation requires an explicit pointer, so it's visible at every call site. The trap mirrors
+Go: slices are pointer-plus-length views, so a value copy still shares the backing memory — hence the
+explicit `alloc` + `@memcpy`, the honest copy cost paid where you can see it, with `defer free` making
+ownership of the old version's memory a real question. No structural sharing in the standard library,
+so pervasive immutability is expensive; Zig code uses it for snapshots and config, not everything.
+
+### Java
+
+**❌ Naive**
+
+```java
+// A mutable class shared by reference: every holder sees the change.
+class Cart {
+    final List<Item> items = new ArrayList<>();
+    int total;
+
+    void addItem(Item item) {
+        items.add(item);        // mutates the caller's cart
+        total += item.price();
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class Demo {
+    public static void main(String[] args) {
+        var c1 = new Cart(List.of(), 0);
+        var c2 = c1.add(new Item("Book", 25));
+        System.out.println(c1.total() + " " + c2.total()); // 0 25 — c1 unchanged
+    }
+}
+
+record Item(String name, int price) {}
+
+record Cart(List<Item> items, int total) {
+    Cart {
+        items = List.copyOf(items); // seal the list — no caller's reference can reach inside
+    }
+
+    Cart add(Item item) {
+        var next = new ArrayList<>(items);
+        next.add(item);
+        return new Cart(next, total + item.price()); // new value; c1 stays intact
+    }
+}
+```
+
+**🧠 Tradeoff** — records give the value half for free: final fields, value equality, no setters. But
+record immutability is *shallow* — a record holding an `ArrayList` still shares the mutable list,
+the same trap as the C# `with` and the JS spread. The compact constructor's `List.copyOf` closes it:
+every `Cart` holds an unmodifiable list, so there's no path to mutation left. Java has no `with`
+expression yet, so each derivation is a small named method like `add` — wordier than C#, though the
+name reads well. And there are no persistent collections in the JDK: each change copies the list, so
+pervasive immutability has a real cost; it's spent on shared state and value objects first.
 
 ## Applications
 

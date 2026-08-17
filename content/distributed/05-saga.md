@@ -10,7 +10,7 @@ frequency: medium
 difficulty: advanced
 tags: [distributed, transactions, consistency, compensation, microservices]
 related: [unit-of-work, event-sourcing, retry]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -298,6 +298,252 @@ func RunSaga(steps []Step) error {
 orchestrator — the whole control flow is visible and testable. As always in Go, durability and
 distribution are yours to add: for crash-safe, long-running sagas, teams reach for Temporal's Go
 SDK, which persists workflow state and replays it, rather than an in-memory loop.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Straight-line awaits; if Ship throws, the charge is never refunded.
+await orders.CreateAsync(order);
+await payment.ChargeAsync(order);
+await shipping.ShipAsync(order); // fails → money taken, nothing ships, no undo
+```
+
+**✅ Idiomatic**
+
+```csharp
+// A step is a Do/Compensate pair; failure pops the done stack and unwinds in reverse.
+public sealed record SagaStep(string Name, Func<Task> Do, Func<Task> Compensate);
+
+public sealed class Saga(IReadOnlyList<SagaStep> steps)
+{
+    public async Task RunAsync()
+    {
+        var done = new Stack<SagaStep>();
+        try
+        {
+            foreach (var step in steps)
+            {
+                await step.Do();
+                done.Push(step); // a Stack pops in reverse order for free
+            }
+        }
+        catch
+        {
+            while (done.Count > 0)
+            {
+                var step = done.Pop();
+                try { await step.Compensate(); }
+                catch (Exception ex) // needs retry/alert
+                {
+                    Console.Error.WriteLine($"compensation {step.Name} failed: {ex.Message}");
+                }
+            }
+            throw;
+        }
+    }
+}
+
+// await new Saga([
+//     new("order",    () => orders.CreateAsync(o),  () => orders.CancelAsync(o.Id)),
+//     new("payment",  () => payment.ChargeAsync(o), () => payment.RefundAsync(o.Id)),
+//     new("shipping", () => shipping.ShipAsync(o),  () => shipping.RecallAsync(o.Id)),
+// ]).RunAsync();
+```
+
+**🧠 Tradeoff** — A `record` makes each step a named value — easy to build in a list, easy
+to assert on in tests — and `Func<Task>` delegates are the whole contract, no interface
+ceremony. `Stack<SagaStep>` gives the reverse unwind for free. Like the other in-memory
+orchestrators here, it doesn't survive a crash mid-saga; durable .NET sagas run on
+Temporal's .NET SDK, MassTransit saga state machines, or the Durable Task Framework, which
+persist progress and resume.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Straight-line calls; an error at ship leaves the charge committed.
+fn place_order(o: &Order) -> Result<(), String> {
+    orders::create(o)?;
+    payment::charge(o)?; // ship failing next → no refund
+    shipping::ship(o)
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// A step is a do/undo pair of boxed closures; failure unwinds the done list in reverse.
+struct Step {
+    name: &'static str,
+    action: Box<dyn Fn() -> Result<(), String>>,
+    compensate: Box<dyn Fn() -> Result<(), String>>,
+}
+
+fn run_saga(steps: &[Step]) -> Result<(), String> {
+    let mut done: Vec<&Step> = Vec::new();
+    for step in steps {
+        if let Err(e) = (step.action)() {
+            for s in done.iter().rev() {
+                if let Err(c) = (s.compensate)() {
+                    eprintln!("compensation {} failed: {c}", s.name); // needs retry/alert
+                }
+            }
+            return Err(format!("{} failed: {e}", step.name));
+        }
+        done.push(step);
+    }
+    Ok(())
+}
+
+// Each closure moves or clones what its step needs — the order stays alive for the undo.
+// let steps = vec![
+//     Step { name: "order",    action: Box::new(|| orders::create(&o)),  compensate: Box::new(|| orders::cancel(o.id)) },
+//     Step { name: "payment",  action: Box::new(|| payment::charge(&o)), compensate: Box::new(|| payment::refund(o.id)) },
+//     Step { name: "shipping", action: Box::new(|| shipping::ship(&o)),  compensate: Box::new(|| shipping::recall(o.id)) },
+// ];
+// run_saga(&steps)?;
+```
+
+**🧠 Tradeoff** — Boxed closures are the right dispatch here: the steps are a heterogeneous,
+open-ended list, so `Box<dyn Fn...>` (runtime dispatch) beats generics, which would force
+every step to be the same type. Ownership sharpens a real saga question — whatever a
+compensation needs to undo its step must stay alive until the saga finishes, and the borrow
+checker makes you say so with `move` or a clone instead of finding out in production.
+Durability is still yours: this unwinds in memory, and a crash mid-saga strands state.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Straight-line try; a failure at ship leaves the charge committed.
+fn placeOrder(o: *const Order) !void {
+    try createOrder(o);
+    try charge(o); // ship failing next → no refund
+    try ship(o);
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Order = struct { id: u32, amount: u32 };
+
+// No closures in Zig: a step is a pair of plain fn pointers, and the shared
+// state (the order) travels as an explicit argument.
+const Step = struct {
+    name: []const u8,
+    action: *const fn (o: *const Order) anyerror!void,
+    compensate: *const fn (o: *const Order) anyerror!void,
+};
+
+fn runSaga(steps: []const Step, o: *const Order) !void {
+    var done: usize = 0;
+    for (steps) |step| {
+        step.action(o) catch |err| {
+            while (done > 0) : (done -= 1) {
+                const s = steps[done - 1];
+                s.compensate(o) catch |cerr| // needs retry/alert
+                    std.debug.print("compensation {s} failed: {s}\n", .{ s.name, @errorName(cerr) });
+            }
+            return err;
+        };
+        done += 1;
+    }
+}
+
+fn createOrder(o: *const Order) anyerror!void { std.debug.print("order {d} created\n", .{o.id}); }
+fn cancelOrder(o: *const Order) anyerror!void { std.debug.print("order {d} cancelled\n", .{o.id}); }
+fn charge(o: *const Order) anyerror!void { std.debug.print("charged {d}\n", .{o.amount}); }
+fn refund(o: *const Order) anyerror!void { std.debug.print("refunded {d}\n", .{o.amount}); }
+fn ship(_: *const Order) anyerror!void { return error.CarrierDown; } // the failing step
+fn recall(_: *const Order) anyerror!void {}
+
+pub fn main() void {
+    const steps = [_]Step{
+        .{ .name = "order",    .action = createOrder, .compensate = cancelOrder },
+        .{ .name = "payment",  .action = charge,      .compensate = refund },
+        .{ .name = "shipping", .action = ship,        .compensate = recall },
+    };
+    const o = Order{ .id = 7, .amount = 100 };
+    runSaga(&steps, &o) catch |err|
+        std.debug.print("saga failed: {s}\n", .{@errorName(err)});
+    // order 7 created / charged 100 / refunded 100 / order 7 cancelled / saga failed: CarrierDown
+}
+```
+
+**🧠 Tradeoff** — With no closures, a step can't quietly capture the order — everything a
+compensation needs is in its signature, passed as an explicit argument. That's more honest
+than it sounds: the undo's inputs are visible, not hidden in a captured environment. Error
+unions make failure part of every step's type, and `@errorName` gives the log its reason
+for free. Steps that carry different per-step state need the `*anyopaque` context +
+fn-pointer idiom instead. Same caveat as every tab here: in-memory only, and compensations
+still have to be idempotent.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Straight-line calls; if ship throws, the charge is never refunded.
+void placeOrder(Order o) {
+    orders.create(o);
+    payment.charge(o); // ship failing next → money taken, nothing ships
+    shipping.ship(o);
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.List;
+
+// A step is a do/undo record pair; failure unwinds the done deque in reverse.
+record SagaStep(String name, Runnable action, Runnable compensate) {}
+
+class Saga {
+    void run(List<SagaStep> steps) {
+        Deque<SagaStep> done = new ArrayDeque<>();
+        try {
+            for (var step : steps) {
+                step.action().run();
+                done.push(step); // a deque pops in reverse order for free
+            }
+        } catch (RuntimeException e) {
+            while (!done.isEmpty()) {
+                var step = done.pop();
+                try { step.compensate().run(); }
+                catch (RuntimeException ce) { // needs retry/alert
+                    System.err.printf("compensation %s failed: %s%n", step.name(), ce.getMessage());
+                }
+            }
+            throw e;
+        }
+    }
+}
+
+// new Saga().run(List.of(
+//     new SagaStep("order",    () -> orders.create(o),  () -> orders.cancel(o.id())),
+//     new SagaStep("payment",  () -> payment.charge(o), () -> payment.refund(o.id())),
+//     new SagaStep("shipping", () -> shipping.ship(o),  () -> shipping.recall(o.id()))
+// ));
+```
+
+**🧠 Tradeoff** — A `record` makes each step a named value with `name()` accessors for
+free, and `Runnable` lambdas are the whole contract — no `Step` interface, no anonymous
+classes, which is the GoF-era ceremony modern Java shed. `ArrayDeque` used as a stack
+gives the reverse unwind by construction: `push` on success, `pop` on failure, and the
+compensation order can't be gotten wrong. What Java can't shed is the caveat every tab
+shares: this orchestrator lives in memory, so a crash mid-saga strands state. Durable
+Java sagas run on Temporal's Java SDK, Axon, or Eventuate, which persist each step's
+outcome and resume the unwind after a restart.
 
 ## Applications
 

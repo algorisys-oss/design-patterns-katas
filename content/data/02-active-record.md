@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [data, persistence, orm, crud, simplicity]
 related: [data-mapper, repository, unit-of-work]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -248,6 +248,234 @@ db.Delete(&user)                 // DELETE
 But Go's community leans strongly the other way, preferring explicit Data Mapper (`database/sql`, `sqlc`)
 for visible SQL and no reflection magic. So Active Record exists in Go but runs against the grain; it's a
 convenience trade many Go teams decline in favor of explicitness.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The users table poked directly from every call site — no single home for the entity.
+users[1] = ("Ada", "ada@example.com");        // insert, inline
+users[1] = ("Grace", users[1].Email);         // the same update repeated everywhere
+```
+
+**✅ Idiomatic**
+
+```csharp
+// The record finds, saves, and deletes itself.
+var user = User.Create("Ada", "ada@example.com"); // INSERT
+user.Name = "Grace";
+user.Save();                                      // UPDATE
+Console.WriteLine(User.Find(user.Id)!.Name);      // Grace
+user.Delete();                                    // DELETE
+
+public sealed class User(int id, string name, string email)
+{
+    // The in-memory "users table": id → row. Class-level, like the DB behind an ORM.
+    private static readonly Dictionary<int, (string Name, string Email)> Table = new();
+    private static int _nextId = 1;
+
+    public int Id { get; } = id;
+    public string Name { get; set; } = name;
+    public string Email { get; set; } = email;
+
+    public static User Create(string name, string email)
+    {
+        var user = new User(_nextId++, name, email);
+        user.Save();
+        return user;
+    }
+    public static User? Find(int id) =>
+        Table.TryGetValue(id, out var row) ? new User(id, row.Name, row.Email) : null;
+
+    public void Save() => Table[Id] = (Name, Email); // INSERT or UPDATE
+    public void Delete() => Table.Remove(Id);
+}
+```
+
+**🧠 Tradeoff** — this is hand-rolled because .NET's mainstream ORM went the other way: EF Core is a
+Data Mapper with a Unit of Work — entities are plain classes, the `DbContext` tracks them, and
+persistence is `context.SaveChanges()`, not `user.Save()`. The static `Table` and `_nextId` are the
+tell: Active Record needs storage reachable from every instance, which means process-global state —
+the same coupling that makes these models hard to test. Fine for a small tool; C# culture pushes
+persistence into a context you can scope and swap.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// The same HashMap poked inline from every call site — no single home for the entity.
+users.insert(1, ("Ada".to_string(), "ada@example.com".to_string()));
+let email = users[&1].1.clone();
+users.insert(1, ("Grace".to_string(), email)); // the same update repeated everywhere
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+
+// Active Record wants the store reachable from every instance with no arguments.
+// In Rust that means a global behind a lock — already a smell.
+static TABLE: OnceLock<Mutex<HashMap<u32, (String, String)>>> = OnceLock::new();
+
+fn table() -> &'static Mutex<HashMap<u32, (String, String)>> {
+    TABLE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+struct User { id: u32, name: String, email: String }
+
+impl User {
+    fn find(id: u32) -> Option<User> {
+        let rows = table().lock().unwrap();
+        let (name, email) = rows.get(&id)?.clone(); // a COPY of the row, never the row
+        Some(User { id, name, email })
+    }
+    fn save(&self) {
+        table().lock().unwrap()
+            .insert(self.id, (self.name.clone(), self.email.clone())); // INSERT or UPDATE
+    }
+    fn delete(&self) {
+        table().lock().unwrap().remove(&self.id);
+    }
+}
+
+fn main() {
+    let mut user = User { id: 1, name: "Ada".into(), email: "ada@example.com".into() };
+    user.save();                                 // INSERT
+    user.name = "Grace".into();
+    user.save();                                 // UPDATE
+    println!("{}", User::find(1).unwrap().name); // Grace
+    user.delete();                               // DELETE
+}
+```
+
+**🧠 Tradeoff** — Active Record fights Rust's ownership model, and the code shows the bruises. A
+no-argument `save()` forces the table into a `static` behind a `Mutex`; `find` can only hand back a
+clone of the row, never a live reference into the table, because the borrow checker forbids exactly
+the "object *is* the row" identity the pattern is built on. Every save re-clones the strings through
+a global lock. This is why no major Rust ORM is Active Record — Diesel and SeaORM are mapper-shaped.
+Learn the pattern here; write Data Mapper in real Rust.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// The table poked inline from every call site — no single home for the entity.
+table[1] = .{ .name = "Ada", .email = "ada@example.com" };
+table[1] = .{ .name = "Grace", .email = table[1].?.email }; // repeated everywhere
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Row = struct { name: []const u8, email: []const u8 };
+
+// The in-memory "users table", keyed by id — a mutable global the model reaches for.
+var table: [8]?Row = @splat(null);
+
+const User = struct {
+    id: u32,
+    name: []const u8,
+    email: []const u8,
+
+    fn find(id: u32) ?User {
+        const row = table[id] orelse return null;
+        return .{ .id = id, .name = row.name, .email = row.email };
+    }
+    fn save(self: User) void {
+        table[self.id] = .{ .name = self.name, .email = self.email }; // INSERT or UPDATE
+    }
+    fn delete(self: User) void {
+        table[self.id] = null;
+    }
+};
+
+pub fn main() void {
+    var user = User{ .id = 1, .name = "Ada", .email = "ada@example.com" };
+    user.save();                                      // INSERT
+    user.name = "Grace";
+    user.save();                                      // UPDATE
+    std.debug.print("{s}\n", .{User.find(1).?.name}); // Grace
+    user.delete();                                    // DELETE
+}
+```
+
+**🧠 Tradeoff** — mechanically Zig makes this easy: a mutable file-scope `var` compiles without
+complaint, and `user.save()` just works. But that convenience rests on hidden reachable state, which
+is exactly what Zig style spends its effort avoiding — and with no ORM to generate the mapping, all
+Active Record saves you here is a parameter. Passing the table in explicitly turns this back into
+Data Mapper for one argument more, and most Zig code should take that trade. The pattern belongs to
+garbage-collected framework languages; in Zig it's a shape to recognize, not one to reach for.
+
+### Java
+
+**❌ Naive**
+
+```java
+// The users table poked directly from every call site — no single home for the entity.
+table.put(1, new String[] { "Ada", "ada@example.com" });   // insert, inline
+table.put(1, new String[] { "Grace", table.get(1)[1] });   // the same update repeated everywhere
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+// The record finds, saves, and deletes itself.
+class User {
+    private record Row(String name, String email) {}
+
+    // The in-memory "users table": id → row. Static, like the DB behind an ORM.
+    private static final Map<Integer, Row> TABLE = new HashMap<>();
+    private static int nextId = 1;
+
+    final int id;
+    String name;
+    String email;
+
+    private User(int id, String name, String email) {
+        this.id = id; this.name = name; this.email = email;
+    }
+
+    static User create(String name, String email) {
+        var user = new User(nextId++, name, email);
+        user.save();
+        return user;
+    }
+    static User find(int id) {
+        var row = TABLE.get(id);
+        return row == null ? null : new User(id, row.name(), row.email());
+    }
+
+    void save() { TABLE.put(id, new Row(name, email)); } // INSERT or UPDATE
+    void delete() { TABLE.remove(id); }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var user = User.create("Ada", "ada@example.com"); // INSERT
+        user.name = "Grace";
+        user.save();                                      // UPDATE
+        System.out.println(User.find(user.id).name);      // Grace
+        user.delete();                                    // DELETE
+    }
+}
+```
+
+**🧠 Tradeoff** — Active Record is what JPA deliberately isn't: a JPA entity never saves itself — the
+`EntityManager` does — because Java's mainstream chose Data Mapper after the EJB entity-bean years.
+The style survives at the edges: jOOQ's `UpdatableRecord` has a `store()`, and ActiveJDBC copies Rails
+outright. The static `TABLE` and `nextId` are the tell — a no-argument `save()` needs storage reachable
+from every instance, which means process-global state you can't scope, swap, or fake in a test. Fine
+for a small tool; Java culture puts persistence in a context injected where it's needed.
 
 ## Applications
 

@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [structural, access-control, lazy-loading, caching, wrapper]
 related: [decorator, adapter, facade]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -291,6 +291,286 @@ func (p *imageProxy) Display() string {
 **🧠 Tradeoff** — `imageProxy` and `highRes` both satisfy `Image`, so the proxy is a drop-in and
 callers hold `Image` without knowing which they have. The lazy field makes it stateful — guard
 with a `sync.Once` or mutex if a proxy may be displayed from multiple goroutines.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+string[] urls = ["a.png", "b.png"];
+var gallery = urls.Select(u => new HighResImage(u)).ToList(); // loads ALL of them now
+
+public sealed class HighResImage(string url)
+{
+    private readonly byte[] _data = LoadFromDisk(url); // expensive — runs at construction
+    public string Display() => $"showing {url}";
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+string[] urls = ["a.png", "b.png"];
+var gallery = urls.Select(IImage (u) => new ImageProxy(u)).ToList(); // nothing loaded yet
+Console.WriteLine(gallery[0].Display()); // showing a.png — only this one loads
+
+public interface IImage
+{
+    string Display();
+}
+
+public sealed class HighResImage(string url) : IImage
+{
+    private readonly byte[] _data = LoadFromDisk(url); // eager, expensive
+    public string Display() => $"showing {url}";
+}
+
+// Same interface; Lazy<T> builds the real image on first Display().
+public sealed class ImageProxy(string url) : IImage
+{
+    private readonly Lazy<HighResImage> _real = new(() => new HighResImage(url));
+    public string Display() => _real.Value.Display();
+}
+```
+
+**🧠 Tradeoff** — `Lazy<T>` owns the hard parts of the lazy slot — initialize once,
+thread-safe by default — so the proxy stays two lines. .NET also ships `DispatchProxy`,
+which generates an interface implementation at runtime and funnels every call through one
+`Invoke`; that's the route for cross-cutting proxies (logging, retries) over wide
+interfaces. For one small interface, the hand-written wrapper is clearer and faster.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+struct HighResImage {
+    url: String,
+    data: Vec<u8>,
+}
+
+impl HighResImage {
+    fn new(url: &str) -> Self {
+        Self { url: url.to_string(), data: load_from_disk(url) } // eager, expensive
+    }
+    fn display(&self) -> String {
+        format!("showing {}", self.url)
+    }
+}
+
+fn main() {
+    let urls = ["a.png", "b.png"];
+    // loads every file now
+    let gallery: Vec<HighResImage> = urls.into_iter().map(HighResImage::new).collect();
+    println!("{}", gallery[0].display());
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::cell::OnceCell;
+
+trait Image {
+    fn display(&self) -> String;
+}
+
+struct HighResImage {
+    url: String,
+    data: Vec<u8>,
+}
+
+impl HighResImage {
+    fn new(url: &str) -> Self {
+        Self { url: url.to_string(), data: load_from_disk(url) } // eager
+    }
+}
+
+impl Image for HighResImage {
+    fn display(&self) -> String {
+        format!("showing {}", self.url)
+    }
+}
+
+// Same trait; OnceCell defers the real image until first display().
+struct ImageProxy {
+    url: String,
+    real: OnceCell<HighResImage>,
+}
+
+impl Image for ImageProxy {
+    fn display(&self) -> String {
+        self.real.get_or_init(|| HighResImage::new(&self.url)).display()
+    }
+}
+
+fn main() {
+    let urls = ["a.png", "b.png"];
+    let gallery: Vec<Box<dyn Image>> = urls
+        .into_iter()
+        .map(|u| Box::new(ImageProxy { url: u.to_string(), real: OnceCell::new() }) as Box<dyn Image>)
+        .collect(); // nothing loaded yet
+    println!("{}", gallery[0].display()); // showing a.png — only this one loads
+}
+```
+
+**🧠 Tradeoff** — `OnceCell` is the lazy slot: it lets `display(&self)` fill the cache
+through a shared reference, no `&mut` needed, and `get_or_init` runs the load exactly
+once (use `OnceLock` when proxies cross threads). `Box<dyn Image>` keeps the proxy a
+drop-in next to real images. Rust's standard library is itself full of proxies — `Rc`,
+`MutexGuard`, and every `Deref` impl stand in front of a value and govern access to it.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const HighResImage = struct {
+    url: []const u8,
+    data: []const u8,
+
+    pub fn init(allocator: std.mem.Allocator, url: []const u8) !HighResImage {
+        return .{ .url = url, .data = try loadFromDisk(allocator, url) }; // eager
+    }
+    pub fn display(self: *const HighResImage) void {
+        std.debug.print("showing {s}\n", .{self.url});
+    }
+};
+
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+    const urls = [_][]const u8{ "a.png", "b.png" };
+    var gallery: [urls.len]HighResImage = undefined;
+    for (urls, 0..) |url, i| {
+        gallery[i] = try HighResImage.init(allocator, url); // loads every file now
+    }
+    gallery[0].display();
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const HighResImage = struct {
+    url: []const u8,
+    data: []const u8,
+
+    pub fn init(allocator: std.mem.Allocator, url: []const u8) !HighResImage {
+        return .{ .url = url, .data = try loadFromDisk(allocator, url) }; // expensive
+    }
+    pub fn display(self: *const HighResImage) void {
+        std.debug.print("showing {s}\n", .{self.url});
+    }
+};
+
+// Same call shape; the optional holds the real image, built on first display().
+const ImageProxy = struct {
+    allocator: std.mem.Allocator,
+    url: []const u8,
+    real: ?HighResImage = null,
+
+    pub fn display(self: *ImageProxy) !void {
+        if (self.real == null) {
+            self.real = try HighResImage.init(self.allocator, self.url); // lazy
+        }
+        self.real.?.display();
+    }
+};
+
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+    var gallery = [_]ImageProxy{
+        .{ .allocator = allocator, .url = "a.png" },
+        .{ .allocator = allocator, .url = "b.png" },
+    }; // nothing loaded yet
+
+    try gallery[0].display(); // showing a.png — only this one loads
+}
+```
+
+**🧠 Tradeoff** — The `?HighResImage` optional is Zig's lazy slot, and the error union
+makes the laziness honest: `display` can fail with a load error, so its signature says
+`!void` and callers `try` it — no invisible I/O behind an innocent-looking call, which is
+exactly what the other languages' proxies hide. When callers must hold real-or-proxy
+behind one type, reach for a tagged union with an exhaustive `switch` (closed set), or
+the `*anyopaque` + function-pointer vtable when the set must stay open.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Every image loads its file immediately, whether shown or not.
+class HighResImage {
+    private final String url;
+    private final byte[] data;
+
+    HighResImage(String url) {
+        this.url = url;
+        this.data = loadFromDisk(url); // expensive — runs at construction
+    }
+
+    String display() { return "showing " + url; }
+}
+
+// var gallery = urls.stream().map(HighResImage::new).toList(); // loads ALL of them now
+```
+
+**✅ Idiomatic**
+
+```java
+interface Image {
+    String display();
+}
+
+class HighResImage implements Image {
+    private final String url;
+    private final byte[] data;
+
+    HighResImage(String url) {
+        this.url = url;
+        this.data = loadFromDisk(url); // eager, expensive
+    }
+
+    public String display() { return "showing " + url; }
+}
+
+// Same interface; builds the real image on first display().
+class ImageProxy implements Image {
+    private final String url;
+    private HighResImage real;
+
+    ImageProxy(String url) { this.url = url; }
+
+    public String display() {
+        if (real == null) real = new HighResImage(url); // lazy
+        return real.display();
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var gallery = java.util.stream.Stream.of("a.png", "b.png")
+            .<Image>map(ImageProxy::new)
+            .toList(); // nothing loaded yet
+
+        System.out.println(gallery.get(0).display()); // showing a.png — only this one loads
+    }
+}
+```
+
+**🧠 Tradeoff** — the hand-written wrapper is the right form for one small interface: a lazy
+field behind the shared `Image` type, nothing more (make the null-check a `synchronized` block
+or hold the real image in a `Supplier`-based memoizer if proxies cross threads). Java also
+ships the dynamic route: `java.lang.reflect.Proxy` fabricates an implementation of any
+interface at runtime and funnels every call through one `InvocationHandler` — it's how Spring
+AOP and Hibernate lazy entities proxy wide interfaces without writing a forwarding method per
+call. Reach for it when the concern is cross-cutting; the reflection toll and the debugging fog
+aren't worth it for a two-method interface.
 
 ## Applications
 

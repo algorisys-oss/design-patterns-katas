@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [concurrency, message-passing, isolation, no-shared-state, mailbox]
 related: [producer-consumer, pub-sub, future-promise]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -293,6 +293,303 @@ communicating" is the actor model: a goroutine owns the state, a channel is its 
 that goroutine mutates `bal` — no mutex, no race. It's lighter than a full actor framework but
 also barer: no supervision, no addresses, no location transparency. You get the core discipline
 and wire the rest yourself.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Shared balance guarded by a lock — works, but you own the lock discipline
+// forever, and every new member must remember it.
+public sealed class Account
+{
+    private readonly object _gate = new();
+    private int _balance;
+
+    public void Deposit(int n) { lock (_gate) _balance += n; }
+    public int Balance { get { lock (_gate) return _balance; } }
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// An actor: a Task loop draining a Channel. The loop is the only code that
+// ever touches the balance — no lock anywhere.
+using System.Threading.Channels;
+
+var account = new AccountActor();
+account.Send(new Deposit(100));
+account.Send(new Deposit(50));
+Console.WriteLine(await account.GetBalanceAsync()); // 150
+
+public abstract record Message;                     // records: immutable messages
+public sealed record Deposit(int Amount) : Message;
+public sealed record GetBalance(TaskCompletionSource<int> Reply) : Message;
+
+public sealed class AccountActor
+{
+    private readonly Channel<Message> _mailbox = Channel.CreateUnbounded<Message>();
+
+    public AccountActor() => _ = Task.Run(RunAsync);
+
+    public void Send(Message msg) => _mailbox.Writer.TryWrite(msg);
+
+    public Task<int> GetBalanceAsync()
+    {
+        var reply = new TaskCompletionSource<int>();
+        Send(new GetBalance(reply)); // the reply channel rides in the message
+        return reply.Task;
+    }
+
+    private async Task RunAsync()
+    {
+        var balance = 0; // private to this loop
+        await foreach (var msg in _mailbox.Reader.ReadAllAsync()) // one at a time
+        {
+            switch (msg)
+            {
+                case Deposit d: balance += d.Amount; break;
+                case GetBalance g: g.Reply.SetResult(balance); break;
+            }
+        }
+    }
+}
+```
+
+**🧠 Tradeoff** — A `Channel` drained by one `Task` is the actor: records make the messages
+immutable, the loop is the only reader of `balance`, and `TaskCompletionSource` turns
+request/reply into a plain `await`. But it's discipline you assemble, not a runtime you inherit
+— compare the Elixir tab, where the mailbox, supervision, and restarts all ship with the BEAM.
+When you need that fuller story in .NET (addresses, supervision, distribution), that's Akka.NET
+or Orleans; this hand-rolled loop covers the common in-process case.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+// Shared state behind Arc<Mutex<..>> — safe, but every caller queues on the
+// lock, and the API is "grab the mutex and hope you got the protocol right".
+fn main() {
+    let balance = Arc::new(Mutex::new(0));
+    let handles: Vec<_> = (0..4)
+        .map(|_| {
+            let b = Arc::clone(&balance);
+            thread::spawn(move || *b.lock().unwrap() += 25)
+        })
+        .collect();
+    for h in handles {
+        h.join().unwrap();
+    }
+    println!("{}", *balance.lock().unwrap()); // 100
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+
+// Messages are moved into the actor — ownership transfers, nothing is shared.
+enum Msg {
+    Deposit(i64),
+    Balance(mpsc::Sender<i64>), // the reply channel rides in the message
+}
+
+// The actor: a thread that OWNS the balance, fed by an mpsc receiver.
+fn spawn_account() -> mpsc::Sender<Msg> {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let mut balance = 0; // owned here — no other thread can even name it
+        for msg in rx {      // one message at a time
+            match msg {
+                Msg::Deposit(n) => balance += n,
+                Msg::Balance(reply) => {
+                    let _ = reply.send(balance);
+                }
+            }
+        }
+    });
+    tx
+}
+
+fn main() {
+    let account = spawn_account();
+    account.send(Msg::Deposit(100)).unwrap();
+    account.send(Msg::Deposit(50)).unwrap();
+
+    let (reply_tx, reply_rx) = mpsc::channel();
+    account.send(Msg::Balance(reply_tx)).unwrap();
+    println!("balance: {}", reply_rx.recv().unwrap()); // balance: 150
+}
+```
+
+**🧠 Tradeoff** — This is the natural Rust form, not a workaround: the thread *owns* `balance`,
+and ownership means the compiler proves nothing else can touch it — the isolation Elixir gets
+from its runtime, Rust gets from the type system at compile time. The message enum is closed
+and exhaustively matched, so an unhandled message is a compile error, not a silent drop. What
+you don't get is the BEAM's supervision, addresses, or distribution: a panicked actor here is
+just a dead thread until you build restart logic around it.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// Shared globals guarded by a mutex — correct only while every caller
+// remembers to take the lock. Nothing enforces it.
+var balance: i64 = 0;
+var mu: std.Thread.Mutex = .{};
+
+fn deposit(n: i64) void {
+    mu.lock();
+    defer mu.unlock();
+    balance += n;
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Msg = union(enum) { deposit: i64, stop };
+
+// The mailbox: a ring buffer guarded by mutex + condition. Senders only ever
+// touch the queue; the actor thread is its only reader.
+const Mailbox = struct {
+    mu: std.Thread.Mutex = .{},
+    cond: std.Thread.Condition = .{},
+    buf: [16]Msg = undefined, // bounded: 16 slots (a real one errors when full)
+    head: usize = 0,
+    len: usize = 0,
+
+    fn send(self: *Mailbox, msg: Msg) void {
+        self.mu.lock();
+        defer self.mu.unlock();
+        self.buf[(self.head + self.len) % self.buf.len] = msg;
+        self.len += 1;
+        self.cond.signal();
+    }
+
+    fn recv(self: *Mailbox) Msg {
+        self.mu.lock();
+        defer self.mu.unlock();
+        while (self.len == 0) self.cond.wait(&self.mu);
+        const msg = self.buf[self.head];
+        self.head = (self.head + 1) % self.buf.len;
+        self.len -= 1;
+        return msg;
+    }
+};
+
+fn account(mailbox: *Mailbox) void {
+    var balance: i64 = 0; // on this thread's stack — unreachable from outside
+    while (true) {
+        switch (mailbox.recv()) { // one message at a time
+            .deposit => |n| balance += n,
+            .stop => break,
+        }
+    }
+    std.debug.print("final balance: {d}\n", .{balance});
+}
+
+pub fn main() !void {
+    var mailbox = Mailbox{};
+    const actor = try std.Thread.spawn(.{}, account, .{&mailbox});
+    mailbox.send(.{ .deposit = 100 });
+    mailbox.send(.{ .deposit = 50 });
+    mailbox.send(.stop);
+    actor.join(); // final balance: 150
+}
+```
+
+**🧠 Tradeoff** — Zig gives you the parts, not the pattern: mailbox = ring buffer + mutex +
+condition, actor = the one thread that reads it. The discipline ("only the owning thread
+touches `balance`") is a convention — nothing enforces it, unlike Rust's ownership or the
+BEAM's process isolation. In the Elixir tab this entire file collapses into `use GenServer`,
+because there the actor model *is* the runtime. What Zig buys back is that every byte is
+visible: the mailbox is 16 slots you declared, so backpressure is an explicit decision in your
+code, not an unbounded default you inherit.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Shared balance guarded by synchronized — works, but you own the lock
+// discipline forever, and every new method must remember it.
+class Account {
+    private int balance;
+
+    synchronized void deposit(int n) { balance += n; }
+    synchronized int balance() { return balance; }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+// Messages are immutable records; the sealed interface closes the protocol.
+sealed interface Message permits Deposit, GetBalance {}
+record Deposit(int amount) implements Message {}
+record GetBalance(CompletableFuture<Integer> reply) implements Message {}
+
+// The actor: a single-thread executor. Its internal queue is the mailbox,
+// and one worker thread is the one-message-at-a-time guarantee.
+class AccountActor {
+    private final ExecutorService mailbox = Executors.newSingleThreadExecutor();
+    private int balance = 0; // touched only by the mailbox thread — no lock
+
+    void send(Message msg) {
+        mailbox.execute(() -> {
+            switch (msg) { // exhaustive over the sealed protocol
+                case Deposit d -> balance += d.amount();
+                case GetBalance g -> g.reply().complete(balance);
+            }
+        });
+    }
+
+    CompletableFuture<Integer> balance() {
+        var reply = new CompletableFuture<Integer>();
+        send(new GetBalance(reply)); // the reply future rides in the message
+        return reply;
+    }
+
+    void shutdown() { mailbox.shutdown(); }
+}
+
+class Demo {
+    public static void main(String[] args) {
+        var account = new AccountActor();
+        account.send(new Deposit(100));
+        account.send(new Deposit(50));
+        System.out.println(account.balance().join()); // 150
+        account.shutdown();
+    }
+}
+```
+
+**🧠 Tradeoff** — the single-thread executor is a mailbox you already had: its queue holds
+the messages, its one thread drains them serially, so `balance` needs no lock and handlers
+never interleave. Modern Java sharpens the protocol the way Rust's enum does — a sealed
+interface plus pattern-matching `switch` means an unhandled message type is a compile
+error, and records keep messages immutable. A `CompletableFuture` in the message is
+request/reply as a plain `await`-able. It's still discipline, not a runtime: no
+supervision, no addresses, an unbounded queue by default — Akka/Pekko supply those when
+you need them. Virtual threads add a second honest shape: one virtual thread per actor
+looping on a `BlockingQueue` is now affordable at GenServer-like scale.
 
 ## Applications
 

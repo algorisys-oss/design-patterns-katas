@@ -11,7 +11,7 @@ frequency: high
 difficulty: intermediate
 tags: [solid, ocp, extensibility, polymorphism, plugin]
 related: [single-responsibility, dependency-inversion, strategy, factory-method]
-languages: [javascript, python, elixir, go]
+languages: [javascript, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## The Principle
@@ -229,6 +229,254 @@ func TotalArea(shapes []Shape) float64 {
 **🧠 Note** — `TotalArea` depends on the `Shape` interface; any type with `Area()` satisfies it,
 so new shapes extend the system without editing existing code. Go's implicit interfaces make the
 extension point cheap — no shape needs to declare it implements `Shape`.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Reopened for every new shape.
+static double Area(Shape shape) => shape.Type switch
+{
+    "circle" => Math.PI * shape.R * shape.R,
+    "square" => shape.Side * shape.Side,
+    _ => throw new ArgumentException($"unknown shape: {shape.Type}"),
+};
+```
+
+**✅ Idiomatic**
+
+```csharp
+List<IShape> shapes = [new Circle(2), new Square(3)];
+Console.WriteLine(shapes.Sum(s => s.Area())); // 21.566370614359172
+
+public interface IShape
+{
+    double Area();
+}
+
+public sealed record Circle(double R) : IShape
+{
+    public double Area() => Math.PI * R * R;
+}
+
+public sealed record Square(double Side) : IShape
+{
+    public double Area() => Side * Side;
+}
+
+// New shape = new record; the Sum above never changes.
+public sealed record Triangle(double B, double H) : IShape
+{
+    public double Area() => 0.5 * B * H;
+}
+```
+
+**🧠 Note** — Records with primary constructors make each shape a two-liner, and LINQ's `Sum`
+is the whole `TotalArea`. C# could also close the set — a sealed hierarchy plus a pattern-match
+`switch` — but that puts the central switch back; pick the interface when new shapes should
+arrive as new files, the switch when the set genuinely won't grow.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+enum Shape {
+    Circle { r: f64 },
+    Square { side: f64 },
+}
+
+// Adding a Triangle reopens this match — and every other match on Shape.
+fn area(shape: &Shape) -> f64 {
+    match shape {
+        Shape::Circle { r } => std::f64::consts::PI * r * r,
+        Shape::Square { side } => side * side,
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+trait Shape {
+    fn area(&self) -> f64;
+}
+
+struct Circle {
+    r: f64,
+}
+impl Shape for Circle {
+    fn area(&self) -> f64 {
+        std::f64::consts::PI * self.r * self.r
+    }
+}
+
+struct Square {
+    side: f64,
+}
+impl Shape for Square {
+    fn area(&self) -> f64 {
+        self.side * self.side
+    }
+}
+
+fn total_area(shapes: &[Box<dyn Shape>]) -> f64 {
+    shapes.iter().map(|s| s.area()).sum()
+}
+
+fn main() {
+    let shapes: Vec<Box<dyn Shape>> = vec![
+        Box::new(Circle { r: 2.0 }),
+        Box::new(Square { side: 3.0 }),
+    ];
+    println!("{}", total_area(&shapes)); // 21.566370614359172
+}
+// A Triangle with `impl Shape` plugs in — total_area is untouched.
+```
+
+**🧠 Note** — Be fair to the "naive" version: in Rust an enum with an exhaustive `match` is
+often the *right* call for a closed set, because adding a variant makes the compiler walk you
+to every match that needs updating — modification, but safe modification. Reach for the trait
+(and pay the `Box<dyn>` heap allocation and dynamic dispatch) when shapes must come from code
+you don't own — other crates can `impl Shape` but can't add variants to your enum.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const Shape = union(enum) {
+    circle: struct { r: f64 },
+    square: struct { side: f64 },
+};
+
+// Adding a triangle reopens this switch — and every other switch on Shape.
+fn area(shape: Shape) f64 {
+    return switch (shape) {
+        .circle => |c| std.math.pi * c.r * c.r,
+        .square => |s| s.side * s.side,
+    };
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Zig has no interfaces — the open contract is the two-field vtable
+// idiom (context pointer + function pointer), like std.mem.Allocator.
+const Shape = struct {
+    ctx: *const anyopaque,
+    areaFn: *const fn (ctx: *const anyopaque) f64,
+
+    pub fn area(self: Shape) f64 {
+        return self.areaFn(self.ctx);
+    }
+};
+
+const Circle = struct {
+    r: f64,
+
+    pub fn shape(self: *const Circle) Shape {
+        return .{ .ctx = self, .areaFn = area };
+    }
+    fn area(ctx: *const anyopaque) f64 {
+        const self: *const Circle = @ptrCast(@alignCast(ctx));
+        return std.math.pi * self.r * self.r;
+    }
+};
+
+const Square = struct {
+    side: f64,
+
+    pub fn shape(self: *const Square) Shape {
+        return .{ .ctx = self, .areaFn = area };
+    }
+    fn area(ctx: *const anyopaque) f64 {
+        const self: *const Square = @ptrCast(@alignCast(ctx));
+        return self.side * self.side;
+    }
+};
+
+fn totalArea(shapes: []const Shape) f64 {
+    var sum: f64 = 0;
+    for (shapes) |s| sum += s.area();
+    return sum;
+}
+
+pub fn main() void {
+    const circle = Circle{ .r = 2 };
+    const square = Square{ .side = 3 };
+    const shapes = [_]Shape{ circle.shape(), square.shape() };
+    std.debug.print("{d}\n", .{totalArea(&shapes)}); // 21.566370614359172
+}
+// A Triangle that hands out a Shape plugs in — totalArea is untouched.
+```
+
+**🧠 Note** — Same honesty as Rust: the tagged union + exhaustive `switch` *is* idiomatic Zig
+for a closed set — zero indirection, and the compiler flags every unhandled case. The vtable
+buys openness at the cost of a pointer indirection and the `@ptrCast` boilerplate, so reach
+for it only when new shapes must arrive without touching the switch. When the set is known at
+compile time, `anytype`/comptime generics give the same openness with static dispatch.
+
+### Java
+
+**❌ Naive**
+
+```java
+// One central switch, reopened for every new shape.
+sealed interface Shape permits Circle, Square {}
+record Circle(double r) implements Shape {}
+record Square(double side) implements Shape {}
+
+class Geometry {
+    static double area(Shape shape) {
+        return switch (shape) {
+            case Circle c -> Math.PI * c.r() * c.r();
+            case Square s -> s.side() * s.side();
+        };
+    }
+    // adding a Triangle reopens this switch — and every other switch on Shape
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.List;
+
+// Each shape owns its area; nothing central changes as shapes are added.
+interface Shape {
+    double area();
+}
+
+record Circle(double r) implements Shape {
+    public double area() { return Math.PI * r * r; }
+}
+
+record Square(double side) implements Shape {
+    public double area() { return side * side; }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        List<Shape> shapes = List.of(new Circle(2), new Square(3));
+        System.out.println(shapes.stream().mapToDouble(Shape::area).sum()); // 21.566370614359172
+    }
+}
+// New shape = new record implementing Shape; the stream never changes.
+```
+
+**🧠 Note** — same honesty Rust asks for: the "naive" version is a legitimate modern-Java form.
+`sealed` declares the set closed, and the pattern-matching `switch` is exhaustive with no
+`default` — add `Triangle` to `permits` and the compiler walks you to every switch that must
+now handle it. That's modification, but safe, compiler-guided modification. Choose the open
+interface when new shapes should arrive from packages you don't control; choose sealed + switch
+when the set genuinely won't grow and it's the *operations* that vary.
 
 ## Applications
 

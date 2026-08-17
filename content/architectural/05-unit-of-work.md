@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [architecture, persistence, transaction, atomicity, consistency]
 related: [repository, layered, hexagonal]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -295,6 +295,293 @@ func withTx(db *sql.DB, work func(*sql.Tx) error) (err error) {
 rolls back on error or panic and commits otherwise) gives one clean boundary. It's explicit — you
 thread `tx` through every write — which is verbose but leaves the transaction scope unmistakable.
 Change *tracking* (auto-detecting dirty objects) isn't idiomatic Go; you register writes directly.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Each save hits the DB immediately; a failure midway leaves partial state.
+async Task Transfer(DbConnection conn, int from, int to, decimal amount)
+{
+    await Exec(conn, "UPDATE accounts SET balance = balance - @a WHERE id = @id", amount, from);
+    // crash here → money debited but never credited
+    await Exec(conn, "UPDATE accounts SET balance = balance + @a WHERE id = @id", amount, to);
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// A unit of work collects deferred writes and flushes them in one transaction.
+using System.Data.Common;
+
+public sealed class UnitOfWork(DbConnection conn)
+{
+    private readonly List<Func<DbTransaction, Task>> _ops = [];
+
+    public void Register(Func<DbTransaction, Task> op) => _ops.Add(op); // defer the write
+
+    public async Task CommitAsync()
+    {
+        await using var tx = await conn.BeginTransactionAsync();
+        try
+        {
+            foreach (var op in _ops) await op(tx); // flush all, in order
+            await tx.CommitAsync();
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+    }
+}
+
+// var uow = new UnitOfWork(conn);
+// uow.Register(tx => Exec(tx, "UPDATE ... balance - @a ...", amount, from));
+// uow.Register(tx => Exec(tx, "UPDATE ... balance + @a ...", amount, to));
+// await uow.CommitAsync();  // both or neither
+```
+
+**🧠 Tradeoff** — The hand-rolled unit is a list of deferred `Func<DbTransaction, Task>` writes
+flushed inside one transaction — useful when you're on raw ADO.NET or Dapper. But in .NET this
+pattern usually comes for free: EF Core's `DbContext` *is* a unit of work — it tracks added, dirty,
+and removed entities and `SaveChangesAsync` flushes them all in one transaction. Reach for that
+first; build your own only when the ORM isn't there.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+use std::collections::HashMap;
+
+// Each write applies immediately; a failure midway leaves partial state.
+fn transfer(db: &mut HashMap<String, i64>, from: &str, to: &str, amount: i64) {
+    *db.get_mut(from).unwrap() -= amount;
+    // an error or panic here → money debited but never credited
+    *db.get_mut(to).unwrap() += amount;
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+
+type Db = HashMap<String, i64>;
+type Op = Box<dyn Fn(&mut Db) -> Result<(), String>>;
+
+struct UnitOfWork {
+    ops: Vec<Op>,
+}
+
+impl UnitOfWork {
+    fn new() -> Self {
+        Self { ops: Vec::new() }
+    }
+
+    fn register(&mut self, op: Op) {
+        self.ops.push(op); // defer the write
+    }
+
+    // Apply every op to a working copy; only full success replaces the real state.
+    fn commit(self, db: &mut Db) -> Result<(), String> {
+        let mut working = db.clone();
+        for op in &self.ops {
+            op(&mut working)?; // any failure discards the copy — rollback
+        }
+        *db = working; // all changes land together
+        Ok(())
+    }
+}
+
+fn main() {
+    let mut db: Db = HashMap::from([("alice".to_string(), 100), ("bob".to_string(), 50)]);
+
+    let mut uow = UnitOfWork::new();
+    uow.register(Box::new(|db| {
+        let a = db.get_mut("alice").ok_or("no such account")?;
+        if *a < 70 {
+            return Err("insufficient".into());
+        }
+        *a -= 70;
+        Ok(())
+    }));
+    uow.register(Box::new(|db| {
+        *db.get_mut("bob").ok_or("no such account")? += 70;
+        Ok(())
+    }));
+
+    match uow.commit(&mut db) {
+        Ok(()) => println!("committed: {db:?}"), // alice 30, bob 120
+        Err(e) => println!("rolled back: {e}"),  // db untouched
+    }
+}
+```
+
+**🧠 Tradeoff** — The copy *is* the transaction: ops run against a clone, and only complete success
+swaps it in, so rollback is just dropping the working copy — fine in memory, while a real database
+uses the driver's transaction (sqlx and diesel both expose one). Ownership adds a nice guarantee:
+`commit(self)` consumes the unit, so a committed unit can't be reused — the type system enforces the
+one-shot boundary. The boxed closures cost a heap allocation and dynamic dispatch per registered op.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const Account = struct { name: []const u8, balance: i64 };
+
+// Each write applies immediately; an error midway leaves partial state.
+fn transfer(db: []Account, from: []const u8, to: []const u8, amount: i64) !void {
+    (try find(db, from)).balance -= amount;
+    // an error here → money debited but never credited
+    (try find(db, to)).balance += amount;
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Account = struct { name: []const u8, balance: i64 };
+
+// The closed set of writes a unit can stage — a tagged union, not a closure.
+const Op = union(enum) {
+    debit: struct { account: []const u8, amount: i64 },
+    credit: struct { account: []const u8, amount: i64 },
+};
+
+fn find(db: []Account, name: []const u8) !*Account {
+    for (db) |*a| if (std.mem.eql(u8, a.name, name)) return a;
+    return error.NoAccount;
+}
+
+const UnitOfWork = struct {
+    ops: [8]Op = undefined,
+    len: usize = 0,
+
+    fn register(self: *UnitOfWork, op: Op) !void { // defer the write
+        if (self.len == self.ops.len) return error.UnitFull;
+        self.ops[self.len] = op;
+        self.len += 1;
+    }
+
+    // Two phases: validate every op first, then apply — all or nothing.
+    fn commit(self: *UnitOfWork, db: []Account) !void {
+        for (self.ops[0..self.len]) |op| {
+            switch (op) {
+                .debit => |d| {
+                    if ((try find(db, d.account)).balance < d.amount) return error.Insufficient;
+                },
+                .credit => |c| {
+                    _ = try find(db, c.account); // nothing applied yet — safe to bail
+                },
+            }
+        }
+        for (self.ops[0..self.len]) |op| {
+            switch (op) {
+                .debit => |d| (find(db, d.account) catch unreachable).balance -= d.amount,
+                .credit => |c| (find(db, c.account) catch unreachable).balance += c.amount,
+            }
+        }
+    }
+};
+
+pub fn main() !void {
+    var accounts = [_]Account{
+        .{ .name = "alice", .balance = 100 },
+        .{ .name = "bob", .balance = 50 },
+    };
+
+    var uow = UnitOfWork{};
+    try uow.register(.{ .debit = .{ .account = "alice", .amount = 70 } });
+    try uow.register(.{ .credit = .{ .account = "bob", .amount = 70 } });
+    try uow.commit(&accounts); // both or neither
+
+    std.debug.print("alice {d}, bob {d}\n", .{ accounts[0].balance, accounts[1].balance });
+    // alice 30, bob 120
+}
+```
+
+**🧠 Tradeoff** — Zig has no closures, so the unit can't defer arbitrary lambdas the way JS or C#
+do; instead the stageable writes are a tagged union, switched exhaustively. That's restrictive but
+honest: everything a unit can do is enumerated in one place, and the compiler flags any op a phase
+forgets. The two-phase commit (validate everything, then apply) buys atomicity without cloning
+state — the price is that every rule must be checkable up front, which a real database transaction
+doesn't require.
+
+### Java
+
+**❌ Naive**
+
+```java
+import java.util.Map;
+
+// Each write applies immediately; an exception midway leaves partial state.
+class Transfers {
+    static void transfer(Map<String, Long> db, String from, String to, long amount) {
+        db.merge(from, -amount, Long::sum);
+        // an exception here → money debited but never credited
+        db.merge(to, amount, Long::sum);
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+// A deferred write is any lambda matching this single method — a functional interface.
+interface Op {
+    void apply(Map<String, Long> db);
+}
+
+class UnitOfWork {
+    private final List<Op> ops = new ArrayList<>();
+
+    void register(Op op) { ops.add(op); } // defer the write
+
+    // Ops run against a working copy; only full success replaces the real state.
+    void commit(Map<String, Long> db) {
+        var working = new TreeMap<>(db);
+        for (var op : ops) op.apply(working); // any failure discards the copy — rollback
+        db.clear();
+        db.putAll(working); // all changes land together
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var db = new TreeMap<>(Map.of("alice", 100L, "bob", 50L));
+
+        var uow = new UnitOfWork();
+        uow.register(w -> {
+            if (w.get("alice") < 70) throw new IllegalStateException("insufficient");
+            w.merge("alice", -70L, Long::sum);
+        });
+        uow.register(w -> w.merge("bob", 70L, Long::sum));
+
+        uow.commit(db);
+        System.out.println(db); // {alice=30, bob=120} — both or neither
+    }
+}
+```
+
+**🧠 Tradeoff** — In Java this pattern ships in the box: JPA's `EntityManager` (Hibernate's
+`Session`) *is* a unit of work. The persistence context tracks every managed entity, detects dirty
+state on its own, and flushes inserts, updates, and deletes in dependency order inside one
+transaction on commit — exactly the machinery this kata hand-rolls. So reach for that first; the
+in-memory version above is for when JPA isn't there, and on plain JDBC the boundary is a
+`Connection` with auto-commit off plus explicit `commit`/`rollback`. Note the registration API:
+`Op` is a single-method contract, so every deferred write is just a lambda.
 
 ## Applications
 

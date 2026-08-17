@@ -11,6 +11,10 @@ export const LANG_META: Record<string, { label: string; color: string }> = {
   python: { label: "Python", color: "var(--lang-python)" },
   elixir: { label: "Elixir", color: "var(--lang-elixir)" },
   go: { label: "Go", color: "var(--lang-go)" },
+  java: { label: "Java", color: "var(--lang-java)" },
+  csharp: { label: "C#", color: "var(--lang-csharp)" },
+  rust: { label: "Rust", color: "var(--lang-rust)" },
+  zig: { label: "Zig", color: "var(--lang-zig)" },
 };
 
 export function freqDots(freq: string) {

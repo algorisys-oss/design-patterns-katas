@@ -11,7 +11,7 @@ frequency: high
 difficulty: intermediate
 tags: [solid, dip, abstraction, dependency-injection, decoupling]
 related: [open-closed, interface-segregation, strategy, adapter]
-languages: [javascript, python, elixir, go]
+languages: [javascript, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## The Principle
@@ -233,6 +233,274 @@ func (s *OrderService) Place(order Order) error { return s.store.Save(order) }
 type with `Save` satisfies it implicitly — so `OrderService` never imports the Postgres package.
 Injecting the store via the constructor makes it trivially testable with a fake and swappable in
 production. This "accept interfaces, return structs" habit is DIP by default.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// High-level policy welded to a concrete detail.
+public sealed class OrderService
+{
+    private readonly PostgresDatabase _db = new(); // newed up inside, untestable
+
+    public void Place(Order order) => _db.Insert("orders", order);
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Production wires Postgres; tests wire the fake — same OrderService.
+var service = new OrderService(new PostgresStore());
+var underTest = new OrderService(new InMemoryStore());
+Console.WriteLine(underTest.Place(new Order(1))); // saved
+
+// The abstraction, shaped by what the service needs.
+public interface IStore
+{
+    string Save(Order order);
+}
+
+// Primary constructor: the dependency is injected, never constructed inside.
+public sealed class OrderService(IStore store)
+{
+    public string Place(Order order) => store.Save(order);
+}
+
+public sealed class PostgresStore : IStore
+{
+    public string Save(Order order) => "saved"; // real insert
+}
+
+public sealed class InMemoryStore : IStore
+{
+    public List<Order> Rows { get; } = [];
+    public string Save(Order order) { Rows.Add(order); return "saved"; }
+}
+
+public sealed record Order(int Id);
+```
+
+**🧠 Note** — constructor injection is so standard in .NET that ASP.NET Core ships a container
+for it — but the principle is just this: `OrderService` names an `IStore` it owns, and the
+concrete store arrives from outside. Keep the interface consumer-shaped (`Save(order)`), not a
+mirror of the vendor SDK. And when the dependency is a single method, a `Func<Order, string>`
+injected directly does the same inversion without declaring an interface at all.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+struct PostgresDatabase;
+impl PostgresDatabase {
+    fn insert(&self, _table: &str, _order: &str) { /* real insert */ }
+}
+
+// High-level policy welded to the concrete detail.
+struct OrderService {
+    db: PostgresDatabase, // can't test without it
+}
+
+impl OrderService {
+    fn new() -> Self {
+        Self { db: PostgresDatabase } // constructed inside
+    }
+    fn place(&self, order: &str) {
+        self.db.insert("orders", order);
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// The abstraction the service owns.
+trait Store {
+    fn save(&mut self, order: &str) -> String;
+}
+
+struct PostgresStore;
+impl Store for PostgresStore {
+    fn save(&mut self, _order: &str) -> String {
+        "saved".into() // real insert
+    }
+}
+
+struct InMemoryStore {
+    rows: Vec<String>,
+}
+impl Store for InMemoryStore {
+    fn save(&mut self, order: &str) -> String {
+        self.rows.push(order.to_string());
+        "saved".into()
+    }
+}
+
+// Generic over any Store — whoever constructs the service picks the detail.
+struct OrderService<S: Store> {
+    store: S,
+}
+
+impl<S: Store> OrderService<S> {
+    fn new(store: S) -> Self {
+        Self { store }
+    }
+    fn place(&mut self, order: &str) -> String {
+        self.store.save(order)
+    }
+}
+
+fn main() {
+    let mut service = OrderService::new(PostgresStore);
+    let mut under_test = OrderService::new(InMemoryStore { rows: Vec::new() });
+    println!("{}", service.place("order-1"));    // saved
+    println!("{}", under_test.place("order-1")); // saved
+}
+```
+
+**🧠 Note** — Rust makes the injection cost explicit. The generic `OrderService<S: Store>` above
+monomorphizes: zero dispatch overhead, but the store is fixed per instantiation — exactly right
+when prod uses Postgres and tests use the fake. If the store must change at runtime, or the
+generic parameter starts infecting every type that holds a service, switch the field to
+`Box<dyn Store>` and pay one indirection. Either way the arrow is inverted: both stores conform
+to a trait the service owns.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const PostgresDatabase = struct {
+    pub fn insert(_: PostgresDatabase, table: []const u8, order: []const u8) void {
+        std.debug.print("insert into {s}: {s}\n", .{ table, order });
+    }
+};
+
+// High-level policy welded to the concrete detail.
+const OrderService = struct {
+    db: PostgresDatabase = .{}, // constructed inside — can't swap, can't fake
+
+    pub fn place(self: OrderService, order: []const u8) void {
+        self.db.insert("orders", order);
+    }
+};
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// The abstraction: the two-field vtable idiom std.mem.Allocator uses.
+const Store = struct {
+    ptr: *anyopaque,
+    saveFn: *const fn (ptr: *anyopaque, order: []const u8) []const u8,
+
+    pub fn save(self: Store, order: []const u8) []const u8 {
+        return self.saveFn(self.ptr, order);
+    }
+};
+
+const OrderService = struct {
+    store: Store, // depends on the abstraction only
+
+    pub fn place(self: OrderService, order: []const u8) []const u8 {
+        return self.store.save(order);
+    }
+};
+
+const InMemoryStore = struct {
+    rows: [16][]const u8 = undefined, // fixed buffer — no allocator needed here
+    len: usize = 0,
+
+    fn save(ptr: *anyopaque, order: []const u8) []const u8 {
+        const self: *InMemoryStore = @ptrCast(@alignCast(ptr));
+        self.rows[self.len] = order;
+        self.len += 1;
+        return "saved";
+    }
+
+    pub fn store(self: *InMemoryStore) Store {
+        return .{ .ptr = self, .saveFn = save };
+    }
+};
+
+pub fn main() void {
+    var fake = InMemoryStore{};
+    const under_test = OrderService{ .store = fake.store() };
+    std.debug.print("{s}\n", .{under_test.place("order-1")}); // saved
+    // Production builds a PostgresStore exposing the same store() — the service never changes.
+}
+```
+
+**🧠 Note** — Zig's standard library is built on this exact inversion: everything that allocates
+depends on `std.mem.Allocator`, a `*anyopaque` context plus function pointers, and the caller
+injects the concrete allocator. The `Store` above is the same idiom at kata size — the erased
+pointer plus `@ptrCast(@alignCast(...))` is the price of runtime swapping without interfaces.
+When the store can be fixed at build time, the cheaper Zig form is comptime injection: make the
+service generic over the store type (`fn OrderService(comptime S: type)`) and skip the vtable.
+
+### Java
+
+**❌ Naive**
+
+```java
+// High-level policy welded to a concrete detail.
+class OrderService {
+    private final PostgresDatabase db = new PostgresDatabase(); // newed up inside, untestable
+
+    void place(Order order) { db.insert("orders", order); }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+// The abstraction, shaped by what the service needs.
+interface Store {
+    String save(Order order);
+}
+
+record Order(int id) {}
+
+class OrderService {
+    private final Store store; // depends on the abstraction only
+
+    OrderService(Store store) { this.store = store; }
+    String place(Order order) { return store.save(order); }
+}
+
+class PostgresStore implements Store {
+    public String save(Order order) { return "saved"; } // real insert
+}
+
+class InMemoryStore implements Store {
+    final List<Order> rows = new ArrayList<>();
+    public String save(Order order) { rows.add(order); return "saved"; }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var service = new OrderService(new PostgresStore());
+        var underTest = new OrderService(new InMemoryStore());
+        System.out.println(underTest.place(new Order(1))); // saved
+    }
+}
+```
+
+**🧠 Note** — this wiring is what Spring's whole container automates, but DIP needs none of it:
+constructor injection is just `new` at the edge of the program. Two modern touches. `Store` has
+one method, so it's a functional interface and a test fake is a lambda —
+`new OrderService(order -> "saved")`. And keep the interface consumer-shaped (`save(order)`),
+not a mirror of JDBC or the vendor SDK — the service owns the contract, the detail conforms.
+Reach for a container when the object graph gets deep; the principle is already satisfied here.
 
 ## Applications
 

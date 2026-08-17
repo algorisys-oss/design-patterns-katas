@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [distributed, resilience, latency, deadlines, resource-management]
 related: [retry, circuit-breaker, bulkhead]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -247,6 +247,223 @@ func getQuote(ctx context.Context) (Quote, error) {
 call automatically inherits (and shrinks within) the deadline. `defer cancel()` frees resources
 promptly. It's more threading of `ctx` through signatures than other languages, but propagation is
 first-class rather than bolted on.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The default HttpClient timeout is 100 seconds — near-unbounded for a request path.
+using var http = new HttpClient();
+var quote = await http.GetStringAsync("https://quotes.example.com"); // no real deadline
+```
+
+**✅ Idiomatic**
+
+```csharp
+// A CancellationToken carries the deadline; every call that accepts it stops on expiry.
+using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3)); // the deadline
+try
+{
+    Console.WriteLine(await GetQuote(cts.Token));
+}
+catch (OperationCanceledException)
+{
+    Console.WriteLine("upstream timeout"); // bounded failure; resources released
+}
+
+static async Task<string> GetQuote(CancellationToken ct)
+{
+    using var http = new HttpClient();
+    // Pass the token all the way down — the request is cancelled, not just the wait.
+    return await http.GetStringAsync("https://quotes.example.com", ct);
+}
+```
+
+**🧠 Tradeoff** — `CancellationTokenSource(TimeSpan)` is C#'s answer to Go's `context`: the token
+carries deadline and cancellation together, and every layer that accepts it — `HttpClient`,
+`Task.Delay`, database drivers — actually stops the work, not just the wait. For APIs that don't
+take a token, `task.WaitAsync(timeout)` bounds the wait but abandons the work, so prefer threading
+the token when you can. `HttpClient.Timeout` is a real backstop, but it doesn't propagate down a
+call chain the way one shared token does.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// A blocking call with no deadline parks this thread for as long as the server likes.
+fn get_quote() -> String {
+    blocking_fetch("https://quotes.example.com") // could block forever
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
+
+// Race the operation against the clock: run it on a thread, wait with a deadline.
+fn with_timeout<T: Send + 'static>(
+    limit: Duration,
+    f: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, mpsc::RecvTimeoutError> {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let _ = tx.send(f()); // if we timed out, the receiver is gone — send just fails
+    });
+    rx.recv_timeout(limit) // Err(Timeout) once the deadline passes
+}
+
+fn main() {
+    match with_timeout(Duration::from_secs(3), || blocking_fetch("https://quotes.example.com")) {
+        Ok(quote) => println!("{quote}"),
+        Err(_) => println!("upstream timeout"), // bounded failure; this thread moves on
+    }
+}
+```
+
+**🧠 Tradeoff** — `recv_timeout` bounds the *wait*, not the *work*: std can't kill a thread, so the
+abandoned fetch runs to completion and its `send` lands harmlessly in a closed channel. Real
+cancellation has to live where the blocking happens — `TcpStream::set_read_timeout` pushes the
+deadline into the socket itself — or in an async runtime, where `tokio::time::timeout` cancels by
+dropping the future (a dependency these katas skip). Work that may still complete server-side is
+exactly why timeout plus retry needs idempotency.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// A blocking fetch with no deadline parks this thread for as long as the server likes.
+fn getQuote() f64 {
+    return blockingFetch(); // no limit, no way out
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Race the call against the clock: a worker fills a slot; we wait with a deadline.
+const Slot = struct {
+    mutex: std.Thread.Mutex = .{},
+    cond: std.Thread.Condition = .{},
+    done: bool = false,
+    abandoned: bool = false, // the waiter gave up; the worker owns cleanup
+    quote: f64 = 0,
+
+    fn run(self: *Slot, allocator: std.mem.Allocator) void {
+        const q = blockingFetch(); // may take as long as it likes
+        self.mutex.lock();
+        self.quote = q;
+        self.done = true;
+        const orphaned = self.abandoned;
+        self.cond.signal();
+        self.mutex.unlock();
+        if (orphaned) allocator.destroy(self); // nobody is waiting — free ourselves
+    }
+};
+
+fn getQuote(allocator: std.mem.Allocator, limit_ns: u64) !f64 {
+    const slot = try allocator.create(Slot);
+    slot.* = .{};
+    const worker = try std.Thread.spawn(.{}, Slot.run, .{ slot, allocator });
+    worker.detach(); // no join — the deadline decides who cleans up
+
+    slot.mutex.lock();
+    while (!slot.done) {
+        slot.cond.timedWait(&slot.mutex, limit_ns) catch {
+            // Deadline hit. std can't kill the thread — the fetch keeps running,
+            // so ownership of the slot passes to the worker.
+            slot.abandoned = true;
+            slot.mutex.unlock();
+            return error.Timeout;
+        };
+    }
+    const quote = slot.quote;
+    slot.mutex.unlock();
+    allocator.destroy(slot); // result seen — the slot is ours to free
+    return quote;
+}
+
+// const quote = try getQuote(allocator, 3 * std.time.ns_per_s);
+```
+
+**🧠 Tradeoff** — Zig makes the ugly truth of timeouts explicit: you can stop *waiting*, but you
+can't stop the *thread*, so a timeout is really an ownership handoff — the `abandoned` flag decides
+whether the waiter or the orphaned worker frees the slot. Runtimes in other languages run this same
+machinery; Zig just refuses to hide it, allocator and all. For sockets, the cleaner route is
+pushing the deadline into the OS (`SO_RCVTIMEO` via `std.posix.setsockopt`) so the blocking read
+itself returns an error.
+
+### Java
+
+**❌ Naive**
+
+```java
+// No request timeout — send blocks for as long as the server (or network) likes.
+String getQuote() throws Exception {
+    var req = HttpRequest.newBuilder(URI.create("https://quotes.example.com")).build();
+    return http.send(req, HttpResponse.BodyHandlers.ofString()).body(); // no deadline
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.concurrent.*;
+
+class Quotes {
+    private final HttpClient http = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(2)).build();
+
+    // Best: push the deadline into the client — it cancels the request, not just the wait.
+    String getQuote() throws Exception {
+        var req = HttpRequest.newBuilder(URI.create("https://quotes.example.com"))
+                .timeout(Duration.ofSeconds(3)) // HttpTimeoutException on expiry
+                .build();
+        return http.send(req, HttpResponse.BodyHandlers.ofString()).body();
+    }
+
+    // Async: orTimeout bounds any CompletableFuture pipeline.
+    CompletableFuture<String> getQuoteAsync() {
+        var req = HttpRequest.newBuilder(URI.create("https://quotes.example.com")).build();
+        return http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+                .thenApply(HttpResponse::body)
+                .orTimeout(3, TimeUnit.SECONDS); // completes with TimeoutException
+    }
+
+    // Blocking code with no timeout parameter: bound the wait, then interrupt the work.
+    static String bounded(ExecutorService pool) throws Exception {
+        Future<String> f = pool.submit(() -> blockingFetch());
+        try {
+            return f.get(3, TimeUnit.SECONDS); // waits at most 3s
+        } catch (TimeoutException e) {
+            f.cancel(true); // delivers an interrupt — the work stops only if it's interruptible
+            throw e;
+        }
+    }
+}
+```
+
+**🧠 Tradeoff** — `request.timeout` is the honest one: the HTTP client abandons the exchange and
+frees the connection, so the work stops with the wait. `Future.get(timeout)` and `orTimeout` bound
+only the *wait* — the task keeps running until `cancel(true)`'s interrupt lands, and interrupts
+only land in code that blocks interruptibly (`java.net.http` does; a raw `InputStream.read` mostly
+doesn't). So prefer pushing the deadline into the layer that actually blocks — request timeouts,
+JDBC's `setQueryTimeout`, socket timeouts — and treat `orTimeout` as the backstop. Java has no
+ambient deadline like Go's `context`: propagating a budget across hops means passing the remaining
+time down yourself, though structured concurrency's scope-wide deadline (still in preview) is the
+emerging answer.
 
 ## Applications
 

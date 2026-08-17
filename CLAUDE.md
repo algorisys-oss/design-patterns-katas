@@ -1,8 +1,8 @@
 # CLAUDE.md — Design Patterns Katas
 
 A cross-language design-patterns learning platform. Every classic GoF pattern is taught
-once (language-agnostic) and then shown side by side in **JavaScript, Python, Elixir, and Go**
-so learners compare idioms, not just syntax.
+once (language-agnostic) and then shown side by side in **JavaScript, Python, Elixir, Go,
+Java, C#, Rust, and Zig** so learners compare idioms, not just syntax.
 
 ## Development Workflow
 
@@ -16,7 +16,8 @@ with no AI slop (XX). When those rules conflict with anything below, LOOPS.md wi
 - **Coverage:** all 23 GoF patterns (see the checklist in [todo.md](todo.md)).
 - **Execution:** content-first. The site is a **read-only kata browser** with language tabs.
   No Run button, no sandbox in v1. Live execution is a later phase.
-- **Languages per kata:** JavaScript, Python, Elixir, Go.
+- **Languages per kata:** JavaScript, Python, Elixir, Go, Java, C#, Rust, Zig (code-pattern
+  categories; AI/UI/deployment katas keep their own smaller sets).
 - **Hosting:** must run two ways — (a) Go API + React dev server, and (b) a fully **static
   site** (GitHub Pages / Netlify) with no backend. A build step compiles the markdown into
   static JSON the React app fetches, so the same content works in both modes.
@@ -75,7 +76,7 @@ frequency: medium           # low | medium | high  (mirrors the article dot-rati
 difficulty: intermediate    # beginner | intermediate | advanced
 tags: [behavioral, algorithms, open-closed, runtime-swap]
 related: [state, template-method, factory-method]
-languages: [javascript, python, elixir, go]
+languages: [javascript, python, elixir, go, java, csharp, rust, zig]
 ---
 ```
 
@@ -129,6 +130,24 @@ to use it. No AI slop (LOOPS.md XX).
   the functional form. No mutable state — thread it or use a process where the pattern needs it.
 - **Go** — small implicit interfaces; a `func` type for single-method strategies. Idiomatic,
   no inheritance.
+- **Java** — latest LTS (25): records, sealed interfaces, pattern matching for `switch`,
+  lambdas and method references; any single-method contract is a functional interface, so
+  a lambda replaces the strategy class. Streams where they read well; virtual threads and
+  `java.util.concurrent` for concurrency patterns. Java is the GoF book's home language —
+  the classical form usually fits as written; the lesson is what modern Java replaces it with.
+- **C#** — latest C# (14 / .NET 10): file-scoped namespaces, records, pattern matching,
+  primary constructors, sealed classes. A `Func<>`/delegate for single-method strategies;
+  interfaces where the contract carries more than one member. LINQ where it reads well.
+  Demo code may use top-level statements.
+- **Rust** — traits for contracts; enums + `match` where the variant set is closed; closures
+  and `fn` types for single-method strategies. Name the `Box<dyn Trait>` (dynamic dispatch)
+  vs generic-bound (monomorphized) choice when the pattern forces it. Ownership stays
+  idiomatic — no `Rc<RefCell<...>>` unless the pattern genuinely needs shared mutation,
+  and say so when it does.
+- **Zig** — no interfaces, no closures: use comptime generics for static polymorphism and
+  the function-pointer vtable idiom (like `std.mem.Allocator`) when dispatch must be
+  runtime. Tagged unions + `switch` for closed variant sets. Pass allocators explicitly
+  where allocation happens. Zig is pre-1.0 — keep to stable core-language features.
 
 ## Git
 

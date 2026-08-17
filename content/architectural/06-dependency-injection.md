@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [architecture, decoupling, testability, inversion-of-control, wiring]
 related: [dependency-inversion, hexagonal, repository]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -266,6 +266,262 @@ svc := NewOrderService(NewStripeGateway(os.Getenv("STRIPE_KEY")))
 parameter, and wire concretes in `main`. No framework, no tags — the dependency graph is plain
 Go you can read top to bottom. For very large graphs, code generators (Google's `wire`) automate
 the wiring while keeping it compile-time and explicit, avoiding runtime reflection containers.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The service constructs its own gateway — welded to Stripe, untestable.
+public sealed class OrderService
+{
+    private readonly StripeGateway _gateway =
+        new(Environment.GetEnvironmentVariable("STRIPE_KEY")!); // hard-wired
+
+    public Task Checkout(Cart cart) => _gateway.Charge(cart.Total);
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Composition root: the top-level statements wire the concrete in.
+var service = new OrderService(
+    new StripeGateway(Environment.GetEnvironmentVariable("STRIPE_KEY")!));
+await service.Checkout(new Cart(100));
+// tests: new OrderService(new FakeGateway()) — no network, no key
+
+public interface IGateway
+{
+    Task Charge(int amount);
+}
+
+public sealed class StripeGateway(string apiKey) : IGateway
+{
+    public Task Charge(int amount) => Task.CompletedTask; // real HTTP call with apiKey here
+}
+
+// Primary constructor: the dependency is the signature.
+public sealed class OrderService(IGateway gateway)
+{
+    public Task Checkout(Cart cart) => gateway.Charge(cart.Total);
+}
+
+public sealed record Cart(int Total);
+```
+
+**🧠 Tradeoff** — Constructor injection through a primary constructor is the whole pattern, and
+`IGateway` is compile-checked where the JS fake is duck-typed. What C# adds is a container in the
+box: `new ServiceCollection().AddSingleton<IGateway, StripeGateway>()` builds an `IServiceProvider`,
+and ASP.NET Core resolves constructor parameters from it automatically, with lifetimes (singleton,
+scoped-per-request, transient) you'd otherwise manage by hand. The catch is that a missing
+registration surfaces at startup, not compile time — the container trades visible wiring for
+convenience. For a library or a small app, plain `new` in `Main` is still the clearest root.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// The service builds its own gateway — welded to Stripe, untestable.
+struct OrderService {
+    gateway: StripeGateway,
+}
+
+impl OrderService {
+    fn new() -> Self {
+        let key = std::env::var("STRIPE_KEY").unwrap(); // hard-wired
+        Self { gateway: StripeGateway { api_key: key } }
+    }
+    fn checkout(&self, total: u32) -> Result<(), String> {
+        self.gateway.charge(total)
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+trait Gateway {
+    fn charge(&self, amount: u32) -> Result<(), String>;
+}
+
+struct StripeGateway {
+    api_key: String,
+}
+
+impl Gateway for StripeGateway {
+    fn charge(&self, amount: u32) -> Result<(), String> {
+        // real HTTP call with self.api_key here
+        println!("charged {amount} via stripe");
+        Ok(())
+    }
+}
+
+// Generic over the trait: the dependency is injected and monomorphized.
+struct OrderService<G: Gateway> {
+    gateway: G,
+}
+
+impl<G: Gateway> OrderService<G> {
+    fn new(gateway: G) -> Self {
+        Self { gateway }
+    }
+    fn checkout(&self, total: u32) -> Result<(), String> {
+        self.gateway.charge(total)
+    }
+}
+
+fn main() {
+    // composition root: main constructs the concrete and hands it in
+    let service = OrderService::new(StripeGateway { api_key: "sk_live_x".to_string() });
+    service.checkout(100).unwrap(); // charged 100 via stripe
+}
+
+// tests: impl Gateway for FakeGateway { ... } then
+// let service = OrderService::new(FakeGateway::default());
+```
+
+**🧠 Tradeoff** — Rust has no reflection, so there's no runtime container to hide the graph — and
+manual wiring in `main` is the honest, standard form, not a compromise. The generic
+`OrderService<G>` monomorphizes each concrete gateway to zero-overhead calls, but the type parameter
+spreads to everything that holds the service; `Box<dyn Gateway>` flattens that to one runtime type
+at the cost of dynamic dispatch. Either way the compiler checks the entire dependency graph — a
+missing or wrong dependency is a build error, not a startup surprise.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// The service builds its own gateway — welded to Stripe, untestable.
+const OrderService = struct {
+    gateway: StripeGateway,
+
+    fn init() OrderService {
+        return .{ .gateway = .{ .api_key = "sk_live_x" } }; // hard-wired
+    }
+    fn checkout(self: OrderService, total: u32) !void {
+        try self.gateway.charge(total);
+    }
+};
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// No interfaces: the contract is comptime duck typing — any type with charge().
+fn OrderService(comptime Gateway: type) type {
+    return struct {
+        gateway: Gateway, // injected
+
+        fn checkout(self: @This(), total: u32) !void {
+            try self.gateway.charge(total);
+        }
+    };
+}
+
+const StripeGateway = struct {
+    api_key: []const u8,
+
+    fn charge(self: StripeGateway, amount: u32) !void {
+        // real HTTP call with self.api_key here
+        std.debug.print("charged {d} via stripe ({s})\n", .{ amount, self.api_key });
+    }
+};
+
+const FakeGateway = struct {
+    fn charge(self: FakeGateway, amount: u32) !void {
+        _ = self;
+        std.debug.print("fake: recorded {d}, no network\n", .{amount});
+    }
+};
+
+pub fn main() !void {
+    // composition root: main picks the concrete type and value
+    const service = OrderService(StripeGateway){ .gateway = .{ .api_key = "sk_live_x" } };
+    try service.checkout(100); // charged 100 via stripe (sk_live_x)
+
+    const test_service = OrderService(FakeGateway){ .gateway = .{} };
+    try test_service.checkout(100); // fake: recorded 100, no network
+}
+```
+
+**🧠 Tradeoff** — `OrderService(comptime Gateway: type)` is static dependency injection: the
+compiler instantiates a service per concrete gateway, calls are direct (no vtable), and a type
+missing `charge` fails at compile time. The cost is that the dependency is part of the type —
+`OrderService(StripeGateway)` and `OrderService(FakeGateway)` are different types, so you can't
+swap gateways at runtime or store mixed services in one array. When you need that, reach for the
+two-field vtable idiom (`*anyopaque` context + function pointer) that `std.mem.Allocator` itself
+uses — which is Zig injecting its most important dependency, the allocator, by hand everywhere.
+
+### Java
+
+**❌ Naive**
+
+```java
+// The service constructs its own gateway — welded to Stripe, untestable.
+class OrderService {
+    private final StripeGateway gateway =
+        new StripeGateway(System.getenv("STRIPE_KEY")); // hard-wired
+
+    void checkout(Cart cart) { gateway.charge(cart.total()); }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+interface Gateway {
+    void charge(int amount);
+}
+
+class StripeGateway implements Gateway {
+    private final String apiKey;
+
+    StripeGateway(String apiKey) { this.apiKey = apiKey; }
+
+    public void charge(int amount) {
+        // real HTTP call with apiKey here
+        System.out.println("charged " + amount + " via stripe");
+    }
+}
+
+record Cart(int total) {}
+
+// The dependency is the constructor signature — injected, never constructed inside.
+class OrderService {
+    private final Gateway gateway;
+
+    OrderService(Gateway gateway) { this.gateway = gateway; }
+
+    void checkout(Cart cart) { gateway.charge(cart.total()); }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        // composition root: main constructs the concrete and hands it in
+        var service = new OrderService(new StripeGateway(System.getenv("STRIPE_KEY")));
+        service.checkout(new Cart(100)); // charged 100 via stripe
+
+        // tests: Gateway is a single-method interface, so a lambda is a fake
+        var testService = new OrderService(amount ->
+            System.out.println("fake: recorded " + amount + ", no network"));
+        testService.checkout(new Cart(100)); // fake: recorded 100, no network
+    }
+}
+```
+
+**🧠 Tradeoff** — Constructor injection into a `final` field is the whole pattern, and no framework
+appears in the code above — a fake is one lambda because `Gateway` is a functional interface. What
+Java is famous for is the container layer on top: Spring, Guice, and CDI scan for components,
+resolve constructor parameters by type, and manage lifecycles (singleton, request-scoped) and
+proxies. That earns its keep in large apps, but it moves wiring errors from compile time to startup
+and hides the graph behind annotations. Telling detail: modern Spring's own advice is plain
+constructor injection — the container ends up calling the same constructor `main` would. For
+libraries and small services, wiring by hand in `main` stays the clearest composition root.
 
 ## Applications
 

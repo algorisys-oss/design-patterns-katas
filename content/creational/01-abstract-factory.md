@@ -10,7 +10,7 @@ frequency: medium
 difficulty: advanced
 tags: [creational, object-families, consistency, cross-platform, decoupling]
 related: [factory-method, builder, singleton]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -300,6 +300,282 @@ func BuildUI(f Factory) (Button, Checkbox) {
 just by having the methods. `BuildUI` takes the interface, so it's blind to the family — swap
 the factory value and the whole set changes. Adding a new product kind, though, means editing
 the `Factory` interface and every implementer.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Two independent decisions that must agree — but nothing makes them.
+IButton button = os == "mac" ? new MacButton() : new WinButton();
+ICheckbox checkbox = os == "mac" ? new MacCheckbox() : new WinCheckbox();
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Top-level statements: the demo runs first, the types follow.
+var os = "mac";
+
+// ONE factory choice fixes the whole family.
+IUIFactory factory = os == "mac" ? new MacFactory() : new WinFactory();
+var (button, checkbox) = BuildUI(factory);
+Console.WriteLine(button.Render());   // [mac button]
+Console.WriteLine(checkbox.Render()); // [mac checkbox]
+
+// The app depends only on the interfaces, never on a concrete family.
+static (IButton, ICheckbox) BuildUI(IUIFactory f) =>
+    (f.CreateButton(), f.CreateCheckbox());
+
+public interface IButton { string Render(); }
+public interface ICheckbox { string Render(); }
+
+// The abstract factory: one interface, a creator per product.
+public interface IUIFactory
+{
+    IButton CreateButton();
+    ICheckbox CreateCheckbox();
+}
+
+public sealed class MacButton : IButton { public string Render() => "[mac button]"; }
+public sealed class MacCheckbox : ICheckbox { public string Render() => "[mac checkbox]"; }
+public sealed class WinButton : IButton { public string Render() => "[win button]"; }
+public sealed class WinCheckbox : ICheckbox { public string Render() => "[win checkbox]"; }
+
+public sealed class MacFactory : IUIFactory
+{
+    public IButton CreateButton() => new MacButton();
+    public ICheckbox CreateCheckbox() => new MacCheckbox();
+}
+
+public sealed class WinFactory : IUIFactory
+{
+    public IButton CreateButton() => new WinButton();
+    public ICheckbox CreateCheckbox() => new WinCheckbox();
+}
+```
+
+**🧠 Tradeoff** — Same shape as Go, but the contract is explicit: `MacFactory` declares
+`IUIFactory`, and the compiler rejects a factory that forgot a creator. The products here are
+one-liners, so the class count looks heavy — remember the factory's value is the *pairing*, not
+the products. You could shrink a two-product family to a record of two `Func<>`s, but past that
+the interface reads better. Adding a new product kind still ripples through every factory;
+that's the pattern's tax in any language.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Two independent decisions that must agree — but nothing makes them.
+fn build_ui(os: &str) -> (Box<dyn Button>, Box<dyn Checkbox>) {
+    let button: Box<dyn Button> =
+        if os == "mac" { Box::new(MacButton) } else { Box::new(WinButton) };
+    let checkbox: Box<dyn Checkbox> =
+        if os == "mac" { Box::new(MacCheckbox) } else { Box::new(WinCheckbox) };
+    (button, checkbox)
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+trait Button { fn render(&self) -> String; }
+trait Checkbox { fn render(&self) -> String; }
+
+// The abstract factory: one trait, a creator per product.
+trait UIFactory {
+    fn create_button(&self) -> Box<dyn Button>;
+    fn create_checkbox(&self) -> Box<dyn Checkbox>;
+}
+
+struct MacButton;
+impl Button for MacButton { fn render(&self) -> String { "[mac button]".into() } }
+struct MacCheckbox;
+impl Checkbox for MacCheckbox { fn render(&self) -> String { "[mac checkbox]".into() } }
+struct WinButton;
+impl Button for WinButton { fn render(&self) -> String { "[win button]".into() } }
+struct WinCheckbox;
+impl Checkbox for WinCheckbox { fn render(&self) -> String { "[win checkbox]".into() } }
+
+struct MacFactory;
+impl UIFactory for MacFactory {
+    fn create_button(&self) -> Box<dyn Button> { Box::new(MacButton) }
+    fn create_checkbox(&self) -> Box<dyn Checkbox> { Box::new(MacCheckbox) }
+}
+
+struct WinFactory;
+impl UIFactory for WinFactory {
+    fn create_button(&self) -> Box<dyn Button> { Box::new(WinButton) }
+    fn create_checkbox(&self) -> Box<dyn Checkbox> { Box::new(WinCheckbox) }
+}
+
+// The app depends only on the trait — swap the factory, swap the family.
+fn build_ui(factory: &dyn UIFactory) -> (Box<dyn Button>, Box<dyn Checkbox>) {
+    (factory.create_button(), factory.create_checkbox())
+}
+
+fn main() {
+    let os = "mac";
+    let factory: &dyn UIFactory = if os == "mac" { &MacFactory } else { &WinFactory };
+    let (button, checkbox) = build_ui(factory);
+    println!("{}", button.render());   // [mac button]
+    println!("{}", checkbox.render()); // [mac checkbox]
+}
+```
+
+**🧠 Tradeoff** — `&dyn UIFactory` and the boxed products buy a runtime family swap at the cost
+of dynamic dispatch and heap allocation. The static alternative is a generic factory with
+associated types (`type B: Button`) — zero overhead, but the family is fixed at compile time and
+everything touching it grows a type parameter. Be honest about scale, too: with exactly two
+known platforms, real Rust often skips the trait and picks the family with `#[cfg]` or one enum;
+the trait earns its keep when families are many or arrive from outside the crate.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const OS = enum { mac, win };
+
+// Two independent switches that must agree — but nothing makes them.
+fn buttonLabel(os: OS) []const u8 {
+    return switch (os) {
+        .mac => "[mac button]",
+        .win => "[win button]",
+    };
+}
+
+fn checkboxLabel(os: OS) []const u8 {
+    return switch (os) {
+        .mac => "[mac checkbox]",
+        .win => "[win checkbox]",
+    };
+}
+
+pub fn main() void {
+    std.debug.print("{s}\n", .{buttonLabel(.mac)});
+    std.debug.print("{s}\n", .{checkboxLabel(.win)}); // mixed family — compiles fine
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// No interfaces in Zig — a product carries its behavior as a function pointer.
+const Button = struct { render: *const fn () []const u8 };
+const Checkbox = struct { render: *const fn () []const u8 };
+
+// The abstract factory is a struct of creator function pointers — a small vtable.
+const UIFactory = struct {
+    createButton: *const fn () Button,
+    createCheckbox: *const fn () Checkbox,
+};
+
+fn macButtonLabel() []const u8 { return "[mac button]"; }
+fn macCheckboxLabel() []const u8 { return "[mac checkbox]"; }
+fn winButtonLabel() []const u8 { return "[win button]"; }
+fn winCheckboxLabel() []const u8 { return "[win checkbox]"; }
+
+fn createMacButton() Button { return .{ .render = macButtonLabel }; }
+fn createMacCheckbox() Checkbox { return .{ .render = macCheckboxLabel }; }
+fn createWinButton() Button { return .{ .render = winButtonLabel }; }
+fn createWinCheckbox() Checkbox { return .{ .render = winCheckboxLabel }; }
+
+const mac_factory = UIFactory{ .createButton = createMacButton, .createCheckbox = createMacCheckbox };
+const win_factory = UIFactory{ .createButton = createWinButton, .createCheckbox = createWinCheckbox };
+
+// The app takes ONE factory and can't mix families.
+fn buildUI(factory: UIFactory) struct { button: Button, checkbox: Checkbox } {
+    return .{ .button = factory.createButton(), .checkbox = factory.createCheckbox() };
+}
+
+const Platform = enum { mac, win };
+
+pub fn main() void {
+    const os: Platform = .mac;
+    const factory = switch (os) {
+        .mac => mac_factory,
+        .win => win_factory,
+    };
+    const ui = buildUI(factory);
+    std.debug.print("{s}\n", .{ui.button.render()});   // [mac button]
+    std.debug.print("{s}\n", .{ui.checkbox.render()}); // [mac checkbox]
+}
+```
+
+**🧠 Tradeoff** — the function-pointer factory keeps families swappable at runtime without the
+compiler knowing the set, which is what the pattern promises. But notice what the naive version
+got wrong wasn't the switch — it was having *two* of them. With a closed platform set, idiomatic
+Zig would keep the enum and merge both creators into one exhaustive switch returning the whole
+family, or pick the factory at comptime and pay nothing at runtime. Products with state would
+need the `*anyopaque` + function-pointer vtable idiom `std.mem.Allocator` uses. Reach for the
+pointer form only when families must arrive at runtime, from outside the compiled set.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Two independent decisions that must agree — but nothing makes them.
+Button button = os.equals("mac") ? new MacButton() : new WinButton();
+Checkbox checkbox = os.equals("mac") ? new MacCheckbox() : new WinCheckbox();
+```
+
+**✅ Idiomatic**
+
+```java
+interface Button { String render(); }
+interface Checkbox { String render(); }
+
+// The abstract factory: one interface, a creator per product.
+interface UIFactory {
+    Button createButton();
+    Checkbox createCheckbox();
+}
+
+class MacButton implements Button { public String render() { return "[mac button]"; } }
+class MacCheckbox implements Checkbox { public String render() { return "[mac checkbox]"; } }
+class WinButton implements Button { public String render() { return "[win button]"; } }
+class WinCheckbox implements Checkbox { public String render() { return "[win checkbox]"; } }
+
+class MacFactory implements UIFactory {
+    public Button createButton() { return new MacButton(); }
+    public Checkbox createCheckbox() { return new MacCheckbox(); }
+}
+
+class WinFactory implements UIFactory {
+    public Button createButton() { return new WinButton(); }
+    public Checkbox createCheckbox() { return new WinCheckbox(); }
+}
+
+public class Demo {
+    // The app depends only on UIFactory, never on a concrete family.
+    static void buildUI(UIFactory f) {
+        System.out.println(f.createButton().render());
+        System.out.println(f.createCheckbox().render());
+    }
+
+    public static void main(String[] args) {
+        var os = "mac";
+        UIFactory factory = os.equals("mac") ? new MacFactory() : new WinFactory();
+        buildUI(factory); // [mac button]
+                          // [mac checkbox]
+    }
+}
+```
+
+**🧠 Tradeoff** — this is the book's own language, and the classical form fits without
+translation: interfaces, concrete families, one factory choice. Modern Java mostly trims the
+edges. The factories are stateless, so an `enum` with one constant per platform can implement
+`UIFactory` — each factory becomes a guaranteed singleton and the platform set becomes closed
+and switchable. And each creator is just a `Supplier<Button>`, so a family can shrink to a
+record of two method references when the products are this small. What no idiom removes is
+the pattern's tax: a new product kind edits `UIFactory` and every factory that implements it.
 
 ## Applications
 

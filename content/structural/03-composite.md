@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [structural, tree, part-whole, recursion, hierarchy]
 related: [decorator, iterator, visitor]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -294,6 +294,249 @@ func (f *Folder) TotalSize() int {
 branches and the client calls `TotalSize()` blind to which is which. `Add` lives on `*Folder`
 only, keeping child-management off leaves — Go's implicit interfaces make the uniform treatment
 fall out naturally.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Callers branch on the concrete type and recurse by hand everywhere.
+static int TotalSize(object node) => node switch
+{
+    File file => file.Size,
+    Folder folder => folder.Children.Sum(TotalSize),
+    _ => throw new ArgumentException($"unknown node: {node}"),
+};
+```
+
+**✅ Idiomatic**
+
+```csharp
+var root = new Folder("root")
+    .Add(new File("a.txt", 100))
+    .Add(new Folder("sub").Add(new File("b.txt", 50)));
+
+Console.WriteLine(root.TotalSize()); // 150 — no type checks, no manual recursion
+
+// Component: the shared contract.
+public interface INode
+{
+    int TotalSize();
+}
+
+// Leaf — a record: name, size, base case.
+public sealed record File(string Name, int Size) : INode
+{
+    public int TotalSize() => Size;
+}
+
+// Composite — child management lives here only.
+public sealed class Folder(string name) : INode
+{
+    private readonly List<INode> _children = [];
+
+    public string Name { get; } = name;
+
+    public Folder Add(INode child)
+    {
+        _children.Add(child);
+        return this;
+    }
+
+    public int TotalSize() => _children.Sum(c => c.TotalSize());
+}
+```
+
+**🧠 Tradeoff** — `INode` plus LINQ's `Sum` keeps the recursion a one-expression method, and
+the leaf is a positional record. `Add` stays on `Folder`, so a `File` can't hold children —
+the same safe placement as the JS version, now enforced by the compiler rather than by
+convention.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+struct FileNode { size: u64 }
+struct FolderNode { files: Vec<FileNode>, folders: Vec<FolderNode> }
+
+// Two parallel lists per folder; every caller re-implements the walk.
+fn total_size(folder: &FolderNode) -> u64 {
+    let files: u64 = folder.files.iter().map(|f| f.size).sum();
+    let subs: u64 = folder.folders.iter().map(total_size).sum();
+    files + subs
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// A closed node set is an enum — the tree owns its children.
+enum Node {
+    File { name: String, size: u64 },
+    Folder { name: String, children: Vec<Node> },
+}
+
+impl Node {
+    fn total_size(&self) -> u64 {
+        match self {
+            Node::File { size, .. } => *size,
+            Node::Folder { children, .. } => children.iter().map(Node::total_size).sum(),
+        }
+    }
+}
+
+fn main() {
+    let root = Node::Folder {
+        name: "root".into(),
+        children: vec![
+            Node::File { name: "a.txt".into(), size: 100 },
+            Node::Folder {
+                name: "sub".into(),
+                children: vec![Node::File { name: "b.txt".into(), size: 50 }],
+            },
+        ],
+    };
+    println!("{}", root.total_size()); // 150
+}
+```
+
+**🧠 Tradeoff** — the enum is the honest Rust form here: the node set is closed, `match` is
+exhaustive, and `Vec<Node>` gives the recursion its indirection (a direct `Node` field would
+need `Box<Node>`). The trait-object alternative — a `Node` trait with `Vec<Box<dyn Node>>`
+children — buys an open set (new node kinds without touching this file) at the cost of a heap
+allocation and dynamic dispatch per node. Reach for `dyn` only when the set must stay open.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Two node kinds with no shared shape — every walk is hand-rolled per kind.
+const File = struct { name: []const u8, size: u64 };
+const Folder = struct { name: []const u8, files: []const File, folders: []const Folder };
+
+fn totalSize(folder: Folder) u64 {
+    var sum: u64 = 0;
+    for (folder.files) |f| sum += f.size;
+    for (folder.folders) |sub| sum += totalSize(sub);
+    return sum;
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// A closed node set is a tagged union; folders own a slice of children.
+const Node = union(enum) {
+    file: struct { name: []const u8, size: u64 },
+    folder: struct { name: []const u8, children: []const Node },
+
+    fn totalSize(self: Node) u64 {
+        return switch (self) {
+            .file => |f| f.size,
+            .folder => |d| blk: {
+                var sum: u64 = 0;
+                for (d.children) |child| sum += child.totalSize();
+                break :blk sum;
+            },
+        };
+    }
+};
+
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+
+    // The tree owns heap memory, so building it takes an explicit allocator.
+    const sub = try allocator.dupe(Node, &.{
+        .{ .file = .{ .name = "b.txt", .size = 50 } },
+    });
+    defer allocator.free(sub);
+
+    const top = try allocator.dupe(Node, &.{
+        .{ .file = .{ .name = "a.txt", .size = 100 } },
+        .{ .folder = .{ .name = "sub", .children = sub } },
+    });
+    defer allocator.free(top);
+
+    const root = Node{ .folder = .{ .name = "root", .children = top } };
+    std.debug.print("{d}\n", .{root.totalSize()}); // 150
+}
+```
+
+**🧠 Tradeoff** — a tagged union with an exhaustive `switch` is idiomatic Zig for a closed
+node set: zero indirection, and the compiler flags any unhandled kind. What Zig adds is
+honesty about memory — a tree owns heap-allocated child slices, so building one takes an
+explicit allocator and freeing is your job (`defer`, or an arena for whole-tree cleanup).
+An open node set would need the vtable idiom; for pure data like this, the union is the
+right call.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Callers branch on the concrete type and recurse by hand everywhere.
+static int totalSize(Object node) {
+    if (node instanceof File file) return file.size();
+    var folder = (Folder) node;
+    return folder.children().stream().mapToInt(Demo::totalSize).sum();
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+// Component: the shared contract.
+interface Node {
+    int totalSize();
+}
+
+// Leaf — a record: name, size, base case.
+record File(String name, int size) implements Node {
+    public int totalSize() { return size; }
+}
+
+// Composite — child management lives here only.
+class Folder implements Node {
+    private final String name;
+    private final List<Node> children = new ArrayList<>();
+
+    Folder(String name) { this.name = name; }
+
+    Folder add(Node child) {
+        children.add(child);
+        return this;
+    }
+
+    public int totalSize() {
+        return children.stream().mapToInt(Node::totalSize).sum();
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var root = new Folder("root")
+            .add(new File("a.txt", 100))
+            .add(new Folder("sub").add(new File("b.txt", 50)));
+
+        System.out.println(root.totalSize()); // 150 — no type checks, no manual recursion
+    }
+}
+```
+
+**🧠 Tradeoff** — Swing carried this pattern for decades: `Container` is a `Component` that
+holds components, so panels nest in panels. The modern trim is visible above — the leaf is a
+record and the recursion is a stream `sum()`. When the node set is closed, sealed types offer
+an alternative shape: `sealed interface Node permits File, Folder` plus a pattern-matching
+`switch` moves the operation out of the nodes, enum-style, and the compiler checks
+exhaustiveness. Keep `totalSize` on the interface when the set stays open; seal it when you
+want new *operations* to be cheap instead of new node kinds.
 
 ## Applications
 

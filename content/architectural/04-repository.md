@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [architecture, persistence, data-access, abstraction, testability]
 related: [unit-of-work, hexagonal, layered]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -290,6 +290,250 @@ func (s UserService) Promote(id string) error {
 against a map and swap SQL for anything satisfying the interface — very idiomatic Go (small,
 consumer-defined interfaces). The explicit mapping between DB rows and `User`, and the hand-wiring
 in `main`, are the costs; there's no ORM magic, but also no magic to fight.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The service writes SQL inline — untestable without a database.
+public sealed class UserService(NpgsqlDataSource db)
+{
+    public Task PromoteAsync(string id) =>
+        db.ExecuteAsync("UPDATE users SET role='admin' WHERE id=@id", new { id });
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// The service depends on the interface; each store is one implementation.
+public record User(string Id, string Role);
+
+public interface IUserRepository
+{
+    Task<User?> ByIdAsync(string id);
+    Task SaveAsync(User user);
+}
+
+public sealed class UserService(IUserRepository users)
+{
+    public async Task PromoteAsync(string id)
+    {
+        var user = await users.ByIdAsync(id) ?? throw new UserNotFoundException(id);
+        await users.SaveAsync(user with { Role = "admin" });
+    }
+}
+
+// The test double is a dictionary behind the same interface.
+public sealed class InMemoryUsers : IUserRepository
+{
+    private readonly Dictionary<string, User> _users = new();
+
+    public Task<User?> ByIdAsync(string id) => Task.FromResult(_users.GetValueOrDefault(id));
+    public Task SaveAsync(User user) { _users[user.Id] = user; return Task.CompletedTask; }
+}
+```
+
+**🧠 Tradeoff** — Records make the domain object immutable: `user with { Role = "admin" }`
+produces a new value to save, so nothing outside the repository ever mutates stored state in
+place. The honest C# caveat is EF Core — `DbSet<User>` is already repository-shaped, and wrapping
+it in `IUserRepository` is a classic over-abstraction. Add the interface when you want the domain
+free of EF types or genuinely expect a second store; skip it when EF *is* the persistence story.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// The service holds the connection and inline SQL — no database, no tests.
+struct UserService { db: postgres::Client }
+
+impl UserService {
+    fn promote(&mut self, id: &str) -> Result<(), postgres::Error> {
+        self.db.execute("UPDATE users SET role='admin' WHERE id=$1", &[&id])?;
+        Ok(())
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+
+#[derive(Clone)]
+struct User { id: String, role: String }
+
+trait UserRepo {                        // the contract the service depends on
+    fn by_id(&self, id: &str) -> Option<User>;
+    fn save(&mut self, user: User);
+}
+
+struct UserService<R: UserRepo> { users: R }
+
+impl<R: UserRepo> UserService<R> {
+    fn promote(&mut self, id: &str) -> Result<(), String> {
+        let mut user = self.users.by_id(id).ok_or("not found")?;
+        user.role = "admin".to_string();
+        self.users.save(user);
+        Ok(())
+    }
+}
+
+// In tests (or a small app) the store is a HashMap behind the same trait.
+struct InMemoryUsers(HashMap<String, User>);
+
+impl UserRepo for InMemoryUsers {
+    fn by_id(&self, id: &str) -> Option<User> { self.0.get(id).cloned() }
+    fn save(&mut self, user: User) { self.0.insert(user.id.clone(), user); }
+}
+
+// A sqlx/postgres implementation is another impl UserRepo — the service never changes.
+```
+
+**🧠 Tradeoff** — Ownership makes the repository seam unusually sharp: `by_id` returns a *cloned*
+`User`, so callers can never hold a live reference into storage, and the clone is the mapping
+cost made visible. The trait keeps the domain crate free of any database dependency — sqlx and
+diesel stay in the adapter crate. As usual Rust makes the dispatch explicit: `UserService<R>` is
+static and monomorphized; reach for `Box<dyn UserRepo>` only when the store is chosen at runtime.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// The service talks to the store type directly — swap the store, edit the service.
+const UserService = struct {
+    db: *PostgresClient,
+
+    pub fn promote(self: UserService, id: []const u8) !void {
+        try self.db.exec("UPDATE users SET role='admin' WHERE id=$1", .{id});
+    }
+};
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const User = struct { id: []const u8, role: []const u8 };
+
+// No interfaces: the service is generic over any repo with byId/save.
+fn UserService(comptime Repo: type) type {
+    return struct {
+        users: *Repo,
+
+        pub fn promote(self: @This(), id: []const u8) !void {
+            var user = self.users.byId(id) orelse return error.NotFound;
+            user.role = "admin";
+            try self.users.save(user);
+        }
+    };
+}
+
+// An in-memory repo satisfies the shape just by having the methods.
+const InMemoryUsers = struct {
+    map: std.StringHashMap(User),
+
+    pub fn byId(self: *InMemoryUsers, id: []const u8) ?User {
+        return self.map.get(id);
+    }
+    pub fn save(self: *InMemoryUsers, user: User) !void {
+        try self.map.put(user.id, user);
+    }
+};
+
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    var repo = InMemoryUsers{ .map = std.StringHashMap(User).init(gpa.allocator()) };
+    defer repo.map.deinit();
+    try repo.map.put("u1", .{ .id = "u1", .role = "user" });
+
+    const svc = UserService(InMemoryUsers){ .users = &repo };
+    try svc.promote("u1");
+    std.debug.print("{s}\n", .{repo.map.get("u1").?.role}); // admin
+}
+```
+
+**🧠 Tradeoff** — The comptime generic gives a duck-typed repository: any type with `byId` and
+`save` fits, checked at the instantiation site, with static dispatch and zero indirection. What
+you give up is a named contract — nothing in the source says "this is the repository interface,"
+so the expected shape lives in a comment (or a `comptime` assertion). If the store must be picked
+at runtime, switch to the `*anyopaque` + function-pointer vtable from the hexagonal kata. And
+since Zig has no ORM to escape, the repository here isn't about framework independence at all —
+it's purely the test seam, which is reason enough.
+
+### Java
+
+**❌ Naive**
+
+```java
+// The service writes SQL inline — untestable without a database.
+class UserService {
+    void promote(String id) throws SQLException {
+        try (var conn = DriverManager.getConnection(DB_URL);
+             var stmt = conn.prepareStatement("UPDATE users SET role='admin' WHERE id = ?")) {
+            stmt.setString(1, id);
+            stmt.executeUpdate();
+        }
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+
+record User(String id, String role) {}
+
+interface UserRepository {                  // the contract the domain depends on
+    Optional<User> byId(String id);
+    void save(User user);
+}
+
+class UserService {
+    private final UserRepository users;
+    UserService(UserRepository users) { this.users = users; }
+
+    void promote(String id) {
+        var user = users.byId(id).orElseThrow(() -> new NoSuchElementException("user " + id));
+        users.save(new User(user.id(), "admin")); // records are immutable — save a new value
+    }
+}
+
+// The test double is a map behind the same interface.
+class InMemoryUsers implements UserRepository {
+    private final Map<String, User> map = new HashMap<>();
+
+    public Optional<User> byId(String id) { return Optional.ofNullable(map.get(id)); }
+    public void save(User user) { map.put(user.id(), user); }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var repo = new InMemoryUsers();
+        repo.save(new User("u1", "user"));
+        new UserService(repo).promote("u1");
+        System.out.println(repo.byId("u1").orElseThrow().role()); // admin
+    }
+}
+```
+
+**🧠 Tradeoff** — Java made this pattern famous, and Spring Data made it almost free: declare
+`interface UserRepository extends CrudRepository<User, String>` with a `findByEmail(String email)`
+signature and the framework derives the query from the method *name* — you write the interface
+and never the implementation. The honest caveat mirrors C#'s EF: JPA's `EntityManager` is already
+repository-shaped, so hand-wrapping it adds the layer Spring Data exists to delete. Hand-rolled
+as here, the value is the seam itself — `UserService` tests against a `HashMap` — plus one quiet
+win from records: `byId` returns an immutable value, so callers can never mutate stored state
+behind the repository's back.
 
 ## Applications
 

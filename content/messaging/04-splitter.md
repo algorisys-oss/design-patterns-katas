@@ -10,7 +10,7 @@ frequency: medium
 difficulty: beginner
 tags: [messaging, integration, decomposition, fan-out, batch]
 related: [aggregator, content-based-router, fan-out-fan-in]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -253,6 +253,216 @@ func split(b Batch, out chan<- RecordMsg) {
 Worker/Fan-out patterns) process records concurrently, each with independent error handling. Across
 services the channel is a broker subject and each record a durable message. Go makes the fan-out
 natural; the `BatchID`/`Seq` fields are what let a downstream aggregator recombine or detect completion.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The batch is one unit of work; the first throw abandons the rest.
+static void ImportBatch(Batch batch)
+{
+    foreach (var row in batch.Rows) ImportRow(row); // one exception loses the whole batch
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// each row becomes a first-class message on the in-process queue:
+foreach (var msg in Split(batch))
+    await records.Writer.WriteAsync(msg); // workers read the channel; each row fails or retries alone
+
+// Split with LINQ: one correlated message per row, lazily.
+static IEnumerable<RecordMsg> Split(Batch batch) =>
+    batch.Rows.Select((row, seq) => new RecordMsg(batch.Id, seq, batch.Rows.Count, row));
+
+// The element message is immutable value data — correlation can't be edited in flight.
+public sealed record RecordMsg(string BatchId, int Seq, int Total, Row Row);
+```
+
+**🧠 Tradeoff** — `Select` with the index overload *is* the splitter, and it's lazy like the Python
+generator: a million-row batch streams into messages one at a time instead of materializing them all.
+The `record` freezes each element message, so `BatchId`/`Seq` can't be mutated in flight. A
+`Channel<RecordMsg>` is the in-process stand-in for a broker queue — across services each write becomes
+a durable publish, and the correlation fields are what a downstream aggregator needs.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// The batch is one unit of work; the first error abandons the rest.
+fn import_batch(batch: &Batch) -> Result<(), ImportError> {
+    for row in &batch.rows {
+        import_row(row)?; // stops the whole batch
+    }
+    Ok(())
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::sync::mpsc;
+
+// One message per row, carrying correlation back to the batch.
+struct RecordMsg {
+    batch_id: String,
+    seq: usize,
+    total: usize,
+    row: Row,
+}
+
+// The channel's message set is a closed enum — workers must handle every variant.
+enum Msg {
+    Record(RecordMsg),
+    Done,
+}
+
+fn split(batch: Batch, out: &mpsc::Sender<Msg>) {
+    let total = batch.rows.len();
+    for (seq, row) in batch.rows.into_iter().enumerate() {
+        let msg = RecordMsg { batch_id: batch.id.clone(), seq, total, row };
+        out.send(Msg::Record(msg)).unwrap();
+    }
+    out.send(Msg::Done).unwrap(); // explicit end-of-batch
+}
+
+// a worker thread drains the channel; each record fails or retries alone.
+fn worker(rx: mpsc::Receiver<Msg>) {
+    for msg in rx {
+        match msg {
+            Msg::Record(r) => {
+                if let Err(err) = import_row(&r.row) {
+                    dead_letter(r, err); // this record fails alone
+                }
+            }
+            Msg::Done => break,
+        }
+    }
+}
+```
+
+**🧠 Tradeoff** — `into_iter()` moves each row out of the batch and into its message, so the split is
+literal: afterwards there's no batch left to lean on, only self-contained messages. The `Msg` enum
+closes the message set — the worker's `match` won't compile until every variant has a destination.
+(`Done` is belt-and-braces; dropping the last `Sender` also ends the loop.) Note that an mpsc
+`Receiver` has one owner, so fanning records across workers means one channel per worker or a shared
+`Mutex<Receiver>` — across services, the channel is a broker subject.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// The batch is one unit of work; the first error abandons the rest.
+fn importBatch(batch: Batch) !void {
+    for (batch.rows) |row| try importRow(row); // one error stops the whole batch
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// The queue's element type is a tagged union — it names every message it can carry.
+const Msg = union(enum) {
+    record: RecordMsg,
+    done: void,
+};
+
+const RecordMsg = struct {
+    batch_id: []const u8,
+    seq: usize,
+    total: usize,
+    row: Row,
+};
+
+// Split the batch into an explicitly allocated queue of correlated messages.
+fn split(allocator: std.mem.Allocator, batch: Batch) ![]Msg {
+    const msgs = try allocator.alloc(Msg, batch.rows.len + 1);
+    for (batch.rows, 0..) |row, seq| {
+        msgs[seq] = .{ .record = .{
+            .batch_id = batch.id,
+            .seq = seq,
+            .total = batch.rows.len,
+            .row = row,
+        } };
+    }
+    msgs[batch.rows.len] = .done; // explicit end-of-batch
+    return msgs;
+}
+
+// A worker drains the queue with an exhaustive switch; each record fails alone.
+fn drain(queue: []const Msg) void {
+    for (queue) |msg| switch (msg) {
+        .record => |r| importRow(r.row) catch |err| deadLetter(r, err),
+        .done => {},
+    };
+}
+
+// const queue = try split(allocator, batch);
+// defer allocator.free(queue);   // the caller owns the fan-out's memory
+// drain(queue);
+```
+
+**🧠 Tradeoff** — the fan-out cost other languages hide is visible here: the splitter allocates
+`rows.len + 1` messages and the caller owns the `free`. The tagged union plus exhaustive `switch` is
+the honest Zig for a closed message set — add a variant and every consumer breaks until it routes it.
+One caution: the messages borrow `batch.id` rather than copying it, so the batch must outlive the
+queue — dupe the id with the allocator if it doesn't.
+
+### Java
+
+**❌ Naive**
+
+```java
+// The batch is one unit of work; the first exception abandons the rest.
+static void importBatch(Batch batch) {
+    for (var row : batch.rows()) importRow(row); // one exception loses the whole batch
+}
+```
+
+**✅ Idiomatic**
+
+```java
+// The queue's message set is sealed — the worker's switch must route every kind.
+sealed interface Msg permits RecordMsg, Done {}
+record RecordMsg(String batchId, int seq, int total, Row row) implements Msg {}
+record Done() implements Msg {}
+
+// Split the batch onto a BlockingQueue of correlated element messages.
+static void split(Batch batch, BlockingQueue<Msg> out) throws InterruptedException {
+    var total = batch.rows().size();
+    for (var seq = 0; seq < total; seq++) {
+        out.put(new RecordMsg(batch.id(), seq, total, batch.rows().get(seq)));
+    }
+    out.put(new Done()); // explicit end-of-batch
+}
+
+// A worker drains the queue; each record fails or retries alone.
+static void worker(BlockingQueue<Msg> in) throws InterruptedException {
+    while (true) {
+        switch (in.take()) {
+            case RecordMsg r -> {
+                try { importRow(r.row()); }
+                catch (Exception err) { deadLetter(r, err); } // this record fails alone
+            }
+            case Done d -> { return; }
+        }
+    }
+}
+```
+
+**🧠 Tradeoff** — records freeze each element message, so `batchId`/`seq` can't be edited in flight,
+and the sealed interface closes the message set the way Rust's enum did: the switch over `Msg` won't
+compile until every kind has a destination — no `default` to hide behind. `put` blocks when the queue
+is full, so a huge batch backpressures the splitter instead of flooding memory. Unlike an mpsc
+receiver, a `BlockingQueue` takes multiple consumers safely — point a pool of virtual threads at it
+for fan-out (each worker then needs its own `Done` sentinel). Across services the queue becomes a
+broker destination, and the correlation fields are what the downstream aggregator needs.
 
 ## Applications
 

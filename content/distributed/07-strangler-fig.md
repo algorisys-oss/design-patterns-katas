@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [distributed, migration, legacy, incremental, routing]
 related: [hexagonal, cache-aside, circuit-breaker]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -246,6 +246,308 @@ func facade(newBackend, legacy *httputil.ReverseProxy, migrated []string) http.H
 match a prefix, forward to the new or legacy proxy. It's explicit and fast, and you can wrap the new
 backend with a timeout/circuit breaker for automatic fallback. The migration list can come from
 config or a feature-flag service so flipping a route needs no redeploy.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Every request goes straight to legacy — no seam to migrate one feature at a time.
+Console.WriteLine(Legacy.Handle("/checkout")); // legacy: handled /checkout
+Console.WriteLine(Legacy.Handle("/cart"));     // migrating anything = big-bang rewrite
+
+static class Legacy
+{
+    public static string Handle(string path) => $"legacy: handled {path}";
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Top-level statements: the demo runs first, the types follow.
+var facade = new Facade(new NewSystem(), new LegacySystem());
+facade.Migrate("/checkout");
+
+Console.WriteLine(facade.Handle("/checkout")); // new: handled /checkout
+Console.WriteLine(facade.Handle("/orders"));   // legacy: handled /orders
+
+facade.Migrate("/cart");
+Console.WriteLine(facade.Handle("/cart"));     // new: handled /cart
+
+facade.Rollback("/checkout");                  // a bad migration is one call to undo
+Console.WriteLine(facade.Handle("/checkout")); // legacy: handled /checkout
+
+public interface IBackend
+{
+    string Handle(string path);
+}
+
+public sealed class LegacySystem : IBackend
+{
+    public string Handle(string path) => $"legacy: handled {path}";
+}
+
+public sealed class NewSystem : IBackend
+{
+    public string Handle(string path) => $"new: handled {path}";
+}
+
+// Primary constructor: the facade fronts both systems and owns the routing rules.
+public sealed class Facade(IBackend newSystem, IBackend legacy)
+{
+    private readonly HashSet<string> _migrated = [];
+
+    public void Migrate(string prefix) => _migrated.Add(prefix);
+    public void Rollback(string prefix) => _migrated.Remove(prefix);
+
+    public string Handle(string path) =>
+        _migrated.Any(p => path.StartsWith(p)) ? newSystem.Handle(path) : legacy.Handle(path);
+}
+```
+
+**🧠 Tradeoff** — In production .NET the facade is YARP (Microsoft's reverse proxy) or ASP.NET
+Core middleware matching path prefixes; this in-process version keeps the mechanism visible:
+migrating is `Migrate`, rollback is `Rollback`, and nothing else changes. `IBackend` is a
+one-method contract, so a `Func<string, string>` per backend would do — the interface earns its
+place once backends grow config or health checks. Routing stays the easy half; the shared data
+during the overlap is still yours to solve.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// All traffic hits the legacy system directly — no seam to migrate through.
+fn legacy(path: &str) -> String {
+    format!("legacy: handled {path}")
+}
+
+fn main() {
+    println!("{}", legacy("/checkout")); // big-bang rewrite or nothing
+    println!("{}", legacy("/cart"));
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// The facade fronts both systems; the migrated list is the whole migration state.
+trait Backend {
+    fn handle(&self, path: &str) -> String;
+}
+
+struct Legacy;
+impl Backend for Legacy {
+    fn handle(&self, path: &str) -> String {
+        format!("legacy: handled {path}")
+    }
+}
+
+struct NewSystem;
+impl Backend for NewSystem {
+    fn handle(&self, path: &str) -> String {
+        format!("new: handled {path}")
+    }
+}
+
+struct Facade<N: Backend, L: Backend> {
+    new_system: N,
+    legacy: L,
+    migrated: Vec<&'static str>,
+}
+
+impl<N: Backend, L: Backend> Facade<N, L> {
+    fn migrate(&mut self, prefix: &'static str) {
+        self.migrated.push(prefix);
+    }
+    fn rollback(&mut self, prefix: &str) {
+        self.migrated.retain(|p| *p != prefix);
+    }
+    fn handle(&self, path: &str) -> String {
+        if self.migrated.iter().any(|p| path.starts_with(p)) {
+            self.new_system.handle(path)
+        } else {
+            self.legacy.handle(path)
+        }
+    }
+}
+
+fn main() {
+    let mut facade = Facade { new_system: NewSystem, legacy: Legacy, migrated: vec![] };
+    facade.migrate("/checkout");
+
+    println!("{}", facade.handle("/checkout")); // new: handled /checkout
+    println!("{}", facade.handle("/orders"));   // legacy: handled /orders
+
+    facade.rollback("/checkout");               // reversible by design
+    println!("{}", facade.handle("/checkout")); // legacy: handled /checkout
+}
+```
+
+**🧠 Tradeoff** — `Facade<N, L>` is generic, so both backends monomorphize: zero dispatch cost,
+fixed at compile time — the right default when a facade fronts exactly two known systems. Reach
+for `Box<dyn Backend>` only if the backend set is chosen at runtime from config. Be honest about
+scale, though: a real strangler facade is a reverse proxy (nginx, Envoy) in front of two deployed
+services, and the pattern is architectural — this single-process version shows the seam, not the
+infrastructure, and the shared-data problem is untouched by either.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+// Every request goes straight to the legacy code — no seam to migrate through.
+fn handle(path: []const u8) void {
+    std.debug.print("legacy: handled {s}\n", .{path});
+}
+
+pub fn main() void {
+    handle("/checkout"); // big-bang rewrite or nothing
+    handle("/cart");
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Both backends are stateless here, so a bare function pointer is the contract.
+const Handler = *const fn (path: []const u8) void;
+
+fn legacyHandle(path: []const u8) void {
+    std.debug.print("legacy: handled {s}\n", .{path});
+}
+
+fn newHandle(path: []const u8) void {
+    std.debug.print("new: handled {s}\n", .{path});
+}
+
+// The facade owns the routing table; migrating a feature is adding its prefix.
+const Facade = struct {
+    new_system: Handler,
+    legacy: Handler,
+    migrated: [8][]const u8 = undefined,
+    count: usize = 0,
+
+    pub fn migrate(self: *Facade, prefix: []const u8) void {
+        self.migrated[self.count] = prefix;
+        self.count += 1;
+    }
+
+    pub fn handle(self: Facade, path: []const u8) void {
+        for (self.migrated[0..self.count]) |prefix| {
+            if (std.mem.startsWith(u8, path, prefix)) return self.new_system(path);
+        }
+        self.legacy(path);
+    }
+};
+
+pub fn main() void {
+    var facade = Facade{ .new_system = newHandle, .legacy = legacyHandle };
+    facade.migrate("/checkout");
+
+    facade.handle("/checkout"); // new: handled /checkout
+    facade.handle("/orders");   // legacy: handled /orders
+
+    facade.migrate("/cart");
+    facade.handle("/cart");     // new: handled /cart
+}
+```
+
+**🧠 Tradeoff** — Function pointers cover stateless backends; the moment a backend carries state
+(a connection pool, say), Zig's answer is the two-field vtable idiom (`*anyopaque` context plus
+function pointer) that `std.mem.Allocator` uses. The fixed `[8][]const u8` table dodges the
+allocator for a demo — a real routing table would take one and grow. And keep perspective: the
+strangler facade in the wild is a proxy in front of two deployed systems; this shows the shape of
+the seam, and the routing was never the hard part — the shared data is.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Every request goes straight to legacy — no seam to migrate one feature at a time.
+class Legacy {
+    static String handle(String path) {
+        return "legacy: handled " + path;
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        System.out.println(Legacy.handle("/checkout")); // legacy: handled /checkout
+        System.out.println(Legacy.handle("/cart"));     // migrating anything = big-bang rewrite
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.HashSet;
+import java.util.Set;
+
+// The backend contract — one method, so it's a functional interface.
+interface Backend {
+    String handle(String path);
+}
+
+class LegacySystem implements Backend {
+    public String handle(String path) { return "legacy: handled " + path; }
+}
+
+class NewSystem implements Backend {
+    public String handle(String path) { return "new: handled " + path; }
+}
+
+// The facade fronts both systems and owns the routing rules.
+class Facade {
+    private final Backend newSystem;
+    private final Backend legacy;
+    private final Set<String> migrated = new HashSet<>();
+
+    Facade(Backend newSystem, Backend legacy) {
+        this.newSystem = newSystem;
+        this.legacy = legacy;
+    }
+
+    void migrate(String prefix) { migrated.add(prefix); }
+    void rollback(String prefix) { migrated.remove(prefix); }
+
+    String handle(String path) {
+        var target = migrated.stream().anyMatch(path::startsWith) ? newSystem : legacy;
+        return target.handle(path);
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var facade = new Facade(new NewSystem(), new LegacySystem());
+        facade.migrate("/checkout");
+
+        System.out.println(facade.handle("/checkout")); // new: handled /checkout
+        System.out.println(facade.handle("/orders"));   // legacy: handled /orders
+
+        facade.migrate("/cart");
+        System.out.println(facade.handle("/cart"));     // new: handled /cart
+
+        facade.rollback("/checkout");                   // a bad migration is one call to undo
+        System.out.println(facade.handle("/checkout")); // legacy: handled /checkout
+    }
+}
+```
+
+**🧠 Tradeoff** — In production Java the facade is an API gateway: Spring Cloud Gateway route
+predicates (or nginx/Envoy) in front of the two deployed systems, where migrating a feature is a
+route-config change and rollback needs no redeploy. This in-process version keeps the mechanism
+visible: one contract, two implementations, a routing set that *is* the migration state. `Backend`
+is a functional interface, so a lambda per backend would compile — but here each implementation
+stands for a whole system, and the class earns its place the moment it grows config or health
+checks. Either way, routing is the easy half; the shared data during the overlap is still yours.
 
 ## Applications
 

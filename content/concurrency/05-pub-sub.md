@@ -10,7 +10,7 @@ frequency: high
 difficulty: intermediate
 tags: [concurrency, messaging, decoupling, events, broadcast]
 related: [observer, producer-consumer, actor]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -287,6 +287,300 @@ per-subscriber buffered channels gives clean fan-out, and the `default` case mak
 subscriber policy explicit: drop rather than block the whole bus. It's more code than
 `EventEmitter`, but every decision — buffering, drop-vs-block, unsubscribe/close — is visible and
 yours, which is exactly what you want when delivery semantics matter.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The publisher hard-wires every receiver; adding one edits this class.
+public sealed class OrderService(EmailService email, AnalyticsService analytics)
+{
+    public void PlaceOrder(Order order)
+    {
+        email.Send(order);
+        analytics.Track(order); // add a listener → change this class
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Each subscriber gets its own bounded Channel, so one slow subscriber can't
+// stall the bus — DropWrite makes the policy explicit.
+using System.Threading.Channels;
+
+var bus = new Bus<string>();
+var email = bus.Subscribe("order.placed");
+var analytics = bus.Subscribe("order.placed");
+
+bus.Publish("order.placed", "order #42"); // fans out to both
+
+Console.WriteLine(await email.ReadAsync());     // order #42
+Console.WriteLine(await analytics.ReadAsync()); // order #42
+
+public sealed class Bus<T>
+{
+    private readonly Dictionary<string, List<Channel<T>>> _topics = new();
+    private readonly Lock _gate = new();
+
+    public ChannelReader<T> Subscribe(string topic)
+    {
+        var ch = Channel.CreateBounded<T>(new BoundedChannelOptions(16)
+        {
+            FullMode = BoundedChannelFullMode.DropWrite, // full subscriber → drop
+        });
+        lock (_gate)
+        {
+            if (!_topics.TryGetValue(topic, out var subs))
+                _topics[topic] = subs = [];
+            subs.Add(ch);
+        }
+        return ch.Reader;
+    }
+
+    public void Publish(string topic, T msg)
+    {
+        Channel<T>[] subs;
+        lock (_gate) subs = _topics.TryGetValue(topic, out var s) ? [.. s] : [];
+        foreach (var ch in subs)
+            ch.Writer.TryWrite(msg); // never blocks the publisher
+    }
+}
+```
+
+**🧠 Tradeoff** — One bounded channel per subscriber makes the slow-subscriber policy a
+constructor argument: `DropWrite` mirrors the Go tab's `default:` drop; `Wait` would push back
+on publishers instead. Snapshotting the list under the lock keeps publish safe against
+concurrent subscribes — the Python tab's copy trick. For a single hard-coded topic, a plain C#
+`event` already *is* in-process pub/sub. Either way it stops at the process boundary: where
+Elixir's `Phoenix.PubSub` gets cluster-wide delivery from the runtime, .NET crosses processes
+by swapping this class for Redis or NATS behind the same Publish/Subscribe shape.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// The publisher holds every subscriber's sender, and unbounded channels hide
+// the problem: a slow subscriber's queue just grows until memory runs out.
+use std::sync::mpsc::Sender;
+
+struct OrderService {
+    email: Sender<String>,
+    analytics: Sender<String>, // add a listener → change this struct
+}
+
+impl OrderService {
+    fn place_order(&self, order: String) {
+        self.email.send(order.clone()).unwrap();
+        self.analytics.send(order).unwrap();
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+use std::sync::mpsc::{self, SyncSender};
+use std::thread;
+
+enum Cmd {
+    Subscribe(String, SyncSender<String>),
+    Publish(String, String),
+}
+
+// The broker is itself an actor: one thread owns the topic map, and
+// subscribing or publishing is a message to it — no Mutex anywhere.
+fn spawn_broker() -> mpsc::Sender<Cmd> {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let mut topics: HashMap<String, Vec<SyncSender<String>>> = HashMap::new();
+        for cmd in rx {
+            match cmd {
+                Cmd::Subscribe(topic, sub) => topics.entry(topic).or_default().push(sub),
+                Cmd::Publish(topic, msg) => {
+                    if let Some(subs) = topics.get(&topic) {
+                        for sub in subs {
+                            // full mailbox (or dropped receiver): drop the
+                            // message rather than block the whole bus
+                            let _ = sub.try_send(msg.clone());
+                        }
+                    }
+                }
+            }
+        }
+    });
+    tx
+}
+
+fn main() {
+    let broker = spawn_broker();
+
+    // Each subscriber brings its own bounded mailbox.
+    let (email_tx, email_rx) = mpsc::sync_channel(16);
+    broker.send(Cmd::Subscribe("order.placed".into(), email_tx)).unwrap();
+
+    broker.send(Cmd::Publish("order.placed".into(), "order #42".into())).unwrap();
+    println!("email got: {}", email_rx.recv().unwrap()); // email got: order #42
+}
+```
+
+**🧠 Tradeoff** — The broker is the previous kata put to work: one thread owns the topic map,
+so subscribe and publish can't race by construction and there's no `Mutex` to hold wrong.
+`sync_channel` + `try_send` makes every subscriber mailbox bounded and the drop policy visible
+in one line. A dropped receiver surfaces as a send error — a `retain` on the `Vec` is where
+unsubscribe-by-drop would go. The std library stops at the process boundary, though: the
+cluster-wide broadcast Elixir gets from `Phoenix.PubSub` as a library call is a real external
+broker away in Rust.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// The publisher calls every receiver by name; adding one edits this function.
+fn orderPlaced(order: []const u8) void {
+    email.send(order);
+    analytics.track(order); // add a listener → recompile the publisher
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// Zig has no closures — a subscriber is the std.mem.Allocator idiom:
+// a context pointer plus a function pointer.
+const Subscriber = struct {
+    topic: []const u8,
+    ctx: *anyopaque,
+    onMsg: *const fn (ctx: *anyopaque, msg: []const u8) void,
+};
+
+const Bus = struct {
+    mu: std.Thread.Mutex = .{},
+    subs: [8]?Subscriber = [_]?Subscriber{null} ** 8, // fixed slots — capacity is explicit
+
+    fn subscribe(self: *Bus, sub: Subscriber) !void {
+        self.mu.lock();
+        defer self.mu.unlock();
+        for (&self.subs) |*slot| {
+            if (slot.* == null) {
+                slot.* = sub;
+                return;
+            }
+        }
+        return error.BusFull;
+    }
+
+    fn publish(self: *Bus, topic: []const u8, msg: []const u8) void {
+        self.mu.lock();
+        defer self.mu.unlock();
+        for (self.subs) |slot| {
+            const sub = slot orelse continue;
+            if (std.mem.eql(u8, sub.topic, topic))
+                sub.onMsg(sub.ctx, msg); // note: handler runs under the lock
+        }
+    }
+};
+
+const Mailer = struct {
+    sent: u32 = 0,
+
+    fn onMsg(ctx: *anyopaque, msg: []const u8) void {
+        const self: *Mailer = @ptrCast(@alignCast(ctx));
+        self.sent += 1;
+        std.debug.print("email for: {s}\n", .{msg});
+    }
+};
+
+pub fn main() !void {
+    var bus = Bus{};
+    var mailer = Mailer{};
+    try bus.subscribe(.{ .topic = "order.placed", .ctx = &mailer, .onMsg = Mailer.onMsg });
+    bus.publish("order.placed", "order #42"); // email for: order #42
+}
+```
+
+**🧠 Tradeoff** — Without closures, a subscriber is the `*anyopaque` context + function pointer
+pair — exactly what a closure compiles down to elsewhere, spelled by hand. Fixed slots make
+capacity a visible decision. The honest catch: handlers run *under the lock*, so one slow
+subscriber stalls every publish — the exact hazard this kata warns about, which the Go tab
+dodges with per-subscriber channels. Fixing it here means giving each subscriber a mailbox and
+a thread, at which point you've rebuilt the Actor kata — and that's the lesson. On the BEAM
+this whole layered build is one `Registry` call, because pub/sub lives in the runtime.
+
+### Java
+
+**❌ Naive**
+
+```java
+// The publisher hard-wires every receiver; adding one edits this class.
+class OrderService {
+    private final EmailService email = new EmailService();
+    private final AnalyticsService analytics = new AnalyticsService();
+
+    void placeOrder(Order order) {
+        email.send(order);
+        analytics.track(order); // add a listener → change this class
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+// Each subscriber gets its own bounded mailbox queue; offer() drops rather
+// than blocking, so one slow subscriber can't stall the bus.
+class Bus<T> {
+    private final Map<String, List<BlockingQueue<T>>> topics = new ConcurrentHashMap<>();
+
+    BlockingQueue<T> subscribe(String topic) {
+        var mailbox = new ArrayBlockingQueue<T>(16);
+        topics.computeIfAbsent(topic, t -> new CopyOnWriteArrayList<>()).add(mailbox);
+        return mailbox;
+    }
+
+    void publish(String topic, T msg) {
+        for (var mailbox : topics.getOrDefault(topic, List.of()))
+            mailbox.offer(msg); // full subscriber → drop; never blocks the publisher
+    }
+}
+
+class Demo {
+    public static void main(String[] args) throws InterruptedException {
+        var bus = new Bus<String>();
+        var email = bus.subscribe("order.placed");
+        var analytics = bus.subscribe("order.placed");
+
+        bus.publish("order.placed", "order #42"); // fans out to both
+
+        System.out.println(email.take());     // order #42
+        System.out.println(analytics.take()); // order #42
+    }
+}
+```
+
+**🧠 Tradeoff** — the concurrency is all in class choice: `computeIfAbsent` on a
+`ConcurrentHashMap` makes subscribe atomic, and `CopyOnWriteArrayList` is built for exactly
+this read-mostly listener list — publishers iterate a stable snapshot while subscribers
+come and go (the same copy trick the Python tab does by hand). `offer` versus `put` is the
+drop-vs-block policy in one method name, mirroring Go's `default:` and C#'s `DropWrite`.
+When you want backpressure handled for you, the JDK already ships a grown-up bus:
+`java.util.concurrent.Flow` with `SubmissionPublisher` is reactive-streams pub/sub in the
+standard library. Either way it ends at the process boundary — cluster-wide delivery means
+Kafka, NATS, or Redis behind this same publish/subscribe shape.
 
 ## Applications
 

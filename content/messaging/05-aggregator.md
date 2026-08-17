@@ -10,7 +10,7 @@ frequency: medium
 difficulty: intermediate
 tags: [messaging, integration, correlation, stateful, scatter-gather]
 related: [splitter, fan-out-fan-in, saga]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -281,6 +281,264 @@ func Aggregate(in <-chan Msg, out chan<- Result, timeout time.Duration) {
 correlated messages and evicts stale groups on a ticker, giving race-free stateful aggregation. It's
 explicit and testable. As always in Go, durability is yours to add — this in-memory aggregator loses
 partial groups on crash, so persist them if the groups are precious.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Assumes all parts are already here; no correlation or completion.
+static Result Aggregate(IReadOnlyList<Part> parts) => Combine(parts);
+```
+
+**✅ Idiomatic**
+
+```csharp
+// One task owns the group state (Actor-style); parts and sweep ticks share one channel.
+public abstract record Msg;
+public sealed record Part(string BatchId, int Seq, int Total, Item Item) : Msg;
+public sealed record Sweep : Msg;
+
+sealed class Group
+{
+    public Dictionary<int, Item> Parts { get; } = new();
+    public int Expected { get; init; }
+    public DateTime Deadline { get; init; }
+}
+
+static async Task Aggregate(ChannelReader<Msg> input, ChannelWriter<Result> output, TimeSpan timeout)
+{
+    var groups = new Dictionary<string, Group>();
+    await foreach (var msg in input.ReadAllAsync())
+    {
+        switch (msg)
+        {
+            case Part p:
+                if (!groups.TryGetValue(p.BatchId, out var g))
+                    groups[p.BatchId] = g = new Group { Expected = p.Total, Deadline = DateTime.UtcNow + timeout };
+                g.Parts[p.Seq] = p.Item;                     // out-of-order safe
+                if (g.Parts.Count == g.Expected)             // completion by count
+                {
+                    await output.WriteAsync(Combine(g));
+                    groups.Remove(p.BatchId);
+                }
+                break;
+            case Sweep:                                      // timeout eviction of stale groups
+                foreach (var (id, stale) in groups.Where(kv => DateTime.UtcNow > kv.Value.Deadline).ToList())
+                {
+                    await output.WriteAsync(CombinePartial(stale));
+                    groups.Remove(id);
+                }
+                break;
+        }
+    }
+}
+// a PeriodicTimer task writes Sweep into the same channel — one owner, no locks.
+```
+
+**🧠 Tradeoff** — a single consumer task owning `groups` is the same Actor move as the Go goroutine:
+no locks, because only one reader ever touches the state. C# has no `select`, so the tick arrives *as
+a message* — a `PeriodicTimer` task writes `Sweep` into the same channel, and one pattern-matching
+`switch` handles both kinds. The records make the message set explicit and compiler-checked. It's
+still in-memory: groups die with the process, so persist them if they matter.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Assumes every part is already here; no correlation or completion.
+fn aggregate(parts: Vec<Part>) -> AggResult {
+    combine_parts(parts)
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+use std::sync::mpsc;
+use std::time::{Duration, Instant};
+
+struct Part { batch_id: String, seq: usize, total: usize, item: Item }
+struct Group { parts: HashMap<usize, Item>, expected: usize, deadline: Instant }
+
+// One thread owns the groups map; recv_timeout doubles as the sweep tick.
+fn aggregate(input: mpsc::Receiver<Part>, output: mpsc::Sender<AggResult>, timeout: Duration) {
+    let mut groups: HashMap<String, Group> = HashMap::new();
+    loop {
+        match input.recv_timeout(Duration::from_secs(1)) {
+            Ok(part) => {
+                let g = groups.entry(part.batch_id.clone()).or_insert_with(|| Group {
+                    parts: HashMap::new(),
+                    expected: part.total,
+                    deadline: Instant::now() + timeout,
+                });
+                g.parts.insert(part.seq, part.item);         // out-of-order safe
+                if g.parts.len() == g.expected {             // completion by count
+                    let done = groups.remove(&part.batch_id).unwrap();
+                    output.send(combine(done)).unwrap();
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {        // sweep stale groups
+                let stale: Vec<String> = groups.iter()
+                    .filter(|(_, g)| Instant::now() > g.deadline)
+                    .map(|(id, _)| id.clone())
+                    .collect();
+                for id in stale {
+                    let g = groups.remove(&id).unwrap();
+                    output.send(combine_partial(g)).unwrap();
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => break, // senders gone — clean exit
+        }
+    }
+}
+```
+
+**🧠 Tradeoff** — `recv_timeout` folds Go's two `select` arms into one call: a message means fold it
+in, a timeout means sweep. The `match` on the result is exhaustive, so channel hangup is handled
+deliberately (`Disconnected` → clean exit) rather than by accident. One thread owning `groups` means
+no `Mutex` at all — ownership delivers what the Actor pattern promises. The borrow checker shapes the
+shutdown of a group too: you check completion while borrowing, then `remove` in a separate visible step.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Assumes every part is already here; no correlation or completion.
+fn aggregate(parts: []const Part) Result {
+    return combine(parts);
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// A part or a sweep tick — one tagged union, one exhaustive switch (Go's select, spelled out).
+const Msg = union(enum) {
+    part: Part,
+    sweep: void,
+};
+
+const Part = struct { batch_id: []const u8, seq: usize, total: usize, item: Item };
+const Group = struct { parts: []?Item, filled: usize, deadline: i64 };
+
+const Aggregator = struct {
+    allocator: std.mem.Allocator,
+    groups: std.StringHashMap(Group),
+    timeout_ms: i64,
+
+    fn handle(self: *Aggregator, msg: Msg) !void {
+        switch (msg) {
+            .part => |p| try self.add(p),
+            .sweep => self.evictStale(),
+        }
+    }
+
+    fn add(self: *Aggregator, p: Part) !void {
+        const entry = try self.groups.getOrPut(p.batch_id);
+        if (!entry.found_existing) {
+            entry.value_ptr.* = .{
+                .parts = try self.allocator.alloc(?Item, p.total), // one slot per seq
+                .filled = 0,
+                .deadline = std.time.milliTimestamp() + self.timeout_ms,
+            };
+            @memset(entry.value_ptr.parts, null);
+        }
+        const g = entry.value_ptr;
+        if (g.parts[p.seq] == null) g.filled += 1;
+        g.parts[p.seq] = p.item;                     // out-of-order safe — indexed by seq
+        if (g.filled == g.parts.len) {               // completion by count
+            complete(p.batch_id, g.parts, false);
+            self.allocator.free(g.parts);
+            _ = self.groups.remove(p.batch_id);
+        }
+    }
+
+    fn evictStale(self: *Aggregator) void {          // timeout eviction of stale groups
+        var stale_ids: [16][]const u8 = undefined;   // bounded sweep — plenty for a demo
+        var n: usize = 0;
+        var it = self.groups.iterator();
+        while (it.next()) |e| {
+            if (std.time.milliTimestamp() > e.value_ptr.deadline and n < stale_ids.len) {
+                stale_ids[n] = e.key_ptr.*;
+                n += 1;
+            }
+        }
+        for (stale_ids[0..n]) |id| {
+            const g = self.groups.get(id).?;
+            complete(id, g.parts, true);             // partial — the timeout resolves the group
+            self.allocator.free(g.parts);
+            _ = self.groups.remove(id);
+        }
+    }
+};
+```
+
+**🧠 Tradeoff** — everything the pattern needs is spelled out: the `parts` slice is allocated per
+group (one slot per `seq`, so out-of-order arrival is literal indexing) and freed the moment the
+group resolves. There's no runtime, so the timeout isn't a timer — `sweep` is a message you feed in
+from your own loop, which is honest about what Go's ticker was doing for you. Watch the keys:
+`StringHashMap` doesn't copy `batch_id`, so the id must outlive the group — dupe it with the
+allocator if the source message doesn't stick around.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Assumes every part is already here; no correlation or completion.
+static Result aggregate(List<Part> parts) { return combine(parts); }
+```
+
+**✅ Idiomatic**
+
+```java
+record Part(String batchId, int seq, int total, Item item) {}
+
+final class Group {
+    final Map<Integer, Item> parts = new HashMap<>();
+    final int expected;
+    final Instant deadline;
+    Group(int expected, Instant deadline) { this.expected = expected; this.deadline = deadline; }
+}
+
+// One thread owns the groups map (Actor-style); poll's timeout doubles as the sweep tick.
+static void aggregate(BlockingQueue<Part> input, BlockingQueue<Result> output, Duration timeout)
+        throws InterruptedException {
+    var groups = new HashMap<String, Group>();
+    while (true) {
+        var part = input.poll(1, TimeUnit.SECONDS);
+        if (part != null) {
+            var g = groups.computeIfAbsent(part.batchId(),
+                    id -> new Group(part.total(), Instant.now().plus(timeout)));
+            g.parts.put(part.seq(), part.item());            // out-of-order safe
+            if (g.parts.size() == g.expected) {              // completion by count
+                output.put(combine(groups.remove(part.batchId())));
+            }
+        } else {                                             // poll timed out → sweep stale groups
+            for (var it = groups.values().iterator(); it.hasNext(); ) {
+                var stale = it.next();
+                if (Instant.now().isAfter(stale.deadline)) {
+                    output.put(combinePartial(stale));
+                    it.remove();
+                }
+            }
+        }
+    }
+}
+```
+
+**🧠 Tradeoff** — `poll` with a timeout folds Go's two `select` arms into one call, the same move as
+Rust's `recv_timeout`: a part means fold it in, `null` means sweep. One thread owning `groups` is the
+Actor discipline — a plain `HashMap`, not a `ConcurrentHashMap`, because only this thread ever touches
+it. `computeIfAbsent` makes get-or-create one expression, the `Part` record can't be edited after
+arrival, and the iterator's `remove` is the safe way to evict mid-walk. Still in-memory: partial
+groups die with the process, so persist them if losing a group is unacceptable.
 
 ## Applications
 

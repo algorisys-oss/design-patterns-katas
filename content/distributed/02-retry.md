@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [distributed, resilience, transient-faults, backoff, idempotency]
 related: [circuit-breaker, timeout, bulkhead]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -272,6 +272,246 @@ func fetchRate(ctx context.Context) (Rate, error) {
 explicit backoff, jitter, and cooperative cancellation so retries respect the caller's deadline. No
 framework needed, though `cenkalti/backoff` packages the schedule. The verbosity buys total clarity
 about when it stops and how it interacts with `context`.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// One attempt; a transient upstream error fails the whole request.
+using var http = new HttpClient();
+var report = await http.GetStringAsync("https://reports.example.com/latest"); // 503 → done
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Bounded attempts, exponential backoff + jitter, and only for retryable failures.
+using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) }; // bound each attempt
+var report = await WithRetry(
+    () => http.GetStringAsync("https://reports.example.com/latest"),
+    attempts: 4, baseDelay: TimeSpan.FromMilliseconds(200));
+
+static async Task<T> WithRetry<T>(Func<Task<T>> fn, int attempts, TimeSpan baseDelay)
+{
+    for (var i = 0; ; i++)
+    {
+        try
+        {
+            return await fn();
+        }
+        catch (Exception e) when (IsTransient(e) && i < attempts - 1)
+        {
+            var backoff = baseDelay * (1 << i);                            // 200, 400, 800…
+            var jitter = Random.Shared.NextDouble() * backoff.TotalMilliseconds;
+            await Task.Delay(backoff + TimeSpan.FromMilliseconds(jitter)); // desynchronize
+        }
+    }
+}
+
+static bool IsTransient(Exception e) => e switch
+{
+    TaskCanceledException => true,                                  // timeout — retry
+    HttpRequestException { StatusCode: null } => true,              // connection-level blip
+    HttpRequestException h => (int?)h.StatusCode is >= 500 or 429,  // 5xx / throttled
+    _ => false,                       // 4xx, validation… — the answer won't change
+};
+```
+
+**🧠 Tradeoff** — The exception filter (`catch … when`) is the idiomatic classify step: a permanent
+failure never enters the catch block, so it propagates with its original stack. `Task.Delay` waits
+without holding a thread, and `Random.Shared` supplies jitter with no setup. In production the
+schedule usually comes from Polly — `WaitAndRetryAsync` with decorrelated jitter, composed with its
+timeout and circuit-breaker strategies — but the loop above is the whole idea. Idempotency stays
+the operation's problem, not the wrapper's.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// One attempt; a transient error is returned as-is.
+fn fetch_rate() -> Result<f64, FetchError> {
+    do_fetch() // a dropped connection fails the whole request
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+// Which failures are worth another try is a type, not a guess.
+#[derive(Debug)]
+enum FetchError {
+    Timeout,    // transient
+    Connection, // transient
+    BadRequest, // permanent — the answer won't change
+}
+
+impl FetchError {
+    fn is_transient(&self) -> bool {
+        match self {
+            FetchError::Timeout | FetchError::Connection => true,
+            FetchError::BadRequest => false,
+        }
+    }
+}
+
+fn with_retry<T>(mut f: impl FnMut() -> Result<T, FetchError>) -> Result<T, FetchError> {
+    const ATTEMPTS: u32 = 4;
+    const BASE_MS: u64 = 200;
+    let mut attempt = 0;
+    loop {
+        match f() {
+            Ok(v) => return Ok(v),
+            Err(e) if e.is_transient() && attempt < ATTEMPTS - 1 => {
+                let backoff = BASE_MS << attempt; // 200, 400, 800…
+                let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().subsec_nanos();
+                let jitter = u64::from(nanos) % backoff; // desynchronize, no rand crate
+                thread::sleep(Duration::from_millis(backoff + jitter));
+                attempt += 1;
+            }
+            Err(e) => return Err(e), // permanent, or out of attempts
+        }
+    }
+}
+
+// let rate = with_retry(do_fetch)?;
+```
+
+**🧠 Tradeoff** — Making `FetchError` an enum turns "which failures are retryable" into a
+compile-time decision: `is_transient` matches exhaustively, so adding a variant forces you to
+classify it before the code builds. `FnMut` is honest about the operation running more than once.
+`thread::sleep` blocks the thread — fine in a worker; async Rust would use a runtime's timer, a
+dependency these katas skip. The clock-derived jitter avoids the `rand` crate; use a real RNG in
+production.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// One attempt; a transient error propagates to the caller as-is.
+fn fetchRate() FetchError!f64 {
+    return doFetch(); // a dropped connection fails the whole request
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const FetchError = error{ Timeout, ConnectionReset, BadRequest };
+
+// The error set is closed, so classification is an exhaustive switch.
+fn isTransient(err: FetchError) bool {
+    return switch (err) {
+        error.Timeout, error.ConnectionReset => true, // worth another try
+        error.BadRequest => false, // the answer won't change
+    };
+}
+
+fn withRetry(f: *const fn () FetchError!f64) FetchError!f64 {
+    const attempts = 4;
+    const base_ms: u64 = 200;
+    var prng = std.Random.DefaultPrng.init(@intCast(std.time.milliTimestamp()));
+    var i: u32 = 0;
+    while (true) {
+        return f() catch |err| {
+            if (!isTransient(err) or i == attempts - 1) return err; // permanent, or out of attempts
+            const backoff = base_ms << @intCast(i); // 200, 400, 800…
+            const jitter = prng.random().uintLessThan(u64, backoff); // desynchronize
+            std.Thread.sleep((backoff + jitter) * std.time.ns_per_ms);
+            i += 1;
+            continue;
+        };
+    }
+}
+
+// const rate = try withRetry(doFetch);
+```
+
+**🧠 Tradeoff** — Error sets give the same guarantee as Rust's enum: the `switch` in `isTransient`
+is exhaustive, so a new error can't sneak past classification. `catch` is plain control flow — no
+unwinding, no hidden cost — which keeps the retry loop readable top to bottom. `std.Thread.sleep`
+blocks the OS thread, the stable answer while Zig's async story settles. The PRNG is explicit and
+locally seeded: no global state, and fixing the seed makes the jitter reproducible in tests.
+
+### Java
+
+**❌ Naive**
+
+```java
+// One attempt; a transient failure propagates as-is.
+String fetchReport() throws Exception {
+    var req = HttpRequest.newBuilder(URI.create("https://reports.example.com/latest"))
+            .timeout(Duration.ofSeconds(5)).build();
+    return http.send(req, HttpResponse.BodyHandlers.ofString()).body(); // blip → error
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.net.ConnectException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
+import java.time.Duration;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ThreadLocalRandom;
+
+class Reports {
+    private final HttpClient http = HttpClient.newHttpClient();
+
+    String fetchReport() throws Exception {
+        return withRetry(() -> {
+            var req = HttpRequest.newBuilder(URI.create("https://reports.example.com/latest"))
+                    .timeout(Duration.ofSeconds(5)) // bound each attempt
+                    .build();
+            return http.send(req, HttpResponse.BodyHandlers.ofString()).body();
+        });
+    }
+
+    static <T> T withRetry(Callable<T> fn) throws Exception {
+        final int attempts = 4;
+        final long baseMs = 200;
+        for (int i = 0; ; i++) {
+            try {
+                return fn.call();
+            } catch (Exception e) {
+                if (!isTransient(e) || i == attempts - 1) throw e; // permanent, or out of tries
+                long backoff = baseMs << i;                        // 200, 400, 800…
+                long jitter = ThreadLocalRandom.current().nextLong(backoff); // desynchronize
+                Thread.sleep(backoff + jitter);
+            }
+        }
+    }
+
+    // The classify step: a switch over the exception's type.
+    static boolean isTransient(Exception e) {
+        return switch (e) {
+            case HttpTimeoutException _ -> true; // deadline hit — worth another try
+            case ConnectException _ -> true;     // connection-level blip
+            default -> false;                    // 4xx, parse errors… the answer won't change
+        };
+    }
+}
+```
+
+**🧠 Tradeoff** — The `switch` over exception types makes classification one visible expression:
+transient types retry, everything else propagates with its original stack. `Thread.sleep` blocking
+a thread used to be the knock against plain retry loops in Java — on a virtual thread
+(`Executors.newVirtualThreadPerTaskExecutor()`) a sleeping thread costs close to nothing, so the
+blocking loop is respectable again; and since `sleep` throws `InterruptedException`, cancellation
+interrupts the backoff for free. Production schedules usually come from Resilience4j's `Retry` (or
+Spring Retry) — decorrelated jitter, metrics, composition with the circuit breaker — but the loop
+above is the whole idea. Idempotency stays the operation's problem, not the wrapper's.
 
 ## Applications
 

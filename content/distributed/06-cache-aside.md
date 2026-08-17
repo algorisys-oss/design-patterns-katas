@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [distributed, caching, performance, read-heavy, invalidation]
 related: [repository, circuit-breaker, cqrs]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -271,6 +271,228 @@ func GetProduct(ctx context.Context, id string) (Product, error) {
 `group.Do` ensures one in-flight load per key while others wait for its result. Combined with a TTL
 cache (Ristretto, or a simple map+mutex), it's a robust cache-aside in a few lines. As usual you
 wire the cache and invalidation explicitly, which keeps the behavior obvious.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Every call queries the database, even for the same hot row.
+async Task<Product> GetProductAsync(string id) =>
+    await QueryProductAsync(id); // no cache
+```
+
+**✅ Idiomatic**
+
+```csharp
+// In-process cache-aside: a ConcurrentDictionary with per-entry expiry.
+var cache = new ConcurrentDictionary<string, (Product Value, DateTime Expires)>();
+
+async Task<Product> GetProductAsync(string id)
+{
+    if (cache.TryGetValue(id, out var hit) && hit.Expires > DateTime.UtcNow)
+        return hit.Value;                                     // hit
+
+    var product = await QueryProductAsync(id);                // miss → load
+    cache[id] = (product, DateTime.UtcNow.AddMinutes(5));     // populate with TTL
+    return product;
+}
+
+async Task UpdateProductAsync(Product p)
+{
+    await SaveProductAsync(p);
+    cache.TryRemove(p.Id, out _); // invalidate so the next read reloads
+}
+```
+
+**🧠 Tradeoff** — A `ConcurrentDictionary` with a `(Value, Expires)` tuple is thread-safe
+cache-aside with lazy expiry — stale entries are simply overwritten on the next miss. What
+it lacks is single-flight: two callers can miss together and both hit the database. The C#
+idiom for that is caching a `Lazy<Task<Product>>` via `GetOrAdd`, so the factory runs once
+and every caller awaits the same task. In production, `IMemoryCache` — or `HybridCache`,
+which has stampede protection built in — covers TTL and eviction so you keep only the
+aside logic.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Every call queries the database for the same hot row.
+fn get_product(id: &str) -> Product {
+    query_product(id) // no cache
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
+#[derive(Clone)]
+struct Product { id: u32, name: String }
+
+struct Cache {
+    entries: Mutex<HashMap<String, (Product, Instant)>>,
+    ttl: Duration,
+}
+
+impl Cache {
+    fn get_product(&self, id: &str) -> Product {
+        if let Some((p, expires)) = self.entries.lock().unwrap().get(id) {
+            if Instant::now() < *expires {
+                return p.clone(); // hit — clone out so the lock releases
+            }
+        }
+        let product = query_product(id); // miss → load (the real database call)
+        self.entries.lock().unwrap().insert(
+            id.to_string(),
+            (product.clone(), Instant::now() + self.ttl), // populate with TTL
+        );
+        product
+    }
+
+    fn invalidate(&self, id: &str) {
+        self.entries.lock().unwrap().remove(id); // evict on write
+    }
+}
+```
+
+**🧠 Tradeoff** — `Mutex<HashMap>` is the whole cache, std only. Cloning on a hit looks
+wasteful but is the point: you can't return a reference into the map without holding the
+lock, so the borrow checker forces a choice — clone out, or serialize every reader. Two
+threads can still race a miss and load twice; harmless here, and the std fix (an entry
+holding `Arc<OnceLock<Product>>` so one loader wins) is single-flight without dependencies.
+For shared or cross-process caching you still reach for Redis, exactly as in the other tabs.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Every call queries the database for the same hot row.
+fn getProduct(key: []const u8) !Product {
+    return queryProduct(key); // no cache
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Product = struct { id: u32, name: []const u8 };
+
+const Cache = struct {
+    const Entry = struct { value: Product, expires_ms: i64 };
+
+    entries: std.StringHashMap(Entry),
+    ttl_ms: i64,
+
+    fn init(allocator: std.mem.Allocator, ttl_ms: i64) Cache {
+        return .{ .entries = std.StringHashMap(Entry).init(allocator), .ttl_ms = ttl_ms };
+    }
+
+    fn deinit(self: *Cache) void {
+        self.entries.deinit();
+    }
+
+    fn getProduct(self: *Cache, key: []const u8) !Product {
+        if (self.entries.get(key)) |entry| {
+            if (std.time.milliTimestamp() < entry.expires_ms) return entry.value; // hit
+        }
+        const product = try queryProduct(key); // miss → load
+        try self.entries.put(key, .{
+            .value = product,
+            .expires_ms = std.time.milliTimestamp() + self.ttl_ms,
+        }); // populate with TTL
+        return product;
+    }
+
+    fn invalidate(self: *Cache, key: []const u8) void {
+        _ = self.entries.remove(key); // evict on write
+    }
+};
+
+fn queryProduct(key: []const u8) !Product {
+    _ = key; // stands in for the real database call
+    return .{ .id = 42, .name = "keyboard" };
+}
+
+pub fn main() !void {
+    var cache = Cache.init(std.heap.page_allocator, 5 * std.time.ms_per_min);
+    defer cache.deinit();
+
+    _ = try cache.getProduct("product:42"); // miss → database, then cached
+    _ = try cache.getProduct("product:42"); // hit → served from the map
+    cache.invalidate("product:42");         // after a write
+}
+```
+
+**🧠 Tradeoff** — The allocator is a parameter, so the cache's memory is an explicit budget
+you pick and release (`defer cache.deinit()`) rather than ambient heap a GC deals with.
+One sharp edge: `StringHashMap` stores the key *slice* you pass — hand it stable memory or
+`dupe` the key with the allocator, or the entry outlives its key. Expiry is lazy (checked
+on read) and eviction-on-write bounds staleness, same as the other tabs; wrap the map in a
+`std.Thread.Mutex` before sharing it across threads.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Check-then-load: two threads can miss together and both hit the database.
+Product getProduct(String id) {
+    var p = cache.get(id);
+    if (p == null) {
+        p = queryProduct(id); // both loaders run — the stampede in miniature
+        cache.put(id, p);
+    }
+    return p;
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
+
+// Cache-aside on a ConcurrentHashMap: computeIfAbsent loads once per missing key.
+final class ProductCache {
+    private record Entry(Product value, Instant expires) {}
+
+    private final ConcurrentHashMap<String, Entry> cache = new ConcurrentHashMap<>();
+    private final Duration ttl = Duration.ofMinutes(5);
+
+    Product getProduct(String id) {
+        var entry = cache.get(id);
+        if (entry != null && entry.expires().isAfter(Instant.now()))
+            return entry.value();                       // hit
+
+        if (entry != null)
+            cache.remove(id, entry);                    // drop the expired entry
+        return cache.computeIfAbsent(id, key ->         // miss → exactly one loader per key
+            new Entry(queryProduct(key), Instant.now().plus(ttl))).value();
+    }
+
+    void invalidate(String id) {
+        cache.remove(id); // evict on write
+    }
+}
+```
+
+**🧠 Tradeoff** — `computeIfAbsent` is the line that matters: it runs the mapping function
+once per absent key while concurrent callers block and receive the same result —
+single-flight built into the map, where the naive check-then-load lets every concurrent
+miss query the database. The catch is the same mechanism: the loader runs under the map's
+internal bin lock, so keep it to the one query and never touch the same map inside it.
+TTL is hand-rolled here (lazy expiry, evict on write, like the other tabs); in production
+Caffeine covers it — `expireAfterWrite`, size-based eviction, and the same one-loader-per-key
+coalescing — and Redis remains the answer once the cache must be shared across processes.
 
 ## Applications
 

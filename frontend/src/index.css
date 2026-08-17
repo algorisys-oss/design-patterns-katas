@@ -23,6 +23,10 @@
   --lang-python: #2f6690;
   --lang-elixir: #7a48a6;
   --lang-go: #007d9c;
+  --lang-java: #7d5230;
+  --lang-csharp: #5b52c0;
+  --lang-rust: #a53f2b;
+  --lang-zig: #c2610e;
 
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -49,6 +53,10 @@
   --lang-python: #6aa5d8;
   --lang-elixir: #b992e2;
   --lang-go: #34bcdd;
+  --lang-java: #c99e6a;
+  --lang-csharp: #a9a3ee;
+  --lang-rust: #e0836c;
+  --lang-zig: #eda054;
 }
 
 @theme inline {

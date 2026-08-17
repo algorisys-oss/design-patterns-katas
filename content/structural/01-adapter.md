@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [structural, interface-conversion, wrapper, integration, legacy]
 related: [facade, decorator, bridge, proxy]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -275,6 +275,250 @@ func (c Checkout) Buy(dollars float64) error { return c.Gateway.Pay(dollars) }
 never imports Stripe. Go's structural interfaces make adapters especially natural — you can even
 adapt with a function type when the target has a single method. One adapter per foreign client
 keeps the translation contained.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Checkout knows Stripe's method name and unit convention.
+public sealed class Checkout(Stripe stripe)
+{
+    public string Buy(decimal dollars) =>
+        stripe.Charge((int)Math.Round(dollars * 100)); // vendor leak + inline math
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Top-level demo first, types after.
+var checkout = new Checkout(new StripeAdapter(new Stripe()));
+Console.WriteLine(checkout.Buy(50.00m)); // charged 5000 cents
+
+public sealed class Stripe
+{
+    public string Charge(int cents) => $"charged {cents} cents";
+}
+
+// Target: the interface our code depends on.
+public interface IGateway
+{
+    string Pay(decimal dollars);
+}
+
+// Adapter: makes Stripe speak IGateway (primary constructor holds the adaptee).
+public sealed class StripeAdapter(Stripe stripe) : IGateway
+{
+    public string Pay(decimal dollars) => stripe.Charge((int)Math.Round(dollars * 100));
+}
+
+public sealed class Checkout(IGateway gateway)
+{
+    public string Buy(decimal dollars) => gateway.Pay(dollars);
+}
+```
+
+**🧠 Tradeoff** — `IGateway` is checked at compile time, so `Checkout` can't quietly depend on
+a Stripe-only member; a vendor swap is one new adapter class. When the target has a single
+method, modern C# can shrink the adapter to a `Func<decimal, string>` — an inline lambda doing
+the same translation. The class earns its place once the adapter carries config or a second method.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+struct Checkout {
+    stripe: Stripe,
+}
+
+impl Checkout {
+    // Coupled to Stripe's method name and unit convention.
+    fn buy(&self, dollars: f64) -> String {
+        self.stripe.charge((dollars * 100.0).round() as u32)
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+struct Stripe;
+impl Stripe {
+    fn charge(&self, cents: u32) -> String {
+        format!("charged {cents} cents")
+    }
+}
+
+// Target: the contract our code speaks.
+trait Gateway {
+    fn pay(&self, dollars: f64) -> String;
+}
+
+// Adapter: wraps Stripe and translates name + units.
+struct StripeAdapter {
+    stripe: Stripe,
+}
+
+impl Gateway for StripeAdapter {
+    fn pay(&self, dollars: f64) -> String {
+        self.stripe.charge((dollars * 100.0).round() as u32)
+    }
+}
+
+// Checkout depends on the trait, not on Stripe.
+struct Checkout<G: Gateway> {
+    gateway: G,
+}
+
+impl<G: Gateway> Checkout<G> {
+    fn buy(&self, dollars: f64) -> String {
+        self.gateway.pay(dollars)
+    }
+}
+
+fn main() {
+    let checkout = Checkout { gateway: StripeAdapter { stripe: Stripe } };
+    println!("{}", checkout.buy(50.0)); // charged 5000 cents
+}
+```
+
+**🧠 Tradeoff** — the adapter is a thin wrapper struct plus one `impl` — Rust's everyday
+newtype habit, so the pattern feels native. `Checkout<G: Gateway>` monomorphizes: zero
+dispatch cost, but the vendor is fixed at compile time. Choose `Box<dyn Gateway>` instead
+when the gateway is picked at runtime (config, feature flags) — Rust makes you spell out
+the choice that Go's interface values hide.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+const Stripe = struct {
+    fn charge(_: Stripe, cents: u32) void {
+        std.debug.print("charged {d} cents\n", .{cents});
+    }
+};
+
+// Checkout reaches straight into Stripe's name and unit convention.
+const Checkout = struct {
+    stripe: Stripe,
+
+    fn buy(self: Checkout, dollars: f64) void {
+        self.stripe.charge(@intFromFloat(@round(dollars * 100.0)));
+    }
+};
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+const Stripe = struct {
+    fn charge(_: Stripe, cents: u32) void {
+        std.debug.print("charged {d} cents\n", .{cents});
+    }
+};
+
+// Adapter: wraps Stripe and translates pay(dollars) → charge(cents).
+const StripeAdapter = struct {
+    stripe: Stripe,
+
+    fn pay(self: StripeAdapter, dollars: f64) void {
+        self.stripe.charge(@intFromFloat(@round(dollars * 100.0)));
+    }
+};
+
+// Checkout is generic over any gateway type with pay() — checked at comptime.
+fn Checkout(comptime Gateway: type) type {
+    return struct {
+        gateway: Gateway,
+
+        fn buy(self: @This(), dollars: f64) void {
+            self.gateway.pay(dollars);
+        }
+    };
+}
+
+pub fn main() void {
+    const checkout = Checkout(StripeAdapter){ .gateway = .{ .stripe = .{} } };
+    checkout.buy(50.0); // charged 5000 cents
+}
+```
+
+**🧠 Tradeoff** — `Checkout(comptime Gateway: type)` is duck typing at compile time: the
+compiler verifies `pay` exists the moment `Checkout(StripeAdapter)` is instantiated, and
+dispatch costs nothing. The catch is that each gateway makes a distinct `Checkout` type, so
+picking a vendor at runtime needs the two-field vtable idiom (`*anyopaque` context + function
+pointer) that `std.mem.Allocator` uses. For a vendor known at build time, comptime is the
+honest form.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Checkout knows Stripe's method name and unit convention.
+class Checkout {
+    private final Stripe stripe;
+
+    Checkout(Stripe stripe) { this.stripe = stripe; }
+
+    String buy(double dollars) {
+        return stripe.charge((int) Math.round(dollars * 100)); // vendor leak + inline math
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+class Stripe {
+    String charge(int cents) { return "charged %d cents".formatted(cents); }
+}
+
+// Target: the interface our code depends on.
+interface Gateway {
+    String pay(double dollars);
+}
+
+// Adapter: makes Stripe speak Gateway; the translation lives here.
+class StripeAdapter implements Gateway {
+    private final Stripe stripe;
+
+    StripeAdapter(Stripe stripe) { this.stripe = stripe; }
+
+    public String pay(double dollars) {
+        return stripe.charge((int) Math.round(dollars * 100));
+    }
+}
+
+class Checkout {
+    private final Gateway gateway; // depends on pay(), not Stripe
+
+    Checkout(Gateway gateway) { this.gateway = gateway; }
+
+    String buy(double dollars) { return gateway.pay(dollars); }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var checkout = new Checkout(new StripeAdapter(new Stripe()));
+        System.out.println(checkout.buy(50.0)); // charged 5000 cents
+    }
+}
+```
+
+**🧠 Tradeoff** — the classical form fits Java with no translation: interface, wrapper class,
+constructor injection. The standard library is full of it — `InputStreamReader` is an adapter
+from bytes to characters. Since `Gateway` has one method, it's a functional interface: a lambda
+`dollars -> stripe.charge((int) Math.round(dollars * 100))` is the whole adapter. Write the
+class when the adapter carries config or a second method; otherwise the lambda is the modern
+floor.
 
 ## Applications
 

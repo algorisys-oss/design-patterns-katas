@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [architecture, separation-of-concerns, dependencies, structure]
 related: [hexagonal, repository, dependency-inversion]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -326,6 +326,243 @@ func (h Handler) getOrder(w http.ResponseWriter, r *http.Request) {
 natural: the domain declares the `OrderRepo` interface it needs, and the infrastructure package
 implements it — so the dependency points *inward* even though infra sits at the bottom. Wiring is
 explicit in `main` (no container), which is verbose but leaves the dependency graph obvious.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// The endpoint does everything: query, math, response shape.
+app.MapGet("/orders/{id}", async (string id) =>
+{
+    var cents = await db.QuerySingleAsync<int>(
+        "SELECT total_cents FROM orders WHERE id = @id", new { id });
+    return Results.Json(new { total = cents / 100.0 }); // formatting in the route
+});
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Presentation — the endpoint depends on the service, not the database.
+app.MapGet("/orders/{id}", async (string id, OrderService svc) =>
+    Results.Json(await svc.GetAsync(id)));
+
+// Infrastructure registers itself in the composition root:
+// builder.Services.AddScoped<IOrderRepo, PostgresOrderRepo>();
+
+// Domain — owns the contract and the rules; references no infrastructure.
+public record Order(string Id, decimal Total);
+
+public interface IOrderRepo
+{
+    Task<Order?> ByIdAsync(string id);
+}
+
+public sealed class OrderService(IOrderRepo repo)
+{
+    public async Task<Order> GetAsync(string id) =>
+        await repo.ByIdAsync(id) ?? throw new OrderNotFoundException(id);
+}
+```
+
+**🧠 Tradeoff** — In C# the layers are usually separate *projects*, and that makes the rule
+mechanical: the domain project has no reference to the infrastructure project, so importing EF
+into the domain won't compile. ASP.NET's built-in DI container is the composition root Go writes
+by hand — less wiring code, but the dependency graph now lives in `AddScoped` calls rather than
+in plain constructors, so it takes discipline to keep it readable.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// One function looks up, applies the rule, and formats — nothing is separable.
+fn get_order(store: &std::collections::HashMap<String, i64>, id: &str) -> String {
+    match store.get(id) {
+        Some(cents) => format!("{{\"total\": {}}}", *cents as f64 / 100.0), // formatting inline
+        None => "not found".to_string(),
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+use std::collections::HashMap;
+
+// Module-per-layer; the domain owns the trait, infrastructure implements it.
+// domain
+struct Order { id: String, total: f64 }
+
+trait OrderRepo {
+    fn by_id(&self, id: &str) -> Option<Order>;
+}
+
+struct OrderService<R: OrderRepo> { repo: R }
+
+impl<R: OrderRepo> OrderService<R> {
+    fn get(&self, id: &str) -> Result<Order, String> {
+        self.repo.by_id(id).ok_or_else(|| format!("order {id} not found"))
+    }
+}
+
+// infrastructure — implements the domain's trait
+struct InMemoryOrders(HashMap<String, i64>);
+
+impl OrderRepo for InMemoryOrders {
+    fn by_id(&self, id: &str) -> Option<Order> {
+        self.0.get(id).map(|cents| Order { id: id.to_string(), total: *cents as f64 / 100.0 })
+    }
+}
+
+fn main() {
+    let repo = InMemoryOrders(HashMap::from([("o1".to_string(), 2500)]));
+    let svc = OrderService { repo };
+    println!("{}", svc.get("o1").unwrap().total); // 25
+}
+```
+
+**🧠 Tradeoff** — Rust layers by module (or crate), and visibility does the policing: a domain
+module that never writes `use crate::infrastructure` can't touch it, and `pub` marks exactly what
+crosses each boundary. Ownership adds a quiet bonus — `by_id` returns an *owned* `Order`, so the
+domain gets a DTO by construction, never a live reference into storage. The generic
+`OrderService<R>` fixes the store at compile time; use `Box<dyn OrderRepo>` if the store must be
+chosen at runtime.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+const std = @import("std");
+
+var store: std.StringHashMap(i64) = undefined;
+
+// One function does lookup, rule, and formatting against a global map.
+fn getOrder(id: []const u8) void {
+    const cents = store.get(id) orelse {
+        std.debug.print("not found\n", .{});
+        return;
+    };
+    std.debug.print("{{\"total\": {d}}}\n", .{@as(f64, @floatFromInt(cents)) / 100.0});
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+const std = @import("std");
+
+// domain — the service is generic over any repo type with a byId method.
+fn OrderService(comptime Repo: type) type {
+    return struct {
+        repo: Repo,
+
+        pub fn get(self: @This(), id: []const u8) !f64 {
+            const cents = self.repo.byId(id) orelse return error.NotFound;
+            return @as(f64, @floatFromInt(cents)) / 100.0;
+        }
+    };
+}
+
+// infrastructure — satisfies the shape just by having byId.
+const InMemoryOrders = struct {
+    cents: std.StringHashMap(i64),
+
+    pub fn byId(self: InMemoryOrders, id: []const u8) ?i64 {
+        return self.cents.get(id);
+    }
+};
+
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    var store = std.StringHashMap(i64).init(gpa.allocator());
+    defer store.deinit();
+    try store.put("o1", 2500);
+
+    const svc = OrderService(InMemoryOrders){ .repo = .{ .cents = store } };
+    std.debug.print("total: {d}\n", .{try svc.get("o1")}); // total: 25
+}
+```
+
+**🧠 Tradeoff** — Zig has no interfaces, so the layer contract here is *structural*: the comptime
+generic accepts any type with a `byId` method, checked only where `OrderService(InMemoryOrders)`
+is instantiated. That's zero-cost layering, but there is no named contract to read — the "layer
+below" is whatever methods the service happens to call, so a doc comment carries the contract.
+Swapping the store at *runtime* needs the vtable idiom instead (see the hexagonal kata). Be
+honest, too: small Zig programs usually layer by file and skip the generic entirely.
+
+### Java
+
+**❌ Naive**
+
+```java
+// The handler does everything: connect, query, format.
+class OrderHandler {
+    String getOrder(String id) throws SQLException {
+        try (var conn = DriverManager.getConnection(DB_URL);
+             var stmt = conn.prepareStatement("SELECT total_cents FROM orders WHERE id = ?")) {
+            stmt.setString(1, id);
+            var rs = stmt.executeQuery();
+            if (!rs.next()) return "not found";
+            return "{\"total\": %s}".formatted(rs.getInt(1) / 100.0); // formatting in the handler
+        }
+    }
+}
+```
+
+**✅ Idiomatic**
+
+```java
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+
+// Package-per-layer; the domain owns the interface, infrastructure implements it.
+// domain — contract and rules; imports nothing from the layers below
+record Order(String id, double total) {}
+
+interface OrderRepo {
+    Optional<Order> byId(String id);
+}
+
+class OrderService {
+    private final OrderRepo repo;
+    OrderService(OrderRepo repo) { this.repo = repo; }
+
+    Order get(String id) {                        // orchestration + rules
+        return repo.byId(id).orElseThrow(() -> new NoSuchElementException("order " + id));
+    }
+}
+
+// infrastructure — implements the domain's interface
+class InMemoryOrders implements OrderRepo {
+    private final Map<String, Integer> cents = Map.of("o1", 2500);
+
+    public Optional<Order> byId(String id) {
+        return Optional.ofNullable(cents.get(id)).map(c -> new Order(id, c / 100.0));
+    }
+}
+
+// presentation — depends on the service, not the store
+public class Demo {
+    public static void main(String[] args) {
+        var svc = new OrderService(new InMemoryOrders());
+        System.out.println(svc.get("o1").total()); // 25.0
+    }
+}
+```
+
+**🧠 Tradeoff** — Java layers by package, and one build module (Maven/Gradle) per layer makes the
+rule mechanical the way C# projects do: the domain module lists no infrastructure dependency, so
+importing the JDBC driver into `OrderService` won't compile. JPMS can tighten that further — a
+`module-info.java` that exports only the domain's interfaces states the architecture in code —
+though most teams stop at build modules. This is Spring's home turf: `@Controller`, `@Service`,
+and `@Repository` are the three layers as stereotype annotations, with the container doing the
+constructor wiring `Demo` does by hand. The pattern doesn't need the framework — a constructor
+taking an interface is the whole trick — the framework just made it the default shape of Java.
 
 ## Applications
 

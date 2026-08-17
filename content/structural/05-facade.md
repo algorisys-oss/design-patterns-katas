@@ -10,7 +10,7 @@ frequency: high
 difficulty: beginner
 tags: [structural, simplification, subsystem, api-surface, decoupling]
 related: [adapter, mediator, singleton]
-languages: [javascript, node-js, python, elixir, go]
+languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ---
 
 ## Intent
@@ -284,6 +284,214 @@ func (f Facade) Checkout(order Order) (Result, error) {
 **🧠 Tradeoff** — A struct holding the subsystem interfaces is the facade; taking interfaces (not
 concrete types) keeps it testable with fakes. Go's explicit error returns make the facade the
 right place to handle failures once, instead of every caller repeating the checks.
+
+### CSharp
+
+**❌ Naive**
+
+```csharp
+// Every caller orchestrates the whole subsystem itself.
+(Receipt, Shipment) PlaceOrder(Order order)
+{
+    inventory.Reserve(order.Items);
+    var receipt = payment.Charge(order.Card, order.Total);
+    var shipment = shipping.Create(order.Address, order.Items);
+    mailer.Send(order.Email, receipt, shipment);
+    return (receipt, shipment);
+}
+```
+
+**✅ Idiomatic**
+
+```csharp
+// Top-level statements: callers know only this one call.
+var orders = new OrderFacade(inventory, payment, shipping, mailer);
+orders.Checkout(order);
+
+// Primary constructor — the facade takes its four subsystems up front.
+public sealed class OrderFacade(
+    IInventory inventory, IPayment payment, IShipping shipping, IMailer mailer)
+{
+    // One method owns the ordering; internals can change without touching callers.
+    public (Receipt Receipt, Shipment Shipment) Checkout(Order order)
+    {
+        inventory.Reserve(order.Items);
+        var receipt = payment.Charge(order.Card, order.Total);
+        var shipment = shipping.Create(order.Address, order.Items);
+        mailer.Send(order.Email, receipt, shipment);
+        return (receipt, shipment);
+    }
+}
+```
+
+**🧠 Tradeoff** — This is the shape ASP.NET calls an application service: constructor
+injection hands the facade its subsystems, and the DI container wires it once at startup.
+Taking interfaces (not concrete classes) keeps it fake-able in tests. Keep it thin — the
+moment `Checkout` starts making business decisions it stops being a facade and starts
+being the whole app.
+
+### Rust
+
+**❌ Naive**
+
+```rust
+// Every caller receives, borrows, and orders all four subsystems itself.
+fn place_order(
+    inventory: &Inventory,
+    payment: &Payment,
+    shipping: &Shipping,
+    mailer: &Mailer,
+    order: &Order,
+) -> Result<(Receipt, Shipment), OrderError> {
+    inventory.reserve(&order.items)?;
+    let receipt = payment.charge(&order.card, order.total)?;
+    let shipment = shipping.create(&order.address, &order.items)?;
+    mailer.send(&order.email, &receipt, &shipment);
+    Ok((receipt, shipment))
+}
+```
+
+**✅ Idiomatic**
+
+```rust
+// The facade owns its subsystems and exposes one method.
+struct OrderFacade {
+    inventory: Inventory,
+    payment: Payment,
+    shipping: Shipping,
+    mailer: Mailer,
+}
+
+impl OrderFacade {
+    fn checkout(&self, order: &Order) -> Result<(Receipt, Shipment), OrderError> {
+        self.inventory.reserve(&order.items)?;
+        let receipt = self.payment.charge(&order.card, order.total)?;
+        let shipment = self.shipping.create(&order.address, &order.items)?;
+        self.mailer.send(&order.email, &receipt, &shipment);
+        Ok((receipt, shipment))
+    }
+}
+
+// let orders = OrderFacade { inventory, payment, shipping, mailer };
+// orders.checkout(&order)?;   // callers know only this
+```
+
+**🧠 Tradeoff** — A struct that owns its subsystems is the whole pattern, and the `?`
+chain is the orchestration: any failing step returns early with its error, much like
+Elixir's `with`. Concrete field types are the simplest form. When tests need fakes, make
+the facade generic over its subsystems (`OrderFacade<I: Inventory, …>`, monomorphized)
+or hold `Box<dyn …>` fields (runtime dispatch) — but don't reach for traits until a
+second implementation actually exists.
+
+### Zig
+
+**❌ Naive**
+
+```zig
+// Every caller drives all four subsystems itself, in the right order.
+fn placeOrder(
+    inventory: *Inventory,
+    payment: *Payment,
+    shipping: *Shipping,
+    mailer: *Mailer,
+    order: Order,
+) !Result {
+    try inventory.reserve(order.items);
+    const receipt = try payment.charge(order.card, order.total);
+    const shipment = try shipping.create(order.address, order.items);
+    mailer.send(order.email, receipt, shipment);
+    return .{ .receipt = receipt, .shipment = shipment };
+}
+```
+
+**✅ Idiomatic**
+
+```zig
+// The facade holds the subsystems and exposes one call.
+const OrderFacade = struct {
+    inventory: Inventory,
+    payment: Payment,
+    shipping: Shipping,
+    mailer: Mailer,
+
+    pub fn checkout(self: *OrderFacade, order: Order) !Result {
+        try self.inventory.reserve(order.items);
+        const receipt = try self.payment.charge(order.card, order.total);
+        const shipment = try self.shipping.create(order.address, order.items);
+        self.mailer.send(order.email, receipt, shipment);
+        return .{ .receipt = receipt, .shipment = shipment };
+    }
+};
+
+// var orders = OrderFacade{ .inventory = inv, .payment = pay, .shipping = ship, .mailer = mail };
+// const result = try orders.checkout(order);   // callers know only this
+```
+
+**🧠 Tradeoff** — Facade is a pattern Zig does with no machinery at all: a struct of
+structs and one method. `try` short-circuits each failing step, so error handling lives
+in one place and callers see an honest `!Result` signature. If tests need to swap a
+subsystem, make the facade generic over the subsystem types with comptime parameters —
+static polymorphism, no vtables — rather than inventing an interface Zig doesn't have.
+
+### Java
+
+**❌ Naive**
+
+```java
+// Every caller orchestrates the whole subsystem itself.
+static Result placeOrder(Order order) {
+    inventory.reserve(order.items());
+    var receipt = payment.charge(order.card(), order.total());
+    var shipment = shipping.create(order.address(), order.items());
+    mailer.send(order.email(), receipt, shipment);
+    return new Result(receipt, shipment);
+}
+```
+
+**✅ Idiomatic**
+
+```java
+// The result is a plain data carrier — a record.
+record Result(Receipt receipt, Shipment shipment) {}
+
+// The facade takes its subsystems up front and exposes one method.
+class OrderFacade {
+    private final Inventory inventory;
+    private final Payment payment;
+    private final Shipping shipping;
+    private final Mailer mailer;
+
+    OrderFacade(Inventory inventory, Payment payment, Shipping shipping, Mailer mailer) {
+        this.inventory = inventory;
+        this.payment = payment;
+        this.shipping = shipping;
+        this.mailer = mailer;
+    }
+
+    // One method owns the ordering; internals can change without touching callers.
+    Result checkout(Order order) {
+        inventory.reserve(order.items());
+        var receipt = payment.charge(order.card(), order.total());
+        var shipment = shipping.create(order.address(), order.items());
+        mailer.send(order.email(), receipt, shipment);
+        return new Result(receipt, shipment);
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        var orders = new OrderFacade(inventory, payment, shipping, mailer);
+        orders.checkout(order); // callers know only this
+    }
+}
+```
+
+**🧠 Tradeoff** — this is the shape Spring calls a service: constructor injection hands the
+facade its subsystems, wired once at startup, and taking interfaces keeps it mockable in
+tests. The constructor boilerplate is the visible cost — a `record OrderFacade(Inventory
+inventory, …)` erases it when the facade holds nothing but final fields. Same warning as
+everywhere else: the moment `checkout` starts making business decisions it stops being a
+facade and starts being the whole app.
 
 ## Applications
 
