@@ -5,7 +5,7 @@ sequence: 4
 title: Reactive State
 also_known_as: [Signals, Observables, Reactive Programming]
 gof: false
-intent: "Model state as observable values that automatically notify everything derived from them, so views and computed values update themselves when their inputs change — no manual wiring."
+intent: "Model state as observable values that automatically notify everything derived from them, so views and computed values update themselves when their inputs change, with no manual wiring."
 frequency: high
 difficulty: intermediate
 tags: [ui, reactivity, signals, derived-state, dependency-tracking]
@@ -89,7 +89,7 @@ Key Components:
 
 - Signals notify dependents automatically; derived values and views stay in sync without manual wiring.
 - Declare `derived = f(signals)`; the runtime tracks dependencies and updates precisely what changed.
-- It's Observer with automatic dependency tracking — the engine behind modern reactive UIs.
+- It's Observer with automatic dependency tracking: the engine behind modern reactive UIs.
 - Keep derivations pure, dispose effects, and respect batching.
 
 ## Implementations
@@ -128,7 +128,7 @@ qty.value = 5; // total recomputes, the effect re-renders — no manual wiring
 **🧠 Tradeoff** — Signals make `total` and the DOM update themselves: change `qty` and everything
 downstream follows, because reads inside `computed`/`effect` are tracked automatically. This is the
 model behind SolidJS, Vue, Preact Signals, and Angular signals. The cost is that updates become
-implicit control flow — great until an effect loops or a stale closure bites — so keep derivations
+implicit control flow (great until an effect loops or a stale closure bites) so keep derivations
 pure and dispose effects.
 
 ### Node.js
@@ -163,7 +163,7 @@ average.subscribe((avg) => io.emit("avg", avg)); // auto-updates on every new re
 ```
 
 **🧠 Tradeoff** — RxJS models values-over-time as observable streams: `average` is *declared* as a
-transformation of `readings`, and subscribers update whenever it emits — no manual recompute-and-emit
+transformation of `readings`, and subscribers update whenever it emits, with no manual recompute-and-emit
 in every writer. It shines for event/async streams (sockets, sensors, UI events). The cost is RxJS's
 learning curve and the ease of leaking subscriptions, so unsubscribe when done.
 
@@ -279,7 +279,7 @@ func average(readings <-chan float64) <-chan float64 {
 
 **🧠 Tradeoff** — Go has no signal library in the standard idiom, but channels model reactive streams
 naturally: `average` transforms an input channel into a derived output channel, and consumers `range`
-over it, reacting to each value. It's explicit dataflow rather than transparent dependency tracking —
+over it, reacting to each value. It's explicit dataflow rather than transparent dependency tracking:
 you wire the graph with channels and goroutines. For UI-style fine-grained reactivity Go is a poor
 fit; for streaming/derived pipelines, channels are the idiomatic reactive primitive.
 

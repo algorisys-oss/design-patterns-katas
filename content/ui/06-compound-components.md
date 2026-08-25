@@ -15,13 +15,13 @@ languages: [javascript, node-js, python, elixir, go]
 
 ## Intent
 
-Instead of one monolithic component driven by dozens of props, expose a **family of components** —
-a parent and its children — that coordinate through **implicit shared state**. The user composes
+Instead of one monolithic component driven by dozens of props, expose a **family of components**,
+a parent and its children, that coordinate through **implicit shared state**. The user composes
 them in markup (`<Tabs>` wrapping `<TabList>`, `<Tab>`, and `<TabPanel>`), arranging and styling
 them freely, while the parent quietly manages the state they all need (which tab is active).
 
 The user gets layout flexibility and readable markup; the components handle the wiring. It's
-composition over configuration: rather than a `tabs={[…]}` prop describing everything, the structure
+composition over configuration: rather than a `tabs={[...]}` prop describing everything, the structure
 *is* the API.
 
 ## The Problem
@@ -29,7 +29,7 @@ composition over configuration: rather than a `tabs={[…]}` prop describing eve
 A "do everything through props" component collapses under its own configurability:
 
 - **Prop explosion** — a `<Tabs>` that takes `tabs`, `labels`, `icons`, `renderTab`, `activeIndex`,
-  `onChange`, `tabClassName`, `panelClassName`… becomes an unusable configuration language.
+  `onChange`, `tabClassName`, `panelClassName`... becomes an unusable configuration language.
 - **No layout control** — the component decides the markup, so you can't put a divider between two
   tabs or wrap one in a tooltip without a new prop.
 - **Rigid structure** — supporting a new arrangement means adding yet another prop or a render-prop
@@ -92,7 +92,7 @@ Key Components:
 ## Key Takeaways
 
 - A parent plus composable children coordinate through implicit shared state, not threaded props.
-- The markup structure becomes the API — composition over configuration.
+- The markup structure becomes the API: composition over configuration.
 - Great for flexible, reusable widgets (tabs, menus, accordions, selects).
 - Guard against orphaned children and keep the shared state minimal.
 
@@ -139,8 +139,8 @@ Tabs.Tab = Tab; Tabs.Panel = TabPanel;
 
 **🧠 Tradeoff** — Context lets `Tab` and `TabPanel` share the active index without the user threading
 it, so the markup composes freely (insert a `<Divider/>`, wrap a `<Tab>` in a tooltip). It's the API
-behind Radix, Reach UI, and headless component libraries. The cost is implicit coupling — a `<Tab>`
-outside `<Tabs>` breaks — so guard the context read with a helpful error.
+behind Radix, Reach UI, and headless component libraries. The cost is implicit coupling (a `<Tab>`
+outside `<Tabs>` breaks) so guard the context read with a helpful error.
 
 ### Node.js
 
@@ -206,7 +206,7 @@ def tab(index, label): return rx.button(label, on_click=State.set_active(index))
 
 **🧠 Tradeoff** — Django/Jinja template inheritance provides the server-side compound shape via
 `block` slots a child page fills, with the parent owning structure. For interactive Python UIs,
-Reflex/Flet express it as nested components sharing a `State` object — closer to the React model. The
+Reflex/Flet express it as nested components sharing a `State` object, closer to the React model. The
 principle holds across both: the parent coordinates, the consumer composes named parts rather than
 configuring one component.
 
@@ -256,7 +256,7 @@ end
 **🧠 Tradeoff** — Phoenix HEEx has **slots** as a first-class feature: a component declares named
 slots (`:tab`, `:panel`) with their own attrs, and the caller composes them in markup while the
 parent owns the shared `active` state and wiring. It's the cleanest server-side expression of the
-pattern here — typed, validated slots with composition — and LiveView makes the selection interactive
+pattern here (typed, validated slots with composition) and LiveView makes the selection interactive
 without client JS.
 
 ### Go
@@ -290,7 +290,7 @@ templ Tab(index int, label string, active int) {
 ```
 
 **🧠 Tradeoff** — `templ` gives Go typed, composable components with a `children...` slot, so a parent
-`Tabs` component wraps child `Tab`/`Panel` components the caller arranges — compound composition with
+`Tabs` component wraps child `Tab`/`Panel` components the caller arranges: compound composition with
 compile-time checking. The shared `active` state is passed explicitly (Go has no implicit context in
 templates), which is more verbose than React's context but keeps the data flow visible. Plain
 `html/template` supports the idea more crudely via nested template blocks.

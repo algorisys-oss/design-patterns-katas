@@ -5,7 +5,7 @@ sequence: 3
 title: Provider / Context
 also_known_as: [Context, Dependency Provision, Scoped State]
 gof: false
-intent: "Make a value available to a whole subtree of components without passing it manually through every intermediate level — provide once at the top, consume anywhere below."
+intent: "Make a value available to a whole subtree of components without passing it manually through every intermediate level: provide once at the top, consume anywhere below."
 frequency: high
 difficulty: beginner
 tags: [ui, dependency-injection, prop-drilling, scoping, tree]
@@ -25,7 +25,7 @@ components that are just passing it along.
 
 ## The Problem
 
-To get a value from the top of a tree to a deep leaf, you pass it down every level — **prop
+To get a value from the top of a tree to a deep leaf, you pass it down every level, which is **prop
 drilling**:
 
 - **Tedious threading** — a `theme` needed by a deeply nested button is passed through ten
@@ -91,7 +91,7 @@ Key Components:
 ## Key Takeaways
 
 - Provide a value at the top of a subtree; consume it anywhere below without threading props.
-- It's tree-scoped dependency injection — great for theme, auth, locale, and shared stores.
+- It's tree-scoped dependency injection: great for theme, auth, locale, and shared stores.
 - Beware re-render breadth and hidden dependencies; split contexts and memoize values.
 - Reach for it to kill prop drilling, not as a global-state replacement.
 
@@ -132,7 +132,7 @@ function Button()  {
 
 **🧠 Tradeoff** — React Context removes the drilling entirely: `Page` and `Toolbar` no longer carry a
 `theme` prop they don't use. The cost is that `Button`'s dependency on a theme provider is now
-implicit, and a changing context value re-renders all consumers — so context suits stable,
+implicit, and a changing context value re-renders all consumers, so context suits stable,
 cross-cutting values, with a store + selectors for hot, granular state.
 
 ### Node.js
@@ -163,7 +163,7 @@ function audit()   { const { user, requestId } = ctx.getStore(); log(user, reque
 
 **🧠 Tradeoff** — `AsyncLocalStorage` is the server-side provider: it makes request-scoped values
 (user, trace id) available to any function in the async call chain without threading them through
-every signature — the same "provide at the top, consume below" idea for backend code. The tradeoff
+every signature: the same "provide at the top, consume below" idea for backend code. The tradeoff
 mirrors the UI one: the dependency becomes implicit, and it's for cross-cutting request context, not
 a substitute for passing real arguments.
 
@@ -198,7 +198,7 @@ def audit():   log(current_user.get())        # consume anywhere downstream
 ```
 
 **🧠 Tradeoff** — `contextvars` is Python's provider, and it's async/thread-aware, so request-scoped
-values (user, locale, trace id) reach any downstream function without threading — and each async task
+values (user, locale, trace id) reach any downstream function without threading, and each async task
 gets its own copy. In UI frameworks (Reflex, Flet) a `State`/context object plays the same role for
 components. As always the dependency goes implicit, so it's for cross-cutting scope, not ordinary
 arguments.
@@ -233,7 +233,7 @@ end
 **🧠 Tradeoff** — Elixir leans on explicit assigns and **slots** for the component tree (values flow
 down HEEx, and slots let a parent inject content), which keeps dependencies visible. For truly
 cross-cutting, per-process values it uses `Logger.metadata` or the process dictionary as an implicit
-provider — deliberately reserved for cross-cutting concerns. The BEAM's process isolation means
+provider, deliberately reserved for cross-cutting concerns. The BEAM's process isolation means
 "scoped context" is naturally per-process, a clean provider boundary.
 
 ### Go
@@ -265,7 +265,7 @@ func repo(ctx context.Context) {
 ```
 
 **🧠 Tradeoff** — `context.Context` is Go's provider for request-scoped values: attach at the top,
-read anywhere downstream, and only `ctx` threads through — not every value. It's the idiomatic way to
+read anywhere downstream, and only `ctx` threads through, not every value. It's the idiomatic way to
 carry a user, trace id, or deadline through a call tree. Go's community wisely limits it to
 *request-scoped* data (not optional config), because, like all providers, values-in-context are
 implicit dependencies that type signatures don't reveal.

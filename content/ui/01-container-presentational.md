@@ -15,17 +15,17 @@ languages: [javascript, node-js, python, elixir, go]
 
 ## Intent
 
-Separate a component's two jobs. The **container** knows *where the data comes from* — it fetches,
-holds state, and handles events. The **presentational** component knows *how things look* — it
+Separate a component's two jobs. The **container** knows *where the data comes from*: it fetches,
+holds state, and handles events. The **presentational** component knows *how things look*: it
 takes data and callbacks as inputs and renders, with no idea where any of it originated.
 
 The presentational piece becomes a pure function of its inputs: same props, same output. That
-makes it reusable across contexts, trivial to preview in isolation, and easy to test — while all
+makes it reusable across contexts, trivial to preview in isolation, and easy to test, while all
 the messy async, state, and wiring lives in one clearly-labeled container.
 
 ## The Problem
 
-When a component does everything — fetches, holds state, *and* renders — it gets tangled:
+When a component does everything (fetches, holds state, *and* renders) it gets tangled:
 
 - **Not reusable** — the render markup is welded to one specific data source and API call, so you
   can't reuse the look with different data.
@@ -84,7 +84,7 @@ Key Components:
 ## Key Takeaways
 
 - One part owns data + state + events; the other only renders what it's handed.
-- The presentational piece is a pure function of its inputs — reusable, testable, previewable.
+- The presentational piece is a pure function of its inputs: reusable, testable, previewable.
 - Push all fetching, state, and wiring into the container.
 - Modern hooks/composables blur the need; split when mixing concerns genuinely hurts.
 
@@ -120,7 +120,7 @@ function UserListContainer() {
 ```
 
 **🧠 Tradeoff** — `UserList` is now a pure function you can render in a test or style guide with a
-fixed array — no network. The container isolates the async mess. The nuance is that a **custom
+fixed array and no network. The container isolates the async mess. The nuance is that a **custom
 hook** (`useUsers()`) achieves the same separation without a second component, which is why modern
 React often prefers extracting logic to hooks over the strict container split.
 
@@ -151,7 +151,7 @@ export async function usersPage(req, res) {
 
 **🧠 Tradeoff** — On the server the split is handler-as-container and template-as-presentational:
 the template renders whatever `users` it's given, so it's reusable across routes and testable by
-passing a fixed array. It's the same MVC seam applied at the component level — the template never
+passing a fixed array. It's the same MVC seam applied at the component level: the template never
 knows the data came from SQL.
 
 ### Python
@@ -181,7 +181,7 @@ def user_list(request):                      # container
 **🧠 Tradeoff** — Django's view/template split *is* container/presentational: the view gathers
 data, the template renders it and can be reused with any `users` context (or previewed with a stub
 context). Component frameworks like Reflex push the same idea into Python components (a data
-component wrapping a render component); the principle — pure render, data elsewhere — carries over.
+component wrapping a render component); the principle of pure render with data elsewhere carries over.
 
 ### Elixir
 
@@ -256,7 +256,7 @@ func users(w http.ResponseWriter, r *http.Request) { // container
 **🧠 Tradeoff** — The handler fetches (container) and `html/template` (or a `templ` component)
 renders (presentational): the template is a pure function of the slice it's handed, reusable and
 testable with a fixed `[]User`. `templ` makes this even more component-like with typed, composable
-render functions. Go keeps it explicit — no hooks blurring the line — so the container/presentational
+render functions. Go keeps it explicit (no hooks blurring the line) so the container/presentational
 split stays crisp.
 
 ## Applications
@@ -278,5 +278,5 @@ split stays crisp.
   shared data down the tree instead of threading it through every level.
 - **Unidirectional Data Flow** — containers typically get their state from a store; the pattern is
   how state reaches the presentational leaves.
-- **Model–View–Controller** — container/presentational is MVC's view tier split into "gets data" and
+- **Model-View-Controller** — container/presentational is MVC's view tier split into "gets data" and
   "renders," one level finer.

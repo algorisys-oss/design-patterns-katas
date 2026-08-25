@@ -5,7 +5,7 @@ sequence: 2
 title: Unidirectional Data Flow
 also_known_as: [Flux, Model-View-Update, The Elm Architecture]
 gof: false
-intent: "Make UI state flow in one direction — state renders the view, the view dispatches actions, a pure reducer produces the next state — so changes are predictable and traceable."
+intent: "Make UI state flow in one direction: state renders the view, the view dispatches actions, a pure reducer produces the next state, so changes are predictable and traceable."
 frequency: high
 difficulty: intermediate
 tags: [ui, state-management, immutability, predictability, reducer]
@@ -22,7 +22,7 @@ view. Round and round, always the same direction.
 
 Because state is only ever produced by a pure function of `(state, action)`, every change is
 explicit, reproducible, and traceable. You can log every action, replay them, time-travel, and know
-exactly why the UI looks the way it does — there's no hidden two-way binding mutating things behind
+exactly why the UI looks the way it does; there's no hidden two-way binding mutating things behind
 your back.
 
 ## The Problem
@@ -30,7 +30,7 @@ your back.
 When any part of the UI can mutate any state directly, change becomes impossible to follow:
 
 - **Tangled two-way binding** — a field updates a model that updates another field that updates the
-  model… and a bug could originate anywhere in the web.
+  model... and a bug could originate anywhere in the web.
 - **Unpredictable state** — with many components mutating shared state, "how did it get into *this*
   state?" has no answer.
 - **Hard to trace & debug** — there's no single record of what changed and why; you reverse-engineer
@@ -92,7 +92,7 @@ Key Components:
 - State → view → action → reducer → new state → view: one direction, always.
 - The reducer is a pure function of `(state, action)`, so changes are predictable and testable.
 - Keep side effects out of reducers; run them at the edges.
-- It's the Elm Architecture / Flux / Redux idea — and it's what makes state debuggable at scale.
+- It's the Elm Architecture / Flux / Redux idea, and it's what makes state debuggable at scale.
 
 ## Implementations
 
@@ -133,7 +133,7 @@ function createStore(reducer, initial) {
 
 **🧠 Tradeoff** — A tiny store + pure reducer is the whole Redux idea in a few lines: all change
 logic lives in one testable function and the view only dispatches. It's more ceremony than mutating
-`cart` directly, and for one small piece of state that's overkill — but for shared, complex state it
+`cart` directly, and for one small piece of state that's overkill, but for shared, complex state it
 buys predictability, logging, and time-travel that mutation can never offer. `useReducer` gives the
 same loop component-locally.
 
@@ -167,7 +167,7 @@ socket.on("move", (m) => {
 ```
 
 **🧠 Tradeoff** — Even server-side, routing every mutation through a pure `gameReducer` makes the
-authoritative state predictable and the rules (reject invalid moves) live in one testable place —
+authoritative state predictable and the rules (reject invalid moves) live in one testable place,
 and the action stream can be logged or replayed to reproduce a game. It's the same discipline as the
 client; the cost is the same boilerplate, worth it for shared multiplayer/session state.
 
@@ -245,7 +245,7 @@ end
 **🧠 Tradeoff** — Phoenix LiveView is *literally* the Elm Architecture (model → view → update):
 assigns are the immutable state, `render/1` is `view`, and `handle_event` is `update`. Factoring the
 transitions into a pure `update/3` makes them testable in isolation and keeps all change logic in one
-place. Elixir's immutability means you get the discipline for free — there's no `state` to mutate,
+place. Elixir's immutability means you get the discipline for free: there's no `state` to mutate,
 only new maps to return.
 
 ### Go
@@ -305,7 +305,7 @@ must be predictable and replayable.
 ## Related Patterns
 
 - **Observer** — the store notifies subscribed views when state changes; the render step is Observer.
-- **Model–View–Controller** — unidirectional flow is MVC tightened into a one-way loop with a pure
+- **Model-View-Controller** — unidirectional flow is MVC tightened into a one-way loop with a pure
   update step, removing two-way binding.
 - **Provider / Context** — how the single store is made available to the component tree without prop
   drilling.

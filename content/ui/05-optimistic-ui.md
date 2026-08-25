@@ -5,7 +5,7 @@ sequence: 5
 title: Optimistic UI
 also_known_as: [Optimistic Update, Optimistic Concurrency (UI)]
 gof: false
-intent: "Update the interface immediately as if a server action already succeeded, then reconcile with the real response — rolling back if it actually failed."
+intent: "Update the interface immediately as if a server action already succeeded, then reconcile with the real response, rolling back if it actually failed."
 frequency: high
 difficulty: intermediate
 tags: [ui, latency, perceived-performance, rollback, reconciliation]
@@ -15,18 +15,18 @@ languages: [javascript, node-js, python, elixir, go]
 
 ## Intent
 
-When the user does something that requires a server round-trip — like a message, a like, a
-rename — update the UI **right away**, as though it already worked, and send the request in the
+When the user does something that requires a server round-trip (like a message, a like, a
+rename) update the UI **right away**, as though it already worked, and send the request in the
 background. When the server responds, confirm the change (usually a no-op since the UI already shows
 it) or, if it failed, **roll back** to the previous state and tell the user.
 
 Most actions succeed, and the network is slow relative to human perception. Assuming success makes
-the app feel instant instead of making the user wait for a spinner on every tap — at the cost of
+the app feel instant instead of making the user wait for a spinner on every tap, at the cost of
 having to correctly undo the rare failure.
 
 ## The Problem
 
-The safe approach — wait for the server before showing anything — feels sluggish:
+The safe approach, waiting for the server before showing anything, feels sluggish:
 
 - **Perceived latency** — every action shows a spinner and freezes until the round-trip completes,
   even though it will almost certainly succeed.
@@ -93,7 +93,7 @@ user acts ──► apply optimistically (pending) ──► send to server
 - Apply the expected result immediately, send in the background, reconcile with the response.
 - Snapshot the previous state so you can roll back cleanly on failure.
 - Use it for high-success, low-stakes actions; avoid it where failure is common or costly.
-- Always surface a rollback to the user — a silently vanishing change reads as a bug.
+- Always surface a rollback to the user: a silently vanishing change reads as a bug.
 
 ## Implementations
 
@@ -132,7 +132,7 @@ async function like(postId) {
 **🧠 Tradeoff** — Snapshot → apply → reconcile/rollback is the whole pattern, and it makes the like
 feel instant. Libraries formalize it: React Query's `onMutate`/`onError`/`onSettled` and React's
 `useOptimistic` hook capture the snapshot and rollback for you. The complexity you own is correct
-reconciliation — if the server returns a canonical value (id, count), replace the optimistic guess
+reconciliation: if the server returns a canonical value (id, count), replace the optimistic guess
 with it.
 
 ### Node.js
@@ -196,7 +196,7 @@ async def like(self, post_id):
 ```
 
 **🧠 Tradeoff** — In a reactive Python UI framework (Reflex, Flet), mutating the state model
-optimistically re-renders the view instantly, and the try/except handles reconcile-or-rollback — the
+optimistically re-renders the view instantly, and the try/except handles reconcile-or-rollback, the
 same shape as the JS version. The framework's reactivity does the re-render; you own the snapshot and
 the failure path. It applies anywhere the client holds view state, which is exactly what these
 frameworks provide.
@@ -237,7 +237,7 @@ def handle_info({:like_failed, prev}, socket), do:                              
 **🧠 Tradeoff** — LiveView re-renders the instant you update an assign, so bumping `:likes` before the
 write makes it feel immediate; a `Task` does the write and messages back to reconcile or roll back.
 Over LiveView's persistent socket the reconciliation round-trip is cheap. The extra machinery is the
-async task + `handle_info` handlers — more explicit than `useOptimistic`, but it keeps the process
+async task + `handle_info` handlers, more explicit than `useOptimistic`, but it keeps the process
 responsive while the write is in flight.
 
 ### Go
@@ -281,7 +281,7 @@ func (a *App) Like(id string) {
 local state optimistically, launch a goroutine for the request, and reconcile or roll back when it
 returns (dispatching the state change back onto the UI goroutine). Go makes the background call
 trivial with `go`; you own thread-safety on the shared UI state. Server-side Go is usually the
-*responder* here, not the optimistic party — but the client shape is identical across languages.
+*responder* here, not the optimistic party, but the client shape is identical across languages.
 
 ## Applications
 
