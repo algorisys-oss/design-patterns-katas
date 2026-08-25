@@ -5,7 +5,7 @@ sequence: 2
 title: Active Record
 also_known_as: []
 gof: false
-intent: "Wrap a database row in an object that carries both the data and the methods to persist it — the object knows how to find, save, and delete itself."
+intent: "Wrap a database row in an object that carries both the data and the methods to persist it: the object knows how to find, save, and delete itself."
 frequency: high
 difficulty: beginner
 tags: [data, persistence, orm, crud, simplicity]
@@ -20,7 +20,7 @@ Make each object correspond to **one row** in a table, and give it the persisten
 how to read and write itself to the database. Data and database access live together in one class.
 
 For straightforward CRUD, this is the shortest path from "I have an object" to "it's in the database."
-There's no separate mapper or repository — the model is the persistence layer, so the common operations
+There's no separate mapper or repository: the model is the persistence layer, so the common operations
 are right there on the object. It's the philosophy behind Rails, Django, Eloquent, and Sequelize.
 
 ## The Problem
@@ -54,7 +54,7 @@ User (Active Record) { name, email; save(), delete(), find() }
 
 - CRUD-heavy applications where objects naturally mirror tables 1:1.
 - Prototypes and apps prioritizing development speed over domain purity.
-- The domain logic is thin — mostly validation and persistence, little rich behavior.
+- The domain logic is thin: mostly validation and persistence, little rich behavior.
 - The team wants a conventional, batteries-included ORM (Rails/Django style).
 
 ## Advantages and Disadvantages
@@ -82,7 +82,7 @@ User (Active Record) { name, email; save(), delete(), find() }
 ## Key Takeaways
 
 - One object per row, with the persistence methods on the object itself (`save`, `find`, `delete`).
-- It's the simplest, fastest approach for table-shaped CRUD — the Rails/Django philosophy.
+- It's the simplest, fastest approach for table-shaped CRUD, the Rails/Django philosophy.
 - The trade-off is coupling: the domain is bound to the schema and hard to test without a DB.
 - When domain complexity outgrows the table shape, reach for Data Mapper.
 
@@ -121,7 +121,7 @@ class User {
 ```
 
 **🧠 Tradeoff** — Putting `find`/`save`/`delete` on `User` gives the intuitive `u.save()` and centralizes
-the entity's SQL — fast and readable for CRUD. The cost is that `User` now depends on `db`, so testing
+the entity's SQL, fast and readable for CRUD. The cost is that `User` now depends on `db`, so testing
 its behavior means a database (or heavy mocking), and any real domain logic added here mixes with
 persistence. Sequelize/Objection give this style with far less hand-written SQL.
 
@@ -155,7 +155,7 @@ const found = await Post.findByPk(id);            // SELECT
 ```
 
 **🧠 Tradeoff** — Sequelize (and TypeORM's Active Record mode) gives Node this style: a model definition
-generates the SQL, and `create`/`save`/`findByPk` live on the model — minimal code for CRUD. It's ideal
+generates the SQL, and `create`/`save`/`findByPk` live on the model: minimal code for CRUD. It's ideal
 for straightforward apps and prototypes. The same caveats hold: the model couples to the schema and
 grows fat if you keep loading it with business logic; MikroORM's Data Mapper mode is the alternative for
 richer domains.
@@ -190,7 +190,7 @@ class Article(models.Model):
 ```
 
 **🧠 Tradeoff** — Django's ORM is the canonical Active Record: `Model` subclasses map to tables, and
-`.save()`/`.objects` provide persistence with almost no boilerplate — hugely productive for CRUD web
+`.save()`/`.objects` provide persistence with almost no boilerplate, hugely productive for CRUD web
 apps. It's why Django ships fast. The flip side is the well-known "fat model" pull and coupling to the
 schema; teams with rich domains move logic into services or adopt SQLAlchemy's Data Mapper. Convenience
 vs. purity, chosen per app.
@@ -219,7 +219,7 @@ schema
 ```
 
 **🧠 Tradeoff** — Elixir is the odd one out: Ecto is intentionally a **Data Mapper**, so there is no
-Active Record `save()` on the struct — persistence always goes through `Repo`, and immutability means a
+Active Record `save()` on the struct: persistence always goes through `Repo`, and immutability means a
 struct can't "save itself" anyway. This is a deliberate design stance (explicit over convenient). The
 lesson lands by contrast: Active Record fits mutable, object-oriented languages; the functional, immutable
 BEAM naturally leads to Data Mapper instead.
@@ -254,7 +254,7 @@ db.Delete(&user)                 // DELETE
 ```
 
 **🧠 Tradeoff** — GORM brings an Active-Record-style ORM to Go: struct tags define the mapping and
-`Create`/`Save`/`First`/`Delete` handle persistence with little code — convenient for CRUD services.
+`Create`/`Save`/`First`/`Delete` handle persistence with little code, convenient for CRUD services.
 But Go's community leans strongly the other way, preferring explicit Data Mapper (`database/sql`, `sqlc`)
 for visible SQL and no reflection magic. So Active Record exists in Go but runs against the grain; it's a
 convenience trade many Go teams decline in favor of explicitness.
@@ -306,9 +306,9 @@ public sealed class User(int id, string name, string email)
 ```
 
 **🧠 Tradeoff** — this is hand-rolled because .NET's mainstream ORM went the other way: EF Core is a
-Data Mapper with a Unit of Work — entities are plain classes, the `DbContext` tracks them, and
+Data Mapper with a Unit of Work: entities are plain classes, the `DbContext` tracks them, and
 persistence is `context.SaveChanges()`, not `user.Save()`. The static `Table` and `_nextId` are the
-tell: Active Record needs storage reachable from every instance, which means process-global state —
+tell: Active Record needs storage reachable from every instance, which means process-global state,
 the same coupling that makes these models hard to test. Fine for a small tool; C# culture pushes
 persistence into a context you can scope and swap.
 
@@ -370,7 +370,7 @@ fn main() {
 no-argument `save()` forces the table into a `static` behind a `Mutex`; `find` can only hand back a
 clone of the row, never a live reference into the table, because the borrow checker forbids exactly
 the "object *is* the row" identity the pattern is built on. Every save re-clones the strings through
-a global lock. This is why no major Rust ORM is Active Record — Diesel and SeaORM are mapper-shaped.
+a global lock. This is why no major Rust ORM is Active Record: Diesel and SeaORM are mapper-shaped.
 Learn the pattern here; write Data Mapper in real Rust.
 
 ### Zig
@@ -424,7 +424,7 @@ pub fn main() void {
 
 **🧠 Tradeoff** — mechanically Zig makes this easy: a mutable file-scope `var` compiles without
 complaint, and `user.save()` just works. But that convenience rests on hidden reachable state, which
-is exactly what Zig style spends its effort avoiding — and with no ORM to generate the mapping, all
+is exactly what Zig style spends its effort avoiding, and with no ORM to generate the mapping, all
 Active Record saves you here is a parameter. Passing the table in explicitly turns this back into
 Data Mapper for one argument more, and most Zig code should take that trade. The pattern belongs to
 garbage-collected framework languages; in Zig it's a shape to recognize, not one to reach for.
@@ -488,10 +488,10 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — Active Record is what JPA deliberately isn't: a JPA entity never saves itself — the
-`EntityManager` does — because Java's mainstream chose Data Mapper after the EJB entity-bean years.
+**🧠 Tradeoff** — Active Record is what JPA deliberately isn't: a JPA entity never saves itself (the
+`EntityManager` does) because Java's mainstream chose Data Mapper after the EJB entity-bean years.
 The style survives at the edges: jOOQ's `UpdatableRecord` has a `store()`, and ActiveJDBC copies Rails
-outright. The static `TABLE` and `nextId` are the tell — a no-argument `save()` needs storage reachable
+outright. The static `TABLE` and `nextId` are the tell: a no-argument `save()` needs storage reachable
 from every instance, which means process-global state you can't scope, swap, or fake in a test. Fine
 for a small tool; Java culture puts persistence in a context injected where it's needed.
 

@@ -5,7 +5,7 @@ sequence: 3
 title: Identity Map
 also_known_as: []
 gof: false
-intent: "Keep a map of objects already loaded in a session so each database row is loaded once and represented by exactly one in-memory object — avoiding duplicate loads and inconsistent copies."
+intent: "Keep a map of objects already loaded in a session so each database row is loaded once and represented by exactly one in-memory object, avoiding duplicate loads and inconsistent copies."
 frequency: medium
 difficulty: intermediate
 tags: [data, persistence, caching, consistency, identity]
@@ -20,8 +20,8 @@ object**. Before loading a row from the database, check the map: if that id is a
 existing object; otherwise load it, store it in the map, and return it. Each row becomes exactly **one**
 object for the duration.
 
-This does two things. It **avoids redundant loads** — asking for user 42 five times hits the database
-once. And it **guarantees consistency** — every part of the code that references user 42 gets the *same*
+This does two things. It **avoids redundant loads**: asking for user 42 five times hits the database
+once. And it **guarantees consistency**: every part of the code that references user 42 gets the *same*
 object, so a change made through one reference is visible through all of them, with no divergent copies
 to reconcile.
 
@@ -130,7 +130,7 @@ class Session {
 
 **🧠 Tradeoff** — A `Map` keyed by type+id inside a `Session` gives you one object per identity and a
 single query per row for that request. Reference equality now works and edits stay consistent. The
-critical discipline is lifecycle: a `Session` per request, discarded at the end — a shared/global map
+critical discipline is lifecycle: a `Session` per request, discarded at the end; a shared/global map
 would leak and serve stale objects. In practice an ORM's session provides this for you.
 
 ### Node.js
@@ -167,7 +167,7 @@ async function loadOrder(id) {
 
 **🧠 Tradeoff** — Binding the identity map to `AsyncLocalStorage` makes "the request" the session
 boundary, so any code in the request's async chain shares one object per id without threading a session
-around — and the map is naturally discarded when the request ends. It's the same request-scope mechanism
+around, and the map is naturally discarded when the request ends. It's the same request-scope mechanism
 as the Provider pattern. ORMs (Prisma, MikroORM's identity map) do this internally; hand-rolling it is
 for when you're not using one.
 
@@ -204,7 +204,7 @@ class UnitOfWork:
 **🧠 Tradeoff** — SQLAlchemy's `Session` implements the identity map natively: `session.get(User, 42)`
 twice returns the *same* instance, guaranteeing consistency and one query. You rarely build it yourself in
 Python because the ORM handles it; the hand-rolled `UnitOfWork` shows the mechanism. As always, the
-`Session`'s lifetime is the map's scope — one per request/transaction, closed at the end.
+`Session`'s lifetime is the map's scope: one per request/transaction, closed at the end.
 
 ### Elixir
 
@@ -237,7 +237,7 @@ end
 ```
 
 **🧠 Tradeoff** — Elixir is different by design: Ecto deliberately has *no* identity map, because immutable
-structs make "one shared mutable object per id" meaningless — there's nothing to keep consistent, since you
+structs make "one shared mutable object per id" meaningless; there's nothing to keep consistent, since you
 can't mutate a struct in place. The value of the pattern here is only *avoiding repeated queries*, which
 you get with an explicit request-scoped cache (a threaded map or an Agent). The consistency half of the
 pattern is moot on the BEAM; the query-dedup half you add when it pays.
@@ -279,7 +279,7 @@ func (s *Session) User(id int) (*User, error) {
 
 **🧠 Tradeoff** — A `map[int]*User` on a per-request `Session` gives Go one pointer per id, so edits
 through any reference are consistent and repeated loads hit the DB once. Go has no ORM session doing this
-by default (GORM has limited support), so it's an explicit, hand-rolled boundary — which fits Go's taste
+by default (GORM has limited support), so it's an explicit, hand-rolled boundary, which fits Go's taste
 for visible lifecycles. The rule is the same everywhere: one `Session` per request, never shared across
 goroutines/requests.
 
@@ -332,7 +332,7 @@ public sealed class Session
 ```
 
 **🧠 Tradeoff** — EF Core ships this inside `DbContext`: `Find` checks the change tracker before the
-database, so the same key returns the *same* instance for the context's lifetime — and ASP.NET's
+database, so the same key returns the *same* instance for the context's lifetime, and ASP.NET's
 scoped DI (one context per request) is the lifecycle discipline turned into framework policy. The
 hand-rolled `Session` shows the mechanism, and `ReferenceEquals` is the proof the pattern promises:
 edits through `a` are visible through `b` because there is only one object.
@@ -396,10 +396,10 @@ fn main() {
 
 **🧠 Tradeoff** — "one shared mutable object per id" is precisely the aliasing Rust's ownership rules
 exist to police, so the pattern can't hide: it must be declared in the types as `Rc<RefCell<User>>`
-(`Arc<Mutex<_>>` across threads). That's not a fight, it's a price tag — the sharing is visible and
+(`Arc<Mutex<_>>` across threads). That's not a fight, it's a price tag: the sharing is visible and
 borrow-checked, and when the `Session` drops, its `Rc`s drop and the objects free, which is the scope
 rule enforced by lifetime instead of discipline. Note that Diesel takes the Ecto stance: return owned
-values, skip the identity map — values instead of objects sidesteps the consistency half entirely.
+values, skip the identity map; values instead of objects sidesteps the consistency half entirely.
 
 ### Zig
 
@@ -471,11 +471,11 @@ pub fn main() !void {
 ```
 
 **🧠 Tradeoff** — pointer equality is the literal Zig reading of "one object per identity": `a == b`
-because both are the same `*User`. Zig then makes the lifecycle rule physical — the session owns the
+because both are the same `*User`. Zig then makes the lifecycle rule physical: the session owns the
 allocations, so `deinit` at the request boundary frees the map and every loaded object together, and
 a map that outlives its session isn't just stale, it's a leak the allocator will report. What
 garbage-collected languages get implicitly (drop the session, objects collected), Zig writes out by
-hand — and that explicitness *is* the discipline this pattern's mistakes list keeps warning about.
+hand, and that explicitness *is* the discipline this pattern's mistakes list keeps warning about.
 
 ### Java
 
@@ -534,7 +534,7 @@ public class Demo {
 **🧠 Tradeoff** — Hibernate calls this the first-level cache, and it isn't optional: every persistence
 context has one, so `em.find(User.class, 42)` twice returns the *same* instance, and `==` on entities
 works within a session for exactly this reason. Container-managed persistence contexts (one per
-transaction) are the lifecycle discipline turned into framework policy — the classic Hibernate bug of
+transaction) are the lifecycle discipline turned into framework policy; the classic Hibernate bug of
 a session held open too long is precisely the stale, leaking map this pattern's mistakes list warns
 about. In the hand-rolled version, `computeIfAbsent` collapses check-load-register into one line;
 the pattern is really just that line plus a scope rule.

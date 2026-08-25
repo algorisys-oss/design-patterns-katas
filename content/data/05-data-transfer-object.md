@@ -5,7 +5,7 @@ sequence: 5
 title: Data Transfer Object
 also_known_as: [DTO, Transfer Object, Value Object (in transit)]
 gof: false
-intent: "Carry data across a boundary — process, network, or layer — in a simple, behavior-free object shaped for the transfer, decoupling the wire/API shape from your internal domain model."
+intent: "Carry data across a boundary (process, network, or layer) in a simple, behavior-free object shaped for the transfer, decoupling the wire/API shape from your internal domain model."
 frequency: high
 difficulty: beginner
 tags: [data, boundaries, api, decoupling, serialization]
@@ -16,7 +16,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ## Intent
 
 Define a **plain, behavior-free object** whose only job is to hold the exact set of fields needed to cross
-a boundary — an API response, a message payload, a call between layers or services. The DTO's shape is
+a boundary: an API response, a message payload, a call between layers or services. The DTO's shape is
 designed for the *consumer* and the *transfer*, not for your internal domain.
 
 This decouples two things that shouldn't be welded together: how you model data internally and how you
@@ -28,7 +28,7 @@ It also bundles what a consumer needs into one payload, avoiding many fine-grain
 Exposing domain/database objects directly across boundaries couples the outside world to your internals:
 
 - **Leaking internals** — serializing a domain entity (or ORM row) exposes internal fields, computed
-  properties, and structure the consumer shouldn't depend on — and can leak sensitive data (password
+  properties, and structure the consumer shouldn't depend on, and can leak sensitive data (password
   hashes, internal ids).
 - **Coupling the API to the schema** — clients now depend on your table/object shape, so a refactor breaks
   them.
@@ -86,7 +86,7 @@ Service ──assembles──► UserDTO { id, name, email }   (no behavior, tai
 
 - A DTO is a plain, behavior-free object shaped for crossing a boundary, distinct from the domain model.
 - It decouples your API/wire shape from internals and controls exactly what's exposed.
-- Assemble DTOs from domain objects (and validate inbound ones into the domain) — keep them fields-only.
+- Assemble DTOs from domain objects (and validate inbound ones into the domain); keep them fields-only.
 - Shape DTOs per use case; don't leak the domain entity or reuse one fat DTO everywhere.
 
 ## Implementations
@@ -200,7 +200,7 @@ def get_user(request, id):
 **🧠 Tradeoff** — A frozen dataclass DTO plus an assembler gives Python a clean, typed boundary object, and
 Pydantic models / DRF serializers are the batteries-included version that also validate inbound data. It's
 the standard way to keep API schemas independent of Django/ORM models. The mapping is boilerplate, but it's
-what lets the API surface stay stable while the domain evolves — and keeps internal fields off the wire.
+what lets the API surface stay stable while the domain evolves, and keeps internal fields off the wire.
 
 ### Elixir
 
@@ -236,7 +236,7 @@ end
 
 **🧠 Tradeoff** — Phoenix's JSON views are DTO assemblers: the `data/1` function defines exactly the payload
 shape as a plain map, decoupled from the Ecto schema, so internals never render and the API contract is
-explicit. It fits the functional style — data-shaping functions, no behavior on the payload. The cost is
+explicit. It fits the functional style: data-shaping functions, no behavior on the payload. The cost is
 writing the view/DTO per representation; the gain is API stability independent of your schemas and no
 accidental field leaks.
 
@@ -319,7 +319,7 @@ public sealed record CreateUserRequest(string Name, string Email);
 ```
 
 **🧠 Tradeoff** — records *are* C#'s DTO story: one line declares an immutable, value-equal shape, `with`
-builds variants, and `System.Text.Json` serializes exactly the declared fields — the boilerplate objection
+builds variants, and `System.Text.Json` serializes exactly the declared fields, so the boilerplate objection
 mostly evaporates. ASP.NET Core binds and validates request records for you, so the request/response split
 costs almost nothing. What remains is the mapping, and `From` is worth keeping explicit: mappers like
 AutoMapper save typing but hide which fields cross the boundary, which is the very thing a DTO exists to
@@ -377,7 +377,7 @@ fn main() {
 you'd add serde's `#[derive(Serialize, Deserialize)]` and the struct's fields *become* the wire contract
 (the katas stay dependency-free, but the shape is identical). Ownership makes the transfer cost explicit:
 the DTO clones the strings it carries, because data crossing a boundary genuinely is a copy. The type
-system pays you back on the inbound side — a parsed `CreateUserRequest` can't be confused with a `User`,
+system pays you back on the inbound side: a parsed `CreateUserRequest` can't be confused with a `User`,
 so mass-assigning `password_hash` isn't even expressible.
 
 ### Zig
@@ -428,10 +428,10 @@ pub fn main() void {
 ```
 
 **🧠 Tradeoff** — Zig structs are already plain data holders, so a DTO is just a second struct and a
-`from` function — the pattern costs almost nothing, and the field list is the entire contract (`std.json`
+`from` function: the pattern costs almost nothing, and the field list is the entire contract (`std.json`
 serializes exactly the declared fields, so a dedicated DTO struct is precisely how you control exposure).
 The Zig-specific wrinkle is lifetimes: the DTO's slices borrow the domain's strings, so it must not
-outlive `user` — when it crosses a real boundary, dupe the strings with an allocator and free them on the
+outlive `user`; when it crosses a real boundary, dupe the strings with an allocator and free them on the
 other side. Nothing is hidden; nothing is free.
 
 ### Java
@@ -486,7 +486,7 @@ public class Demo {
 
 **🧠 Tradeoff** — the DTO pattern was named in Java (Fowler, the J2EE catalogs), and its
 "boilerplate" disadvantage was earned here too: a pre-records DTO was forty lines of getters,
-`equals`, and `hashCode`. Records close that chapter — one line declares an immutable, value-equal
+`equals`, and `hashCode`. Records close that chapter: one line declares an immutable, value-equal
 shape, Jackson reads the components directly, and the compact constructor makes the inbound DTO
 validate itself at construction, so a request that mass-assigns `passwordHash` has no field to
 land in. Keep `from` handwritten while the field count is honest work; MapStruct generates the
@@ -510,6 +510,6 @@ runtime-reflection mappers do.
 - **Data Mapper** — both translate between shapes; the mapper maps domain↔database, the DTO maps
   domain↔boundary/wire.
 - **Container / Presentational** — a frontend DTO/view model is what a container hands its presentational
-  components — data shaped for display.
+  components: data shaped for display.
 - **Layered / Hexagonal** — DTOs are what cross the layer/adapter boundaries, keeping the domain model from
   leaking outward.

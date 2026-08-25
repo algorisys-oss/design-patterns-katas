@@ -5,7 +5,7 @@ sequence: 4
 title: Lazy Loading
 also_known_as: [Deferred Loading, On-Demand Loading]
 gof: false
-intent: "Defer loading a piece of data — usually a related object or collection — until the moment it's actually accessed, instead of loading everything up front."
+intent: "Defer loading a piece of data (usually a related object or collection) until the moment it's actually accessed, instead of loading everything up front."
 frequency: high
 difficulty: intermediate
 tags: [data, persistence, performance, deferred, n-plus-one]
@@ -16,7 +16,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ## Intent
 
 Load an object's expensive or related data **on demand**. When you fetch an `Order`, don't also fetch its
-`Customer`, its `LineItems`, and its `Payments` — leave placeholders, and load each only when code
+`Customer`, its `LineItems`, and its `Payments`: leave placeholders, and load each only when code
 actually touches it. The first access triggers the load; subsequent accesses use the loaded value.
 
 Most of the time you don't need the whole object graph. Lazy loading avoids the work and memory of
@@ -56,7 +56,7 @@ Order { customer: Proxy } ──access .customer──► [ Lazy Proxy ] ──f
 - Objects reference related data that's often not needed by a given caller.
 - The related data is expensive to load (extra queries, large payloads).
 - You want cheap initial fetches and to pay for related data only on use.
-- Access patterns vary — different callers need different parts of the graph.
+- Access patterns vary: different callers need different parts of the graph.
 
 ## Advantages and Disadvantages
 
@@ -86,7 +86,7 @@ Order { customer: Proxy } ──access .customer──► [ Lazy Proxy ] ──f
 
 - Defer loading related/expensive data until it's actually accessed; memoize after the first load.
 - It cuts initial load cost and memory when callers use only part of the object graph.
-- Beware the N+1 trap — eager-load collections you'll iterate — and lazy loads after the session closes.
+- Beware the N+1 trap (eager-load collections you'll iterate) and lazy loads after the session closes.
 - The usual mechanism is a virtual proxy standing in for the real object.
 
 ## Implementations
@@ -160,7 +160,7 @@ await Promise.all(posts.map(async (p) => { p.author = await userLoader.load(p.au
 ```
 
 **🧠 Tradeoff** — DataLoader keeps loading lazy and per-item (each post asks for its author) while
-*batching* those asks into one query per tick — the standard fix for the N+1 trap lazy loading creates,
+*batching* those asks into one query per tick: the standard fix for the N+1 trap lazy loading creates,
 and the backbone of GraphQL resolvers. You get lazy's on-demand benefit without its query storm. The cost
 is the extra loader abstraction and remembering to route lazy loads through it.
 
@@ -233,7 +233,7 @@ customer = Repo.preload(order, :customer).customer  # explicit, at the point of 
 
 **🧠 Tradeoff** — Ecto deliberately has **no implicit lazy loading**: an unloaded association is a
 `NotLoaded` struct that raises if used, forcing you to `Repo.preload` explicitly. This trades convenience
-for predictability — you can never accidentally trigger a query by touching a field, and N+1 becomes a
+for predictability: you can never accidentally trigger a query by touching a field, and N+1 becomes a
 conscious choice rather than a hidden default. "Lazy" in Elixir means *you* decide when to preload, which
 sidesteps the surprise-query and closed-session problems the other ecosystems fight.
 
@@ -272,7 +272,7 @@ func (o *Order) Customer() (*Customer, error) {
 
 **🧠 Tradeoff** — A `Customer()` accessor guarded by `sync.Once` is Go's idiomatic lazy field: the query
 fires on first call, is memoized, and is safe if multiple goroutines call it. It's explicit (a method, not
-a field), which suits Go — no hidden I/O behind a struct field. GORM offers association lazy/eager loading;
+a field), which suits Go: no hidden I/O behind a struct field. GORM offers association lazy/eager loading;
 plain Go prefers this visible on-demand pattern, and you batch (an `IN` query) yourself to avoid N+1 when
 iterating.
 
@@ -319,10 +319,10 @@ public sealed class Order(int id, int customerId, Repo repo)
 }
 ```
 
-**🧠 Tradeoff** — `Lazy<T>` packages the whole mechanism — deferred loader, memoization, thread safety
-(`ExecutionAndPublication` by default) — into one field: Go's `sync.Once` accessor as a library type. The
+**🧠 Tradeoff** — `Lazy<T>` packages the whole mechanism (deferred loader, memoization, thread safety
+via `ExecutionAndPublication` by default) into one field: Go's `sync.Once` accessor as a library type. The
 catch is that `.Value` hides I/O behind a property read, the classic lazy surprise, and `Lazy<T>` is
-synchronous — an async load wants `Lazy<Task<Customer>>` awaited at the access site. EF Core's
+synchronous: an async load wants `Lazy<Task<Customer>>` awaited at the access site. EF Core's
 lazy-loading proxies do this per navigation property, with the same N+1 trap: reach for `.Include()` when
 you know you'll iterate the relation.
 
@@ -377,9 +377,9 @@ fn main() {
 
 **🧠 Tradeoff** — `OnceCell` gives lazy-with-memoization through `&self`: interior mutability lets
 `customer()` fill the cell on first call and hand back a plain `&Customer` whose lifetime the borrow
-checker ties to the order — no lock, no `mut` in the signature. `LazyCell` is the same idea with the
+checker ties to the order: no lock, no `mut` in the signature. `LazyCell` is the same idea with the
 initializer baked in at construction; across threads, swap in `OnceLock`/`LazyLock`. Rust has no ORM that
-lazy-loads behind your back, so the surprise-query problem mostly disappears — like Ecto, loading is a
+lazy-loads behind your back, so the surprise-query problem mostly disappears; like Ecto, loading is a
 visible call, and N+1 stays a conscious batching decision.
 
 ### Zig
@@ -433,9 +433,9 @@ pub fn main() void {
 
 **🧠 Tradeoff** — an optional field plus an init-on-first-use accessor is the whole pattern with nothing
 hidden: `?Customer` is the load state, the `if` is the trigger, the assignment is the memoization. Note
-the signature — Zig has no interior mutability, so lazy loading needs `*Order`, and a `const` order simply
+the signature: Zig has no interior mutability, so lazy loading needs `*Order`, and a `const` order simply
 can't do it. That visibility is very Zig: a field read can never do I/O; only a method taking a mutable
-pointer can. Thread safety is yours to add (`std.Io.Mutex` around the check-and-load — its lock takes
+pointer can. Thread safety is yours to add (`std.Io.Mutex` around the check-and-load, whose lock takes
 an explicit `io`, the same handed-in-capability move Zig makes with allocators), and batching to dodge
 N+1 is a query you write yourself.
 
@@ -494,7 +494,7 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — the JDK has no `Lazy<T>`, so the idiom is what you see: a `Supplier` holding the
-deferred load and a null-checked accessor that memoizes — which is exactly what Hibernate generates
+deferred load and a null-checked accessor that memoizes, which is exactly what Hibernate generates
 behind every lazy `@ManyToOne` getter. Java is where this lesson's scars come from:
 `LazyInitializationException` *is* the load-after-session-close mistake, and lazy collections
 touched in a loop are the canonical N+1. The plain form above isn't thread-safe (two threads can

@@ -19,8 +19,8 @@ Put a **mapper** between your domain objects and the database. The mapper knows 
 object from a row (`toDomain`) and how to write a domain object back as rows (`toRow`); the domain
 object itself knows *nothing* about tables, SQL, or the ORM. Persistence lives entirely in the mapper.
 
-This total separation lets the domain model be shaped by the business — rich behavior, value objects,
-whatever fits — while the mapper absorbs the impedance mismatch with the relational schema. The two can
+This total separation lets the domain model be shaped by the business (rich behavior, value objects,
+whatever fits) while the mapper absorbs the impedance mismatch with the relational schema. The two can
 evolve independently: refactor the object graph without touching the schema, or change the storage
 without touching the rules.
 
@@ -86,7 +86,7 @@ Data Mapper ──constructs──► Domain Object   (pure, no DB knowledge)
 
 - The mapper owns all persistence; domain objects know nothing about the database.
 - This keeps the domain pure and testable and lets schema and model evolve independently.
-- It's the heavyweight ORM philosophy (Hibernate, SQLAlchemy, Ecto) — great for rich domains.
+- It's the heavyweight ORM philosophy (Hibernate, SQLAlchemy, Ecto), and it's great for rich domains.
 - For 1:1 table-to-object CRUD, Active Record is lighter; Data Mapper earns its keep with complexity.
 
 ## Implementations
@@ -240,7 +240,7 @@ end
 ```
 
 **🧠 Tradeoff** — Ecto is a Data Mapper by design: schemas define the row↔struct mapping, `Repo` is the
-mapper that talks to the database, and there's no `user.save()` — persistence is explicit and separate.
+mapper that talks to the database, and there's no `user.save()`: persistence is explicit and separate.
 Many Elixir apps use the Ecto schema struct *as* the domain (pragmatic), but for a rich domain you add a
 translation to plain structs in the context. The separation is idiomatic; the extra mapping is opt-in
 per complexity.
@@ -290,7 +290,7 @@ func (m UserMapper) Save(u *User) error {
 ```
 
 **🧠 Tradeoff** — Idiomatic Go keeps the struct a plain value with behavior and puts scanning/SQL in a
-mapper (usually called a repository) — the standard-library `database/sql` style, and what `sqlc`
+mapper (usually called a repository): the standard-library `database/sql` style, and what `sqlc`
 generates. Go's culture strongly favors this explicit Data-Mapper approach over Active-Record ORMs
 (GORM offers the latter). The manual `Scan` mapping is the cost; the benefit is a domain struct with no
 database dependency and SQL you can see.
@@ -351,7 +351,7 @@ public sealed class UserMapper
 ```
 
 **🧠 Tradeoff** — EF Core *is* a Data Mapper: entities are plain classes and the `DbContext` does the
-translating and tracking, so C# teams usually get this pattern from the framework — the hand mapper
+translating and tracking, so C# teams usually get this pattern from the framework; the hand mapper
 shows what that machinery does. The type system makes the split visible: `UserRow` is an immutable
 `record` snapshot of storage, `User` is a mutable class with behavior, and only the mapper knows both.
 The cost is two types plus translation per aggregate; the payoff is that `Rename` unit-tests with no
@@ -420,7 +420,7 @@ fn main() {
 **🧠 Tradeoff** — ownership makes Data Mapper the natural Rust shape: `find` hands you an *owned*
 `User` translated out of the row, nothing links it back to the table, and only an explicit `save`
 writes it home. There's no fight with the borrow checker because the pattern never asks for shared
-mutable state between object and store — which is exactly why Rust's ORMs (Diesel, SeaORM) are
+mutable state between object and store, which is exactly why Rust's ORMs (Diesel, SeaORM) are
 mapper-shaped rather than Active Record. The `clone()`s in the translation are the visible price of
 that copy-in/copy-out contract.
 
@@ -498,7 +498,7 @@ pub fn main() !void {
 
 **🧠 Tradeoff** — in Zig, Data Mapper is less a technique than a filing decision: a row struct, a
 domain struct, and two small translation functions, with no ORM to hide any of it. `find` returns a
-copy by value — which is precisely the pattern's contract, not a workaround. The honest caveat: for a
+copy by value, which is precisely the pattern's contract, not a workaround. The honest caveat: for a
 struct this small, `User` and `UserRow` are identical shapes and the split reads as ceremony; it earns
 its keep once the storage layout (packed fields, foreign keys) and the domain shape start to diverge.
 
@@ -571,11 +571,11 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — this is Hibernate's home ground: JPA's `EntityManager` is a Data Mapper plus a Unit
-of Work — entities are plain classes, `find`/`persist` do the translating, and the mapping lives in
+of Work: entities are plain classes, `find`/`persist` do the translating, and the mapping lives in
 annotations instead of a hand-written `toRow`. The hand mapper shows the machinery the framework hides.
 The `record` makes the split visible: `UserRow` is an immutable storage snapshot, `User` a mutable
 object with behavior, and only the mapper knows both. The cost is two types plus translation per
-aggregate; the payoff — `rename` unit-tests with no database — is the argument Hibernate has been
+aggregate; the payoff (`rename` unit-tests with no database) is the argument Hibernate has been
 making since 2001.
 
 ## Applications
