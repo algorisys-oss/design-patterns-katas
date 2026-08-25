@@ -15,7 +15,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Give applications a **channel** — a queue or topic they both reference by name — to pass messages
+Give applications a **channel** (a queue or topic they both reference by name) to pass messages
 through. The sender puts a message on the channel; the receiver takes it off. Neither holds a
 reference to the other; they only know the channel.
 
@@ -296,10 +296,10 @@ await orders.Writer.WriteAsync(order);
 ```
 
 **🧠 Tradeoff** — `Channel<T>` is .NET's in-process message channel: typed, awaitable, and bounded,
-so a full channel makes `WriteAsync` wait — backpressure instead of an unbounded queue quietly
+so a full channel makes `WriteAsync` wait: backpressure instead of an unbounded queue quietly
 growing. Multiple readers on one channel give you point-to-point (each order goes to exactly one);
 pub-sub means one channel per subscriber or a broker topic. The producer holds only the `Writer`,
-the consumer only the `Reader` — the split halves make the decoupling visible in the types.
+the consumer only the `Reader`, so the split halves make the decoupling visible in the types.
 
 ### Rust
 
@@ -338,7 +338,7 @@ orders.send(order).unwrap();
 **🧠 Tradeoff** — `mpsc` makes the channel kind structural: clone the `Sender` for as many
 producers as you like, but exactly one `Receiver` owns the taking end, so point-to-point delivery
 is enforced by ownership, not convention. The consumer's `for order in rx` ends when every sender
-drops — shutdown is ownership too, no close flag needed. `sync_channel` bounds the buffer so a
+drops: shutdown is ownership too, no close flag needed. `sync_channel` bounds the buffer so a
 slow consumer blocks fast producers. Pub-sub isn't in the box: that's one channel per subscriber,
 or a broker.
 
@@ -419,7 +419,7 @@ ring buffer plus two condition variables buys a bounded, blocking `put`/`take` w
 backpressure, generic over the message type through comptime. In 0.17 blocking itself is a
 capability: the channel asks for an `std.Io` the way a container asks for an allocator, so every
 signature that can block says so. What Go's `chan` hides, you now own:
-shutdown needs an explicit close flag, and every delivery guarantee is a line you wrote — which is
+shutdown needs an explicit close flag, and every delivery guarantee is a line you wrote, which is
 exactly why this version teaches what a channel *is*. Cross-process, same story as everywhere:
 swap the queue for a broker client on a named subject.
 
@@ -465,7 +465,7 @@ orders.put(order); // blocks when full: backpressure, not unbounded growth
 bounded, typed, with `put`/`take` that block instead of failing, so a full queue throttles the
 producer. Multiple takers on one queue give you point-to-point (each order goes to exactly one);
 pub-sub means one queue per subscriber or a broker topic. Virtual threads make a
-consumer-per-queue loop cost almost nothing. What Java doesn't give you is a closed channel —
+consumer-per-queue loop cost almost nothing. What Java doesn't give you is a closed channel:
 shutdown is interruption or a poison-pill message the consumer recognizes, a convention you have
 to write down.
 
@@ -484,9 +484,9 @@ to write down.
 
 ## Related Patterns
 
-- **Producer–Consumer** — the concurrency pattern a channel implements: producers put, consumers take,
+- **Producer-Consumer** — the concurrency pattern a channel implements: producers put, consumers take,
   the channel buffers.
-- **Publish–Subscribe** — a channel *kind*: deliver each message to all subscribers rather than one
+- **Publish-Subscribe** — a channel *kind*: deliver each message to all subscribers rather than one
   consumer.
 - **Message Router** — sits between channels, reading from one and directing messages onto others based
   on content or rules.

@@ -5,7 +5,7 @@ sequence: 2
 title: Pipes and Filters
 also_known_as: [Pipeline]
 gof: false
-intent: "Break a processing task into independent filters connected by pipes, each filter doing one transformation and passing its output to the next — so stages compose, reorder, and scale independently."
+intent: "Break a processing task into independent filters connected by pipes, each filter doing one transformation and passing its output to the next, so stages compose, reorder, and scale independently."
 frequency: high
 difficulty: beginner
 tags: [messaging, integration, pipeline, composition, streaming]
@@ -15,8 +15,8 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Divide a task into a chain of **filters** — independent components that each read a message, perform
-one transformation, and write the result — joined by **pipes**, the channels carrying data from one
+Divide a task into a chain of **filters** (independent components that each read a message, perform
+one transformation, and write the result) joined by **pipes**, the channels carrying data from one
 filter to the next. Data streams through the pipeline, one stage at a time.
 
 Because each filter knows only its input and output pipe (not its neighbors), you can reorder, insert,
@@ -80,7 +80,7 @@ Source ─pipe─► [Filter: parse] ─pipe─► [Filter: enrich] ─pipe─�
 ## Key Takeaways
 
 - Chain single-purpose filters with pipes; data streams through one stage at a time.
-- Filters are independent — reorder, reuse, and scale them separately.
+- Filters are independent: reorder, reuse, and scale them separately.
 - It's composition at the system/stream level, with backpressure between stages.
 - Keep filters stateless and give each stage an error policy.
 
@@ -186,7 +186,7 @@ for row in pipeline(open("events.log"), parse, enrich, format):
 ```
 
 **🧠 Tradeoff** — Generator filters give Python lazy, streaming pipes-and-filters: each filter is a
-generator transforming a stream, composed without materializing intermediates — memory-flat over huge
+generator transforming a stream, composed without materializing intermediates, so memory stays flat over huge
 inputs. It's idiomatic and reusable. For cross-process/parallel stages you'd graduate to a task
 framework (Celery chains, Airflow, or `multiprocessing` pipelines), trading simplicity for scale.
 
@@ -255,7 +255,7 @@ for row := range formatted { write(row) }
 **🧠 Tradeoff** — Go channels are the pipes and goroutines the filters: each `filter` stage runs
 concurrently, connected by channels that provide backpressure, and you can fan-out a slow stage across
 workers (the Fan-out/Fan-in pattern). Generics keep it typed. It's genuinely concurrent
-pipes-and-filters in the standard library — the cost is wiring channels and closing them correctly, the
+pipes-and-filters in the standard library; the cost is wiring channels and closing them correctly, the
 usual Go bargain of explicitness.
 
 ### CSharp
@@ -300,7 +300,7 @@ await foreach (var row in formatted.ReadAllAsync()) Write(row);
 **🧠 Tradeoff** — `Channel<T>` pipes with a `Task` per filter are the .NET shape of Go's version:
 stages run concurrently, bounded channels throttle a fast source, and `Complete()` is the
 close-the-channel discipline that lets shutdown ripple through. When you don't need concurrency,
-don't pay for it — LINQ over `IEnumerable`/`IAsyncEnumerable` (`lines.Select(Parse).Select(Enrich)`)
+don't pay for it: LINQ over `IEnumerable`/`IAsyncEnumerable` (`lines.Select(Parse).Select(Enrich)`)
 is already lazy pipes-and-filters in-process. TPL Dataflow packages this same idea with batching
 and parallelism knobs when the hand-rolled version grows.
 
@@ -352,7 +352,7 @@ fn stage<I: Send + 'static, O: Send + 'static>(rx: Receiver<I>, f: fn(I) -> O) -
 
 **🧠 Tradeoff** — iterator chains are Rust's native sequential pipes-and-filters: lazy, allocation-
 free, and each `.map` monomorphizes down to roughly the hand-written loop, so composition costs
-nothing. Concurrency isn't free the way Go's is — you make the pipe explicit with `mpsc` and a
+nothing. Concurrency isn't free the way Go's is: you make the pipe explicit with `mpsc` and a
 thread per stage, and ownership moves each message down the pipe, so stages can't share mutable
 state by accident. The bounded `sync_channel` gives the backpressure; the receiver loop ending when
 the sender drops gives clean shutdown.
@@ -402,8 +402,8 @@ fn run(log: []const u8) void {
 **🧠 Tradeoff** — without closures, the honest Zig pipeline fixes one message type and makes each
 filter a `*const fn (Event) Event` in an array: the pipeline is data you can recompose at runtime,
 and type-changing work (parse, format) sits at the edges as source and sink adapters. It streams
-line by line with zero allocation in the loop. The comptime alternative — an inline chain of
-calls — has zero indirection but recomposition means editing code. For concurrent stages, give
+line by line with zero allocation in the loop. The comptime alternative (an inline chain of
+calls) has zero indirection but recomposition means editing code. For concurrent stages, give
 each filter a thread and use the mutex+condvar bounded queue from Message Channel as the pipe:
 Go's shape, hand-assembled.
 
@@ -454,10 +454,10 @@ static <I, O> BlockingQueue<O> stage(BlockingQueue<I> in, Function<I, O> fn) {
 ```
 
 **🧠 Tradeoff** — `Stream` is Java's sequential pipes-and-filters: `Files.lines` is lazy, each
-`.map` a filter, and nothing runs until the terminal `forEach` pulls — huge files stream without
+`.map` a filter, and nothing runs until the terminal `forEach` pulls, so huge files stream without
 materializing. `.parallel()` is one word but shares the common pool and suits CPU-bound, unordered
-work, not a pipeline with a slow stage. For that you make the pipe explicit — a bounded
-`BlockingQueue` and a virtual thread per filter, Go's shape in `java.util.concurrent` — and
+work, not a pipeline with a slow stage. For that you make the pipe explicit (a bounded
+`BlockingQueue` and a virtual thread per filter, Go's shape in `java.util.concurrent`) and
 inherit the manual costs: no closed channel, so end-of-stream is a poison pill or interruption.
 Stay with streams until one stage genuinely needs its own thread.
 

@@ -15,13 +15,13 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Take one message that holds a **collection** — an order with many line items, a batch upload, a
-document with many records — and emit **one message per element**. Downstream, each element flows and
+Take one message that holds a **collection** (an order with many line items, a batch upload, a
+document with many records) and emit **one message per element**. Downstream, each element flows and
 is processed independently instead of being trapped inside the composite.
 
 Splitting lets you apply per-element routing, parallelism, and error handling. A batch of 1,000 records
 becomes 1,000 messages that can be distributed across workers, routed by content, and retried
-individually — and a poison record fails alone instead of failing the whole batch.
+individually, and a poison record fails alone instead of failing the whole batch.
 
 ## The Problem
 
@@ -122,7 +122,7 @@ split(order).forEach((msg) => itemQueue.push(msg));
 
 **🧠 Tradeoff** — Emitting one message per item, each carrying `orderId`/`seq`/`total`, lets items be
 processed independently and later reassembled or checked for completion. The correlation metadata is
-the important part — without it, split elements are orphans. In-process this is a `map`; across services
+the important part: without it, split elements are orphans. In-process this is a `map`; across services
 each element becomes a real queued message.
 
 ### Node.js
@@ -220,7 +220,7 @@ split(batch) |> Enum.each(&Broadway.push(&1))  # each row a message; Broadway pr
 ```
 
 **🧠 Tradeoff** — Splitting with `Enum.with_index` to attach `seq` produces correlated messages that
-`Broadway`/`Flow` then process concurrently with per-message acking — a bad row fails and dead-letters
+`Broadway`/`Flow` then process concurrently with per-message acking: a bad row fails and dead-letters
 alone. Elixir's process isolation means an element crashing takes only its own task down. The
 correlation carries into an aggregator or a completion tracker.
 
@@ -296,7 +296,7 @@ public sealed record RecordMsg(string BatchId, int Seq, int Total, Row Row);
 **🧠 Tradeoff** — `Select` with the index overload *is* the splitter, and it's lazy like the Python
 generator: a million-row batch streams into messages one at a time instead of materializing them all.
 The `record` freezes each element message, so `BatchId`/`Seq` can't be mutated in flight. A
-`Channel<RecordMsg>` is the in-process stand-in for a broker queue — across services each write becomes
+`Channel<RecordMsg>` is the in-process stand-in for a broker queue; across services each write becomes
 a durable publish, and the correlation fields are what a downstream aggregator needs.
 
 ### Rust
@@ -360,10 +360,10 @@ fn worker(rx: mpsc::Receiver<Msg>) {
 
 **🧠 Tradeoff** — `into_iter()` moves each row out of the batch and into its message, so the split is
 literal: afterwards there's no batch left to lean on, only self-contained messages. The `Msg` enum
-closes the message set — the worker's `match` won't compile until every variant has a destination.
+closes the message set: the worker's `match` won't compile until every variant has a destination.
 (`Done` is belt-and-braces; dropping the last `Sender` also ends the loop.) Note that an mpsc
 `Receiver` has one owner, so fanning records across workers means one channel per worker or a shared
-`Mutex<Receiver>` — across services, the channel is a broker subject.
+`Mutex<Receiver>`; across services, the channel is a broker subject.
 
 ### Zig
 
@@ -426,9 +426,9 @@ fn drain(queue: []const Msg) void {
 
 **🧠 Tradeoff** — the fan-out cost other languages hide is visible here: the splitter allocates
 `rows.len + 1` messages and the caller owns the `free`. The tagged union plus exhaustive `switch` is
-the honest Zig for a closed message set — add a variant and every consumer breaks until it routes it.
+the honest Zig for a closed message set: add a variant and every consumer breaks until it routes it.
 One caution: the messages borrow `batch.id` rather than copying it, so the batch must outlive the
-queue — dupe the id with the allocator if it doesn't.
+queue, so dupe the id with the allocator if it doesn't.
 
 ### Java
 
@@ -476,9 +476,9 @@ static void worker(BlockingQueue<Msg> in) throws InterruptedException {
 
 **🧠 Tradeoff** — records freeze each element message, so `batchId`/`seq` can't be edited in flight,
 and the sealed interface closes the message set the way Rust's enum did: the switch over `Msg` won't
-compile until every kind has a destination — no `default` to hide behind. `put` blocks when the queue
+compile until every kind has a destination, with no `default` to hide behind. `put` blocks when the queue
 is full, so a huge batch backpressures the splitter instead of flooding memory. Unlike an mpsc
-receiver, a `BlockingQueue` takes multiple consumers safely — point a pool of virtual threads at it
+receiver, a `BlockingQueue` takes multiple consumers safely: point a pool of virtual threads at it
 for fan-out (each worker then needs its own `Done` sentinel). Across services the queue becomes a
 broker destination, and the correlation fields are what the downstream aggregator needs.
 

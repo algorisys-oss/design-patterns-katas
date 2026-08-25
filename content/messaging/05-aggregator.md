@@ -5,7 +5,7 @@ sequence: 5
 title: Aggregator
 also_known_as: [Gather, Collector]
 gof: false
-intent: "Collect related individual messages and combine them into a single message once a completion condition is met — the inverse of a splitter, and the 'gather' half of scatter-gather."
+intent: "Collect related individual messages and combine them into a single message once a completion condition is met: the inverse of a splitter, and the 'gather' half of scatter-gather."
 frequency: medium
 difficulty: intermediate
 tags: [messaging, integration, correlation, stateful, scatter-gather]
@@ -15,7 +15,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Buffer incoming messages that belong together — same order, same batch, same request — and, when a
+Buffer incoming messages that belong together (same order, same batch, same request) and, when a
 **completion condition** is satisfied (all parts arrived, a count reached, a timeout elapsed), emit
 **one aggregated message** combining them. It's a stateful filter: it holds partial groups until they're
 whole.
@@ -26,7 +26,7 @@ into a result.
 
 ## The Problem
 
-When related messages arrive separately — out of order, across time, from parallel workers — you need to
+When related messages arrive separately (out of order, across time, from parallel workers) you need to
 reassemble them, and doing it ad hoc is hard:
 
 - **Correlation** — matching messages that belong to the same group requires tracking a correlation id
@@ -90,7 +90,7 @@ Message(c, batch=1) ──┘   (buffers by correlation id, waits for completion
 - Buffer correlated messages and emit one combined message when a completion condition is met.
 - It's the inverse of the splitter and the gather half of scatter-gather.
 - Always define completion (count/all-parts/timeout) and a policy for groups that never complete.
-- It's stateful — persist the partial groups if losing them is unacceptable.
+- It's stateful, so persist the partial groups if losing them is unacceptable.
 
 ## Implementations
 
@@ -131,7 +131,7 @@ function makeAggregator(onComplete, timeoutMs = 5000) {
 ```
 
 **🧠 Tradeoff** — Keying partial groups by `batchId`, indexing by `seq` (so out-of-order arrivals are
-fine), and completing on count-reached *or* timeout is the whole pattern. The timeout is essential — it
+fine), and completing on count-reached *or* timeout is the whole pattern. The timeout is essential: it
 bounds memory and guarantees the group eventually resolves (as partial). This in-memory version loses
 groups on crash; production aggregators persist the partial state.
 
@@ -163,7 +163,7 @@ async function scatterGather(services, id, timeoutMs = 2000) {
 ```
 
 **🧠 Tradeoff** — `Promise.allSettled` + a per-call timeout race is the request-scoped aggregator:
-scatter to services, gather what returns in time, and combine — a slow service degrades to a partial
+scatter to services, gather what returns in time, and combine, so a slow service degrades to a partial
 result instead of hanging the whole response. It's simpler than a stateful message aggregator because
 the group is one request. For cross-message aggregation over a broker, you need the persistent,
 correlated version.
@@ -238,7 +238,7 @@ end
 ```
 
 **🧠 Tradeoff** — A `GenServer` is the natural home for aggregator state: partial groups live in its
-state, `handle_cast` folds arrivals, and `Process.send_after` handles timeouts — all with OTP
+state, `handle_cast` folds arrivals, and `Process.send_after` handles timeouts, all with OTP
 supervision. If durability matters, back it with ETS/a database so a restart doesn't drop groups.
 Commanded/Broadway offer higher-level aggregation for event-sourced and streaming systems.
 
@@ -289,7 +289,7 @@ func Aggregate(in <-chan Msg, out chan<- Result, timeout time.Duration) {
 
 **🧠 Tradeoff** — A single goroutine owning the `groups` map (no mutex — the Actor pattern) folds
 correlated messages and evicts stale groups on a ticker, giving race-free stateful aggregation. It's
-explicit and testable. As always in Go, durability is yours to add — this in-memory aggregator loses
+explicit and testable. As always in Go, durability is yours to add: this in-memory aggregator loses
 partial groups on crash, so persist them if the groups are precious.
 
 ### CSharp
@@ -350,7 +350,7 @@ static async Task Aggregate(ChannelReader<Msg> input, ChannelWriter<Result> outp
 
 **🧠 Tradeoff** — a single consumer task owning `groups` is the same Actor move as the Go goroutine:
 no locks, because only one reader ever touches the state. C# has no `select`, so the tick arrives *as
-a message* — a `PeriodicTimer` task writes `Sweep` into the same channel, and one pattern-matching
+a message*: a `PeriodicTimer` task writes `Sweep` into the same channel, and one pattern-matching
 `switch` handles both kinds. The records make the message set explicit and compiler-checked. It's
 still in-memory: groups die with the process, so persist them if they matter.
 
@@ -413,7 +413,7 @@ fn aggregate(input: mpsc::Receiver<Part>, output: mpsc::Sender<AggResult>, timeo
 **🧠 Tradeoff** — `recv_timeout` folds Go's two `select` arms into one call: a message means fold it
 in, a timeout means sweep. The `match` on the result is exhaustive, so channel hangup is handled
 deliberately (`Disconnected` → clean exit) rather than by accident. One thread owning `groups` means
-no `Mutex` at all — ownership delivers what the Actor pattern promises. The borrow checker shapes the
+no `Mutex` at all: ownership delivers what the Actor pattern promises. The borrow checker shapes the
 shutdown of a group too: you check completion while borrowing, then `remove` in a separate visible step.
 
 ### Zig
@@ -502,11 +502,11 @@ const Aggregator = struct {
 
 **🧠 Tradeoff** — everything the pattern needs is spelled out: the `parts` slice is allocated per
 group (one slot per `seq`, so out-of-order arrival is literal indexing) and freed the moment the
-group resolves. There's no runtime, so the timeout isn't a timer — `sweep` is a message you feed in
+group resolves. There's no runtime, so the timeout isn't a timer: `sweep` is a message you feed in
 from your own loop, which is honest about what Go's ticker was doing for you. The clock is honest
 too: 0.17 has no ambient `milliTimestamp`, so the aggregator carries an `std.Io` and asks it for
 the time, exactly like the allocator beside it. Watch the keys:
-`StringHashMap` doesn't copy `batch_id`, so the id must outlive the group — dupe it with the
+`StringHashMap` doesn't copy `batch_id`, so the id must outlive the group; dupe it with the
 allocator if the source message doesn't stick around.
 
 ### Java
@@ -560,7 +560,7 @@ static void aggregate(BlockingQueue<Part> input, BlockingQueue<Result> output, D
 
 **🧠 Tradeoff** — `poll` with a timeout folds Go's two `select` arms into one call, the same move as
 Rust's `recv_timeout`: a part means fold it in, `null` means sweep. One thread owning `groups` is the
-Actor discipline — a plain `HashMap`, not a `ConcurrentHashMap`, because only this thread ever touches
+Actor discipline: a plain `HashMap`, not a `ConcurrentHashMap`, because only this thread ever touches
 it. `computeIfAbsent` makes get-or-create one expression, the `Part` record can't be edited after
 arrival, and the iterator's `remove` is the safe way to evict mid-walk. Still in-memory: partial
 groups die with the process, so persist them if losing a group is unacceptable.

@@ -5,7 +5,7 @@ sequence: 6
 title: Dead Letter Queue
 also_known_as: [DLQ, Dead Letter Channel, Invalid Message Channel]
 gof: false
-intent: "Route messages that can't be processed — after retries, or because they're malformed or unroutable — to a separate queue instead of dropping them or blocking the main flow."
+intent: "Route messages that can't be processed (after retries, or because they're malformed or unroutable) to a separate queue instead of dropping them or blocking the main flow."
 frequency: high
 difficulty: beginner
 tags: [messaging, integration, error-handling, resilience, poison-message]
@@ -15,8 +15,8 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Give failed messages somewhere to go. When a consumer can't process a message — it's malformed, it
-fails every retry, or it has no valid destination — move it to a dedicated **dead letter queue** rather
+Give failed messages somewhere to go. When a consumer can't process a message (it's malformed, it
+fails every retry, or it has no valid destination) move it to a dedicated **dead letter queue** rather
 than discarding it or endlessly redelivering it. The main queue keeps flowing; the failures are
 preserved for inspection, alerting, and later replay.
 
@@ -87,7 +87,7 @@ Producer ──► [ Main Queue ] ──► Consumer ──success──► done
 - Route unprocessable messages to a dedicated queue instead of dropping or endlessly retrying them.
 - It solves the poison-message problem and keeps the main queue flowing.
 - Dead-letter after retries are exhausted; distinguish transient from permanent failures.
-- A DLQ is only useful with monitoring/alerting and a replay path — otherwise it's a silent landfill.
+- A DLQ is only useful with monitoring/alerting and a replay path; otherwise it's a silent landfill.
 
 ## Implementations
 
@@ -234,7 +234,7 @@ end
 
 **🧠 Tradeoff** — Broadway gives Elixir first-class failed-message handling: `Broadway.Message.failed`
 plus `handle_failed/2` is the hook where you decide retry vs. dead-letter and publish to a DLQ with the
-failure reason. The BEAM's "let it crash" pairs with it — a supervised processor restarts, while the DLQ
+failure reason. The BEAM's "let it crash" pairs with it: a supervised processor restarts, while the DLQ
 captures the message that caused the crash. You still add DLQ monitoring and replay.
 
 ### Go
@@ -275,8 +275,8 @@ func consume(msg Msg) {
 **🧠 Tradeoff** — Explicit attempt counting, a transient-vs-permanent check, and a `dlq.Publish` on
 exhaustion give a clear, testable dead-letter path. With managed brokers (SQS, NATS JetStream, Kafka)
 you configure a redelivery limit and DLQ at the infrastructure level instead, and the consumer just
-returns an error. Either way, Go leaves the operational pieces — alerting on DLQ depth and a replay
-command — explicitly to you.
+returns an error. Either way, Go leaves the operational pieces (alerting on DLQ depth and a replay
+command) explicitly to you.
 
 ### CSharp
 
@@ -320,10 +320,10 @@ public sealed record DeadLetter(string Body, int Attempts, string Error, DateTim
 
 **🧠 Tradeoff** — exception filters put the retry decision into the catch dispatch itself: the
 `when` clause retries transient failures with budget left, and the plain `catch` below is the
-terminal DLQ path — the control flow reads exactly like the policy. `with` produces the
+terminal DLQ path: the control flow reads exactly like the policy. `with` produces the
 incremented-attempts copy without mutating the original. The channels here are in-process; Azure
 Service Bus and SQS ship the same thing as infrastructure (`MaxDeliveryCount` plus a built-in DLQ),
-like the RabbitMQ tab — and either way you still owe alerting and replay.
+like the RabbitMQ tab, and either way you still owe alerting and replay.
 
 ### Rust
 
@@ -377,10 +377,10 @@ fn consume(msg: Msg, retry: &mpsc::Sender<Msg>, dlq: &mpsc::Sender<DeadLetter>) 
 
 **🧠 Tradeoff** — the real move is the error enum: `Transient` vs `Permanent` is a type, not an
 `is_transient()` string check, and the exhaustive `match` won't compile until every failure kind has
-a destination — add a variant and the compiler walks you to each unrouted site. The guard plus
+a destination: add a variant and the compiler walks you to each unrouted site. The guard plus
 or-pattern reads like the policy: transient with budget → retry; everything else → DLQ. `..msg`
 struct-update moves the body into the retried message with no clone. As in Go, the queues are
-in-process — durability, alerting, and replay are still yours.
+in-process, so durability, alerting, and replay are still yours.
 
 ### Zig
 
@@ -437,7 +437,7 @@ fn deadLetter(io: std.Io, dlq: *Queue(DeadLetter), msg: Msg, err: ProcessError) 
 **🧠 Tradeoff** — Zig's error sets do what Rust's enum did: `error{Transient, Permanent}` is a
 closed set, and `catch |err| switch (err)` must handle every member, so an unrouted failure kind is
 a compile error. The `DeadLetter` struct carries the error value itself, not a stringified guess.
-There's no broker to lean on — the queues are structs you wrote — so the operational half of the
+There's no broker to lean on (the queues are structs you wrote) so the operational half of the
 pattern (depth alerts, a replay loop) is also code you must write, which at least keeps it visible.
 
 ### Java
@@ -486,10 +486,10 @@ static void consume(Msg msg, BlockingQueue<Msg> retry, BlockingQueue<DeadLetter>
 
 **🧠 Tradeoff** — making transient-vs-permanent a checked exception type puts the policy in
 `process`'s signature: callers can't compile without handling it, and because the set is `sealed`,
-the switch over the caught exception is exhaustive with no `default` — add a third failure kind and
+the switch over the caught exception is exhaustive with no `default`: add a third failure kind and
 every consumer breaks until it routes it, exactly Rust's enum guarantee. The guarded case plus the
 two-pattern case reads like the policy: transient with budget → retry, everything else → DLQ. In
-production Java this tab is usually broker configuration instead — a JMS redelivery policy moves the
+production Java this tab is usually broker configuration instead: a JMS redelivery policy moves the
 message to `ActiveMQ.DLQ` after `maximumRedeliveries`, and an SQS redrive policy shifts it to the DLQ
 once `maxReceiveCount` deliveries fail. There the consumer just throws, and the broker's counting
 survives restarts in a way a hand-carried `attempts` field doesn't. Either way you still owe alerting

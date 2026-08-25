@@ -5,7 +5,7 @@ sequence: 3
 title: Content-Based Router
 also_known_as: [Message Router]
 gof: false
-intent: "Inspect each message and send it to the right destination channel based on its content or type — so senders don't need to know which consumer should handle what."
+intent: "Inspect each message and send it to the right destination channel based on its content or type, so senders don't need to know which consumer should handle what."
 frequency: medium
 difficulty: beginner
 tags: [messaging, integration, routing, decoupling, dispatch]
@@ -16,12 +16,12 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ## Intent
 
 Put a **router** on a channel that examines each incoming message and forwards it to one of several
-output channels according to a rule — its type, a field value, a header. The sender publishes to one
+output channels according to a rule: its type, a field value, a header. The sender publishes to one
 place; the router decides where each message actually goes.
 
 The point is to keep routing knowledge in **one place** and out of the sender. Producers stay ignorant
 of the consumer topology; adding a new destination or changing a rule touches only the router, not
-every producer. It's the messaging counterpart of dispatching on type — a single decision point that
+every producer. It's the messaging counterpart of dispatching on type: a single decision point that
 directs traffic.
 
 ## The Problem
@@ -227,8 +227,8 @@ end
 # producers call Router.route(event); consumers subscribe to their topic.
 ```
 
-**🧠 Tradeoff** — Elixir's pattern-matched function clauses are a beautifully direct content router —
-each clause a routing rule, the last clause the default — and routing to named `Phoenix.PubSub` topics
+**🧠 Tradeoff** — Elixir's pattern-matched function clauses are a beautifully direct content router:
+each clause a routing rule, the last clause the default, and routing to named `Phoenix.PubSub` topics
 keeps producers decoupled from consumers. For durable, high-throughput routing, Broadway consumes a
 queue and dispatches. The match-based router is idiomatic and exhaustive-friendly; keep the clauses
 routing, not processing.
@@ -316,7 +316,7 @@ public sealed class Router(
 
 **🧠 Tradeoff** — the router holds only `ChannelWriter`s, the write half of each destination, so
 consumers own their readers and the topology stays one dictionary you can build from config. The
-primary constructor and expression-bodied `RouteAsync` keep it thin — a lookup and a write, nothing
+primary constructor and expression-bodied `RouteAsync` keep it thin: a lookup and a write, nothing
 more. If the type set were closed, a pattern-matching `switch` expression would trade the runtime
 map for a compile-time check. Across services the same rules move into broker infrastructure
 (Service Bus subscription filters, Rabbit bindings).
@@ -370,7 +370,7 @@ impl Router {
 **🧠 Tradeoff** — ownership does the decoupling: producers hold a `Router`, never a destination
 `Sender`, so they *can't* address consumers directly. The `HashMap` form suits an open, config-
 driven route set; when the kinds are a closed set, an enum plus exhaustive `match` is the more
-idiomatic Rust router — the compiler forces a decision for every variant and silent drops become
+idiomatic Rust router: the compiler forces a decision for every variant and silent drops become
 impossible. A failed `send` means the consumer hung up; handling that `Err` instead of unwrapping
 is where your real dead-letter policy lives.
 
@@ -396,10 +396,10 @@ fn emit(e: Event) void {
 ```zig
 const std = @import("std");
 
-// Parse the wire string into an enum once, at the edge…
+// Parse the wire string into an enum once, at the edge...
 const Kind = enum { payment, shipping, email };
 
-// …then the router is an exhaustive switch: a missing arm won't compile.
+// ...then the router is an exhaustive switch: a missing arm won't compile.
 fn route(e: Event) void {
     const kind = std.meta.stringToEnum(Kind, e.kind) orelse {
         unroutable_q.put(e); // default route — nothing is lost
@@ -418,7 +418,7 @@ fn route(e: Event) void {
 **🧠 Tradeoff** — for a closed set of kinds, enum + exhaustive `switch` *is* the idiomatic Zig
 router: add a variant to `Kind` and the compiler lists every switch you must extend, so a routing
 rule can't be forgotten. The only genuinely unknown input is the wire string, handled once at the
-edge — `stringToEnum` returning null is the unroutable case, routed to the dead-letter queue
+edge: `stringToEnum` returning null is the unroutable case, routed to the dead-letter queue
 instead of dropped. When routes must stay open at runtime (loaded from config), a
 `StringHashMap` of queue pointers is the dynamic form; you trade the compile-time check for
 flexibility.
@@ -471,10 +471,10 @@ class Router {
 
 **🧠 Tradeoff** — `Map.of` builds an immutable route table, and `getOrDefault` makes the
 dead-letter path a single expression instead of a forgettable else-branch. Producers hold only the
-`Router`, never a destination queue — the topology is one map you can assemble from config. When
+`Router`, never a destination queue; the topology is one map you can assemble from config. When
 the kind set is closed, do what the Zig tab does: parse the wire string into an enum (or model
 messages as a sealed interface) once at the edge, then route with a pattern-matching `switch` the
-compiler checks for exhaustiveness — adding a kind becomes a compile error at every router you
+compiler checks for exhaustiveness: adding a kind becomes a compile error at every router you
 forgot. Either way, keep `route` a lookup and a `put`; the moment it transforms messages it has
 stopped being a router.
 
