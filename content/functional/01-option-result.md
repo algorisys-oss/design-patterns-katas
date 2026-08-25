@@ -59,7 +59,7 @@ run(x) ──► Result<T, E> = Ok(T) | Err(E)
 ## When to Use
 
 - A function may legitimately have no result (a lookup that can miss), so return `Option`.
-- A function can fail with a meaningful reason — return `Result` instead of throwing.
+- A function can fail with a meaningful reason, so return `Result` instead of throwing.
 - You want fallible steps to compose without nested try/catch or null checks.
 - The absence/failure case is important enough that callers *must not* forget it.
 
