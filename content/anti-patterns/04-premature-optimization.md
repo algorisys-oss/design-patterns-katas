@@ -6,7 +6,7 @@ sequence: 4
 title: Premature Optimization
 also_known_as: ["The root of all evil"]
 gof: false
-intent: "Optimizing code before knowing whether it's a bottleneck — trading readability and time for speed the program doesn't need, often making the wrong part faster."
+intent: "Optimizing code before knowing whether it's a bottleneck, trading readability and time for speed the program doesn't need, often making the wrong part faster."
 frequency: high
 difficulty: beginner
 tags: [anti-pattern, performance, profiling, readability, yagni]
@@ -16,7 +16,7 @@ languages: [javascript, python, go, csharp, rust, zig, java]
 
 ## The Anti-Pattern
 
-**Premature Optimization** is making code faster before you have evidence that it's too slow — or that this
+**Premature Optimization** is making code faster before you have evidence that it's too slow, or that this
 particular code is even on the hot path. You reach for micro-optimizations, caches, clever data structures,
 and bit tricks based on a guess about where time is spent, sacrificing clarity for performance the program
 may never need.
@@ -76,10 +76,10 @@ Requirement ──optimize before measuring──► complex "fast" code
 
 ## Key Takeaways
 
-- Don't optimize before measuring — intuition about bottlenecks is usually wrong.
+- Don't optimize before measuring: intuition about bottlenecks is usually wrong.
 - Simple, correct, readable code first; profile under realistic load; optimize the proven hotspot; re-measure.
 - Algorithmic and I/O improvements dwarf micro-optimizations; that's where the real 3% usually is.
-- The cost of premature optimization — lost readability and time, new bugs — is paid whether or not the speed
+- The cost of premature optimization (lost readability and time, new bugs) is paid whether or not the speed
   was needed.
 
 ## Implementations
@@ -187,7 +187,7 @@ func sum(nums []int) int {
 ```
 
 **🧠 The Fix** — Goroutines and channels have real scheduling and synchronization overhead; using them to
-"parallelize" adding integers makes the code *slower* and far harder to read — concurrency as premature
+"parallelize" adding integers makes the code *slower* and far harder to read: concurrency as premature
 optimization. The simple loop wins on both speed and clarity. Concurrency pays off when per-item work is
 heavy and measured; here it's pure overhead. Benchmark (`go test -bench`) before reaching for it.
 
@@ -228,11 +228,11 @@ Console.WriteLine(numbers.Sum()); // 31
 ```
 
 **🧠 The Fix** — `Unsafe.Add` dodges a bounds check the JIT already removes for a plain loop
-over an array, so the unsafe ceremony bought nothing measurable — it just made a three-line
+over an array, so the unsafe ceremony bought nothing measurable; it just made a three-line
 sum unreadable and gave it a way to read out of bounds. The same goes for reflexive
 class-to-struct rewrites and `ref readonly` sprinkling done "for the GC" on cold paths.
 Write `numbers.Sum()`; when a real hotspot shows up, BenchmarkDotNet is how you earn the
-right to go lower — and it will usually tell you the JIT got there first.
+right to go lower, and it will usually tell you the JIT got there first.
 
 ### Rust
 
@@ -273,10 +273,10 @@ fn main() {
 ```
 
 **🧠 The Fix** — The `unsafe` block traded away Rust's core guarantee to skip a bounds check
-that `iter().sum()` never emits — more dangerous, and not faster. Unmeasured `unsafe` is
+that `iter().sum()` never emits: more dangerous, and not faster. Unmeasured `unsafe` is
 Rust's signature form of this anti-pattern: you pay the risk up front and never collect the
 speed. Reach for `unsafe` only in the measured 3%, after profiling the safe version and
-inspecting its assembly — and even then it carries a `SAFETY:` comment stating an invariant
+inspecting its assembly, and even then it carries a `SAFETY:` comment stating an invariant
 someone actually checked.
 
 ### Zig
@@ -329,7 +329,7 @@ pub fn main() void {
 **🧠 The Fix** — Zig hands you `@Vector` and even inline assembly, so this temptation sits
 closer to the surface than in most languages. But the hand-vectorized sum guesses a lane
 width, drags along a remainder loop (a classic off-by-one home), and LLVM auto-vectorizes
-the plain `for` anyway when the data is big enough to matter — on a dozen items neither
+the plain `for` anyway when the data is big enough to matter; on a dozen items neither
 version's speed is observable. Zig's low-level reach exists for the measured 3%; keep the
 obvious loop until a profiler points here.
 
@@ -378,10 +378,10 @@ class Demo {
 ```
 
 **🧠 The Fix** — The JIT's C2 compiler unrolls and auto-vectorizes the obvious loop once it's hot, so the
-hand-unrolled version competes with machinery that already does this — and on eight cold-path integers
+hand-unrolled version competes with machinery that already does this, and on eight cold-path integers
 neither is observable anyway. Java has an extra trap here: naive timing harnesses lie (dead-code
 elimination, warmup, on-stack replacement), which is exactly why JMH exists. Write the stream; if a real
-hotspot shows up, JMH is how you earn the plain loop — and it will usually report the JIT got there first.
+hotspot shows up, JMH is how you earn the plain loop, and it will usually report the JIT got there first.
 The same discipline applies to the reflexive "streams are slow" rewrite: measured on a hot path, or not at
 all.
 

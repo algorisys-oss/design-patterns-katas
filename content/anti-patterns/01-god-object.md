@@ -6,7 +6,7 @@ sequence: 1
 title: God Object
 also_known_as: [The Blob, God Class, Winnebago]
 gof: false
-intent: "One class or module that knows and does far too much — the anti-pattern of concentrating responsibilities into a single all-powerful object instead of distributing them."
+intent: "One class or module that knows and does far too much: the anti-pattern of concentrating responsibilities into a single all-powerful object instead of distributing them."
 frequency: high
 difficulty: beginner
 tags: [anti-pattern, coupling, cohesion, single-responsibility, refactoring]
@@ -18,7 +18,7 @@ languages: [javascript, python, go, csharp, rust, zig, java]
 
 A **God Object** is a class or module that has grown to know about and control most of the system: it
 holds the data, makes the decisions, talks to the database, formats the output, sends the emails, and
-enforces the rules — all in one place. Everything depends on it, and it depends on everything.
+enforces the rules, all in one place. Everything depends on it, and it depends on everything.
 
 It's the direct violation of the Single Responsibility Principle at maximum scale. Rather than a system of
 small collaborating objects each with one job, you have one enormous object doing all the jobs, and a
@@ -26,7 +26,7 @@ constellation of anemic data holders around it.
 
 ## How It Happens
 
-God Objects rarely start big — they accrete:
+God Objects rarely start big; they accrete:
 
 - **"I'll just add it here"** — the class already touches everything, so each new feature is easiest to bolt
   onto it, and it grows one method at a time.
@@ -70,7 +70,7 @@ OrderManager (God Object) ──extract──► OrderValidator · PaymentServic
 - A class with hundreds/thousands of lines, dozens of methods, and many unrelated fields.
 - Names like `Manager`, `Processor`, `Utils`, `Helper`, `System` that reveal no single responsibility.
 - Every feature change touches the same file; constant merge conflicts there.
-- You can't describe what the class does in one sentence without "and… and… and…".
+- You can't describe what the class does in one sentence without "and... and... and...".
 - Tests for it require mocking half the system.
 
 ## Key Takeaways
@@ -169,7 +169,7 @@ class NewsletterService: ...
 
 **🧠 The Fix** — Splitting `SystemManager` into `UserService`, `OrderService`, `ReportService`, etc. gives
 each a single reason to change and lets you test/deploy/reason about them independently. The `Manager`/
-`System` naming was the tell — a name that can't describe one job is usually a God Object forming. Compose
+`System` naming was the tell: a name that can't describe one job is usually a God Object forming. Compose
 the focused services; don't centralize.
 
 ### Go
@@ -219,7 +219,7 @@ func (uc PlaceOrder) Run(cart Cart, user User) error {
 
 **🧠 The Fix** — Breaking the God `App` struct into `Payment`, `Orders`, and a `PlaceOrder` use case that
 depends only on what it needs makes dependencies explicit and each piece testable with small fakes. Go's
-small-interface culture pushes this way naturally — a struct that accumulates every dependency is the smell,
+small-interface culture pushes this way naturally: a struct that accumulates every dependency is the smell,
 and focused structs composed at `main` are the cure.
 
 ### CSharp
@@ -287,7 +287,7 @@ public sealed class PlaceOrder(OrderValidator validator, Pricing pricing,
 ```
 
 **🧠 The Fix** — Primary constructors make the dependency list impossible to hide: a God class shows up as a
-constructor taking ten services, and a DI container will wire it without complaint — the container hides the
+constructor taking ten services, and a DI container will wire it without complaint, since the container hides the
 pain, not the problem. After the split, `Pricing` tests with no Stripe and no database, and each class has one
 reason to change. Watch for the tell in C# codebases: a `Manager` or `Service` whose constructor keeps growing.
 
@@ -353,7 +353,7 @@ impl PlaceOrder {
 
 **🧠 The Fix** — Rust punishes God structs earlier than most languages: one `&mut self` method borrows the
 *whole* struct, so two responsibilities can't be touched at once and the borrow checker starts fighting you
-long before the file hits 3,000 lines. That pressure is a feature — splitting into `Pricing`, `Payment`, and a
+long before the file hits 3,000 lines. That pressure is a feature: splitting into `Pricing`, `Payment`, and a
 `PlaceOrder` that owns only what it uses gives you disjoint borrows, small testable pieces, and error flow
 that's explicit in each signature.
 
@@ -418,7 +418,7 @@ const PlaceOrder = struct {
 
 **🧠 The Fix** — Zig has no DI framework to quietly assemble a giant struct: every field is filled by hand at
 every construction site, so a God struct is visible pain the moment you try to build one in a test. The split
-makes that cheap — `Pricing` needs no state at all, so it becomes a namespaced function you call directly, and
+makes that cheap: `Pricing` needs no state at all, so it becomes a namespaced function you call directly, and
 `PlaceOrder` declares exactly the three dependencies it uses. Plain structs composed in `main` are already the
 idiomatic Zig shape; the God struct is what takes effort to maintain.
 
@@ -479,8 +479,8 @@ record PlaceOrder(Pricing pricing, Payment payment, Orders orders, Notifier noti
 
 **🧠 The Fix** — Java's DI culture is what lets God classes grow painlessly: field injection (`@Autowired`
 on a private field) hides the dependency list, so `OrderManager` gains a collaborator per feature and
-nothing ever pushes back. Constructor injection restores the tell — a ten-argument constructor is a smell
-you can see in review — and records make the honest form cheap: `PlaceOrder` declares its four dependencies
+nothing ever pushes back. Constructor injection restores the tell: a ten-argument constructor is a smell
+you can see in review, and records make the honest form cheap: `PlaceOrder` declares its four dependencies
 in one line and gets the constructor free. After the split, `Pricing` tests with no Stripe and no database,
 and each class has one reason to change.
 

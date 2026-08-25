@@ -6,7 +6,7 @@ sequence: 5
 title: Copy-Paste Programming
 also_known_as: [Duplicated Code, WET Code, Cut-and-Paste]
 gof: false
-intent: "Solving a repeated need by copying an existing block of code and tweaking it, instead of extracting a shared abstraction — scattering duplicates that must all be found and fixed together, but never are."
+intent: "Solving a repeated need by copying an existing block of code and tweaking it, instead of extracting a shared abstraction, scattering duplicates that must all be found and fixed together, but never are."
 frequency: high
 difficulty: beginner
 tags: [anti-pattern, duplication, dry, maintainability, refactoring]
@@ -20,7 +20,7 @@ languages: [javascript, python, go, csharp, rust, zig, java]
 the copy. The same logic ends up in five, ten, twenty places, each slightly different. It's the violation of
 **DRY** (Don't Repeat Yourself): knowledge that should live in one place is smeared across the codebase.
 
-It feels productive — the copy works immediately — but every duplicate is a liability. A bug fixed in one
+It feels productive (the copy works immediately) but every duplicate is a liability. A bug fixed in one
 copy still lurks in the others; a rule change must be made everywhere it was pasted, and the one place you
 miss is where the next incident comes from. Over time the copies drift apart, so you can't even tell which
 version is "right."
@@ -121,7 +121,7 @@ const getOrder = (id) => fetchJsonWithRetry(`/api/orders/${id}`);
 ```
 
 **🧠 The Fix** — Extracting `fetchJsonWithRetry` collapses the pasted retry loops into one place, so a fix or
-tweak (backoff, attempt count) happens once and every caller gets it — and the "one copy forgot the backoff"
+tweak (backoff, attempt count) happens once and every caller gets it, and the "one copy forgot the backoff"
 class of bug disappears. The varying part (the URL) is a parameter. This is DRY: one home for the retry
 knowledge.
 
@@ -160,7 +160,7 @@ def update_user(data): email = clean_email(data); ...
 
 **🧠 The Fix** — Pulling the email normalize-and-validate into `clean_email` means the rule exists once, so it
 can't drift between endpoints (the subtle "update allows empty" bug can't happen) and a change applies
-everywhere. The difference between the sites (there wasn't one — pure duplication) makes this a clean
+everywhere. The difference between the sites (there wasn't one, just pure duplication) makes this a clean
 extraction. Python's functions make the shared abstraction cheap.
 
 ### Go
@@ -202,7 +202,7 @@ func createOrder(db *sql.DB, o Order) error {
 ```
 
 **🧠 The Fix** — The begin/rollback/commit ceremony was pure duplication; `withTx` extracts it once and takes
-the *varying behavior* (what to run in the transaction) as a callback — a function parameter carrying the
+the *varying behavior* (what to run in the transaction) as a callback, a function parameter carrying the
 difference. Now a fix to the transaction handling (say, adding a `defer` for panics) happens in one place.
 Go's first-class functions make this "extract the boilerplate, pass the difference" refactor idiomatic.
 
@@ -261,7 +261,7 @@ Task<string> GetOrder(int id) => WithRetry(() => http.GetStringAsync($"/api/orde
 **🧠 The Fix** — The try-catch-delay ceremony was pure duplication; `WithRetry<T>` holds it
 once and takes the varying behavior as a `Func<Task<T>>`, so the "forgot the backoff" drift
 can't recur and a policy change (attempts, delay curve) lands everywhere at once. In
-production you'd likely hand this job to a resilience library like Polly — but the move is
+production you'd likely hand this job to a resilience library like Polly, but the move is
 the same: one home for the retry knowledge, the difference passed in as a delegate.
 
 ### Rust
@@ -309,7 +309,7 @@ fn parse_timeout(raw: &str) -> Result<u16, String> {
 
 **🧠 The Fix** — The copies differed in two ways, and the extraction names both: the field
 name became a value parameter, the extra rule became a closure via `impl Fn`. Each call site
-now *states* its rule — `parse_timeout` visibly accepts anything instead of silently
+now *states* its rule: `parse_timeout` visibly accepts anything instead of silently
 forgetting a check it was supposed to copy. The generic bound monomorphizes, so the
 abstraction costs nothing at runtime; the dedup lives in the source, where the maintenance
 burden is.
@@ -366,11 +366,11 @@ fn parseTimeout(raw: []const u8) !u16 {
 ```
 
 **🧠 The Fix** — The trim-parse ceremony lives once, and the varying rule is a plain
-`*const fn` pointer — Zig has no closures, so the rule can't capture context, which this
+`*const fn` pointer; Zig has no closures, so the rule can't capture context, which this
 one doesn't need. (A rule that did would take the `*anyopaque` context + function pointer
 shape, or a comptime parameter.) The refactor is also honest about the drift:
 `parseTimeout` now declares it accepts anything, instead of quietly missing a check its
-sibling had. Extraction in Zig costs a little more ceremony than a closure would — worth it
+sibling had. Extraction in Zig costs a little more ceremony than a closure would, worth it
 the moment two copies start to disagree.
 
 ### Java
@@ -441,10 +441,10 @@ class Api {
 ```
 
 **🧠 The Fix** — The try-catch-sleep ceremony lives once in `withRetry`, and the varying behavior arrives
-as a `Callable<T>` — chosen over `Supplier<T>` deliberately, because `call()` declares `throws Exception`
+as a `Callable<T>`, chosen over `Supplier<T>` deliberately, because `call()` declares `throws Exception`
 and Java's other functional interfaces don't, which is the wrinkle that usually pushes people back to
 pasting. Now the "forgot the backoff" drift can't recur, and a policy change (attempts, delay curve) lands
-everywhere at once. In production this job often goes to a library like Resilience4j — but the move is the
+everywhere at once. In production this job often goes to a library like Resilience4j, but the move is the
 same: one home for the retry knowledge, the difference passed in as a lambda.
 
 ## Related Patterns
@@ -452,6 +452,6 @@ same: one home for the retry knowledge, the difference passed in as a lambda.
 - **Function Composition** — extracting duplicated logic into small, composable functions is the everyday cure
   for copy-paste.
 - **Template Method** — when copies share a *skeleton* but differ in steps, a template method holds the common
-  structure and lets the varying steps differ — DRY for algorithms.
+  structure and lets the varying steps differ: DRY for algorithms.
 - **Strategy** — when the difference between copies is *behavior*, extract the common code and pass the varying
   behavior as a strategy/callback instead of duplicating the whole block.

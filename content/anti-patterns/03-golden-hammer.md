@@ -4,9 +4,9 @@ category: anti-patterns
 kind: anti-pattern
 sequence: 3
 title: Golden Hammer
-also_known_as: [Law of the Instrument, "If all you have is a hammer…"]
+also_known_as: [Law of the Instrument, "If all you have is a hammer..."]
 gof: false
-intent: "Over-relying on one familiar tool, pattern, or technology for every problem — reaching for what you know instead of what fits, so solutions get forced into the wrong shape."
+intent: "Over-relying on one familiar tool, pattern, or technology for every problem, reaching for what you know instead of what fits, so solutions get forced into the wrong shape."
 frequency: high
 difficulty: beginner
 tags: [anti-pattern, tooling, judgment, over-engineering, fit]
@@ -17,7 +17,7 @@ languages: [javascript, python, go, csharp, rust, zig, java]
 ## The Anti-Pattern
 
 "When all you have is a hammer, everything looks like a nail." The **Golden Hammer** is the habit of
-applying one favored tool — a language, a framework, a design pattern, a database — to **every** problem,
+applying one favored tool (a language, a framework, a design pattern, a database) to **every** problem,
 regardless of whether it fits. The tool becomes the default answer before the question is even understood.
 
 It's a failure of judgment, not of the tool. The tool may be excellent for its purpose; the anti-pattern is
@@ -54,7 +54,7 @@ Match the tool to the problem:
 - **Consider alternatives** — deliberately list a couple of different approaches and their trade-offs, even
   if you expect to pick the familiar one.
 - **Right-size the solution** — a plain function instead of a pattern; a file instead of a database; a script
-  instead of a framework — when that's what the problem needs.
+  instead of a framework, when that's what the problem needs.
 - **Expand the toolbox** — invest in learning complementary tools so "what I know" and "what fits" overlap
   more often.
 
@@ -74,9 +74,9 @@ Familiar Tool ──force-fit──► "queue problem" · "cache problem" · "gr
 ## Key Takeaways
 
 - The Golden Hammer applies one familiar tool to every problem regardless of fit.
-- It's a judgment failure, not a tool failure — the tool may be great, just misapplied.
+- It's a judgment failure, not a tool failure: the tool may be great, just misapplied.
 - The result is forced solutions, accidental complexity, and blind spots.
-- Understand the problem, weigh alternatives, and right-size the solution — sometimes the answer is a plain
+- Understand the problem, weigh alternatives, and right-size the solution; sometimes the answer is a plain
   function.
 
 ## Implementations
@@ -111,7 +111,7 @@ function Modal() {
 ```
 
 **🧠 The Fix** — Redux is a fine tool *for shared, complex application state*; using it for a modal toggle is
-the Golden Hammer — ceremony and indirection for a one-line `useState`. The fix isn't "never use Redux," it's
+the Golden Hammer: ceremony and indirection for a one-line `useState`. The fix isn't "never use Redux," it's
 matching the tool to the need: local state for local concerns, a store when state is actually shared. Ask
 "what does this problem need?" before "what do I always use?".
 
@@ -172,7 +172,7 @@ func main() {
 ```
 
 **🧠 The Fix** — Microservices and Kubernetes are the right tools for independently-scaled, long-running
-services; wrapping a nightly batch job in an HTTP service plus container orchestration is the Golden Hammer —
+services; wrapping a nightly batch job in an HTTP service plus container orchestration is the Golden Hammer:
 enormous operational overhead for a task a cron-run binary handles. The fix is right-sizing: a scheduled
 program for a scheduled job. Reach for the service architecture when the problem is actually a service.
 
@@ -212,7 +212,7 @@ var total = cart.Items.Sum(i => i.Price);
 
 **🧠 The Fix** — "Interface for everything" is C#'s house Golden Hammer, trained in by DI-container habits:
 one implementation, one mechanical `I`-prefixed twin, registration ceremony, and an extra indirection for
-every reader — with nothing bought, since a pure calculation needs no faking. The fix isn't "never write
+every reader, with nothing bought, since a pure calculation needs no faking. The fix isn't "never write
 interfaces"; it's writing them at real seams (I/O, external services, genuine polymorphism) and letting plain
 code be plain. If the interface will only ever have one implementation and no test needs to swap it, delete it.
 
@@ -257,7 +257,7 @@ fn total(prices: &[u32]) -> u32 {
 **🧠 The Fix** — Rust's Golden Hammer is abstraction that costs nothing at runtime, so nothing pushes back:
 "zero-cost" traits and generics still charge for reading, compiling, and error messages, and the type-system
 puzzle is fun enough that the machinery gets built before the second use case exists. The honest test is
-variation you can point at — a second implementor, today. Until then, take the concrete type; when the second
+variation you can point at: a second implementor, today. Until then, take the concrete type; when the second
 type genuinely arrives, the borrow checker makes the mechanical generalization safe to do late.
 
 ### Zig
@@ -303,7 +303,7 @@ fn total(prices: []const u32) u32 {
 
 **🧠 The Fix** — `comptime` is Zig's Golden Hammer: it's the language's signature feature, it's genuinely
 powerful, and that's exactly why it gets reached for before the problem asks for it. A type-returning function
-with one instantiation is a plain function wearing a costume — harder to read, harder to grep, same machine
+with one instantiation is a plain function wearing a costume: harder to read, harder to grep, same machine
 code. Zig's own culture backs the fix: the standard library keeps things concrete until multiple types force
 the issue, and so should you. Ask for the second instantiation; if it doesn't exist, neither should the generic.
 
@@ -353,8 +353,8 @@ int total = prices.stream().mapToInt(Integer::intValue).sum();
 Spring's real `AbstractSingletonProxyFactoryBean`. The GoF vocabulary is so at home in Java that
 Abstract/Factory/Strategy scaffolding goes up before anyone asks whether behavior varies, and every layer
 with one implementation is pure reading tax. Modern Java already dissolved most of the ceremony: a lambda
-is a strategy, a stream is the template method's loop. Keep the patterns for real variation — a second
-implementor you can point at today — and when an abstract base has one subclass, inline it.
+is a strategy, a stream is the template method's loop. Keep the patterns for real variation (a second
+implementor you can point at today) and when an abstract base has one subclass, inline it.
 
 ## Related Patterns
 

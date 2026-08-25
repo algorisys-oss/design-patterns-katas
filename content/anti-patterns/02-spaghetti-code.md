@@ -6,7 +6,7 @@ sequence: 2
 title: Spaghetti Code
 also_known_as: [Big Ball of Mud, Tangled Code]
 gof: false
-intent: "Code with no discernible structure — tangled control flow, deep nesting, and everything reaching into everything — so you can't follow, change, or test it without pulling the whole knot."
+intent: "Code with no discernible structure (tangled control flow, deep nesting, and everything reaching into everything) so you can't follow, change, or test it without pulling the whole knot."
 frequency: high
 difficulty: beginner
 tags: [anti-pattern, structure, coupling, control-flow, refactoring]
@@ -16,7 +16,7 @@ languages: [javascript, python, go, csharp, rust, zig, java]
 
 ## The Anti-Pattern
 
-**Spaghetti Code** has no clear structure. Control flow jumps around unpredictably — deep nested
+**Spaghetti Code** has no clear structure. Control flow jumps around unpredictably: deep nested
 conditionals, flags mutated far from where they're read, functions that do a bit of everything and call
 each other in a web with no direction. Following a single feature means tracing a tangled strand through the
 whole plate.
@@ -68,14 +68,14 @@ Module A ↔ Module B ↔ Module C ↔ A  (everything calls everything)
 - Functions hundreds of lines long with nesting five levels deep.
 - Boolean flags set in one place and checked far away to steer control flow.
 - No way to test a piece without running the whole thing.
-- "I don't know why, but if you remove that line it breaks" — cargo-cult edits.
+- "I don't know why, but if you remove that line it breaks": cargo-cult edits.
 - Every estimate is padded "because the code is a mess."
 
 ## Key Takeaways
 
 - Spaghetti code has no structure: tangled flow, deep nesting, everything coupled to everything.
 - It's fragile, untestable, and slows all future work as the tangle compounds.
-- Untangle incrementally — extract functions, flatten nesting, impose boundaries, isolate state — under a
+- Untangle incrementally (extract functions, flatten nesting, impose boundaries, isolate state) under a
   net of characterization tests.
 - Structure (layers, small functions, one-way dependencies) is the cure; it must be maintained, not
   retrofitted once.
@@ -130,8 +130,8 @@ async function handle(req, res, next) {
 
 **🧠 The Fix** — Guard clauses (early throws) flatten the pyramid, and splitting validation, lookup, and
 response into named functions gives the reader one thing at a time and one error path instead of flags
-threaded through nesting. Each piece is now testable alone. The transformation is mechanical — extract and
-flatten — but it's the difference between unreadable and obvious.
+threaded through nesting. Each piece is now testable alone. The transformation is mechanical (extract and
+flatten) but it's the difference between unreadable and obvious.
 
 ### Python
 
@@ -181,7 +181,7 @@ def process(order):
 
 **🧠 The Fix** — Pulling `line_total`/`order_total` out as pure functions and using a guard clause removes
 the nesting and the `done`/`result` flags, and separates the calculation (testable with no `save`) from the
-I/O. Python's comprehensions make the flattened version clearer still. The mess wasn't inherent complexity —
+I/O. Python's comprehensions make the flattened version clearer still. The mess wasn't inherent complexity;
 it was missing structure, which extraction restores.
 
 ### Go
@@ -294,7 +294,7 @@ static async Task<IResult> Handle(Req? req)
 
 **🧠 The Fix** — The switch expression turns the nested validation pyramid into a flat, readable table: each
 pattern names one failure, and `_ => null` is the single success case. Guard clauses with early returns do the
-rest — the `ok`/`err`/`dto` flags disappear because each branch exits the moment it knows the answer.
+rest: the `ok`/`err`/`dto` flags disappear because each branch exits the moment it knows the answer.
 `Validate` is now a pure function you can unit test with five one-line cases, no HTTP anywhere.
 
 ### Rust
@@ -345,7 +345,7 @@ fn handle(body: Option<&str>) -> String {
 
 **🧠 The Fix** — `Result` moves the error path into the type, and `?` is early return built into the language:
 each check either passes or exits, so there's nothing left for a flag to remember. Notice the smell needed
-three `mut` variables and the refactor needs none — in Rust, spaghetti announces itself as mutable state, and
+three `mut` variables and the refactor needs none: in Rust, spaghetti announces itself as mutable state, and
 the borrow checker makes threading it around genuinely annoying. `validate` is a pure function; its five cases
 test in five lines.
 
@@ -406,7 +406,7 @@ fn handle(body: ?[]const u8) void {
 
 **🧠 The Fix** — Zig's error unions give failure a channel of its own: `orelse` and `return error.X` exit the
 moment a check fails, so the flags and the trailing `if (ok)` reconciliation vanish, and both locals become
-`const`. The compiler tracks the error set for you — forget to handle one at the call site and it won't build.
+`const`. The compiler tracks the error set for you: forget to handle one at the call site and it won't build.
 `validate` is now a plain function with an honest signature: it gives you an email or tells you exactly why not.
 
 ### Java
@@ -461,7 +461,7 @@ static String handle(Req req) {
 
 **🧠 The Fix** — The switch is the flattening move: record patterns with `when` guards turn the nested
 pyramid into a table where each case names one failure and `default -> null` is the single success. Note
-`case null` — a pattern switch can treat null as an ordinary case, where the classic switch would throw,
+`case null`: a pattern switch can treat null as an ordinary case, where the classic switch would throw,
 so even the outer null check folds into the table. Guard clauses with early returns do the rest: the
 `ok`/`err`/`out` flags disappear because each branch exits the moment it knows the answer, and `validate`
 is a pure function you can test with four one-line cases.
