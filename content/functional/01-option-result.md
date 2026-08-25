@@ -5,7 +5,7 @@ sequence: 1
 title: Option / Result
 also_known_as: [Maybe, Either, Optional]
 gof: false
-intent: "Model absence and failure as ordinary values — an Option that's Some or None, a Result that's Ok or Err — so the compiler and the reader can't ignore the case that something isn't there or went wrong."
+intent: "Model absence and failure as ordinary values: an Option that's Some or None, a Result that's Ok or Err, so the compiler and the reader can't ignore the case that something isn't there or went wrong."
 frequency: high
 difficulty: intermediate
 tags: [functional, error-handling, null-safety, values, composition]
@@ -21,7 +21,7 @@ Instead of returning `null` for "no value" or throwing an exception for "it fail
 callers must acknowledge both to get at the value.
 
 The payoff is that "it might not be there" and "it might fail" stop being invisible landmines.
-There's no `null` to forget to check and no exception to forget to catch — the *shape of the return
+There's no `null` to forget to check and no exception to forget to catch: the *shape of the return
 value* forces the handling, and these values compose (`map`, `andThen`) so a chain of fallible steps
 reads linearly and short-circuits on the first problem.
 
@@ -58,7 +58,7 @@ run(x) ──► Result<T, E> = Ok(T) | Err(E)
 
 ## When to Use
 
-- A function may legitimately have no result (a lookup that can miss) — return `Option`.
+- A function may legitimately have no result (a lookup that can miss), so return `Option`.
 - A function can fail with a meaningful reason — return `Result` instead of throwing.
 - You want fallible steps to compose without nested try/catch or null checks.
 - The absence/failure case is important enough that callers *must not* forget it.
@@ -92,7 +92,7 @@ run(x) ──► Result<T, E> = Ok(T) | Err(E)
 ## Key Takeaways
 
 - Return `Option`/`Result` values instead of `null`/exceptions so absence and failure are explicit.
-- Callers must `match`/`map` to reach the value — the empty/error case can't be silently skipped.
+- Callers must `match`/`map` to reach the value, so the empty/error case can't be silently skipped.
 - `map`/`andThen` compose fallible steps and short-circuit, keeping chains linear.
 - Reserve it for *expected* absence/failure; use exceptions/panics for genuine bugs.
 
@@ -138,7 +138,7 @@ if (!r.ok) return render(r.error);   // can't reach .value without acknowledging
 **🧠 Tradeoff** — A tiny tagged `{ok, value|error}` plus `map`/`andThen` brings explicit,
 composable results to JS without a library; the caller has to consult `r.ok` to get the value.
 Libraries (fp-ts, Effect, neverthrow) add richer types and TypeScript inference. JS's lack of
-pattern matching makes the ergonomics a bit clunkier than in typed FP languages — the discipline is
+pattern matching makes the ergonomics a bit clunkier than in typed FP languages; the discipline is
 yours to keep.
 
 ### Node.js
@@ -268,9 +268,9 @@ end
 ```
 
 **🧠 Tradeoff** — Elixir has this pattern in its bones: `{:ok, value}`/`{:error, reason}` tuples are
-the universal convention, and `with` chains them, short-circuiting on the first `:error` — Result
+the universal convention, and `with` chains them, short-circuiting on the first `:error`: Result
 without a library. Pattern matching makes it ergonomic and total. The nuance is the two conventions
-in the ecosystem — tuple-returning `find/2` vs. raising `find!/2` — so you pick the fallible or the
+in the ecosystem (tuple-returning `find/2` vs. raising `find!/2`) so you pick the fallible or the
 bang variant per situation.
 
 ### Go
@@ -316,9 +316,9 @@ if err != nil {
 ```
 
 **🧠 Tradeoff** — Go bakes Result into the language: the `(T, error)` pair is exactly Ok/Err, and
-`(T, ok bool)` is Option — the compiler and `go vet` push you to handle the second value. Errors are
+`(T, ok bool)` is Option: the compiler and `go vet` push you to handle the second value. Errors are
 values you can wrap (`%w`) and inspect (`errors.Is/As`), giving the composability without a monad.
-The trade is the famous `if err != nil` verbosity — explicit at every step rather than chained — but
+The trade is the famous `if err != nil` verbosity, explicit at every step rather than chained, but
 the failure case is impossible to overlook.
 
 ### CSharp
@@ -370,7 +370,7 @@ public sealed record User(string Name, bool Banned);
 **🧠 Tradeoff** — C# gives you the Option half for free: with nullable reference types on,
 `User?` is a compiler-checked "might be absent," and the warnings on unchecked derefs are the
 `match` you can't skip. Failure-with-a-reason takes the small record hierarchy above, and pattern
-matching makes consuming it pleasant — but unlike Rust, the compiler can't prove the hierarchy is
+matching makes consuming it pleasant, but unlike Rust, the compiler can't prove the hierarchy is
 closed, so exhaustiveness needs a discard arm. The generic ceremony is real; many teams write a
 domain-specific result (or use `OneOf`/`LanguageExt`) and keep exceptions for genuine bugs.
 
@@ -425,10 +425,10 @@ fn main() {
 
 **🧠 Tradeoff** — Rust doesn't implement this pattern; it ships it. There is no null: every
 absence is `Option`, every expected failure is `Result`, `?` is the chaining operator, and `match`
-is exhaustive — add a `LookupError` variant and every caller that doesn't handle it stops
+is exhaustive: add a `LookupError` variant and every caller that doesn't handle it stops
 compiling. The costs are conversion between error types as calls cross layers (`From` impls, or
 `thiserror`/`anyhow` in real projects) and the temptation of `.unwrap()`, which quietly
-reintroduces the panic you were avoiding — reserve it for cases you can prove impossible.
+reintroduces the panic you were avoiding; reserve it for cases you can prove impossible.
 
 ### Zig
 
@@ -480,11 +480,11 @@ pub fn main() void {
 ```
 
 **🧠 Tradeoff** — Zig ships both halves too: `?T` for absence (unwrap with `orelse` or
-`if (x) |v|`) and `error{...}!T` for failure, with `try`/`catch` as the chaining operators — and
+`if (x) |v|`) and `error{...}!T` for failure, with `try`/`catch` as the chaining operators, and
 using an error union without handling it doesn't compile. The honest difference from Rust: Zig
 errors are bare tags with no payload, so context (which id? what input?) travels out-of-band via a
-diagnostic out-parameter or logging. In exchange, error unions are just an int under the hood —
-no allocation, no generics — which is very Zig: the pattern at its cheapest, minus the ergonomics
+diagnostic out-parameter or logging. In exchange, error unions are just an int under the hood:
+no allocation, no generics, which is very Zig: the pattern at its cheapest, minus the ergonomics
 of a rich `Err(e)`.
 
 ### Java
@@ -547,12 +547,12 @@ public class Demo {
 
 **🧠 Tradeoff** — Java ships half the pattern. `Optional` is the Option side, with an honest
 asterisk: it was designed for *return types*, and the standing guidance keeps it off fields and
-parameters — it's an extra allocation, it doesn't serialize, and the Optional reference can itself
+parameters: it's an extra allocation, it doesn't serialize, and the Optional reference can itself
 be null, which defeats the point. The Result side is six lines of your own: sealed plus records
-makes the `switch` exhaustive — add a variant and every switch that ignores it stops compiling,
+makes the `switch` exhaustive: add a variant and every switch that ignores it stops compiling,
 the check C#'s open hierarchies can't give you. What's missing is the plumbing: no `?` operator
 and no built-in `map`/`andThen`, so chains stay explicit unless you write the combinators. And
-the surrounding world throws — convert exceptions to `Err` at the boundary, and keep exceptions
+the surrounding world throws, so convert exceptions to `Err` at the boundary, and keep exceptions
 for genuine bugs.
 
 ## Applications

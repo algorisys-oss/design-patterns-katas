@@ -5,7 +5,7 @@ sequence: 4
 title: Function Composition
 also_known_as: [Pipelines, Pipe, Compose]
 gof: false
-intent: "Build complex behavior by chaining small, single-purpose functions into a pipeline where each one's output feeds the next — instead of one large function or deeply nested calls."
+intent: "Build complex behavior by chaining small, single-purpose functions into a pipeline where each one's output feeds the next, instead of one large function or deeply nested calls."
 frequency: high
 difficulty: beginner
 tags: [functional, composition, pipeline, reusability, readability]
@@ -21,7 +21,7 @@ transformation and knows nothing about the others; composition wires them into t
 
 The value is that behavior becomes a *sequence you can read* and *parts you can reuse*. Each step is
 independently testable and swappable, and building a new flow is rearranging small pieces rather than
-editing a monolith. It's "small functions, composed" — the functional counterpart to building objects
+editing a monolith. It's "small functions, composed": the functional counterpart to building objects
 from small collaborators.
 
 ## The Problem
@@ -121,7 +121,7 @@ toSlug("  Hello   World  "); // "hello-world"
 **🧠 Tradeoff** — A one-line `pipe` (reduce over the functions) turns the inside-out nest into a
 readable, reusable `toSlug` built from tiny testable parts, and adding a stage is inserting one name.
 Ramda/lodard-fp provide `pipe`/`compose`; the TC39 pipeline operator (`|>`) may make it native. Keep
-the stages pure — a side-effecting step makes the pipeline's result depend on hidden context.
+the stages pure: a side-effecting step makes the pipeline's result depend on hidden context.
 
 ### Node.js
 
@@ -157,7 +157,7 @@ const handle = pipeAsync(
 **🧠 Tradeoff** — An async `pipe` (reduce with `.then`) composes the request stages into one flow
 that reads as a list of steps and lets you reuse `sanitize`/`validate` across routes. It's the
 functional cousin of Express middleware. The care points are error handling (a rejected stage
-short-circuits the chain — pair with Result if you want explicit branches) and keeping stages free of
+short-circuits the chain; pair with Result if you want explicit branches) and keeping stages free of
 hidden effects.
 
 ### Python
@@ -224,8 +224,8 @@ end
 
 **🧠 Tradeoff** — Elixir's `|>` operator makes composition the *default* way to write code: data flows
 top-to-bottom through small functions, each taking the previous result as its first argument. It's
-the language's signature idiom and reads beautifully. The constraint is the "data first" convention —
-functions must take the piped value as the first argument — which shapes how you design APIs, and
+the language's signature idiom and reads beautifully. The constraint is the "data first" convention:
+functions must take the piped value as the first argument, which shapes how you design APIs, and
 `|>` composes at the call site rather than producing a reusable composed function (wrap in a `def`/
 closure for that).
 
@@ -259,7 +259,7 @@ clean("  Hello  ") // "hello"
 
 **🧠 Tradeoff** — Generics let Go express a typed `Pipe` for same-type stages, and it reads cleanly
 for string/data transforms. Go's static typing makes heterogeneous pipelines (each stage a different
-type) awkward — you'd need per-shape helpers or interfaces — so idiomatic Go often prefers explicit
+type) awkward (you'd need per-shape helpers or interfaces) so idiomatic Go often prefers explicit
 sequential statements for clarity over clever composition. Where the stages share a type, `Pipe` is
 tidy; where they don't, plain code wins.
 
@@ -293,7 +293,7 @@ static class FuncExtensions
 ```
 
 **🧠 Tradeoff** — C# has no pipe operator, but delegates plus a two-line `Then` extension give you
-typed composition that reads in execution order — and because `Then` is generic over three types, the
+typed composition that reads in execution order, and because `Then` is generic over three types, the
 stages don't have to share a shape; the compiler checks each output feeds the next input. Method
 chaining is C#'s native pipeline, and for sequences LINQ (`.Where().Select()`) is usually what you
 want instead. Explicit `Func` composition earns its place when the pipeline itself is a value you
@@ -334,7 +334,7 @@ fn main() {
 
 **🧠 Tradeoff** — method chaining *is* Rust's pipeline: string methods and iterator adapters already
 read left-to-right, so most Rust code never writes `compose`. When you do need the pipeline as a
-value, a generic `compose` monomorphizes each nesting to zero-cost code — but Rust has no variadic
+value, a generic `compose` monomorphizes each nesting to zero-cost code, but Rust has no variadic
 compose without a macro, so deep pipelines nest the calls. Storing swappable stages in a `Vec` forces
 `Box<dyn Fn(String) -> String>`, trading the zero-cost dispatch for runtime flexibility. Ownership is
 the extra care point: stages that take `String` by value move it through the chain, which is exactly
@@ -395,9 +395,9 @@ pub fn main() void {
 ```
 
 **🧠 Tradeoff** — be honest about the limits: without closures, every stage must share one signature
-and can't capture configuration, and transforming a buffer in place gives up purity — the original is
+and can't capture configuration, and transforming a buffer in place gives up purity: the original is
 overwritten, which is composition's shape without immutability's guarantees. What Zig buys is a
-pipeline that's a plain array of function pointers — data you can build at runtime — with zero hidden
+pipeline that's a plain array of function pointers (data you can build at runtime) with zero hidden
 allocation. For heterogeneous stages, a comptime tuple of functions walked with `inline for` composes
 at compile time with no indirection. But often the most idiomatic Zig is neither: just call the
 functions in sequence and let the reader see every step.
@@ -437,7 +437,7 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — Java shipped this pattern in the standard library: `Function.andThen` is `pipe` and
-`compose` is the math order, so there's no combinator to write — method references chain in execution
+`compose` is the math order, so there's no combinator to write: method references chain in execution
 order, and the generic signatures let stages change type along the way. For sequences, Streams
 (`map`/`filter`/`collect`) are Java's native pipeline and usually the better fit. Explicit `Function`
 composition earns its place when the pipeline itself is a value you store, pass, or assemble from

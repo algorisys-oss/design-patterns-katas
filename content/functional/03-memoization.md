@@ -17,12 +17,12 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 Wrap a **pure** function so that the first time it's called with a given set of arguments it computes
 the result and stores it in a cache keyed by those arguments; every later call with the same
-arguments returns the stored value. The function's behavior is unchanged — same input, same output —
+arguments returns the stored value. The function's behavior is unchanged (same input, same output)
 but repeated work is done once.
 
 It's a classic space-for-time trade: spend memory holding results to avoid recomputing expensive
 calculations. Because the function is pure (no side effects, output depends only on input), caching
-by input is always safe — the cached value is exactly what recomputing would produce.
+by input is always safe: the cached value is exactly what recomputing would produce.
 
 ## The Problem
 
@@ -91,7 +91,7 @@ call(x) ──► [ memoized ] ──hit──► cached result
 ## Key Takeaways
 
 - Cache a pure function's results by its arguments; repeated inputs return instantly.
-- Only sound for pure functions — output must depend solely on inputs.
+- Only sound for pure functions: output must depend solely on inputs.
 - Bound the cache (size/TTL) unless the input space is genuinely tiny, or it leaks memory.
 - The key function is the subtle part: correct and cheap keys make or break it.
 
@@ -129,7 +129,7 @@ const fib = memoize((n) => (n < 2 ? n : fib(n - 1) + fib(n - 2))); // subproblem
 ```
 
 **🧠 Tradeoff** — A `Map`-backed wrapper turns exponential `fib` into linear by caching each `n`
-once. It's transparent — same signature — and generic via `keyOf`. In React, `useMemo`/`memo` apply
+once. It's transparent (same signature) and generic via `keyOf`. In React, `useMemo`/`memo` apply
 the same idea to derived values and components. The unshown risks are the usual ones: this cache is
 unbounded (fine for `fib`, a leak for high-cardinality inputs) and the default `join` key is wrong
 for object arguments.
@@ -167,7 +167,7 @@ function render(templateSource, data) {
 
 **🧠 Tradeoff** — Memoizing just the pure, expensive part (compiling the template) with a **bounded**
 LRU is the production-safe shape: repeated sources are compiled once, and the cache can't grow
-without limit. The important discipline is memoizing only the pure step — `data` changes per call, so
+without limit. The important discipline is memoizing only the pure step: `data` changes per call, so
 you cache `compiled`, not the rendered output. Bounding is what separates a cache from a leak.
 
 ### Python
@@ -199,7 +199,7 @@ def fib(n):
 **🧠 Tradeoff** — `functools.lru_cache` is Python's built-in, idiomatic memoization: one decorator,
 optional `maxsize` bound, and it turns exponential `fib` linear. It requires **hashable** arguments
 (that's your key), so it's perfect for pure functions of primitives/tuples. For TTLs, object keys, or
-method caching, `cachetools` extends it. The footgun is `maxsize=None` on high-cardinality inputs — a
+method caching, `cachetools` extends it. The footgun is `maxsize=None` on high-cardinality inputs, which is a
 memory leak.
 
 ### Elixir
@@ -233,7 +233,7 @@ end
 shared cache in **ETS** (or a GenServer's state), giving cross-process reuse that a plain closure
 can't. `Cachex`/`Nebulex` add bounds and TTLs. For within-a-recursion memoization you thread an
 accumulator map instead. The functional model reframes memoization as an explicit cache rather than
-transparent per-function state — a bit more ceremony, but honest about where the state lives.
+transparent per-function state: a bit more ceremony, but honest about where the state lives.
 
 ### Go
 
@@ -271,7 +271,7 @@ func Memoize[K comparable, V any](fn func(K) V) func(K) V {
 **🧠 Tradeoff** — Generics give Go a clean, typed `Memoize[K, V]` wrapper, and `sync.Map` makes it
 safe under concurrency. For the case where many goroutines miss the same key at once,
 `golang.org/x/sync/singleflight` ensures the work runs once (the same tool as cache-aside). Go has no
-decorator sugar, so you wrap explicitly, and you own bounding — a plain map/`sync.Map` grows
+decorator sugar, so you wrap explicitly, and you own bounding: a plain map/`sync.Map` grows
 unbounded, so add an LRU (e.g. `hashicorp/golang-lru`) for open-ended inputs.
 
 ### CSharp
@@ -306,11 +306,11 @@ static Func<TIn, TOut> Memoize<TIn, TOut>(Func<TIn, TOut> fn) where TIn : notnul
 ```
 
 **🧠 Tradeoff** — `ConcurrentDictionary.GetOrAdd` gives a thread-safe map-backed memoizer in one
-line, and generics keep it typed. C# has no decorator sugar, so you wrap delegates explicitly —
+line, and generics keep it typed. C# has no decorator sugar, so you wrap delegates explicitly;
 the `null!`-then-assign dance exists so the recursive call goes through the *memoized* `fib`,
 not the raw lambda. Two cautions: `GetOrAdd` may run the factory more than once when threads
 miss the same key together (wrap values in `Lazy<T>` when compute-once matters), and the cache
-is unbounded — reach for `MemoryCache` when inputs are open-ended.
+is unbounded; reach for `MemoryCache` when inputs are open-ended.
 
 ### Rust
 
@@ -351,7 +351,7 @@ fn main() {
 
 **🧠 Tradeoff** — Rust won't let a plain closure quietly mutate a captured cache the way JS
 does; a transparent wrapper needs interior mutability (`RefCell`, or `Mutex` across threads).
-So idiomatic Rust usually threads `&mut HashMap` through the recursion — more explicit, and the
+So idiomatic Rust usually threads `&mut HashMap` through the recursion: more explicit, and the
 signature now admits the function carries state, which is honest. The `cached` crate restores
 the decorator feel (`#[cached]`) when you want it; for sharing across threads, wrap the map in
 `Arc<Mutex<...>>` and you've made the hidden global every other language gave you implicitly.
@@ -401,10 +401,10 @@ pub fn main() !void {
 
 **🧠 Tradeoff** — nothing is hidden: the cache takes an explicit allocator, `put` can fail so
 the memoized `fib` returns `!u64` even though the arithmetic can't, and `defer memo.deinit()`
-is you paying the memory back. That's the pattern's fine print made visible — memoization always
+is you paying the memory back. That's the pattern's fine print made visible: memoization always
 costs memory somewhere; Zig makes you sign for it. No decorator form exists, and bounding is
 also yours. For a small closed domain like this one, plain Zig often skips the map entirely and
-fills a fixed `[81]u64` table — cheaper than hashing and impossible to leak.
+fills a fixed `[81]u64` table, cheaper than hashing and impossible to leak.
 
 ### Java
 
@@ -459,10 +459,10 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — `computeIfAbsent` is the built-in memoizer, and on a `ConcurrentHashMap` it's
-thread-safe *and* runs the factory at most once per key — the compute-once guarantee C#'s
+thread-safe *and* runs the factory at most once per key: the compute-once guarantee C#'s
 `GetOrAdd` only gets with `Lazy<T>`. The catch is recursion: the mapping function must not touch
 the map, so a recursive `fib` inside `computeIfAbsent` throws (`ConcurrentModificationException`
-on `HashMap`, "Recursive update" on `ConcurrentHashMap`) — hence the two-step get/put form above.
+on `HashMap`, "Recursive update" on `ConcurrentHashMap`), hence the two-step get/put form above.
 Both caches are unbounded; `LinkedHashMap` with `removeEldestEntry` is the standard library's
 pocket LRU, and Caffeine is the production answer with size and TTL bounds.
 

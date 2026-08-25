@@ -5,7 +5,7 @@ sequence: 2
 title: Currying & Partial Application
 also_known_as: [Schönfinkeling, Partial Application]
 gof: false
-intent: "Turn a multi-argument function into a chain of single-argument functions (currying), or fix some arguments now and supply the rest later (partial application) — to specialize and compose functions."
+intent: "Turn a multi-argument function into a chain of single-argument functions (currying), or fix some arguments now and supply the rest later (partial application), to specialize and compose functions."
 frequency: medium
 difficulty: intermediate
 tags: [functional, higher-order-functions, specialization, composition, closures]
@@ -15,9 +15,9 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-**Currying** rewrites `f(a, b, c)` as `f(a)(b)(c)` — a chain of one-argument functions, each
+**Currying** rewrites `f(a, b, c)` as `f(a)(b)(c)`: a chain of one-argument functions, each
 returning the next. **Partial application** is the practical use: call a function with *some* of its
-arguments and get back a new function waiting for the rest. `add(2, 3)` becomes `add(2)` — a
+arguments and get back a new function waiting for the rest. `add(2, 3)` becomes `add(2)`, a
 specialized `addTwo` function.
 
 Both let you **fix the stable arguments up front** (a config, a dependency, a strategy) and pass
@@ -80,7 +80,7 @@ f(a, b, c)  ──partial(a)──►  g(b, c)        (a fixed; g awaits b, c)
 - **Wrong argument order** — putting the *varying* argument first makes the stable ones un-fixable;
   order parameters config-first, data-last for partial application.
 - **Confusing currying with partial application** — currying always produces unary steps; partial
-  application fixes any subset — reach for the one you actually need.
+  application fixes any subset, so reach for the one you actually need.
 - **Losing `this`/receiver** — currying methods can drop their binding; bind or use standalone
   functions.
 
@@ -89,7 +89,7 @@ f(a, b, c)  ──partial(a)──►  g(b, c)        (a fixed; g awaits b, c)
 - Currying: `f(a, b, c)` → `f(a)(b)(c)`; partial application: fix some args, get a function of the rest.
 - Order parameters "config first, data last" so the stable arguments can be fixed up front.
 - The result is specialized, unary-friendly functions that compose and read well.
-- Use it to remove repeated arguments and derive named operations — not to win a point-free contest.
+- Use it to remove repeated arguments and derive named operations, not to win a point-free contest.
 
 ## Implementations
 
@@ -122,7 +122,7 @@ const curry = (fn) => function curried(...args) {
 };
 ```
 
-**🧠 Tradeoff** — Writing `price` as `(rate) => (amount) => …` makes `withVat` fall out naturally and
+**🧠 Tradeoff** — Writing `price` as `(rate) => (amount) => ...` makes `withVat` fall out naturally and
 slot into `map` with no wrapper. Arrow functions and closures make this idiomatic in JS, and Ramda/
 lodash provide `curry`/`partial` for existing functions. The caution is restraint: a little currying
 clarifies, but stacking it into fully point-free pipelines can become write-only code.
@@ -154,7 +154,7 @@ const getUser = makeGetUser(pool);      // hand `getUser` around; db is baked in
 
 **🧠 Tradeoff** — Partial application is a lightweight dependency-injection idiom in Node: fix the
 `db`/config once with `makeGetUser(pool)` and pass the specialized function around, no container
-needed. It also builds tidy, composable logging/middleware. The same restraint applies — a couple of
+needed. It also builds tidy, composable logging/middleware. The same restraint applies: a couple of
 levels reads well; deeply nested `f(a)(b)(c)(d)` chains obscure intent, so name the specializations.
 
 ### Python
@@ -256,7 +256,7 @@ func makeGetUser(db *DB) func(id string) (User, error) {
 
 **🧠 Tradeoff** — Go has no currying syntax, but a function returning a `func` is idiomatic partial
 application, and it's the standard way to bake a dependency (`db`) or config (`rate`) into a
-handler. It's more verbose than curried languages — you write the closure explicitly — and Go
+handler. It's more verbose than curried languages (you write the closure explicitly) and Go
 programmers use it sparingly, favoring plain functions and structs; but for fixing config and
 producing specialized handlers it's clean and common.
 
@@ -294,7 +294,7 @@ var fetch = makeFetch(new HttpClient());          // client fixed; hand `fetch` 
 **🧠 Tradeoff** — lambdas and closures make currying expressible in C#, and a specialized
 `Func<decimal, decimal>` slots straight into LINQ with no wrapper. But the type spells the cost
 out loud: `Func<decimal, Func<decimal, decimal>>` is noise where JS reads clean. Idiomatic C#
-uses partial application at the edges — fixing a dependency or a config value — and gives the
+uses partial application at the edges (fixing a dependency or a config value) and gives the
 specialization a name; curried *public* APIs read foreign, and DI containers already cover the
 "fix the dependencies once" case for anything bigger.
 
@@ -336,10 +336,10 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — Rust has no auto-currying; a function returning `impl Fn` is the
-partial-application idiom, and `move` makes the captured config's ownership explicit — the
+partial-application idiom, and `move` makes the captured config's ownership explicit: the
 borrow checker forces you to say who owns `rate`, which JS never asks. Returning different
 closures from different branches needs `Box<dyn Fn>` (one heap hop). Rust code reaches for this
-shape to bake in config or dependencies; deep `f(a)(b)(c)` chains are un-idiomatic — iterator
+shape to bake in config or dependencies; deep `f(a)(b)(c)` chains are un-idiomatic, since iterator
 adapters and builder structs carry that weight instead.
 
 ### Zig
@@ -399,8 +399,8 @@ pub fn main() void {
 
 **🧠 Tradeoff** — be honest: Zig has no closures, so currying doesn't survive the port intact.
 The `comptime` form generates a real specialized function at zero runtime cost, but only for
-config known at compile time. The struct form is what a closure *is* underneath — the captured
-environment made explicit — and it's just "a struct with a method," which Zig would tell you to
+config known at compile time. The struct form is what a closure *is* underneath: the captured
+environment made explicit, and it's just "a struct with a method," which Zig would tell you to
 write anyway. Most of the time, don't bother: pass both arguments. Reach for these only when an
 API demands a bare `fn (f64) f64` or the same pairing repeats everywhere.
 
@@ -452,9 +452,9 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — lambdas capture like closures, so currying works, and `Function.andThen`/
-`compose` chain the unary results — that's the composition payoff. The cost is written in the
+`compose` chain the unary results, and that's the composition payoff. The cost is written in the
 type: `Function<Double, Function<Double, Double>>` is noise where JS reads clean, and every
-`Double` boxes (the primitive specializations — `DoubleUnaryOperator` and friends — avoid the
+`Double` boxes (the primitive specializations, `DoubleUnaryOperator` and friends, avoid the
 boxing but don't curry). So idiomatic Java partial-applies at the edges: fix a dependency or a
 config value, give the result a name, and hand streams a method reference. Curried *public* APIs
 read foreign here; nobody should need `.apply().apply()` to call your code.

@@ -5,7 +5,7 @@ sequence: 5
 title: Immutability
 also_known_as: [Persistent Data Structures, Copy-on-Write, Value Semantics]
 gof: false
-intent: "Never modify data in place — produce a new value with the change instead — so state is predictable, safe to share across threads, and easy to compare, snapshot, and undo."
+intent: "Never modify data in place; produce a new value with the change instead, so state is predictable, safe to share across threads, and easy to compare, snapshot, and undo."
 frequency: high
 difficulty: beginner
 tags: [functional, immutability, purity, concurrency-safety, predictability]
@@ -88,7 +88,7 @@ State v1 { value: 1 } ──update(fn)──► State v2 { value: 2 }
 
 ## Key Takeaways
 
-- Don't mutate — return a new value with the change; the original stays intact.
+- Don't mutate: return a new value with the change; the original stays intact.
 - You gain predictability, lock-free sharing, cheap change detection, and free snapshots.
 - Copy the *path* you change (structural sharing), not the whole structure, to keep it cheap.
 - Some languages give it for free (Elixir); others need discipline or libraries.
@@ -128,7 +128,7 @@ const c2 = addItem(c1, item); // c1 is unchanged; c1 !== c2 → cheap change det
 ```
 
 **🧠 Tradeoff** — Spreading to copy the changed path keeps `c1` intact and makes `c1 !== c2` a
-one-reference change check — which is exactly what powers React's re-render and memoization. The cost
+one-reference change check, which is exactly what powers React's re-render and memoization. The cost
 is verbosity and the shallow-copy trap (you must copy each nested level you change). Immer removes the
 ceremony by letting you write mutations against a draft while producing a truly immutable result.
 
@@ -158,7 +158,7 @@ function applyOverrides(config, overrides) {
 
 **🧠 Tradeoff** — Deriving a new config per request instead of `Object.assign`-ing a shared one
 prevents the classic Node bug where one request mutates state another is using. Note the nested spread
-(`headers`) — shallow copying isn't enough when you change nested fields. For deeply nested shared
+(`headers`): shallow copying isn't enough when you change nested fields. For deeply nested shared
 state, `immer` or `immutable.js` (structural sharing) keep it correct and cheap.
 
 ### Python
@@ -195,8 +195,8 @@ def add_item(cart: Cart, item) -> Cart:
 
 **🧠 Tradeoff** — `@dataclass(frozen=True)` plus `dataclasses.replace` gives Python real immutable
 values and clean "copy with change," and immutable collections (`tuple`, `frozenset`, or the `pyrsistent`
-library for structural sharing) complete it. It runs against Python's mutable-by-default grain — lists
-and dicts tempt you back — so it's a discipline, most valuable for shared state and value objects.
+library for structural sharing) complete it. It runs against Python's mutable-by-default grain (lists
+and dicts tempt you back) so it's a discipline, most valuable for shared state and value objects.
 Frozen dataclasses also become hashable, so they work as dict keys and in sets.
 
 ### Elixir
@@ -227,7 +227,7 @@ c2 = add_item(c1, item)   # c1 is unchanged, always
 
 **🧠 Tradeoff** — Immutability isn't a pattern in Elixir; it's the only option. Every value is
 immutable, "updates" (`%{map | ...}`, `put_in`, `update_in`) return new structures with automatic
-structural sharing, and this is *why* the BEAM's concurrency is safe — processes can't corrupt shared
+structural sharing, and this is *why* the BEAM's concurrency is safe: processes can't corrupt shared
 data because there's no shared mutable data. You pay nothing extra for it; the only adjustment is
 unlearning mutation. It's the reference implementation of this pattern.
 
@@ -259,7 +259,7 @@ func AddItem(cart Cart, item Item) Cart { // value receiver → cart is a copy
 ```
 
 **🧠 Tradeoff** — Go structs are value types, so passing and returning by value gives copy semantics
-for the struct itself — but slices and maps are reference-like, so you must explicitly `copy` them to
+for the struct itself, but slices and maps are reference-like, so you must explicitly `copy` them to
 avoid sharing the backing array (the subtle bug the naive version hides). Go has no persistent data
 structures in the standard library, so immutability is a discipline with real copy costs; it's used
 selectively (value objects, config) rather than pervasively.
@@ -305,7 +305,7 @@ public sealed record Cart(ImmutableList<Item> Items, decimal Total)
 
 **🧠 Tradeoff** — records make "copy with change" one expression: `with` produces a new value and
 leaves the original alone, and records compare by value, so snapshots and change detection come
-cheap. The trap is that `with` copies *shallowly* — a record holding a `List<T>` still shares the
+cheap. The trap is that `with` copies *shallowly*: a record holding a `List<T>` still shares the
 mutable list, the same shallow-copy bite as the JS spread. Pair records with the immutable
 collections (`ImmutableList`, `ImmutableDictionary`), which use structural sharing so "copies" reuse
 unchanged parts. For small values, `readonly record struct` gives immutability with no heap
@@ -351,10 +351,10 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — immutability is Rust's *default*: `let` bindings can't change, mutation must be
-declared with `let mut`, and a `&mut` borrow is exclusive — aliasing XOR mutation. That means the
+declared with `let mut`, and a `&mut` borrow is exclusive: aliasing XOR mutation. That means the
 naive version isn't actually dangerous here: shared mutable state is a compile error, not a runtime
 bug, so Rust gives you immutability's safety even in mutating code. What returning new values still
-buys is history — old carts survive as snapshots — plus lock-free sharing (`Arc<Cart>` across threads,
+buys is history (old carts survive as snapshots) plus lock-free sharing (`Arc<Cart>` across threads,
 no `Mutex`). The `clone` is a real O(n) copy; the `im` crate adds structural sharing when carts get
 big.
 
@@ -403,7 +403,7 @@ pub fn main() !void {
 **🧠 Tradeoff** — Zig's defaults lean immutable: `const` is the normal binding (the compiler rejects
 a `var` you never mutate), function parameters are immutable, and assigning a struct copies the
 value. Mutation requires an explicit pointer, so it's visible at every call site. The trap mirrors
-Go: slices are pointer-plus-length views, so a value copy still shares the backing memory — hence the
+Go: slices are pointer-plus-length views, so a value copy still shares the backing memory, hence the
 explicit `alloc` + `@memcpy`, the honest copy cost paid where you can see it, with `defer free` making
 ownership of the old version's memory a real question. No structural sharing in the standard library,
 so pervasive immutability is expensive; Zig code uses it for snapshots and config, not everything.
@@ -457,10 +457,10 @@ record Cart(List<Item> items, int total) {
 ```
 
 **🧠 Tradeoff** — records give the value half for free: final fields, value equality, no setters. But
-record immutability is *shallow* — a record holding an `ArrayList` still shares the mutable list,
+record immutability is *shallow*: a record holding an `ArrayList` still shares the mutable list,
 the same trap as the C# `with` and the JS spread. The compact constructor's `List.copyOf` closes it:
 every `Cart` holds an unmodifiable list, so there's no path to mutation left. Java has no `with`
-expression yet, so each derivation is a small named method like `add` — wordier than C#, though the
+expression yet, so each derivation is a small named method like `add`, wordier than C#, though the
 name reads well. And there are no persistent collections in the JDK: each change copies the list, so
 pervasive immutability has a real cost; it's spent on shared state and value objects first.
 

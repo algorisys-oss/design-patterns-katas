@@ -17,7 +17,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 A **lens** bundles two functions that focus on one piece of a structure: a **getter** (`get(s) → a`)
 and an **immutable setter** (`set(s, a) → s'` that returns a new whole with that piece replaced). The
-pair is a first-class value you can pass around — and, crucially, **compose**: a lens onto `user`
+pair is a first-class value you can pass around and, crucially, **compose**: a lens onto `user`
 composed with a lens onto `address` composed with a lens onto `zip` gives one lens onto
 `user.address.zip`.
 
@@ -31,7 +31,7 @@ operation.
 Immutable updates to nested data are verbose and error-prone:
 
 - **Spread pyramids** — changing one deep field requires copying every level above it:
-  `{ ...s, a: { ...s.a, b: { ...s.a.b, c: newVal } } }` — tedious and easy to get wrong.
+  `{ ...s, a: { ...s.a, b: { ...s.a.b, c: newVal } } }`, tedious and easy to get wrong.
 - **Miss a level, mutate by accident** — forget to copy one intermediate object and you mutate shared
   state instead of producing a new value.
 - **No reuse** — the path-copy logic for `user.address.zip` is rewritten at every call site.
@@ -131,7 +131,7 @@ const s3 = over(zipL, (z) => z.trim(), state); // deep modify
 
 **🧠 Tradeoff** — A tiny `lens`/`compose`/`over` kit turns the spread pyramid into a reusable `zipL`
 you can `get`, `set`, and `over`. Libraries (Ramda's `lensPath`, Optics-ts, monocle-ts) provide typed,
-richer optics (prisms, traversals). It's genuinely useful for deep, often-updated immutable state —
+richer optics (prisms, traversals). It's genuinely useful for deep, often-updated immutable state,
 but for one or two levels the spread or `immer` is simpler, so reserve lenses for where the depth
 earns them.
 
@@ -205,7 +205,7 @@ s2 = set_zip_l(state, "94016")   # deep immutable set
 
 **🧠 Tradeoff** — Built on frozen dataclasses and `replace`, a small `lens`/`compose` gives Python
 composable focuses, and the `lenses` library provides a full, ergonomic implementation. It's a
-niche tool in Python — most code reaches for `replace` nesting or a helper — but for deep, immutable
+niche tool in Python (most code reaches for `replace` nesting or a helper) but for deep, immutable
 domain models updated in many places, lenses remove real repetition. For shallow data it's overkill.
 
 ### Elixir
@@ -235,7 +235,7 @@ update_in(state, zip_path, &String.trim/1)
 
 **🧠 Tradeoff** — Elixir builds the lens idea into the standard library: `get_in`/`put_in`/`update_in`
 plus the `Access` behaviour are composable path optics over immutable data, and an `Access` path is a
-reusable value — a lens by another name. You rarely need a lens *library* because the language covers
+reusable value, a lens by another name. You rarely need a lens *library* because the language covers
 the common case natively. For richer optics (prisms, traversals) libraries exist, but the everyday
 "focus and update nested immutable data" is first-class.
 
@@ -279,7 +279,7 @@ func Compose[S, B, A any](o Lens[S, B], i Lens[B, A]) Lens[S, A] {
 **🧠 Tradeoff** — Generics make a typed `Lens[S, A]` and `Compose` possible, but each leaf lens still
 needs a hand-written getter/setter (Go has no field-access reflection sugar), so the boilerplate is
 heavy. Idiomatic Go usually just copies structs by value at each level (the naive version, written
-carefully) rather than building optics — value semantics make shallow copies cheap, and Go culture
+carefully) rather than building optics: value semantics make shallow copies cheap, and Go culture
 favors explicitness over the abstraction. Lenses are a curiosity here more than a staple.
 
 ### CSharp
@@ -329,7 +329,7 @@ public sealed record Lens<S, A>(Func<S, A> Get, Func<S, A, S> Set)
 a deep path becomes one reusable, type-checked value. But be honest about the bar: records already
 give you `with`, so the "naive" nested version is what most C# teams write, and at two levels it's
 perfectly clear. Each leaf lens is hand-written boilerplate (no field-reference sugar), so the
-abstraction pays only when the same deep path is read and written across many call sites — otherwise
+abstraction pays only when the same deep path is read and written across many call sites; otherwise
 nested `with` wins.
 
 ### Rust
@@ -375,7 +375,7 @@ fn set_zip(s: &State, zip: &str) -> State {
 ```
 
 **🧠 Tradeoff** — Rust's ownership dissolves most of the lens's job. Clone-then-mutate gives exactly
-the guarantee a lens setter promises — a new value, the original untouched — because mutating an
+the guarantee a lens setter promises (a new value, the original untouched) because mutating an
 owned copy *cannot* reach the caller's `s1`, and the write path reads like the read path. The naive
 pyramid clones each level anyway, so it buys nothing over one `clone`. A real `Lens` type (get/set
 function pairs) is writable but fights the borrow checker over references versus values for little
@@ -431,8 +431,8 @@ pub fn main() void {
 whole nested struct in one assignment, the write path looks exactly like the read path, and the
 original is untouched because `next` is a genuinely separate value. There is no spread pyramid to
 escape. You *could* build a reusable focus with comptime field-name paths and `@field`, but it would
-be machinery in search of a problem — a lens abstraction isn't worth it in Zig. The one caveat: slice
-and pointer fields (the strings here) are shared views, so the value copy is shallow for them — fine
+be machinery in search of a problem: a lens abstraction isn't worth it in Zig. The one caveat: slice
+and pointer fields (the strings here) are shared views, so the value copy is shallow for them, which is fine
 while they're treated as read-only, `dupe` them explicitly if not.
 
 ### Java
@@ -489,9 +489,9 @@ record Lens<S, A>(Function<S, A> get, BiFunction<S, A, S> set) {
 
 **🧠 Tradeoff** — the `Lens` record is small and `then` chains the path-copy into one reusable,
 type-checked value. But be honest about what it's built from: Java has no `with` expression, so every
-leaf setter rebuilds its record by listing every field — `(u, a) -> new User(u.name(), a)` — which is
+leaf setter rebuilds its record by listing every field (`(u, a) -> new User(u.name(), a)`), which is
 exactly the boilerplate the lens was supposed to remove, now relocated. That's why Java teams
-overwhelmingly write the nested-rebuild helper (the naive version), name it `withZip`, and move on —
+overwhelmingly write the nested-rebuild helper (the naive version), name it `withZip`, and move on;
 at two or three levels it's perfectly clear. A lens type earns its keep only when the same deep path
 is read and written across many call sites, or when the focus must travel as a value. If derived
 record creation (`with`) lands in a future Java, plain rebuilds win even more often.
