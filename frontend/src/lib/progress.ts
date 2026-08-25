@@ -2,8 +2,8 @@
 //
 // Milestones are curated here; the 28 kata items are derived from the built content
 // (every kata that exists is "completed", so this can't drift from reality). A mutable
-// overrides layer (persisted to localStorage) lets callers mark items — e.g. flip
-// `static-deploy` to completed once the site is published — without editing this file.
+// overrides layer (persisted to localStorage) lets callers mark items, e.g. flip
+// `static-deploy` to completed once the site is published, without editing this file.
 //
 // Overrides persist in IndexedDB (via the Kv store), so a learner's marks survive
 // offline and the same store can later sync to the SkillzEngine LMS. Reads stay
@@ -38,7 +38,7 @@ export interface ProgressSummary {
   completed: number;
   inProgress: number;
   todo: number;
-  /** Percent of items completed, 0–100 (rounded). */
+  /** Percent of items completed, 0-100 (rounded). */
   percent: number;
 }
 
@@ -63,7 +63,7 @@ const MILESTONES: readonly ProgressItem[] = [
 ] as const;
 
 // ── Local overrides (persisted to IndexedDB) ───────────────────────────────
-// Each record is { status, updatedAt } keyed by item id — the timestamp gives a
+// Each record is { status, updatedAt } keyed by item id; the timestamp gives a
 // later LMS sync a last-write-wins signal.
 interface OverrideRecord {
   status: ProgressStatus;
@@ -86,7 +86,7 @@ const ready: Promise<void> = store
     }
   })
   .catch(() => {
-    /* storage unavailable — fall back to shipped statuses */
+    /* storage unavailable: fall back to shipped statuses */
   });
 
 // ── Item assembly ──────────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ function items(): ProgressItem[] {
 
 // ── Public API ─────────────────────────────────────────────────────────────
 export const Progress = {
-  /** Every tracked item — milestones followed by the 28 katas. */
+  /** Every tracked item: milestones followed by the 28 katas. */
   all(): ProgressItem[] {
     return items();
   },

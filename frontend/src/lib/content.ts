@@ -51,7 +51,7 @@ export function groupByCategory(list: Kata[]): [string, Kata[]][] {
     .filter(([, ks]) => ks.length > 0);
 }
 
-// Canonical reading order — same as the sidebar: category order, then sequence within.
+// Canonical reading order, same as the sidebar: category order, then sequence within.
 export const orderedKatas: Kata[] = categories.flatMap((c) =>
   katas.filter((k) => k.category === c).sort((a, b) => a.sequence - b.sequence),
 );

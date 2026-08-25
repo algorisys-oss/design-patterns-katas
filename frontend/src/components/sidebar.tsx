@@ -54,7 +54,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search patterns, tags…"
+          placeholder="Search patterns, tags..."
           className="pl-8 pr-8 font-mono text-[13px]"
           aria-label="Search katas"
         />

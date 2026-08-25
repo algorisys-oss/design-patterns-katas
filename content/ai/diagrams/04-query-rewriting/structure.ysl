@@ -1,5 +1,5 @@
 ---
-title: Query Rewriting — Structure
+title: Query Rewriting Structure
 layout: tree-down
 hSpacing: 55
 vSpacing: 120
@@ -13,5 +13,5 @@ fuse [class] "Fuse" { methods: "merge()" }
 
 raw -> rewriter
 history -> rewriter
-rewriter -> retriever "q1 … qn"
+rewriter -> retriever "q1 ... qn"
 retriever -> fuse "chunks"

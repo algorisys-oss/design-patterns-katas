@@ -2,7 +2,7 @@
 # Start the Design Patterns Katas app for local development.
 #
 # The site is content-first and static: the frontend compiles content/**/*.md
-# into JSON and serves everything itself — no backend required. The Go backend
+# into JSON and serves everything itself, with no backend required. The Go backend
 # (backend/) is optional; when it's built, pass --with-backend to run both.
 set -euo pipefail
 

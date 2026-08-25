@@ -37,7 +37,7 @@
   {
     "slug": "architectural",
     "label": "Architectural",
-    "blurb": "How whole systems are organized — layers, boundaries, and flow.",
+    "blurb": "How whole systems are organized: layers, boundaries, and flow.",
     "track": "modern",
     "gof": false
   },
@@ -79,7 +79,7 @@
   {
     "slug": "deployment",
     "label": "Deployment & DevOps",
-    "blurb": "Shipping and operating software — release, rollout, and ops.",
+    "blurb": "Shipping and operating software: release, rollout, and ops.",
     "track": "modern",
     "gof": false
   },
@@ -100,7 +100,7 @@
   {
     "slug": "playbooks",
     "label": "Playbooks",
-    "blurb": "Whole systems built from the patterns — low-code, workflow, multi-agent.",
+    "blurb": "Whole systems built from the patterns: low-code, workflow, multi-agent.",
     "track": "modern",
     "gof": false
   }

@@ -1,4 +1,4 @@
-// Learner-facing lesson completion — which katas *this reader* has finished.
+// Learner-facing lesson completion: which katas *this reader* has finished.
 //
 // Distinct from `KatasProgress` (build/authoring status): this is per-learner state,
 // toggled in the UI, persisted in IndexedDB (its own `lessons` store) so it works
@@ -20,7 +20,7 @@ interface LessonRecord {
 
 const store = createKvStore("skillz-katas", "lessons");
 
-// Immutable snapshot for useSyncExternalStore — its identity changes only on write.
+// Immutable snapshot for useSyncExternalStore: its identity changes only on write.
 let completed: ReadonlySet<string> = new Set<string>();
 const listeners = new Set<() => void>();
 
@@ -35,7 +35,7 @@ const ready: Promise<void> = store
     emit();
   })
   .catch(() => {
-    /* storage unavailable — start empty */
+    /* storage unavailable: start empty */
   });
 
 function setComplete(id: string, done: boolean, silent = false): void {
@@ -95,7 +95,7 @@ export const Lessons = {
     listeners.add(fn);
     return () => listeners.delete(fn);
   },
-  /** Current snapshot (stable identity between writes) — for useSyncExternalStore. */
+  /** Current snapshot (stable identity between writes), for useSyncExternalStore. */
   snapshot(): ReadonlySet<string> {
     return completed;
   },

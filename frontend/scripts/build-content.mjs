@@ -1,5 +1,5 @@
 // Compiles content/**/*.md into a single JSON file the React app imports.
-// Runs at `npm run content` (and before dev/build). No backend needed — this is
+// Runs at `npm run content` (and before dev/build). No backend needed; this is
 // what makes the site statically hostable.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, resolve, basename } from "node:path";
@@ -17,7 +17,7 @@ const CATEGORY_ORDER = JSON.parse(
   readFileSync(resolve(__dirname, "../src/lib/categories.json"), "utf8"),
 ).map((c) => c.slug);
 const LANG_ORDER = ["javascript", "node-js", "python", "elixir", "go", "java", "csharp", "rust", "zig"];
-// zig has no hljs grammar (11.x) — its fences fall through to highlightAuto.
+// zig has no hljs grammar (11.x), so its fences fall through to highlightAuto.
 const HLJS_ALIAS = { javascript: "javascript", js: "javascript", python: "python", elixir: "elixir", go: "go", java: "java", csharp: "csharp", cs: "csharp", rust: "rust" };
 
 // ---- markdown → HTML with syntax highlighting ----
@@ -109,7 +109,7 @@ function loadDiagram(file) {
     return null;
   }
   // Keep the intrinsic width/height (and viewBox) so CSS can bound the diagram by both
-  // dimensions without upscaling it — a tall, narrow diagram must not be blown up to
+  // dimensions without upscaling it: a tall, narrow diagram must not be blown up to
   // the full column width. Just tag it for styling.
   svg = svg.replace(/<svg([^>]*)>/, (_m, attrs) => {
     let a = attrs;
@@ -134,7 +134,7 @@ function walk(dir) {
 
 // Turn [[kata-id]] cross-references into clickable links to the target kata. The app is
 // hash-routed (#/kata/:id), so these work on any static host. An unknown id is left as raw
-// text — `node scripts/lint-content.mjs` fails on it.
+// text; `node scripts/lint-content.mjs` fails on it.
 function linkWikilinks(md, titleById) {
   return md.replace(/\[\[([a-z0-9-]+)\]\]/g, (m, id) => {
     const title = titleById.get(id);
@@ -155,8 +155,8 @@ function buildKata(file, titleById) {
     return { kind: "prose", id: slug(s.title), title: s.title, html: md(s.body) };
   });
 
-  // Wire the structure diagram in: append it to the Structure section, or — for the
-  // SOLID principles, which have no Structure heading — insert one right after the intro.
+  // Wire the structure diagram in: append it to the Structure section, or (for the
+  // SOLID principles, which have no Structure heading) insert one right after the intro.
   const figure = loadDiagram(file);
   if (figure) {
     const structure = blocks.find((b) => b.id === "structure" && b.kind === "prose");

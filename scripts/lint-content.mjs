@@ -1,6 +1,6 @@
 // Content linter for the kata catalog. Catches the drift the build silently tolerates:
-//   ERROR  — duplicate id, unknown category, dangling `related:` id, dangling [[wiki-link]]
-//   WARN   — languages/impl-tab mismatch, missing structure diagram
+//   ERROR: duplicate id, unknown category, dangling `related:` id, dangling [[wiki-link]]
+//   WARN:  languages/impl-tab mismatch, missing structure diagram
 //
 // Run from the repo root:  node scripts/lint-content.mjs   (exit 1 if any ERROR)
 //
@@ -31,7 +31,7 @@ function walk(dir) {
   return out;
 }
 
-// Minimal frontmatter reader — our YAML is flat scalars and inline [ ] arrays.
+// Minimal frontmatter reader: our YAML is flat scalars and inline [ ] arrays.
 function frontmatter(text) {
   const m = text.match(/^---\n([\s\S]*?)\n---/);
   const fm = m ? m[1] : "";
@@ -72,7 +72,7 @@ for (const file of files) {
   const tabs = implTabs(text);
   katas.push({ rel, fm, wikilinks, tabs });
 
-  // languages vs impl tabs — a mismatch means a stale tab or stale frontmatter.
+  // languages vs impl tabs: a mismatch means a stale tab or stale frontmatter.
   const langs = [...fm.languages].sort();
   const t = [...new Set(tabs)].sort();
   if (fm.kind === "playbook") {
@@ -81,12 +81,12 @@ for (const file of files) {
     warns.push(`${rel}: languages ${JSON.stringify(langs)} != impl tabs ${JSON.stringify(t)}`);
   }
 
-  // missing structure diagram (warning — diagrams are optional but encouraged)
+  // missing structure diagram (warning: diagrams are optional but encouraged)
   const svg = join(dirname(file), "diagrams", basename(file, ".md"), "structure.svg");
   if (!existsSync(svg)) warns.push(`${rel}: no structure diagram (${svg.replace(CONTENT + "/", "")})`);
 }
 
-// Dangling references — resolved after every id is known.
+// Dangling references: resolved after every id is known.
 const known = new Set(ids.keys());
 for (const { rel, fm, wikilinks } of katas) {
   for (const r of fm.related) if (!known.has(r)) errors.push(`${rel}: related id "${r}" does not exist`);

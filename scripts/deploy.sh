@@ -12,13 +12,13 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT/frontend"
 
-echo "▶ Building frontend (npm run build)…"
+echo "▶ Building frontend (npm run build)..."
 npm run build
 
 DIST="$ROOT/frontend/dist"
 [ -d "$DIST" ] || { echo "deploy: build produced no dist/ at $DIST" >&2; exit 1; }
 
-# GitHub Pages serves files literally — a leading-dot or missing file breaks SPA assets.
+# GitHub Pages serves files literally: a leading-dot or missing file breaks SPA assets.
 # `.nojekyll` disables Jekyll processing so paths like `assets/_*` are served as-is.
 touch "$DIST/.nojekyll"
 
@@ -30,7 +30,7 @@ else
   GH_PAGES=(npx --yes gh-pages)
 fi
 
-echo "▶ Publishing dist/ to the gh-pages branch…"
+echo "▶ Publishing dist/ to the gh-pages branch..."
 "${GH_PAGES[@]}" -d dist --dotfiles
 
 echo "✓ Published to GitHub Pages → https://algorisys-oss.github.io/design-patterns-katas/"

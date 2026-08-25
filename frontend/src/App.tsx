@@ -99,7 +99,7 @@ export default function App() {
 
   return (
     <div className={cn("grid min-h-screen grid-cols-1", !collapsed && "md:grid-cols-[264px_minmax(0,1fr)]")}>
-      {/* sidebar — sticky on desktop, drawer on mobile, collapsible on desktop */}
+      {/* sidebar: sticky on desktop, drawer on mobile, collapsible on desktop */}
       <aside
         className={cn(
           "sticky top-0 hidden h-screen border-r border-border bg-[color-mix(in_srgb,var(--background)_92%,var(--foreground)_3%)]",

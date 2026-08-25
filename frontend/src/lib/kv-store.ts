@@ -1,7 +1,7 @@
-// Tiny promise-based key–value store backed by IndexedDB, with a localStorage
+// Tiny promise-based key-value store backed by IndexedDB, with a localStorage
 // fallback for environments where IndexedDB is unavailable (SSR, some private-mode
-// browsers). Dependency-free and generic so other features — e.g. syncing learner
-// progress to the SkillzEngine LMS — can reuse the same store. Values are arbitrary
+// browsers). Dependency-free and generic so other features (e.g. syncing learner
+// progress to the SkillzEngine LMS) can reuse the same store. Values are arbitrary
 // JSON; keys are strings.
 
 export interface KvStore {
@@ -138,7 +138,7 @@ class LocalStore implements KvStore {
   }
 }
 
-/** Open a KV store — IndexedDB when available, else a localStorage-backed shim. */
+/** Open a KV store: IndexedDB when available, else a localStorage-backed shim. */
 export function createKvStore(dbName: string, storeName: string): KvStore {
   return idbAvailable() ? new IdbStore(dbName, storeName) : new LocalStore(`${dbName}:${storeName}`);
 }

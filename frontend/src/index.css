@@ -138,7 +138,7 @@ body {
 
 /* ---- structure diagrams (inline SVG, hand-drawn black strokes) ---- */
 /* The SVG is drawn with black strokes, so it always sits on a light "whiteboard"
-   panel — legible in both themes — while the frame border follows the palette. */
+   panel (legible in both themes) while the frame border follows the palette. */
 .structure-diagram {
   margin: 18px 0;
   padding: 20px 16px;

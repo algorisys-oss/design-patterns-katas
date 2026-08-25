@@ -25,7 +25,7 @@ npm run preview    # serve the built dist/
 `scripts/build-content.mjs` reads `../content/**/*.md`, parses frontmatter + sections,
 splits the Implementations section into per-language tab panels, highlights code with
 highlight.js, and writes `src/data/katas.json` (git-ignored, regenerated on every build).
-The app imports that JSON — so the site is fully **static** and needs no backend. The Go
+The app imports that JSON, so the site is fully **static** and needs no backend. The Go
 backend (`../backend`) is an optional alternative content source in dev.
 
 ## Search

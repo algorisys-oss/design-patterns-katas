@@ -31,7 +31,7 @@ export function KataView({ kata }: { kata: Kata }) {
     return Math.min(45_000, Math.max(8_000, Math.round((words / 200) * 60_000)));
   }, [kata.blocks]);
 
-  // Auto-mark complete when the learner reaches the end of the lesson — but only after
+  // Auto-mark complete when the learner reaches the end of the lesson, but only after
   // they've spent the estimated reading time (counted while the tab is visible) and are
   // still at the end. Scrolling very fast to the bottom therefore does NOT complete it.
   // Only ever marks (never un-marks), and only once per visit, so a manual un-mark sticks.
@@ -70,7 +70,7 @@ export function KataView({ kata }: { kata: Kata }) {
 
     const io = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) schedule();
-      else clearTimeout(timer); // left the end before earning it — cancel
+      else clearTimeout(timer); // left the end before earning it, so cancel
     });
     io.observe(sentinel);
 
@@ -105,7 +105,7 @@ export function KataView({ kata }: { kata: Kata }) {
             type="button"
             onClick={() => Lessons.toggle(kata.id)}
             aria-pressed={done}
-            title={done ? "Marked complete — click to undo" : "Mark this lesson complete"}
+            title={done ? "Marked complete. Click to undo" : "Mark this lesson complete"}
             className={cn(
               "ml-auto inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] transition-colors",
               done

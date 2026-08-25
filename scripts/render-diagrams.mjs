@@ -1,6 +1,6 @@
 // Renders diagram source files (Mermaid / YSL) to SVG using the yappy app headlessly.
 //
-// yappy has no Node-only SVG exporter — export needs the browser DOM — so we drive the
+// yappy has no Node-only SVG exporter (export needs the browser DOM) so we drive the
 // running app through Playwright: window.Yappy.importDSL(src) then window.Yappy.exportSVG().
 //
 // Prereq: yappy vite server running (default http://localhost:5173).
@@ -69,7 +69,7 @@ function addFooter(svg) {
   if (!tag || !vb) return svg;
   const minX = +vb[1], minY = +vb[2], w = +vb[3], h = +vb[4];
 
-  // A narrow diagram is thinner than the credit line — widen the canvas symmetrically so
+  // A narrow diagram is thinner than the credit line; widen the canvas symmetrically so
   // the footer isn't clipped, which also re-centers the diagram content. 0.55·fontSize is a
   // safe per-glyph width estimate for Handlee; err generous rather than clip.
   const footerW = FOOTER_TEXT.length * FOOTER_FONT * 0.55;
@@ -77,7 +77,7 @@ function addFooter(svg) {
   const newMinX = minX - (newW - w) / 2;
   const newH = h + FOOTER_H;
 
-  // yappy sets width/height equal to the viewBox extent — keep them in lockstep.
+  // yappy sets width/height equal to the viewBox extent; keep them in lockstep.
   const newTag = tag
     .replace(/viewBox="[^"]*"/, `viewBox="${newMinX} ${minY} ${newW} ${newH}"`)
     .replace(/width="[^"]*"/, `width="${newW}"`)

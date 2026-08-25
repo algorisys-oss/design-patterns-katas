@@ -2,9 +2,9 @@
 
 **[▶ Live site](https://algorisys-oss.github.io/design-patterns-katas/)** · **[★ Star on GitHub](https://github.com/algorisys-oss/design-patterns-katas)**
 
-A cross-language catalog of the patterns, principles, and playbooks that recur in real software —
+A cross-language catalog of the patterns, principles, and playbooks that recur in real software,
 taught once, language-agnostically, then shown side by side in **JavaScript, Python, Elixir, and
-Go** (with tool tabs for the ops patterns). The point isn't the syntax — it's watching the same
+Go** (with tool tabs for the ops patterns). The point isn't the syntax; it's watching the same
 idea take a different shape in a class-based language, a functional one, and a structurally typed
 one, and knowing *when not* to reach for it.
 
@@ -23,8 +23,8 @@ anti-patterns, and end-to-end system playbooks.
 | **Modern** | Concurrency (6) · Architectural (8) · Distributed & Cloud (8) · Messaging & Integration (6) · Data & Persistence (5) · Functional (6) · UI & Frontend (6) · Deployment & DevOps (6) · **AI & LLM Patterns (17)** · Anti-Patterns (5) · Playbooks (3) |
 
 Most katas teach the idea language-agnostically, then show four implementations behind a tab
-switcher — each with a **naive** version, the **idiomatic** version, and the **tradeoff** between
-them — plus real-world **applications** and how the idea shows up in modern low-code, workflow, and
+switcher, each with a **naive** version, the **idiomatic** version, and the **tradeoff** between
+them, plus real-world **applications** and how the idea shows up in modern low-code, workflow, and
 multi-agent systems.
 
 ### Lesson shapes
@@ -35,24 +35,24 @@ records which contract a lesson follows:
 | Kind | Shape | Implementations |
 |---|---|---|
 | **Pattern** | Intent → Problem → Structure → When → Trade-offs → Mistakes → Implementations → Applications → Related | 4 languages, naive → idiomatic → tradeoff |
-| **Principle** (SOLID) | The Principle → The Smell → Why It Matters → Benefits/Cautions → … | 4 languages, naive → idiomatic → note |
+| **Principle** (SOLID) | The Principle → The Smell → Why It Matters → Benefits/Cautions → ... | 4 languages, naive → idiomatic → note |
 | **Anti-pattern** | The Anti-Pattern → How It Happens → Why It Hurts → The Refactor → Warning Signs | anti-pattern → refactor |
 | **Ops** (deployment) | same skeleton as Pattern | tabs are **tools** (Kubernetes / Terraform / CI-CD / AWS) |
-| **Playbook** | Intent → The Shape → The Patterns You'll Reach For → How the Approach Changed → Pitfalls | none — a playbook *assembles* patterns |
+| **Playbook** | Intent → The Shape → The Patterns You'll Reach For → How the Approach Changed → Pitfalls | none: a playbook *assembles* patterns |
 
-The **playbooks** are the reverse of a kata: they start from a system — a JSON low-code framework, a
-workflow engine, a multi-agent runtime — and walk back to the patterns that build it.
+The **playbooks** are the reverse of a kata: they start from a system (a JSON low-code framework, a
+workflow engine, a multi-agent runtime) and walk back to the patterns that build it.
 
 ## Learning Paths
 
 With 104 lessons, start with a track rather than reading top to bottom:
 
-- **New to patterns** — Foundations/SOLID → Creational → Structural → Behavioral. The classic core.
-- **Backend architecture** — Layered → Hexagonal → Repository → Unit of Work → Dependency Injection → CQRS → Event Sourcing.
-- **Distributed resilience** — Timeout → Retry → Circuit Breaker → Bulkhead → Saga → Cache-Aside → Strangler Fig.
-- **Messaging & integration (EIP)** — Message Channel → Pipes and Filters → Content-Based Router → Splitter → Aggregator → Dead-Letter Queue.
-- **AI systems** — RAG → Chunking & Embedding → Hybrid Search → Structured Output → Prompt Chaining → ReAct → Tool Use → Reflection → Router → Memory → LLM-as-Judge → Guardrails → Semantic Caching → Model Cascade → Human-in-the-Loop.
-- **Capstones** — the three Playbooks tie families together into whole systems.
+- **New to patterns**: Foundations/SOLID → Creational → Structural → Behavioral. The classic core.
+- **Backend architecture**: Layered → Hexagonal → Repository → Unit of Work → Dependency Injection → CQRS → Event Sourcing.
+- **Distributed resilience**: Timeout → Retry → Circuit Breaker → Bulkhead → Saga → Cache-Aside → Strangler Fig.
+- **Messaging & integration (EIP)**: Message Channel → Pipes and Filters → Content-Based Router → Splitter → Aggregator → Dead-Letter Queue.
+- **AI systems**: RAG → Chunking & Embedding → Hybrid Search → Structured Output → Prompt Chaining → ReAct → Tool Use → Reflection → Router → Memory → LLM-as-Judge → Guardrails → Semantic Caching → Model Cascade → Human-in-the-Loop.
+- **Capstones**: the three Playbooks tie families together into whole systems.
 
 Cross-references between lessons are clickable; the "Related" links at the bottom of each kata are
 the intended way to wander.
@@ -65,15 +65,15 @@ Content-first. The site is a read-only kata browser (no code execution yet). See
 ## Tech Stack
 
 - **Frontend:** ReactJS + shadcn/ui + Tailwind CSS
-- **Backend:** Go (`net/http`, standard library only) — optional
+- **Backend:** Go (`net/http`, standard library only), optional
 - **Content:** Markdown + YAML frontmatter, compiled to static JSON at build time
 
 ## Hosting
 
 Runs two ways:
 
-1. **With the Go backend** — the API serves katas and the built frontend.
-2. **Fully static** — a build step compiles the markdown into JSON, so the React app deploys to
+1. **With the Go backend**: the API serves katas and the built frontend.
+2. **Fully static**: a build step compiles the markdown into JSON, so the React app deploys to
    GitHub Pages or Netlify with no backend.
 
 ## Project Structure
@@ -99,7 +99,7 @@ Read [CLAUDE.md](CLAUDE.md) for the kata schema and voice, and [LOOPS.md](LOOPS.
 engineering workflow. Pick the matching skeleton from [content/template.md](content/template.md)
 (pattern, principle, anti-pattern, ops, or playbook) to start a new lesson.
 
-Before committing content, run the linter — it fails on dangling `related:` ids, dangling
+Before committing content, run the linter; it fails on dangling `related:` ids, dangling
 `[[wiki-links]]`, unknown categories, and language/impl-tab mismatches:
 
 ```
