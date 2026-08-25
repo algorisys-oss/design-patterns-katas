@@ -5,7 +5,7 @@ sequence: 7
 title: Proxy
 also_known_as: [Surrogate]
 gof: true
-intent: "Stand in for another object to control access to it — lazily, remotely, or with guards."
+intent: "Stand in for another object to control access to it: lazily, remotely, or with guards."
 frequency: medium
 difficulty: intermediate
 tags: [structural, access-control, lazy-loading, caching, wrapper]
@@ -17,7 +17,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 Put a stand-in in front of a real object that shares its interface but controls access to it.
 The proxy can defer creating the real thing until it's needed (virtual), check permissions
-(protection), cache results, count calls, or talk to a remote object — all invisible to the
+(protection), cache results, count calls, or talk to a remote object, all invisible to the
 caller, who thinks it's talking to the real thing.
 
 ## The Problem
@@ -51,14 +51,14 @@ Key Components:
 ## Advantages and Disadvantages
 
 ### Advantages
-- Adds access control transparently — callers use the same interface.
+- Adds access control transparently: callers use the same interface.
 - Enables lazy loading, caching, and remote access without changing the real object.
 - Single Responsibility: the cross-cutting concern lives in the proxy.
 
 ### Disadvantages
 - Another indirection; a chatty proxy can hide latency.
 - A caching/lazy proxy adds state and lifecycle to reason about.
-- Overlaps in shape with Decorator — easy to conflate.
+- Overlaps in shape with Decorator, and the two are easy to conflate.
 
 ## Common Mistakes
 
@@ -118,7 +118,7 @@ gallery[0].display();  // only THIS image loads
 ```
 
 **🧠 Tradeoff** — The proxy shares `display()` so it's a drop-in for `HighResImage`, but loads
-lazily — a hundred proxies cost nothing until shown. JS also has a built-in `Proxy` object for
+lazily: a hundred proxies cost nothing until shown. JS also has a built-in `Proxy` object for
 intercepting property access (validation, reactivity); that's the same idea at the language
 level.
 
@@ -156,7 +156,7 @@ const users = new CachingUserRepo(new UserRepo(db));
 ```
 
 **🧠 Tradeoff** — The proxy shares `get(id)`, so it substitutes for the real repo while adding
-caching that callers never see — the same slot where an access-control or rate-limit proxy would
+caching that callers never see: the same slot where an access-control or rate-limit proxy would
 go. The hard part is invalidation: a TTL is the simple choice, but stale reads are possible, so tune
 the window or clear entries on write.
 
@@ -202,7 +202,7 @@ gallery = [ImageProxy(u) for u in urls]  # nothing loaded yet
 
 **🧠 Tradeoff** — The proxy matches `display()` and creates the real image on first use. Python
 can also do this with `functools.cached_property` for lazy attributes or `__getattr__` to forward
-arbitrary calls to a lazily-built subject — handy when the interface is large and you don't want
+arbitrary calls to a lazily-built subject, handy when the interface is large and you don't want
 to hand-forward every method.
 
 ### Elixir
@@ -246,8 +246,8 @@ gallery = Enum.map(urls, &ImageProxy.new/1)      # nothing loaded
 
 **🧠 Tradeoff** — With immutable data there's no in-place caching, so a lazy proxy returns the
 loaded value alongside its result and the caller keeps the updated struct. For transparent lazy
-state that persists across calls, back the proxy with a `GenServer` (or `Task`/`Agent`) instead
-— the process holds the loaded data.
+state that persists across calls, back the proxy with a `GenServer` (or `Task`/`Agent`) instead;
+the process holds the loaded data.
 
 ### Go
 
@@ -299,7 +299,7 @@ func (p *imageProxy) Display() string {
 ```
 
 **🧠 Tradeoff** — `imageProxy` and `highRes` both satisfy `Image`, so the proxy is a drop-in and
-callers hold `Image` without knowing which they have. The lazy field makes it stateful — guard
+callers hold `Image` without knowing which they have. The lazy field makes it stateful, so guard
 with a `sync.Once` or mutex if a proxy may be displayed from multiple goroutines.
 
 ### CSharp
@@ -345,8 +345,8 @@ public sealed class ImageProxy(string url) : IImage
 }
 ```
 
-**🧠 Tradeoff** — `Lazy<T>` owns the hard parts of the lazy slot — initialize once,
-thread-safe by default — so the proxy stays two lines. .NET also ships `DispatchProxy`,
+**🧠 Tradeoff** — `Lazy<T>` owns the hard parts of the lazy slot (initialize once,
+thread-safe by default), so the proxy stays two lines. .NET also ships `DispatchProxy`,
 which generates an interface implementation at runtime and funnels every call through one
 `Invoke`; that's the route for cross-cutting proxies (logging, retries) over wide
 interfaces. For one small interface, the hand-written wrapper is clearer and faster.
@@ -431,7 +431,7 @@ fn main() {
 **🧠 Tradeoff** — `OnceCell` is the lazy slot: it lets `display(&self)` fill the cache
 through a shared reference, no `&mut` needed, and `get_or_init` runs the load exactly
 once (use `OnceLock` when proxies cross threads). `Box<dyn Image>` keeps the proxy a
-drop-in next to real images. Rust's standard library is itself full of proxies — `Rc`,
+drop-in next to real images. Rust's standard library is itself full of proxies: `Rc`,
 `MutexGuard`, and every `Deref` impl stand in front of a value and govern access to it.
 
 ### Zig
@@ -510,7 +510,7 @@ pub fn main() !void {
 
 **🧠 Tradeoff** — The `?HighResImage` optional is Zig's lazy slot, and the error union
 makes the laziness honest: `display` can fail with a load error, so its signature says
-`!void` and callers `try` it — no invisible I/O behind an innocent-looking call, which is
+`!void` and callers `try` it: no invisible I/O behind an innocent-looking call, which is
 exactly what the other languages' proxies hide. When callers must hold real-or-proxy
 behind one type, reach for a tagged union with an exhaustive `switch` (closed set), or
 the `*anyopaque` + function-pointer vtable when the set must stay open.
@@ -585,7 +585,7 @@ public class Demo {
 field behind the shared `Image` type, nothing more (make the null-check a `synchronized` block
 or hold the real image in a `Supplier`-based memoizer if proxies cross threads). Java also
 ships the dynamic route: `java.lang.reflect.Proxy` fabricates an implementation of any
-interface at runtime and funnels every call through one `InvocationHandler` — it's how Spring
+interface at runtime and funnels every call through one `InvocationHandler`. It's how Spring
 AOP and Hibernate lazy entities proxy wide interfaces without writing a forwarding method per
 call. Reach for it when the concern is cross-cutting; the reflection toll and the debugging fog
 aren't worth it for a two-method interface.

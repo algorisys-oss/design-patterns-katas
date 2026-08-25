@@ -17,7 +17,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 Compose objects into trees and let a leaf and a branch respond to the same operation. A file and
 a folder both have a `size()`; the client calls `size()` without caring which it holds, and a
-folder computes its size by summing its children — recursion the client never sees.
+folder computes its size by summing its children: recursion the client never sees.
 
 ## The Problem
 
@@ -28,7 +28,7 @@ or a folder?" and recurse by hand.
 ```
 function totalSize(node) {
   if (node.isFile) return node.size;
-  // else it's a folder — loop, recurse, sum… at every call site
+  // else it's a folder — loop, recurse, sum... at every call site
   return node.children.reduce((s, c) => s + totalSize(c), 0);
 }
 ```
@@ -47,20 +47,20 @@ Key Components:
 
 ## When to Use
 
-- You have a part-whole hierarchy (trees) — files, UI, org charts, expressions.
+- You have a part-whole hierarchy (trees): files, UI, org charts, expressions.
 - You want clients to treat single items and groups uniformly.
 - Operations should recurse through the structure without the client managing it.
 
 ## Advantages and Disadvantages
 
 ### Advantages
-- Uniform treatment of leaves and composites — no type checks at call sites.
+- Uniform treatment of leaves and composites: no type checks at call sites.
 - Recursion lives in the structure, not the client.
 - Easy to add new component types.
 
 ### Disadvantages
 - The shared interface can get too general (leaf-only ops that composites must stub).
-- Type safety loosens — an `add(child)` on a leaf has to error or be absent.
+- Type safety loosens: an `add(child)` on a leaf has to error or be absent.
 - Very deep trees can be costly to traverse.
 
 ## Common Mistakes
@@ -121,7 +121,7 @@ root.totalSize();   // 150 — client never checks types or recurses
 
 **🧠 Tradeoff** — Both types expose `totalSize()`, so the client calls it uniformly and the
 folder handles recursion. Child-management (`add`) lives only on `Folder`, so a `File` can't
-accidentally hold children — the safe placement, at the cost of needing a `Folder` reference to
+accidentally hold children: the safe placement, at the cost of needing a `Folder` reference to
 build the tree.
 
 ### Node.js
@@ -164,7 +164,7 @@ await deploy.run(); // client calls run() once; nesting handles itself
 
 **🧠 Tradeoff** — Both `Step` and `Pipeline` expose `run()`, so a pipeline can contain steps or
 other pipelines to any depth and the caller never inspects types. Sequencing lives in `Pipeline`; a
-`ParallelPipeline` using `Promise.all` would slot in the same way — the uniform tree is the point.
+`ParallelPipeline` using `Promise.all` would slot in the same way; the uniform tree is the point.
 
 ### Python
 
@@ -244,8 +244,8 @@ tree =
 FS.total_size(tree)   # 150
 ```
 
-**🧠 Tradeoff** — Functional languages model Composite as an algebraic data type — a tree of
-tagged tuples — and one multi-clause function pattern-matches leaf vs branch, recursing on the
+**🧠 Tradeoff** — Functional languages model Composite as an algebraic data type (a tree of
+tagged tuples) and one multi-clause function pattern-matches leaf vs branch, recursing on the
 branch. There are no objects sharing an interface; the "uniform treatment" is that a single
 `total_size/1` accepts either shape. This is often clearer than the OO version for pure data.
 
@@ -302,7 +302,7 @@ func (f *Folder) TotalSize() int {
 
 **🧠 Tradeoff** — `File` and `*Folder` both satisfy `Node`, so a `[]Node` mixes leaves and
 branches and the client calls `TotalSize()` blind to which is which. `Add` lives on `*Folder`
-only, keeping child-management off leaves — Go's implicit interfaces make the uniform treatment
+only, keeping child-management off leaves; Go's implicit interfaces make the uniform treatment
 fall out naturally.
 
 ### CSharp
@@ -360,7 +360,7 @@ public sealed class Folder(string name) : INode
 ```
 
 **🧠 Tradeoff** — `INode` plus LINQ's `Sum` keeps the recursion a one-expression method, and
-the leaf is a positional record. `Add` stays on `Folder`, so a `File` can't hold children —
+the leaf is a positional record. `Add` stays on `Folder`, so a `File` can't hold children:
 the same safe placement as the JS version, now enforced by the compiler rather than by
 convention.
 
@@ -417,8 +417,8 @@ fn main() {
 
 **🧠 Tradeoff** — the enum is the honest Rust form here: the node set is closed, `match` is
 exhaustive, and `Vec<Node>` gives the recursion its indirection (a direct `Node` field would
-need `Box<Node>`). The trait-object alternative — a `Node` trait with `Vec<Box<dyn Node>>`
-children — buys an open set (new node kinds without touching this file) at the cost of a heap
+need `Box<Node>`). The trait-object alternative (a `Node` trait with `Vec<Box<dyn Node>>`
+children) buys an open set (new node kinds without touching this file) at the cost of a heap
 allocation and dynamic dispatch per node. Reach for `dyn` only when the set must stay open.
 
 ### Zig
@@ -484,7 +484,7 @@ pub fn main() !void {
 
 **🧠 Tradeoff** — a tagged union with an exhaustive `switch` is idiomatic Zig for a closed
 node set: zero indirection, and the compiler flags any unhandled kind. What Zig adds is
-honesty about memory — a tree owns heap-allocated child slices, so building one takes an
+honesty about memory: a tree owns heap-allocated child slices, so building one takes an
 explicit allocator and freeing is your job (`defer`, or an arena for whole-tree cleanup).
 An open node set would need the vtable idiom; for pure data like this, the union is the
 right call.
@@ -549,7 +549,7 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — Swing carried this pattern for decades: `Container` is a `Component` that
-holds components, so panels nest in panels. The modern trim is visible above — the leaf is a
+holds components, so panels nest in panels. The modern trim is visible above: the leaf is a
 record and the recursion is a stream `sum()`. When the node set is closed, sealed types offer
 an alternative shape: `sealed interface Node permits File, Folder` plus a pattern-matching
 `switch` moves the operation out of the nodes, enum-style, and the compiler checks

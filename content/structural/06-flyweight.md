@@ -16,8 +16,8 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ## Intent
 
 When you need a huge number of similar objects, stop duplicating the parts they have in common.
-Flyweight splits each object's state into **intrinsic** (shared, unchanging — a glyph's font and
-shape) and **extrinsic** (per-instance — its position on the page), and shares one intrinsic
+Flyweight splits each object's state into **intrinsic** (shared, unchanging: a glyph's font and
+shape) and **extrinsic** (per-instance: its position on the page), and shares one intrinsic
 object across all instances.
 
 ## The Problem
@@ -58,7 +58,7 @@ Key Components:
 ### Disadvantages
 - Complexity: you must separate intrinsic from extrinsic state carefully.
 - Trades memory for CPU (recomputing/passing extrinsic state each call).
-- Premature use is a classic over-optimization — profile first.
+- Premature use is a classic over-optimization; profile first.
 
 ## Common Mistakes
 
@@ -71,7 +71,7 @@ Key Components:
 
 - Flyweight = share the intrinsic, pass in the extrinsic, cache via a factory.
 - Flyweights must be immutable to share safely.
-- It's a memory optimization — measure before reaching for it.
+- It's a memory optimization, so measure before reaching for it.
 
 ## Implementations
 
@@ -120,7 +120,7 @@ for (let i = 0; i < 1_000_000; i++) {
 
 **🧠 Tradeoff** — One `TreeType` per (name,color) is shared by a million trees, so the heavy
 texture exists once instead of a million times; each tree keeps only its `x,y` and a reference.
-The flyweight must stay immutable — mutating the shared `TreeType` would change every tree at
+The flyweight must stay immutable: mutating the shared `TreeType` would change every tree at
 once.
 
 ### Node.js
@@ -154,7 +154,7 @@ function validate(schema, payload) {
 ```
 
 **🧠 Tradeoff** — One compiled validator per schema is shared across every request that uses it, so
-the expensive compile happens once instead of per call — the same trick backs prepared-statement
+the expensive compile happens once instead of per call; the same trick backs prepared-statement
 caches and compiled-regex reuse. The shared object must stay immutable, and watch the cache key: an
 unbounded map keyed by dynamic schemas is a memory leak, so bound it or key by a stable id.
 
@@ -338,7 +338,7 @@ public static class TreeTypes
 ```
 
 **🧠 Tradeoff** — `GetOrAdd` makes the factory thread-safe in one line, and a `record`
-makes the flyweight immutable by default — `with` expressions copy instead of mutating,
+makes the flyweight immutable by default: `with` expressions copy instead of mutating,
 so the shared-state bug is hard to even write. The runtime plays the same trick itself:
 `string.Intern` is a flyweight factory for strings. Bound the cache if the key space is
 open-ended, or it becomes a leak.
@@ -418,7 +418,7 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — `Box::leak` is the honest form for flyweights that live as long as the
-process: every tree holds a plain `&'static TreeType` — no reference counting, no
+process: every tree holds a plain `&'static TreeType`, with no reference counting and no
 lifetime plumbing. And where other languages ask for discipline, Rust enforces the rule:
 a shared `&T` cannot be mutated, so "corrupt every oak at once" doesn't compile. If the
 flyweights must ever be dropped, swap `&'static` for `Rc` (or `Arc` across threads) and
@@ -511,10 +511,10 @@ pub fn main() !void {
 ```
 
 **🧠 Tradeoff** — The explicit allocator is the point: Flyweight is a memory pattern, and
-Zig makes you look at every allocation it saves. Sharing is `*const TreeType` — read-only
+Zig makes you look at every allocation it saves. Sharing is `*const TreeType`, read-only
 at the type level. The subtle part is ownership of the interned keys: a cache hit must
 free its duplicate key, bookkeeping that GC languages hide. Back the factory with a
-`std.heap.ArenaAllocator` and the whole cache — keys, structs, textures — frees in one
+`std.heap.ArenaAllocator` and the whole cache (keys, structs, textures) frees in one
 `deinit`.
 
 ### Java
@@ -573,11 +573,11 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — the JDK runs this pattern under your feet: `Integer.valueOf` returns
-cached instances for -128..127, and `String.intern()` is a flyweight factory for strings —
+cached instances for -128..127, and `String.intern()` is a flyweight factory for strings;
 that's why `Integer.valueOf(100) == Integer.valueOf(100)` is true and `new Integer(100)`
 was deprecated into removal. Here, `computeIfAbsent` on a `ConcurrentHashMap` is the whole
 thread-safe factory, and a record makes the flyweight immutable so sharing is safe by
-construction. One caveat records don't fix: the `byte[]` inside is still mutable — wrap it
+construction. One caveat records don't fix: the `byte[]` inside is still mutable, so wrap it
 or copy on the way out if callers can't be trusted. Bound the cache if the key space is
 open-ended.
 

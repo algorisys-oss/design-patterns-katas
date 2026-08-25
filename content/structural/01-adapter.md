@@ -16,14 +16,14 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ## Intent
 
 Wrap an object so its interface matches what the caller expects. The adapter translates between
-two shapes that were designed apart — a legacy API and your new code, a third-party SDK and your
-domain — without changing either side.
+two shapes that were designed apart (a legacy API and your new code, a third-party SDK and your
+domain) without changing either side.
 
 ## The Problem
 
 Your checkout code calls `pay(amountInDollars)`. You integrate Stripe, whose SDK exposes
 `charge(cents)`. The signatures and units don't match, so either you scatter conversion logic at
-every call site, or you edit your checkout to speak Stripe — coupling it to one vendor.
+every call site, or you edit your checkout to speak Stripe, coupling it to one vendor.
 
 ```
 // your code expects:  gateway.pay(50.0)
@@ -112,7 +112,7 @@ const checkout = new Checkout(new StripeAdapter(stripe));
 ```
 
 **🧠 Tradeoff** — The adapter centralizes the name and unit translation, so `Checkout` depends
-only on `pay(dollars)` and never sees Stripe. The cost is one wrapper class per vendor — cheap,
+only on `pay(dollars)` and never sees Stripe. The cost is one wrapper class per vendor: cheap,
 and it's exactly where a vendor swap is isolated.
 
 ### Node.js
@@ -158,7 +158,7 @@ const uploader = new Uploader(
 
 **🧠 Tradeoff** — Each adapter absorbs one SDK's method names and argument shapes, so `Uploader`
 never sees S3 and local disk becomes a drop-in for tests. The cost is one wrapper per backend.
-Node's own `util.promisify` is this pattern at the language level — an adapter from callback style
+Node's own `util.promisify` is this pattern at the language level, an adapter from callback style
 to promises.
 
 ### Python
@@ -282,7 +282,7 @@ func (c Checkout) Buy(dollars float64) error { return c.Gateway.Pay(dollars) }
 ```
 
 **🧠 Tradeoff** — `StripeAdapter` satisfies `Gateway` implicitly by having `Pay`, so `Checkout`
-never imports Stripe. Go's structural interfaces make adapters especially natural — you can even
+never imports Stripe. Go's structural interfaces make adapters especially natural; you can even
 adapt with a function type when the target has a single method. One adapter per foreign client
 keeps the translation contained.
 
@@ -333,7 +333,7 @@ public sealed class Checkout(IGateway gateway)
 
 **🧠 Tradeoff** — `IGateway` is checked at compile time, so `Checkout` can't quietly depend on
 a Stripe-only member; a vendor swap is one new adapter class. When the target has a single
-method, modern C# can shrink the adapter to a `Func<decimal, string>` — an inline lambda doing
+method, modern C# can shrink the adapter to a `Func<decimal, string>`, an inline lambda doing
 the same translation. The class earns its place once the adapter carries config or a second method.
 
 ### Rust
@@ -401,7 +401,7 @@ fn main() {
 **🧠 Tradeoff** — the adapter is a thin wrapper struct plus one `impl` — Rust's everyday
 newtype habit, so the pattern feels native. `Checkout<G: Gateway>` monomorphizes: zero
 dispatch cost, but the vendor is fixed at compile time. Choose `Box<dyn Gateway>` instead
-when the gateway is picked at runtime (config, feature flags) — Rust makes you spell out
+when the gateway is picked at runtime (config, feature flags). Rust makes you spell out
 the choice that Go's interface values hide.
 
 ### Zig
@@ -532,7 +532,7 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — the classical form fits Java with no translation: interface, wrapper class,
-constructor injection. The standard library is full of it — `InputStreamReader` is an adapter
+constructor injection. The standard library is full of it: `InputStreamReader` is an adapter
 from bytes to characters. Since `Gateway` has one method, it's a functional interface: a lambda
 `dollars -> stripe.charge((int) Math.round(dollars * 100))` is the whole adapter. Write the
 class when the adapter carries config or a second method; otherwise the lambda is the modern

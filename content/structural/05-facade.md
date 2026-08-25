@@ -22,7 +22,7 @@ inventory, payment, and shipping services in the right order, so a caller says
 ## The Problem
 
 Placing an order means checking inventory, charging a card, creating a shipment, and sending a
-confirmation — four services, in a specific sequence, with error handling between them. Every
+confirmation: four services, in a specific sequence, with error handling between them. Every
 caller that needs to place an order repeats this dance and couples itself to all four.
 
 ```
@@ -53,12 +53,12 @@ Key Components:
 
 ### Advantages
 - Callers get one simple call instead of orchestrating many objects.
-- Decouples clients from subsystem internals — internals can change freely.
+- Decouples clients from subsystem internals, which can then change freely.
 - A natural seam for a layer boundary.
 
 ### Disadvantages
 - The facade can grow into a god object if it absorbs too much.
-- It's a convenience layer, not a restriction — subsystems stay accessible.
+- It's a convenience layer, not a restriction: subsystems stay accessible.
 - Another layer to keep in sync as subsystems evolve.
 
 ## Common Mistakes
@@ -73,7 +73,7 @@ Key Components:
 
 - Facade = one simple entry point over a complex subsystem.
 - It coordinates and simplifies; it doesn't add behavior or restrict access.
-- Keep it thin — orchestration, not business rules.
+- Keep it thin: orchestration, not business rules.
 
 ## Implementations
 
@@ -118,8 +118,8 @@ orders.checkout(order);   // callers know only this
 ```
 
 **🧠 Tradeoff** — The facade centralizes the orchestration and the subsystem dependencies, so
-callers depend on `checkout()` alone. It doesn't lock the subsystems away — advanced code can
-still use them directly — which keeps the facade a convenience, not a cage.
+callers depend on `checkout()` alone. It doesn't lock the subsystems away (advanced code can
+still use them directly), which keeps the facade a convenience, not a cage.
 
 ### Node.js
 
@@ -161,7 +161,7 @@ app.post("/signup", async (req, res) => res.json(await accounts.signup(req.body)
 
 **🧠 Tradeoff** — The controller now depends on `signup()` alone; the facade owns the service wiring
 and the order of operations, which is where it belongs and where it can be tested. The facade
-doesn't seal the services off — a background job can still call `mailer` directly — so it stays a
+doesn't seal the services off (a background job can still call `mailer` directly), so it stays a
 convenience, not a wall.
 
 ### Python
@@ -202,7 +202,7 @@ orders.checkout(order)
 
 **🧠 Tradeoff** — A plain class holding its subsystems is the whole pattern; injecting them (over
 importing globals) keeps the facade testable. Python often expresses a lightweight facade as a
-single module-level function too — reach for a class when the coordinator carries dependencies.
+single module-level function too; reach for a class when the coordinator carries dependencies.
 
 ### Elixir
 
@@ -242,7 +242,7 @@ Orders.checkout(order)
 
 **🧠 Tradeoff** — Elixir/Phoenix names this pattern outright: a *context* module is a facade over
 a group of related functions and schemas. The `with` chain adds honest error handling to the
-orchestration — any failing step short-circuits with its error tuple, which the flag-free naive
+orchestration: any failing step short-circuits with its error tuple, which the flag-free naive
 version lacked.
 
 ### Go
@@ -338,7 +338,7 @@ public sealed class OrderFacade(
 
 **🧠 Tradeoff** — This is the shape ASP.NET calls an application service: constructor
 injection hands the facade its subsystems, and the DI container wires it once at startup.
-Taking interfaces (not concrete classes) keeps it fake-able in tests. Keep it thin — the
+Taking interfaces (not concrete classes) keeps it fake-able in tests. Keep it thin: the
 moment `Checkout` starts making business decisions it stops being a facade and starts
 being the whole app.
 
@@ -393,8 +393,8 @@ impl OrderFacade {
 **🧠 Tradeoff** — A struct that owns its subsystems is the whole pattern, and the `?`
 chain is the orchestration: any failing step returns early with its error, much like
 Elixir's `with`. Concrete field types are the simplest form. When tests need fakes, make
-the facade generic over its subsystems (`OrderFacade<I: Inventory, …>`, monomorphized)
-or hold `Box<dyn …>` fields (runtime dispatch) — but don't reach for traits until a
+the facade generic over its subsystems (`OrderFacade<I: Inventory, ...>`, monomorphized)
+or hold `Box<dyn ...>` fields (runtime dispatch), but don't reach for traits until a
 second implementation actually exists.
 
 ### Zig
@@ -446,8 +446,8 @@ const OrderFacade = struct {
 **🧠 Tradeoff** — Facade is a pattern Zig does with no machinery at all: a struct of
 structs and one method. `try` short-circuits each failing step, so error handling lives
 in one place and callers see an honest `!Result` signature. If tests need to swap a
-subsystem, make the facade generic over the subsystem types with comptime parameters —
-static polymorphism, no vtables — rather than inventing an interface Zig doesn't have.
+subsystem, make the facade generic over the subsystem types with comptime parameters
+(static polymorphism, no vtables) rather than inventing an interface Zig doesn't have.
 
 ### Java
 
@@ -506,8 +506,8 @@ public class Demo {
 
 **🧠 Tradeoff** — this is the shape Spring calls a service: constructor injection hands the
 facade its subsystems, wired once at startup, and taking interfaces keeps it mockable in
-tests. The constructor boilerplate is the visible cost — a `record OrderFacade(Inventory
-inventory, …)` erases it when the facade holds nothing but final fields. Same warning as
+tests. The constructor boilerplate is the visible cost: a `record OrderFacade(Inventory
+inventory, ...)` erases it when the facade holds nothing but final fields. Same warning as
 everywhere else: the moment `checkout` starts making business decisions it stops being a
 facade and starts being the whole app.
 

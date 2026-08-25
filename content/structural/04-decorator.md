@@ -17,19 +17,19 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 Wrap an object in another object that adds behavior, keeping the same interface, so you can
 stack features one layer at a time. Where subclassing bakes a combination in at compile time,
-decorators compose behaviors at runtime — logging *and* caching *and* retry, in any order.
+decorators compose behaviors at runtime: logging *and* caching *and* retry, in any order.
 
 ## The Problem
 
 You have a data source with a `read()` method. You want optional logging, caching, and retry.
 Subclassing every combination explodes: `LoggingCachingSource`, `CachingRetrySource`,
-`LoggingCachingRetrySource`… A flag-laden class becomes a tangle of `if this.logging` checks.
+`LoggingCachingRetrySource`... A flag-laden class becomes a tangle of `if this.logging` checks.
 
 ```
 class Source {
   read() {
-    if (this.logging) { /* … */ }
-    if (this.caching) { /* … */ }   // one class trying to be every combination
+    if (this.logging) { /* ... */ }
+    if (this.caching) { /* ... */ }   // one class trying to be every combination
   }
 }
 ```
@@ -136,7 +136,7 @@ source.read("a");
 
 **🧠 Tradeoff** — Each decorator is a single-responsibility wrapper sharing `read(key)`, so
 features compose at runtime and new ones don't touch existing classes. The price is a chain of
-objects and order sensitivity — here logging sees every call, caching short-circuits repeats.
+objects and order sensitivity: here logging sees every call, caching short-circuits repeats.
 
 ### Node.js
 
@@ -151,7 +151,7 @@ class HttpClient {
   async request(opts) {
     if (this.log) console.log(opts.method, opts.url);
     if (this.token) opts.headers = { ...opts.headers, authorization: `Bearer ${this.token}` };
-    // retry logic tangled in here too…
+    // retry logic tangled in here too...
     return fetch(opts.url, opts);
   }
 }
@@ -188,7 +188,7 @@ client.request({ url: "/orders", method: "GET" });
 ```
 
 **🧠 Tradeoff** — Each wrapper adds one concern and shares `request(opts)`, so features compose at
-runtime and order is meaningful — here retry wraps auth, so every retry re-sends the token. This is
+runtime and order is meaningful: here retry wraps auth, so every retry re-sends the token. This is
 the object cousin of Express middleware; when the concerns are purely functional, a middleware chain
 (Chain of Responsibility) is the lighter expression of the same idea.
 
@@ -241,7 +241,7 @@ source = LoggingSource(CachingSource(DataSource()))
 ```
 
 **🧠 Tradeoff** — This is the object-decorator form. Python also has *function* decorators
-(`@lru_cache`, `@retry`) — the same wrap-and-forward idea applied to callables with `@` syntax.
+(`@lru_cache`, `@retry`), the same wrap-and-forward idea applied to callables with `@` syntax.
 Use function decorators for cross-cutting concerns on functions; use object decorators when the
 thing you're layering is a stateful component.
 
@@ -293,7 +293,7 @@ read.("a")
 ```
 
 **🧠 Tradeoff** — In Elixir a decorator is a higher-order function wrapping another function, and
-the pipe composes them — no wrapper objects at all. Stateful decoration (caching) needs a process
+the pipe composes them: no wrapper objects at all. Stateful decoration (caching) needs a process
 to hold the state, since functions are pure; that's the one place the functional form costs more
 than an object field.
 
@@ -515,7 +515,7 @@ fn main() {
 
 **🧠 Tradeoff** — `Box<dyn Source>` lets decorators nest to any depth chosen at runtime, one
 heap allocation per layer; a closed wrapper set could use an enum instead. Note the signature:
-`read` takes `&mut self` because caching genuinely mutates — Rust pushes the hidden state into
+`read` takes `&mut self` because caching genuinely mutates; Rust pushes the hidden state into
 the contract, where Go tucks it behind a pointer receiver. If callers need `&self`, wrap the
 cache in `RefCell` (or `Mutex` across threads) and accept the runtime borrow check.
 
@@ -629,7 +629,7 @@ pub fn main() !void {
 is the two-field vtable (`*anyopaque` context + function pointer), the same shape as
 `std.mem.Allocator`. The allocator is explicit because building and caching values allocates;
 the arena turns cleanup into one `defer`. If the wrapper set is closed, a tagged union with a
-`switch` inside `read` drops the indirection — the vtable pays off only when new decorators
+`switch` inside `read` drops the indirection; the vtable pays off only when new decorators
 arrive from outside.
 
 ### Java
@@ -708,10 +708,10 @@ public class Demo {
 
 **🧠 Tradeoff** — `java.io` IS this pattern: `new BufferedInputStream(new
 GZIPInputStream(new FileInputStream(f)))` is a decorator stack, and it has shipped in the
-standard library since 1.0 — Java programmers use Decorator daily without naming it. The form
+standard library since 1.0, so Java programmers use Decorator daily without naming it. The form
 above is the same idea for our source: one concern per wrapper, order chosen at composition
 time, `computeIfAbsent` with a method reference doing the cache-or-forward in one line. The
-known cost carries over from the streams too — deep stacks are awkward to unwind, and you close
+known cost carries over from the streams too: deep stacks are awkward to unwind, and you close
 the outermost object trusting it to cascade.
 
 ## Applications
