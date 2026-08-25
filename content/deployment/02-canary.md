@@ -5,7 +5,7 @@ sequence: 2
 title: Canary Release
 also_known_as: [Canary Deployment, Progressive Delivery]
 gof: false
-intent: "Roll a new version out to a small slice of traffic first, watch its metrics, and only widen the rollout if it's healthy — limiting the blast radius of a bad release."
+intent: "Roll a new version out to a small slice of traffic first, watch its metrics, and only widen the rollout if it's healthy, limiting the blast radius of a bad release."
 frequency: high
 difficulty: intermediate
 tags: [deployment, devops, progressive-delivery, risk, observability]
@@ -15,13 +15,13 @@ languages: [kubernetes, service-mesh, terraform, ci-cd]
 
 ## Intent
 
-Release the new version to a **small percentage** of traffic — 1%, 5%, 10% — while everyone else stays on
+Release the new version to a **small percentage** of traffic (1%, 5%, 10%) while everyone else stays on
 the stable version. Watch the canary's error rate, latency, and business metrics. If it looks healthy,
 progressively increase its share (10% → 25% → 50% → 100%); if it degrades, route everyone back to stable.
 
 The name comes from "canary in a coal mine": the small exposed group is the early-warning system. A bad
 release harms a fraction of users for a short time instead of everyone at once, and you catch problems with
-real production traffic — the load, data, and edge cases no staging environment reproduces — before they're
+real production traffic (the load, data, and edge cases no staging environment reproduces) before they're
 universal.
 
 ## The Problem
@@ -87,7 +87,7 @@ Router / Mesh ───────┤
 ## Key Takeaways
 
 - Shift a small % to the new version, watch its metrics, then widen or roll back.
-- It limits blast radius and validates against real traffic — safer than all-at-once.
+- It limits blast radius and validates against real traffic, safer than all-at-once.
 - Requires good observability and clear, ideally automated, promote/rollback criteria.
 - Two versions coexist, so ensure schema/API compatibility across the rollout.
 
@@ -126,7 +126,7 @@ spec:
 
 **🧠 Tradeoff** — Argo Rollouts (or Flagger) turns canary into a declarative, automated flow: weighted
 steps, pauses to observe, and `analysis` templates that query Prometheus and auto-rollback on threshold
-breach — progressive delivery without hand-driving `kubectl`. The cost is running the controller and
+breach: progressive delivery without hand-driving `kubectl`. The cost is running the controller and
 writing trustworthy analysis metrics, plus the two-version coexistence constraints; the payoff is
 metric-gated releases you don't babysit.
 
@@ -159,7 +159,7 @@ spec:
 **🧠 Tradeoff** — A service mesh (Istio, Linkerd) gives *precise*, request-level weighted routing
 independent of replica counts, plus header-based routing (send employees or a beta cohort to the canary
 first) and rich mesh metrics to judge health. It's the most flexible canary substrate. The cost is running
-the mesh — real operational weight — which is only justified if you're already using it or need its
+the mesh, which is real operational weight and only justified if you're already using it or need its
 traffic-management and observability.
 
 ### Terraform
@@ -187,7 +187,7 @@ resource "aws_lb_listener_rule" "canary" {
 ```
 
 **🧠 Tradeoff** — ALB weighted target groups (declared in Terraform) express canary as a `canary_weight`
-you ramp with reviewed `apply`s — versioned, auditable traffic shifts, and rollback is applying weight 0.
+you ramp with reviewed `apply`s: versioned, auditable traffic shifts, and rollback is applying weight 0.
 It's coarser and slower than a mesh (apply per step), but needs no extra infrastructure beyond the load
 balancer. Pair it with CloudWatch alarms for the analysis half; Terraform handles the traffic weighting.
 
@@ -215,8 +215,8 @@ steps:
 
 **🧠 Tradeoff** — A pipeline that ramps weight, waits, and *gates* each promotion on a metric check (query
 Prometheus/Datadog, fail the job to trigger rollback) implements canary at the CI/CD layer over whatever
-router you use. It keeps the logic visible and toolable. The critical piece is the `wait-and-check` — a
-real, trustworthy analysis, not a fixed sleep — because the whole rollout's safety rides on it.
+router you use. It keeps the logic visible and toolable. The critical piece is the `wait-and-check`: a
+real, trustworthy analysis, not a fixed sleep, because the whole rollout's safety rides on it.
 
 ## Applications
 

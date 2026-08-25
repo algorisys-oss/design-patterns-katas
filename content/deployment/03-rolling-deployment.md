@@ -5,7 +5,7 @@ sequence: 3
 title: Rolling Deployment
 also_known_as: [Rolling Update, Ramped Deployment]
 gof: false
-intent: "Replace the old version with the new one incrementally — a few instances at a time — so the service stays up throughout and no second environment is needed."
+intent: "Replace the old version with the new one incrementally, a few instances at a time, so the service stays up throughout and no second environment is needed."
 frequency: high
 difficulty: beginner
 tags: [deployment, devops, zero-downtime, incremental, health-checks]
@@ -16,7 +16,7 @@ languages: [kubernetes, docker, ci-cd, aws]
 ## Intent
 
 Upgrade a service **incrementally**: spin up a few instances of the new version, wait for them to pass
-health checks, then retire a few old ones — and repeat until every instance runs the new version. At all
+health checks, then retire a few old ones, and repeat until every instance runs the new version. At all
 times a healthy mix serves traffic, so there's no downtime and no need for a whole second environment.
 
 It's the default zero-downtime strategy for clustered/replicated services: cheaper than blue-green (no
@@ -25,7 +25,7 @@ all-at-once switch for a gradual, in-place replacement that keeps capacity up th
 
 ## The Problem
 
-Replacing all instances at once — or taking the service down to upgrade — is disruptive:
+Replacing all instances at once, or taking the service down to upgrade, is disruptive:
 
 - **Downtime** — stopping everything to deploy the new version means an outage window.
 - **Capacity loss** — replacing all instances simultaneously drops serving capacity during the swap.
@@ -83,12 +83,12 @@ Service ──► Old Pods (v1) [ ■ ■ ■ ■ ]   replicas draining ↓
 
 ## Key Takeaways
 
-- Replace instances in batches, health-checking new ones before retiring old ones — no downtime, no second
+- Replace instances in batches, health-checking new ones before retiring old ones: no downtime, no second
   environment.
 - It's the cheap default for clustered services; blue-green adds instant rollback, canary adds metric-gated
   exposure.
 - Old and new coexist during the roll, so keep versions compatible.
-- Readiness probes are what make it safe — without them, "rolling" becomes "rolling outage."
+- Readiness probes are what make it safe: without them, "rolling" becomes "rolling outage."
 
 ## Implementations
 
@@ -129,7 +129,7 @@ spec:
 **🧠 Tradeoff** — Kubernetes' native `RollingUpdate` with `maxUnavailable: 0` and a real `readinessProbe`
 is zero-downtime rolling out of the box: new pods must pass readiness before old ones are removed, and
 `kubectl rollout undo` reverses it. It's the cheap default (no second environment). The constraints are the
-usual: versions coexist mid-roll (keep compatible), and it's not metric-gated — health checks, not
+usual: versions coexist mid-roll (keep compatible), and it's not metric-gated: health checks, not
 business metrics, decide, so pair with canary for blast-radius control.
 
 ### Docker
@@ -160,7 +160,7 @@ services:
 ```
 
 **🧠 Tradeoff** — Docker Swarm's `update_config` with `order: start-first` and a `healthcheck` gives
-rolling updates with automatic rollback for Compose/Swarm setups — the same incremental, health-gated
+rolling updates with automatic rollback for Compose/Swarm setups: the same incremental, health-gated
 replacement without Kubernetes. It fits smaller deployments. You still ensure versions coexist during the
 roll and that the health check truly reflects readiness, since it gates the whole rollout.
 
@@ -186,7 +186,7 @@ done                                     # (abort + re-add drained nodes on fail
 ```
 
 **🧠 Tradeoff** — For non-orchestrated fleets, a pipeline that drains a node from the load balancer,
-deploys, waits for health, then re-adds it — one at a time — is rolling deployment by hand. Capacity stays
+deploys, waits for health, then re-adds it, one at a time, is rolling deployment by hand. Capacity stays
 up (only one node out at a time) and a failed health check aborts the roll. It's more script to own than an
 orchestrator's built-in rolling, but it's the same principle and works anywhere you have a load balancer
 and health endpoint.
@@ -213,7 +213,7 @@ Service:
 
 **🧠 Tradeoff** — AWS ECS rolling deployments (and ASG instance refresh) provide managed rolling with
 `MinimumHealthyPercent`/`MaximumPercent` controlling surge and capacity, and ALB health checks gating each
-step — the platform maintains capacity and drains old tasks only after new ones are healthy. You configure
+step: the platform maintains capacity and drains old tasks only after new ones are healthy. You configure
 the percentages and trust the health check; the orchestrator handles the incremental replacement and can
 auto-roll-back via CodeDeploy on alarms.
 

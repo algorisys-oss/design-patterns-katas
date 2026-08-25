@@ -15,10 +15,10 @@ languages: [kubernetes, docker, service-mesh, ambassador]
 
 ## Intent
 
-Attach a **sidecar** — a second container/process — to the main application within the same deployment unit
+Attach a **sidecar** (a second container/process) to the main application within the same deployment unit
 (a Kubernetes Pod, a co-located container), sharing its lifecycle, network, and storage. The sidecar handles
-**cross-cutting infrastructure concerns** — TLS termination, request proxying, log/metric shipping,
-configuration, secrets — so the application doesn't have to.
+**cross-cutting infrastructure concerns** (TLS termination, request proxying, log/metric shipping,
+configuration, secrets) so the application doesn't have to.
 
 Because the sidecar runs *beside* the app rather than *inside* it, those concerns are handled uniformly and
 language-agnostically. A Go service, a Python service, and a Node service all get the same TLS, retries, and
@@ -127,7 +127,7 @@ spec:
 ```
 
 **🧠 Tradeoff** — A `log-shipper` sidecar sharing an `emptyDir` volume with the app means the app just
-writes files while the sidecar handles shipping — identical for any language, upgraded independently.
+writes files while the sidecar handles shipping: identical for any language, upgraded independently.
 Kubernetes' native sidecar containers (init containers with `restartPolicy: Always`) fix the
 startup/shutdown-ordering pitfalls. The cost is a fluent-bit process per pod; at scale that adds up, which
 is the classic sidecar trade-off.
@@ -156,7 +156,7 @@ services:
 ```
 
 **🧠 Tradeoff** — In Compose, `network_mode: "service:app"` co-locates a sidecar in the app's network
-namespace so it can proxy or export on `localhost` — the same "helper beside the app" idea without
+namespace so it can proxy or export on `localhost`: the same "helper beside the app" idea without
 Kubernetes. It keeps the metrics/TLS concern out of the app image. The trade mirrors Kubernetes: an extra
 container per service and coordinating their lifecycles, justified when the concern should be uniform and
 app-independent.
@@ -184,10 +184,10 @@ metadata:
 ```
 
 **🧠 Tradeoff** — A service mesh (Istio, Linkerd) is the sidecar pattern industrialized: an Envoy proxy
-injected beside every service transparently provides mTLS, retries, timeouts, and uniform telemetry —
+injected beside every service transparently provides mTLS, retries, timeouts, and uniform telemetry,
 configured mesh-wide, so the apps stay plain and policy changes need no redeploy. It's the most powerful
 form and the strongest example of "cross-cutting concerns beside the app." The cost is real: a proxy per
-pod (CPU/memory/latency) and significant operational complexity — only worth it at meaningful scale.
+pod (CPU/memory/latency) and significant operational complexity, only worth it at meaningful scale.
 
 ### Ambassador
 
@@ -213,7 +213,7 @@ containers:
 
 **🧠 Tradeoff** — The **Ambassador** is a sidecar specialized for *outbound* connections: the app connects
 to `localhost` and the ambassador handles service discovery, connection pooling, retries, and sharding to
-the real backend — so that logic isn't reimplemented per app. It's ideal for giving legacy or polyglot apps
+the real backend, so that logic isn't reimplemented per app. It's ideal for giving legacy or polyglot apps
 resilient client behavior without code changes. Same trade as any sidecar: an extra proxy per instance and
 one more hop, in exchange for uniform, app-independent connection handling.
 

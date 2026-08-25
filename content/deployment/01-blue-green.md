@@ -5,7 +5,7 @@ sequence: 1
 title: Blue-Green Deployment
 also_known_as: [Red-Black Deployment]
 gof: false
-intent: "Run two identical production environments — one live (blue), one idle (green) — deploy the new version to the idle one, then switch all traffic at once, with instant rollback by switching back."
+intent: "Run two identical production environments, one live (blue) and one idle (green): deploy the new version to the idle one, then switch all traffic at once, with instant rollback by switching back."
 frequency: high
 difficulty: intermediate
 tags: [deployment, devops, release, zero-downtime, rollback]
@@ -15,14 +15,14 @@ languages: [kubernetes, terraform, ci-cd, aws]
 
 ## Intent
 
-Keep **two identical production environments**. At any time one — call it *blue* — is live and serving all
-traffic; the other — *green* — is idle. To release, deploy the new version to green, verify it in a
+Keep **two identical production environments**. At any time one (call it *blue*) is live and serving all
+traffic; the other (*green*) is idle. To release, deploy the new version to green, verify it in a
 production-equivalent setting, then flip the router so **all** traffic goes to green in one atomic switch.
 Blue stays intact as the instant rollback target.
 
 The release becomes a single routing change rather than a risky in-place upgrade. There's zero downtime
 (the switch is instant), you validate the new version against real infrastructure before it takes traffic,
-and if anything goes wrong you switch back to blue in seconds — no re-deploy, no scramble.
+and if anything goes wrong you switch back to blue in seconds: no re-deploy, no scramble.
 
 ## The Problem
 
@@ -90,7 +90,7 @@ Load Balancer ─────────┤
 
 - Two identical environments; one live, one idle. Deploy to idle, verify, switch all traffic atomically.
 - Zero downtime and instant rollback (switch back) are the headline benefits.
-- The database is the hard part — migrations must be compatible with both versions across the switch.
+- The database is the hard part: migrations must be compatible with both versions across the switch.
 - It's all-at-once (unlike canary): everyone moves together, so validate thoroughly before flipping.
 
 ## Implementations
@@ -163,7 +163,7 @@ resource "aws_lb_listener" "app" {
 ```
 
 **🧠 Tradeoff** — Declaring both target groups and switching a `live_color` variable makes the cutover a
-reviewed, versioned `terraform apply` — the environments are codified and identical, and rollback is
+reviewed, versioned `terraform apply`: the environments are codified and identical, and rollback is
 re-applying with the old value. The cost is running both target groups' backends. Weighted forwarding
 also lets Terraform express canary; blue-green is the 100/0 special case.
 
@@ -191,7 +191,7 @@ jobs:
 
 **🧠 Tradeoff** — A pipeline that deploys to the idle slot, smoke-tests it, then swaps an atomic pointer
 (symlink, or a cloud "swap slots" API like Azure App Service deployment slots) is blue-green at the CI/CD
-level. The atomic swap is the key — no half-deployed state — and rollback is swapping the pointer back.
+level. The atomic swap is the key (no half-deployed state) and rollback is swapping the pointer back.
 You maintain two release slots and ensure the verify step is trustworthy, since the whole cutover trusts
 it.
 
@@ -218,7 +218,7 @@ DeploymentGroup:
 
 **🧠 Tradeoff** — AWS CodeDeploy (for ECS/Lambda) and Elastic Beanstalk's swap-environment-URLs give
 managed blue-green: the platform stands up green, shifts the load balancer, watches CloudWatch alarms, and
-auto-rolls-back to blue on failure — you don't script the cutover. The trade is buying into the AWS
+auto-rolls-back to blue on failure, so you don't script the cutover. The trade is buying into the AWS
 tooling and paying for the parallel green environment during the deploy window; in return the risky parts
 (traffic shift, rollback on alarm) are automated.
 

@@ -5,7 +5,7 @@ sequence: 4
 title: Feature Flags
 also_known_as: [Feature Toggles, Feature Switches]
 gof: false
-intent: "Wrap new functionality in a runtime switch so it can be turned on or off — per environment, user, or cohort — without redeploying, decoupling 'deploy the code' from 'release the feature'."
+intent: "Wrap new functionality in a runtime switch so it can be turned on or off (per environment, user, or cohort) without redeploying, decoupling 'deploy the code' from 'release the feature'."
 frequency: high
 difficulty: beginner
 tags: [deployment, devops, release, decoupling, experimentation]
@@ -15,12 +15,12 @@ languages: [javascript, go, flag-service, kubernetes]
 
 ## Intent
 
-Guard a feature behind a **flag** — a runtime condition — so the same deployed code can serve the feature
+Guard a feature behind a **flag**, a runtime condition, so the same deployed code can serve the feature
 or not, decided at request time. Flip the flag to release the feature to everyone, a percentage, a beta
 cohort, or a single tester; flip it back to disable, all without a new deploy.
 
-This decouples **deployment** from **release**. Code can be merged and deployed continuously — the feature
-dark behind a flag — and turned on later when it's ready, independent of the deploy schedule. The same
+This decouples **deployment** from **release**. Code can be merged and deployed continuously (the feature
+dark behind a flag) and turned on later when it's ready, independent of the deploy schedule. The same
 mechanism enables canary-by-cohort, A/B experiments, kill switches for misbehaving features, and gradual
 rollouts.
 
@@ -124,7 +124,7 @@ const flags = {
 **🧠 Tradeoff** — A single `flags.isEnabled(name, context)` check with a safe fallback decouples releasing
 `newCheckoutFlow` from deploying it, and the `context` enables percentage/cohort targeting. Client-side,
 SDKs (LaunchDarkly, Unleash, OpenFeature) stream flag updates so flips are instant. The discipline is
-keeping the two paths clean and *removing* `new-checkout` once it's 100% — otherwise it's permanent dead
+keeping the two paths clean and *removing* `new-checkout` once it's 100%; otherwise it's permanent dead
 code.
 
 ### Go
@@ -159,7 +159,7 @@ func (c Client) Enabled(ctx context.Context, name string, fc flagCtx) bool {
 
 **🧠 Tradeoff** — A flag client with an explicit `false` default (fail-safe) and per-request context is
 idiomatic Go feature flagging; OpenFeature's Go SDK standardizes the provider interface (LaunchDarkly,
-Flagsmith, etc.). The explicit default is the key safety property — a flag-service outage disables the new
+Flagsmith, etc.). The explicit default is the key safety property: a flag-service outage disables the new
 path rather than erroring. As everywhere, retire the flag and delete `legacyCheckoutFlow` once the rollout
 completes.
 
@@ -189,7 +189,7 @@ completes.
 
 **🧠 Tradeoff** — A dedicated flag-management service (LaunchDarkly, Unleash, Flagsmith, or OpenFeature +
 a provider) externalizes flag rules from the build: percentage rollouts, segment targeting, and per-env
-overrides changed in a dashboard, streamed to apps so flips are instant — no redeploy, with audit logs and
+overrides changed in a dashboard, streamed to apps so flips are instant: no redeploy, with audit logs and
 approvals. The cost is running/paying for the service and depending on it at runtime (hence the fail-safe
 defaults). It's what makes flags operationally serious versus a config file.
 
@@ -217,7 +217,7 @@ data:
 ```
 
 **🧠 Tradeoff** — For infra-level flags, a ConfigMap (flipped via `kubectl` or a GitOps PR) or a flag
-operator like `flagd`/OpenFeature Operator lets you change flags declaratively without rebuilding images —
+operator like `flagd`/OpenFeature Operator lets you change flags declaratively without rebuilding images,
 GitOps-friendly and auditable. It's coarser than a full flag service (less per-user targeting) but fits
 Kubernetes-native, config-as-code workflows. Watching the ConfigMap (vs. requiring a restart) is what makes
 the flip live.

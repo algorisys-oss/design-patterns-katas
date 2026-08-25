@@ -15,7 +15,7 @@ languages: [terraform, kubernetes, ansible, pulumi]
 
 ## Intent
 
-Describe your infrastructure — servers, networks, databases, clusters, DNS — as **code** that declares the
+Describe your infrastructure (servers, networks, databases, clusters, DNS) as **code** that declares the
 **desired state**, and let a tool make reality match it. Instead of clicking through a console or SSH-ing to
 configure servers by hand, you write it down, commit it to version control, review it, and apply it. The
 tool figures out what to create, change, or destroy to reach the declared state.
@@ -124,7 +124,7 @@ resource "aws_db_instance" "db" {
 
 **🧠 Tradeoff** — Terraform's declarative HCL plus `plan`/`apply` is the canonical IaC: resources are
 versioned and reviewable, `plan` previews the exact diff, and remote state (S3 + DynamoDB lock) coordinates
-teams. It's cloud-agnostic via providers. The learning curve is state management — the state file is the
+teams. It's cloud-agnostic via providers. The learning curve is state management: the state file is the
 source of truth for what's managed, so remote backends, locking, and never editing it by hand are
 essential. Do that, and environments become reproducible from code.
 
@@ -153,7 +153,7 @@ spec:
 ```
 
 **🧠 Tradeoff** — Kubernetes is declarative IaC for workloads: manifests describe desired state and the
-control loop continuously reconciles the cluster to match — and GitOps (Argo CD, Flux) makes the *git repo*
+control loop continuously reconciles the cluster to match, and GitOps (Argo CD, Flux) makes the *git repo*
 the source of truth, auto-correcting drift and turning every change into a reviewed PR. It's the reference
 model for continuous reconciliation. The cost is the manifest sprawl and running the GitOps controllers, but
 you get self-healing, auditable infrastructure.
@@ -185,8 +185,8 @@ ssh web01 "apt install nginx && systemctl enable nginx"   # repeated, differentl
 
 **🧠 Tradeoff** — Ansible brings IaC to *server configuration*: playbooks declare the desired package/
 service/file state and idempotently converge each host, versioned in git and applied uniformly across a
-fleet — no more per-server hand-tweaking. It's agentless (SSH) and readable. It shines for configuration
-management (vs. Terraform's provisioning of cloud resources); many stacks use both — Terraform to create the
+fleet, with no more per-server hand-tweaking. It's agentless (SSH) and readable. It shines for configuration
+management (vs. Terraform's provisioning of cloud resources); many stacks use both: Terraform to create the
 servers, Ansible to configure them.
 
 ### Pulumi
@@ -214,7 +214,7 @@ export const bucketName = bucket.id;
 ```
 
 **🧠 Tradeoff** — Pulumi (and the AWS CDK) let you write IaC in a general-purpose language (TypeScript,
-Python, Go) with the same declarative desired-state + preview/apply model — so you get loops, functions, and
+Python, Go) with the same declarative desired-state + preview/apply model, so you get loops, functions, and
 types for infrastructure, and can share code with your app. The trade versus Terraform's HCL is power vs.
 constraint: real languages enable abstraction but also let you write imprecise, hard-to-review logic, so the
 declarative discipline is on you. State management concerns are the same.
