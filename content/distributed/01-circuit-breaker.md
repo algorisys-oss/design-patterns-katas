@@ -5,7 +5,7 @@ sequence: 1
 title: Circuit Breaker
 also_known_as: []
 gof: false
-intent: "Stop calling a failing dependency for a while — trip a 'breaker' after repeated failures so calls fail fast instead of piling up, then test for recovery."
+intent: "Stop calling a failing dependency for a while: trip a 'breaker' after repeated failures so calls fail fast instead of piling up, then test for recovery."
 frequency: high
 difficulty: intermediate
 tags: [distributed, resilience, fault-tolerance, fail-fast, cascading-failure]
@@ -16,7 +16,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ## Intent
 
 Wrap calls to a remote dependency in a **breaker** that watches for failures. After too many, the
-breaker **trips open** and every call fails immediately — no waiting, no retrying — for a cooldown
+breaker **trips open** and every call fails immediately (no waiting, no retrying) for a cooldown
 period. Then it lets one trial call through; success closes it again, failure re-opens it.
 
 Like an electrical breaker, it protects the system from a fault downstream. A dependency that's
@@ -32,7 +32,7 @@ When a downstream service degrades, naive callers make it worse:
 - **Resource exhaustion** — calls to a *slow* service hold threads and connections until they time
   out; enough of them and the caller runs out of capacity and falls over too.
 - **Cascading failure** — one struggling service drags down everything that calls it, which drags
-  down everything that calls *them* — an outage that spreads.
+  down everything that calls *them*, an outage that spreads.
 - **Wasted latency** — you wait for the full timeout on every call to something you already know
   is broken.
 
@@ -86,7 +86,7 @@ Closed ───────────────────────► 
 
 ## Key Takeaways
 
-- Three states — Closed, Open, Half-Open — turn "keep trying a broken service" into "fail fast,
+- Three states (Closed, Open, Half-Open) turn "keep trying a broken service" into "fail fast,
   then test for recovery."
 - The point is protecting the *caller* and shedding load, not fixing the dependency.
 - Always put a timeout underneath so a hung call registers as a failure.
@@ -140,7 +140,7 @@ function circuitBreaker(fn, { threshold = 5, cooldownMs = 10_000 } = {}) {
 **🧠 Tradeoff** — A closure holding `failures`/`state` is a complete breaker in a few lines, and
 wrapping any async function protects the caller from a down dependency. In the browser it's
 per-tab and in-memory, which is fine for client-side calls. It counts thrown errors, so it only
-works if the wrapped call actually rejects on failure — pair it with a fetch timeout.
+works if the wrapped call actually rejects on failure, so pair it with a fetch timeout.
 
 ### Node.js
 
@@ -173,8 +173,8 @@ breaker.fallback(() => ({ price: null, stale: true })); // what to serve while o
 app.get("/price", (_req, res) => breaker.fire().then((p) => res.json(p)));
 ```
 
-**🧠 Tradeoff** — `opossum` gives production-grade breakers — error-rate thresholds, a built-in
-timeout, fallbacks, and metrics events — so you don't hand-roll the state machine. The dependency
+**🧠 Tradeoff** — `opossum` gives production-grade breakers (error-rate thresholds, a built-in
+timeout, fallbacks, and metrics events) so you don't hand-roll the state machine. The dependency
 and its configuration are the cost, plus the reminder that in a clustered app each instance has its
 own breaker unless you share state.
 
@@ -221,7 +221,7 @@ class CircuitBreaker:
 
 **🧠 Tradeoff** — A small class with the same three-state logic is easy to write and test; the
 mature `pybreaker` library adds thread-safety, listeners, and storage backends for sharing state.
-Either way, `requests`' own `timeout=` is essential — without it a hung call never becomes a
+Either way, `requests`' own `timeout=` is essential: without it a hung call never becomes a
 "failure" and the breaker never trips.
 
 ### Elixir
@@ -300,7 +300,7 @@ func getRate(ctx context.Context) (Rate, error) {
 ```
 
 **🧠 Tradeoff** — `gobreaker` implements the state machine and `Execute` returns
-`ErrOpenState` immediately when tripped — clean, idiomatic, and paired with a `context` timeout so
+`ErrOpenState` immediately when tripped: clean, idiomatic, and paired with a `context` timeout so
 slow calls count as failures. Go's explicitness shows: you configure `ReadyToTrip` and thread
 `ctx` yourself, but the breaker's behavior is entirely visible and testable.
 
@@ -362,8 +362,8 @@ sealed class CircuitBreaker(int threshold, TimeSpan cooldown)
 ```
 
 **🧠 Tradeoff** — The enum plus two guarded transitions is the entire machine, and the generic
-`Call` wraps any `Func<Task<T>>`. As written it isn't thread-safe — two concurrent calls can both
-slip through half-open — which is one reason production C# reaches for Polly: its circuit-breaker
+`Call` wraps any `Func<Task<T>>`. As written it isn't thread-safe (two concurrent calls can both
+slip through half-open), which is one reason production C# reaches for Polly: its circuit-breaker
 strategy adds the locking, error-rate thresholds, and metrics, and composes with retry and timeout
 policies. Keep `HttpClient.Timeout` (or a `CancellationToken`) underneath either way, so a hung
 call counts as a failure.
@@ -438,7 +438,7 @@ impl CircuitBreaker {
 **🧠 Tradeoff** — The enum is doing more than naming states: each variant carries only the data
 valid in it (a failure count exists only in `Closed`, a trip time only in `Open`), so impossible
 combinations don't compile, and the exhaustive `match` means a new state can't be half-handled.
-That's why enum + match — not a trait object — is the natural Rust form here: the state set is
+That's why enum + match, not a trait object, is the natural Rust form here: the state set is
 closed. Sharing the breaker across threads means `Arc<Mutex<CircuitBreaker>>`, and the borrow
 checker won't let you forget it.
 
@@ -508,11 +508,11 @@ const CircuitBreaker = struct {
 
 **🧠 Tradeoff** — Same shape as the Rust version: a tagged union with exhaustive `switch`es, so the
 compiler flags any transition you forget. The clock comes in through `io`: 0.17 moved time behind
-the `std.Io` capability, so who controls time is as explicit as who controls memory — hand `call` a
+the `std.Io` capability, so who controls time is as explicit as who controls memory: hand `call` a
 fake `Io` and the cooldown is testable without waiting. `anyerror` keeps `call` generic over
 whatever the wrapped function fails with; narrowing to a named error set would document the failure
-modes at the cost of flexibility. The breaker is single-threaded as written — put a `std.Io.Mutex`
-around `call` to share it — and it only sees *errors*, so the fetch must fail on slowness (a socket
+modes at the cost of flexibility. The breaker is single-threaded as written (put a `std.Io.Mutex`
+around `call` to share it) and it only sees *errors*, so the fetch must fail on slowness (a socket
 deadline) or a hung call never trips it.
 
 ### Java
@@ -580,10 +580,10 @@ class CircuitBreaker {
 
 **🧠 Tradeoff** — The enum plus two guarded transitions is the whole machine, and `Callable<T>` is
 already a functional interface, so any call wraps in a lambda. If you want each state to carry only
-its own data — a failure count that exists only in CLOSED, a trip time only in OPEN — a sealed
+its own data (a failure count that exists only in CLOSED, a trip time only in OPEN), a sealed
 interface with record states and a pattern-matching `switch` gives you the Rust shape; the enum
 with two fields is the plainer Java. As written it isn't thread-safe, and a real service shares one
-breaker across many request threads — the first reason production Java reaches for Resilience4j,
+breaker across many request threads: the first reason production Java reaches for Resilience4j,
 whose `CircuitBreaker` adds the atomic state machine, sliding-window failure rates, half-open
 permits, and metrics, and composes with its `Retry` and `TimeLimiter`. Keep a request timeout
 underneath either way, so a hung call counts as a failure.

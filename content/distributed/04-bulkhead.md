@@ -15,7 +15,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Divide a shared resource — a thread pool, connection pool, or set of instances — into separate
+Divide a shared resource (a thread pool, connection pool, or set of instances) into separate
 **compartments**, one per dependency or class of work, each with its own limit. If one dependency
 gets slow and saturates its compartment, the others keep their own capacity and stay healthy.
 
@@ -189,7 +189,7 @@ def call(dep, fn, *args):
 **🧠 Tradeoff** — A `ThreadPoolExecutor` per dependency isolates thread budgets so a slow `a`
 can't starve `b`. For asyncio, a `Semaphore` per dependency does the same for coroutine
 concurrency. It's straightforward, but you now manage several executors and their shutdown, and
-reserved-but-idle threads in one pool don't help another — the isolation/utilization trade.
+reserved-but-idle threads in one pool don't help another: the isolation/utilization trade.
 
 ### Elixir
 
@@ -217,7 +217,7 @@ Finch.build(:get, url) |> Finch.request(MyApp.Finch)  # one pool for every host
 **🧠 Tradeoff** — The BEAM's process isolation already contains crashes, and pooling libraries
 (Finch's per-host pools, Poolboy) add the *resource* isolation: a pool per dependency so one host's
 slowness can't drain another's connections. It's idiomatic and supervised. The nuance is that
-process cheapness tempts you to skip pooling entirely — but external *connections* are still finite,
+process cheapness tempts you to skip pooling entirely, but external *connections* are still finite,
 so bulkheading them matters.
 
 ### Go
@@ -253,7 +253,7 @@ func (b *Bulkhead) Do(ctx context.Context, fn func() error) error {
 ```
 
 **🧠 Tradeoff** — A buffered channel as a counting semaphore, one per dependency, is the idiomatic
-Go bulkhead — and the `select` on `ctx.Done()` gives fail-fast when a partition is full. It's a
+Go bulkhead, and the `select` on `ctx.Done()` gives fail-fast when a partition is full. It's a
 dozen lines and completely explicit. You size and wire each bulkhead yourself; there's no framework
 hiding it, which is very Go and makes the isolation boundaries obvious in the code.
 
@@ -365,11 +365,11 @@ impl Bulkhead {
 ```
 
 **🧠 Tradeoff** — A pool per dependency isolates real OS threads, so it contains CPU-bound
-work as well as I/O — stronger isolation than a concurrency counter over shared workers.
+work as well as I/O: stronger isolation than a concurrency counter over shared workers.
 `sync_channel`'s bound is the queue depth, and `try_send` turns a full partition into an
 immediate `Err` that hands the job back to the caller. The `Arc<Mutex<Receiver>>` dance is
 the std idiom because a `Receiver` can't be cloned; a crossbeam channel would tidy it, but
-the katas stay dependency-free. You now size threads *and* queue depth per partition —
+the katas stay dependency-free. You now size threads *and* queue depth per partition:
 twice the knobs to get wrong.
 
 ### Zig
@@ -437,7 +437,7 @@ explicitly as the allocator these fixed arrays avoid, and the `Uncancelable` var
 in `submit`'s signature: callers must `try` or `catch`, so a full partition can't be
 silently ignored. Bare fn pointers cover stateless jobs; a job that carries data needs the
 `*anyopaque` context + fn-pointer pair, the same idiom `std.mem.Allocator` uses. The demo
-queue is LIFO for brevity — a ring buffer makes it fair.
+queue is LIFO for brevity; a ring buffer makes it fair.
 
 ### Java
 
@@ -492,7 +492,7 @@ final class BulkheadFullException extends RuntimeException {}
 virtual threads change that. Threads are now too cheap to pool, so the limit moves to a
 `Semaphore` per dependency: spawn freely, but only `limit` calls to A are in flight, and
 `tryAcquire` with a deadline makes a full partition reject instead of queueing. A permit
-is held per *call*, not per thread — the right unit for I/O isolation. Resilience4j's
+is held per *call*, not per thread: the right unit for I/O isolation. Resilience4j's
 `Bulkhead` is this same semaphore with metrics, events, and config around it; the
 hand-rolled version shows how little is inside. The standing trade remains: A's idle
 permits can't help a busy B.
@@ -513,7 +513,7 @@ permits can't help a busy B.
 ## Related Patterns
 
 - **Circuit Breaker** — the breaker stops calling a *failing* dependency; the bulkhead limits how
-  much of your resources any dependency can hold — deployed together for layered protection.
+  much of your resources any dependency can hold. Deploy them together for layered protection.
 - **Timeout** — timeouts release a partition's slots quickly so a slow call doesn't hold isolation
   capacity for long.
 - **Worker Pool** — a bulkhead is essentially a worker pool used for isolation: a bounded pool per

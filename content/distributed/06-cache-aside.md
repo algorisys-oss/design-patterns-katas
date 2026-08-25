@@ -5,7 +5,7 @@ sequence: 6
 title: Cache-Aside
 also_known_as: [Lazy Loading, Read-Through (variant)]
 gof: false
-intent: "Check a cache before the database; on a miss, load from the database, populate the cache, and return — so hot data is served fast without caching everything up front."
+intent: "Check a cache before the database; on a miss, load from the database, populate the cache, and return, so hot data is served fast without caching everything up front."
 frequency: high
 difficulty: beginner
 tags: [distributed, caching, performance, read-heavy, invalidation]
@@ -17,7 +17,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 Keep the cache **beside** the datastore, not in front of it. On a read, the application looks in
 the cache first; on a **hit** it returns immediately, on a **miss** it loads from the database,
-writes the value into the cache, and returns it. The cache fills **lazily** — only with data that's
+writes the value into the cache, and returns it. The cache fills **lazily**, only with data that's
 actually requested.
 
 The application owns the caching logic, so the cache and database stay independent: the cache can
@@ -88,7 +88,7 @@ Client ──► [ Cache ] ──hit──► return
 
 - Check cache → on miss load from DB, populate, return; the cache fills lazily with hot data.
 - The app owns the logic, so a cache failure degrades to the database rather than breaking.
-- The hard part is invalidation/staleness — bound it with TTLs and evict on write.
+- The hard part is invalidation/staleness; bound it with TTLs and evict on write.
 - Guard hot keys against stampedes with single-flight loading.
 
 ## Implementations
@@ -124,7 +124,7 @@ async function getProduct(id) {
 
 **🧠 Tradeoff** — The read path is a few lines: hit returns fast, miss loads and populates with a
 TTL. The TTL bounds staleness cheaply, and deleting the key on write keeps it fresh. What's not
-shown is the stampede risk — if a hot key expires under load, many requests miss at once; a
+shown is the stampede risk: if a hot key expires under load, many requests miss at once; a
 single-flight lock around the load fixes it when traffic warrants.
 
 ### Node.js
@@ -203,7 +203,7 @@ def update_user(user_id, **fields):
 
 **🧠 Tradeoff** — The get/load/populate shape plus an explicit `delete` on write is idiomatic and
 clear. For local, per-process caching of pure computations, `functools.lru_cache` is a one-line
-alternative — but it has no TTL and no cross-process sharing, so Redis (or Memcached) is the choice
+alternative, but it has no TTL and no cross-process sharing, so Redis (or Memcached) is the choice
 for shared, invalidatable data. Stampede protection (a Redis lock) is the add-on for very hot keys.
 
 ### Elixir
@@ -236,7 +236,7 @@ end
 ```
 
 **🧠 Tradeoff** — `Cachex` (over ETS) gives idiomatic cache-aside with TTLs, and its
-`fetch/4` performs the check-load-store as one operation that coalesces concurrent misses — built-in
+`fetch/4` performs the check-load-store as one operation that coalesces concurrent misses: built-in
 stampede protection. Raw ETS works too for the simplest cases. The BEAM makes a fast in-node cache
 trivial; for cross-node sharing you still reach for Redis or a distributed cache.
 
@@ -318,11 +318,11 @@ async Task UpdateProductAsync(Product p)
 ```
 
 **🧠 Tradeoff** — A `ConcurrentDictionary` with a `(Value, Expires)` tuple is thread-safe
-cache-aside with lazy expiry — stale entries are simply overwritten on the next miss. What
+cache-aside with lazy expiry: stale entries are simply overwritten on the next miss. What
 it lacks is single-flight: two callers can miss together and both hit the database. The C#
 idiom for that is caching a `Lazy<Task<Product>>` via `GetOrAdd`, so the factory runs once
-and every caller awaits the same task. In production, `IMemoryCache` — or `HybridCache`,
-which has stampede protection built in — covers TTL and eviction so you keep only the
+and every caller awaits the same task. In production, `IMemoryCache` (or `HybridCache`,
+which has stampede protection built in) covers TTL and eviction so you keep only the
 aside logic.
 
 ### Rust
@@ -376,7 +376,7 @@ impl Cache {
 
 **🧠 Tradeoff** — `Mutex<HashMap>` is the whole cache, std only. Cloning on a hit looks
 wasteful but is the point: you can't return a reference into the map without holding the
-lock, so the borrow checker forces a choice — clone out, or serialize every reader. Two
+lock, so the borrow checker forces a choice: clone out, or serialize every reader. Two
 threads can still race a miss and load twice; harmless here, and the std fix (an entry
 holding `Arc<OnceLock<Product>>` so one loader wins) is single-flight without dependencies.
 For shared or cross-process caching you still reach for Redis, exactly as in the other tabs.
@@ -454,9 +454,9 @@ pub fn main() !void {
 
 **🧠 Tradeoff** — The allocator is a parameter, so the cache's memory is an explicit budget
 you pick and release (`defer cache.deinit()`) rather than ambient heap a GC deals with. As
-of 0.17 the clock works the same way: there's no ambient `milliTimestamp()` anymore — the
+of 0.17 the clock works the same way: there's no ambient `milliTimestamp()` anymore; the
 cache holds a `std.Io` and asks *it* for the time, an explicit capability exactly like the
-allocator. One sharp edge: `StringHashMap` stores the key *slice* you pass — hand it stable
+allocator. One sharp edge: `StringHashMap` stores the key *slice* you pass, so hand it stable
 memory or `dupe` the key with the allocator, or the entry outlives its key. Expiry is lazy
 (checked on read) and eviction-on-write bounds staleness, same as the other tabs; wrap the
 map in a `std.Io.Mutex` before sharing it across threads.
@@ -511,13 +511,13 @@ final class ProductCache {
 ```
 
 **🧠 Tradeoff** — `computeIfAbsent` is the line that matters: it runs the mapping function
-once per absent key while concurrent callers block and receive the same result —
+once per absent key while concurrent callers block and receive the same result:
 single-flight built into the map, where the naive check-then-load lets every concurrent
 miss query the database. The catch is the same mechanism: the loader runs under the map's
 internal bin lock, so keep it to the one query and never touch the same map inside it.
 TTL is hand-rolled here (lazy expiry, evict on write, like the other tabs); in production
-Caffeine covers it — `expireAfterWrite`, size-based eviction, and the same one-loader-per-key
-coalescing — and Redis remains the answer once the cache must be shared across processes.
+Caffeine covers it (`expireAfterWrite`, size-based eviction, and the same one-loader-per-key
+coalescing), and Redis remains the answer once the cache must be shared across processes.
 
 ## Applications
 

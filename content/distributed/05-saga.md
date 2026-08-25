@@ -5,7 +5,7 @@ sequence: 5
 title: Saga
 also_known_as: [Distributed Transaction, Compensating Transaction]
 gof: false
-intent: "Coordinate a business transaction across services as a sequence of local steps, each with a compensating action to undo it — so there's consistency without a distributed lock."
+intent: "Coordinate a business transaction across services as a sequence of local steps, each with a compensating action to undo it, so there's consistency without a distributed lock."
 frequency: medium
 difficulty: advanced
 tags: [distributed, transactions, consistency, compensation, microservices]
@@ -18,7 +18,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 Model a transaction that spans several services as a **saga**: an ordered series of **local
 transactions**, one per service. Each step has a matching **compensating action** that semantically
 undoes it. If any step fails, the saga runs the compensations for the steps already done, in
-reverse — walking the system back to a consistent state.
+reverse, walking the system back to a consistent state.
 
 There is no distributed lock and no two-phase commit holding every service hostage. Each service
 commits its own step independently; the saga trades *atomic* consistency for *eventual* consistency
@@ -26,7 +26,7 @@ you reach by compensating.
 
 ## The Problem
 
-A single business operation — place an order — touches Orders, Payment, and Shipping, each with its
+A single business operation, placing an order, touches Orders, Payment, and Shipping, each with its
 own database. You can't wrap them in one ACID transaction:
 
 - **No shared transaction** — separate services and databases can't participate in one atomic
@@ -58,7 +58,7 @@ cancel order ◄── refund ◄─────┘            ← compensations
 
 - A business operation spans multiple services/databases and must stay consistent.
 - Long-running or asynchronous workflows where holding a distributed lock is impractical.
-- Steps have meaningful compensations (a refund, a cancellation) — you can undo them semantically.
+- Steps have meaningful compensations (a refund, a cancellation), so you can undo them semantically.
 - Eventual consistency is acceptable for the operation.
 
 ## Advantages and Disadvantages
@@ -140,7 +140,7 @@ async function runSaga(steps) {
 cleanup into a reusable orchestration. It makes the partial-failure path explicit and testable. The
 hard parts remain yours: compensations must be idempotent and themselves resilient (a failing
 `refund` during rollback is the nightmare case), and this in-memory orchestrator doesn't survive a
-process crash — production sagas persist their state.
+process crash; production sagas persist their state.
 
 ### Node.js
 
@@ -225,7 +225,7 @@ class Saga:
 **🧠 Tradeoff** — A small `Saga` class recording compensations and unwinding them in reverse is a
 clear orchestrated implementation, and easy to unit-test by making a middle step raise. For real
 systems, frameworks (Temporal's Python SDK, `dramatiq`/Celery workflows) add durability so a crash
-mid-saga resumes rather than stranding state — the in-memory version can't.
+mid-saga resumes rather than stranding state, which the in-memory version can't.
 
 ### Elixir
 
@@ -305,7 +305,7 @@ func RunSaga(steps []Step) error {
 ```
 
 **🧠 Tradeoff** — A slice of `Step{Do, Compensate}` with reverse unwinding is a clear, explicit Go
-orchestrator — the whole control flow is visible and testable. As always in Go, durability and
+orchestrator: the whole control flow is visible and testable. As always in Go, durability and
 distribution are yours to add: for crash-safe, long-running sagas, teams reach for Temporal's Go
 SDK, which persists workflow state and replays it, rather than an in-memory loop.
 
@@ -364,8 +364,8 @@ public sealed class Saga(IReadOnlyList<SagaStep> steps)
 // ]).RunAsync();
 ```
 
-**🧠 Tradeoff** — A `record` makes each step a named value — easy to build in a list, easy
-to assert on in tests — and `Func<Task>` delegates are the whole contract, no interface
+**🧠 Tradeoff** — A `record` makes each step a named value (easy to build in a list, easy
+to assert on in tests) and `Func<Task>` delegates are the whole contract, no interface
 ceremony. `Stack<SagaStep>` gives the reverse unwind for free. Like the other in-memory
 orchestrators here, it doesn't survive a crash mid-saga; durable .NET sagas run on
 Temporal's .NET SDK, MassTransit saga state machines, or the Durable Task Framework, which
@@ -423,7 +423,7 @@ fn run_saga(steps: &[Step]) -> Result<(), String> {
 
 **🧠 Tradeoff** — Boxed closures are the right dispatch here: the steps are a heterogeneous,
 open-ended list, so `Box<dyn Fn...>` (runtime dispatch) beats generics, which would force
-every step to be the same type. Ownership sharpens a real saga question — whatever a
+every step to be the same type. Ownership sharpens a real saga question: whatever a
 compensation needs to undo its step must stay alive until the saga finishes, and the borrow
 checker makes you say so with `move` or a clone instead of finding out in production.
 Durability is still yours: this unwinds in memory, and a crash mid-saga strands state.
@@ -555,7 +555,7 @@ class Saga {
 ```
 
 **🧠 Tradeoff** — A `record` makes each step a named value with `name()` accessors for
-free, and `Runnable` lambdas are the whole contract — no `Step` interface, no anonymous
+free, and `Runnable` lambdas are the whole contract: no `Step` interface, no anonymous
 classes, which is the GoF-era ceremony modern Java shed. `ArrayDeque` used as a stack
 gives the reverse unwind by construction: `push` on success, `pop` on failure, and the
 compensation order can't be gotten wrong. What Java can't shed is the caveat every tab

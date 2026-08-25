@@ -5,7 +5,7 @@ sequence: 7
 title: Strangler Fig
 also_known_as: [Strangler Application, Incremental Migration]
 gof: false
-intent: "Replace a legacy system incrementally by routing traffic through a facade that sends migrated features to the new system and the rest to the old — until the old one is gone."
+intent: "Replace a legacy system incrementally by routing traffic through a facade that sends migrated features to the new system and the rest to the old, until the old one is gone."
 frequency: medium
 difficulty: intermediate
 tags: [distributed, migration, legacy, incremental, routing]
@@ -21,8 +21,8 @@ everything else still goes to the old. Feature by feature, the new system grows 
 until the legacy system handles nothing and can be deleted.
 
 The name is a strangler fig: a vine that grows around a host tree, gradually taking over until the
-original tree is gone but the shape remains. It replaces the "big bang rewrite" — which so often
-fails — with a safe, reversible, incremental migration where the system keeps running the whole time.
+original tree is gone but the shape remains. It replaces the "big bang rewrite" (which so often
+fails) with a safe, reversible, incremental migration where the system keeps running the whole time.
 
 ## The Problem
 
@@ -91,7 +91,7 @@ Client ──► Facade ───┤
 
 - Front both systems with a facade and move traffic feature-by-feature until legacy is empty.
 - It replaces the big-bang rewrite with incremental, reversible steps that keep delivering value.
-- The routing is easy; the shared *data* during overlap is the hard part — plan it first.
+- The routing is easy; the shared *data* during overlap is the hard part, so plan it first.
 - Have a plan (and the will) to actually retire the legacy system, or you'll run two forever.
 
 ## Implementations
@@ -124,7 +124,7 @@ function facade(req, res) {
 
 **🧠 Tradeoff** — A route set the facade consults is the whole idea in miniature: migrating a
 feature is adding a route, rolling back is removing it. The routing logic is trivial; what this
-snippet hides is the real work — making `/checkout` in the new system read and write the *same*
+snippet hides is the real work: making `/checkout` in the new system read and write the *same*
 data the legacy system uses during the overlap.
 
 ### Node.js
@@ -158,7 +158,7 @@ app.use((req, res, next) => {
 **🧠 Tradeoff** — A proxy layer (`http-proxy-middleware`, or an nginx/Envoy gateway) routing by
 path prefix is the canonical Node facade: config-driven, so migrating a feature is a config change
 and rollback is instant. Adding a circuit breaker to the `toNew` route gives an automatic fallback
-to legacy if the new service misbehaves — turning a risky cutover into a safe one.
+to legacy if the new service misbehaves, turning a risky cutover into a safe one.
 
 ### Python
 
@@ -185,7 +185,7 @@ def facade(environ, start_response):
 ```
 
 **🧠 Tradeoff** — Because WSGI/ASGI apps are just callables, a dispatching facade that picks the new
-or legacy app by path is clean and framework-agnostic — you can even run a new FastAPI service beside
+or legacy app by path is clean and framework-agnostic; you can even run a new FastAPI service beside
 a legacy Django app behind it. The routing is a few lines; the migration's substance is data
 ownership and keeping both apps consistent, which no dispatcher solves for you.
 
@@ -221,7 +221,7 @@ end
 **🧠 Tradeoff** — A `Plug` is the idiomatic seam in Elixir: it sits at the top of the pipeline and
 routes each request to the new router or a reverse proxy to legacy, so features migrate by editing a
 list. Phoenix's composability makes running new and old side by side natural. The BEAM doesn't make
-the shared-data problem any easier, though — that's still the migration's crux.
+the shared-data problem any easier, though; that's still the migration's crux.
 
 ### Go
 
@@ -321,7 +321,7 @@ public sealed class Facade(IBackend newSystem, IBackend legacy)
 **🧠 Tradeoff** — In production .NET the facade is YARP (Microsoft's reverse proxy) or ASP.NET
 Core middleware matching path prefixes; this in-process version keeps the mechanism visible:
 migrating is `Migrate`, rollback is `Rollback`, and nothing else changes. `IBackend` is a
-one-method contract, so a `Func<string, string>` per backend would do — the interface earns its
+one-method contract, so a `Func<string, string>` per backend would do; the interface earns its
 place once backends grow config or health checks. Routing stays the easy half; the shared data
 during the overlap is still yours to solve.
 
@@ -400,10 +400,10 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — `Facade<N, L>` is generic, so both backends monomorphize: zero dispatch cost,
-fixed at compile time — the right default when a facade fronts exactly two known systems. Reach
+fixed at compile time: the right default when a facade fronts exactly two known systems. Reach
 for `Box<dyn Backend>` only if the backend set is chosen at runtime from config. Be honest about
 scale, though: a real strangler facade is a reverse proxy (nginx, Envoy) in front of two deployed
-services, and the pattern is architectural — this single-process version shows the seam, not the
+services, and the pattern is architectural: this single-process version shows the seam, not the
 infrastructure, and the shared-data problem is untouched by either.
 
 ### Zig
@@ -477,9 +477,9 @@ pub fn main() void {
 **🧠 Tradeoff** — Function pointers cover stateless backends; the moment a backend carries state
 (a connection pool, say), Zig's answer is the two-field vtable idiom (`*anyopaque` context plus
 function pointer) that `std.mem.Allocator` uses. The fixed `[8][]const u8` table dodges the
-allocator for a demo — a real routing table would take one and grow. And keep perspective: the
+allocator for a demo; a real routing table would take one and grow. And keep perspective: the
 strangler facade in the wild is a proxy in front of two deployed systems; this shows the shape of
-the seam, and the routing was never the hard part — the shared data is.
+the seam, and the routing was never the hard part: the shared data is.
 
 ### Java
 
@@ -563,7 +563,7 @@ public class Demo {
 predicates (or nginx/Envoy) in front of the two deployed systems, where migrating a feature is a
 route-config change and rollback needs no redeploy. This in-process version keeps the mechanism
 visible: one contract, two implementations, a routing set that *is* the migration state. `Backend`
-is a functional interface, so a lambda per backend would compile — but here each implementation
+is a functional interface, so a lambda per backend would compile, but here each implementation
 stands for a whole system, and the class earns its place the moment it grows config or health
 checks. Either way, routing is the easy half; the shared data during the overlap is still yours.
 

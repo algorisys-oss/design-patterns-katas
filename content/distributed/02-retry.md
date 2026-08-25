@@ -5,7 +5,7 @@ sequence: 2
 title: Retry
 also_known_as: [Retry with Backoff]
 gof: false
-intent: "Automatically re-attempt a failed operation that might succeed on a second try — with backoff and jitter so retries don't stampede the dependency."
+intent: "Automatically re-attempt a failed operation that might succeed on a second try, with backoff and jitter so retries don't stampede the dependency."
 frequency: high
 difficulty: beginner
 tags: [distributed, resilience, transient-faults, backoff, idempotency]
@@ -15,13 +15,13 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-When an operation fails in a way that might be **transient** — a dropped connection, a brief
-timeout, a `503` — try it again instead of surfacing the error. Wait a little between attempts,
+When an operation fails in a way that might be **transient** (a dropped connection, a brief
+timeout, a `503`) try it again instead of surfacing the error. Wait a little between attempts,
 grow the wait each time (**exponential backoff**), and add randomness (**jitter**) so many clients
 don't all retry in lockstep.
 
 Networks blink. A retry turns a momentary glitch into a non-event, without the caller or the user
-ever seeing it — provided you retry the right failures, a bounded number of times, on operations
+ever seeing it, provided you retry the right failures, a bounded number of times, on operations
 that are safe to repeat.
 
 ## The Problem
@@ -43,7 +43,7 @@ Key Components:
 
 - **Operation** — the call being attempted; ideally idempotent so repeats are safe.
 - **Retry policy** — max attempts, which errors are retryable, and the backoff schedule.
-- **Backoff** — the growing delay between attempts (usually exponential: 100ms, 200ms, 400ms…).
+- **Backoff** — the growing delay between attempts (usually exponential: 100ms, 200ms, 400ms...).
 - **Jitter** — randomness added to the delay so clients desynchronize.
 
 ```
@@ -84,7 +84,7 @@ attempt 1 ──fail──► wait 100ms±j ──► attempt 2 ──fail──
 
 ## Key Takeaways
 
-- Retry *transient*, *retryable* failures on *idempotent* operations — not everything.
+- Retry *transient*, *retryable* failures on *idempotent* operations, not everything.
 - Use exponential backoff plus jitter so retries don't stampede or synchronize.
 - Bound attempts and total elapsed time; failing after N is a feature, not a bug.
 - Combine with a circuit breaker so retries stop once failure is sustained, not transient.
@@ -128,7 +128,7 @@ async function withRetry(fn, { attempts = 4, baseMs = 200 } = {}) {
 
 **🧠 Tradeoff** — A small `withRetry` wrapper hides blips for a handful of lines, and exponential
 backoff with jitter keeps it polite. It only re-runs the passed function, so idempotency is the
-caller's responsibility — retrying a GET is safe, retrying a POST needs an idempotency key. It
+caller's responsibility: retrying a GET is safe, retrying a POST needs an idempotency key. It
 doesn't know when a service is truly *down*, which is what a circuit breaker adds.
 
 ### Node.js
@@ -161,8 +161,8 @@ async function getStock() {
 }
 ```
 
-**🧠 Tradeoff** — `p-retry` gives production retry semantics — exponential backoff, randomization,
-and `AbortError` to bail out of permanent failures — so you're not re-deriving the schedule. The
+**🧠 Tradeoff** — `p-retry` gives production retry semantics (exponential backoff, randomization,
+and `AbortError` to bail out of permanent failures) so you're not re-deriving the schedule. The
 `AbortError` distinction is the important discipline: retry `5xx`/timeouts, abort on `4xx`.
 Combine with a breaker so a sustained upstream outage stops the retries.
 
@@ -198,7 +198,7 @@ def fetch_report():
 **🧠 Tradeoff** — `tenacity` turns retry into a declarative decorator: stop condition, wait
 strategy, and *which* exceptions to retry, all in one place. Restricting `retry_if_exception_type`
 to transient errors avoids retrying validation failures. The library is the idiomatic choice; the
-one thing it can't decide for you is idempotency — that's a property of the operation.
+one thing it can't decide for you is idempotency; that's a property of the operation.
 
 ### Elixir
 
@@ -314,7 +314,7 @@ static async Task<T> WithRetry<T>(Func<Task<T>> fn, int attempts, TimeSpan baseD
         }
         catch (Exception e) when (IsTransient(e) && i < attempts - 1)
         {
-            var backoff = baseDelay * (1 << i);                            // 200, 400, 800…
+            var backoff = baseDelay * (1 << i);                            // 200, 400, 800...
             var jitter = Random.Shared.NextDouble() * backoff.TotalMilliseconds;
             await Task.Delay(backoff + TimeSpan.FromMilliseconds(jitter)); // desynchronize
         }
@@ -326,15 +326,15 @@ static bool IsTransient(Exception e) => e switch
     TaskCanceledException => true,                                  // timeout — retry
     HttpRequestException { StatusCode: null } => true,              // connection-level blip
     HttpRequestException h => (int?)h.StatusCode is >= 500 or 429,  // 5xx / throttled
-    _ => false,                       // 4xx, validation… — the answer won't change
+    _ => false,                       // 4xx, validation... — the answer won't change
 };
 ```
 
-**🧠 Tradeoff** — The exception filter (`catch … when`) is the idiomatic classify step: a permanent
+**🧠 Tradeoff** — The exception filter (`catch ... when`) is the idiomatic classify step: a permanent
 failure never enters the catch block, so it propagates with its original stack. `Task.Delay` waits
 without holding a thread, and `Random.Shared` supplies jitter with no setup. In production the
-schedule usually comes from Polly — `WaitAndRetryAsync` with decorrelated jitter, composed with its
-timeout and circuit-breaker strategies — but the loop above is the whole idea. Idempotency stays
+schedule usually comes from Polly (`WaitAndRetryAsync` with decorrelated jitter, composed with its
+timeout and circuit-breaker strategies) but the loop above is the whole idea. Idempotency stays
 the operation's problem, not the wrapper's.
 
 ### Rust
@@ -381,7 +381,7 @@ fn with_retry<T>(mut f: impl FnMut() -> Result<T, FetchError>) -> Result<T, Fetc
         match f() {
             Ok(v) => return Ok(v),
             Err(e) if e.is_transient() && attempt < ATTEMPTS - 1 => {
-                let backoff = BASE_MS << attempt; // 200, 400, 800…
+                let backoff = BASE_MS << attempt; // 200, 400, 800...
                 let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().subsec_nanos();
                 let jitter = u64::from(nanos) % backoff; // desynchronize, no rand crate
                 thread::sleep(Duration::from_millis(backoff + jitter));
@@ -398,7 +398,7 @@ fn with_retry<T>(mut f: impl FnMut() -> Result<T, FetchError>) -> Result<T, Fetc
 **🧠 Tradeoff** — Making `FetchError` an enum turns "which failures are retryable" into a
 compile-time decision: `is_transient` matches exhaustively, so adding a variant forces you to
 classify it before the code builds. `FnMut` is honest about the operation running more than once.
-`thread::sleep` blocks the thread — fine in a worker; async Rust would use a runtime's timer, a
+`thread::sleep` blocks the thread: fine in a worker; async Rust would use a runtime's timer, a
 dependency these katas skip. The clock-derived jitter avoids the `rand` crate; use a real RNG in
 production.
 
@@ -439,7 +439,7 @@ fn withRetry(io: std.Io, f: *const fn () FetchError!f64) FetchError!f64 {
     while (true) {
         return f() catch |err| {
             if (!isTransient(err) or i == attempts - 1) return err; // permanent, or out of attempts
-            const backoff = base_ms << @intCast(i); // 200, 400, 800…
+            const backoff = base_ms << @intCast(i); // 200, 400, 800...
             const jitter = prng.random().uintLessThan(u64, backoff); // desynchronize
             io.sleep(.fromMilliseconds(@intCast(backoff + jitter)), .awake) catch return err;
             i += 1;
@@ -452,10 +452,10 @@ fn withRetry(io: std.Io, f: *const fn () FetchError!f64) FetchError!f64 {
 ```
 
 **🧠 Tradeoff** — Error sets give the same guarantee as Rust's enum: the `switch` in `isTransient`
-is exhaustive, so a new error can't sneak past classification. `catch` is plain control flow — no
-unwinding, no hidden cost — which keeps the retry loop readable top to bottom. Sleeping goes
-through the `io` you pass in — 0.17 makes blocking a capability, threaded explicitly like an
-allocator — and with `std.Io.Threaded` it blocks the OS thread; a canceled sleep gives up with the
+is exhaustive, so a new error can't sneak past classification. `catch` is plain control flow (no
+unwinding, no hidden cost) which keeps the retry loop readable top to bottom. Sleeping goes
+through the `io` you pass in: 0.17 makes blocking a capability, threaded explicitly like an
+allocator, and with `std.Io.Threaded` it blocks the OS thread; a canceled sleep gives up with the
 last error. The PRNG is explicit and locally seeded: no global state, and fixing the seed makes the
 jitter reproducible in tests.
 
@@ -507,7 +507,7 @@ class Reports {
                 return fn.call();
             } catch (Exception e) {
                 if (!isTransient(e) || i == attempts - 1) throw e; // permanent, or out of tries
-                long backoff = baseMs << i;                        // 200, 400, 800…
+                long backoff = baseMs << i;                        // 200, 400, 800...
                 long jitter = ThreadLocalRandom.current().nextLong(backoff); // desynchronize
                 Thread.sleep(backoff + jitter);
             }
@@ -519,7 +519,7 @@ class Reports {
         return switch (e) {
             case HttpTimeoutException _ -> true; // deadline hit — worth another try
             case ConnectException _ -> true;     // connection-level blip
-            default -> false;                    // 4xx, parse errors… the answer won't change
+            default -> false;                    // 4xx, parse errors... the answer won't change
         };
     }
 }
@@ -527,11 +527,11 @@ class Reports {
 
 **🧠 Tradeoff** — The `switch` over exception types makes classification one visible expression:
 transient types retry, everything else propagates with its original stack. `Thread.sleep` blocking
-a thread used to be the knock against plain retry loops in Java — on a virtual thread
+a thread used to be the knock against plain retry loops in Java; on a virtual thread
 (`Executors.newVirtualThreadPerTaskExecutor()`) a sleeping thread costs close to nothing, so the
 blocking loop is respectable again; and since `sleep` throws `InterruptedException`, cancellation
 interrupts the backoff for free. Production schedules usually come from Resilience4j's `Retry` (or
-Spring Retry) — decorrelated jitter, metrics, composition with the circuit breaker — but the loop
+Spring Retry) with decorrelated jitter, metrics, and circuit-breaker composition, but the loop
 above is the whole idea. Idempotency stays the operation's problem, not the wrapper's.
 
 ## Applications

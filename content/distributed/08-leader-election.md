@@ -5,7 +5,7 @@ sequence: 8
 title: Leader Election
 also_known_as: [Leader/Follower, Coordinator Election]
 gof: false
-intent: "Have a group of identical nodes agree on one 'leader' to coordinate work, and automatically elect a new one if the leader fails — so exactly one node acts at a time."
+intent: "Have a group of identical nodes agree on one 'leader' to coordinate work, and automatically elect a new one if the leader fails, so exactly one node acts at a time."
 frequency: medium
 difficulty: advanced
 tags: [distributed, coordination, consensus, high-availability, single-writer]
@@ -15,13 +15,13 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Run several identical nodes for availability, but let only **one** — the **leader** — perform the
+Run several identical nodes for availability, but let only **one**, the **leader**, perform the
 work that must happen in a single place (a scheduler, a writer, a coordinator). The nodes agree on
 who the leader is; if it dies, the survivors detect it and **elect** a new leader, so the role
 never disappears and is never held by two nodes at once.
 
 It's how you get high availability *and* single-writer semantics: many nodes for redundancy, one
-active at a time for correctness. The moment the active node fails, another takes over — ideally in
+active at a time for correctness. The moment the active node fails, another takes over, ideally in
 seconds, with no human in the loop.
 
 ## The Problem
@@ -93,7 +93,7 @@ Coordinator ──elect─┤
 
 ## Key Takeaways
 
-- Many nodes for availability, one leader for correctness — with automatic re-election on failure.
+- Many nodes for availability, one leader for correctness, with automatic re-election on failure.
 - Correct election needs consensus; don't hand-roll it, use etcd/ZooKeeper/Consul or Raft.
 - Leases + fencing tokens prevent a resumed stale leader from acting alongside a new one.
 - Expect (and design for) a brief no-leader gap during failover.
@@ -135,7 +135,7 @@ async function leaderLoop(redis, id) {
 **🧠 Tradeoff** — A Redis `SET NX PX` lease is a pragmatic, lightweight election: whoever grabs the
 key is leader and renews it; if it stops renewing, the key expires and another node grabs it. It's
 simple and good enough for many "run this on one node" needs. But single-Redis locks aren't true
-consensus — under failover/partition they can grant two leaders, so add **fencing tokens** (a
+consensus: under failover/partition they can grant two leaders, so add **fencing tokens** (a
 monotonic counter checked by the protected resource) for correctness, or use Redlock/etcd.
 
 ### Node.js
@@ -168,7 +168,7 @@ async function run() {
 
 **🧠 Tradeoff** — Leaning on etcd's election API gives *real* consensus (Raft under the hood):
 `elected`/`error` events tell each node exactly when it holds or loses leadership, with correct
-fencing. You run and depend on an etcd cluster, which is the honest cost — but you get split-brain
+fencing. You run and depend on an etcd cluster, which is the honest cost, but you get split-brain
 safety you shouldn't try to reproduce with a plain lock. This is the recommended path for
 correctness.
 
@@ -240,10 +240,10 @@ end
 ```
 
 **🧠 Tradeoff** — The BEAM has cluster-wide coordination built in: `:global` name registration
-gives a single named process across nodes — a natural leader — and OTP supervision restarts it
+gives a single named process across nodes (a natural leader) and OTP supervision restarts it
 elsewhere on failure. For partition-tolerant, correct handoff you graduate to `Horde` or Raft
 (`ra`), since `:global` can briefly split-brain during a netsplit. Still, no external coordinator is
-needed for the common case — a genuine BEAM advantage.
+needed for the common case: a genuine BEAM advantage.
 
 ### Go
 
@@ -277,7 +277,7 @@ leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
 ```
 
 **🧠 Tradeoff** — In the Go/Kubernetes world, `client-go`'s `leaderelection` (backed by an etcd
-Lease) is the standard, correct answer — it's how controllers ensure one active instance, with lease
+Lease) is the standard, correct answer: it's how controllers ensure one active instance, with lease
 renewal and clean callbacks on gaining/losing leadership. You depend on the k8s/etcd control plane,
 but that's already there in that environment, and it gives you proven consensus rather than a
 hand-rolled lock.
@@ -358,8 +358,8 @@ public sealed class Node(string id, LeaseStore store)
 
 **🧠 Tradeoff** — The whole cluster fits in one process because election is just state plus rules:
 a lease, a TTL, a monotonic term. The `Lock` stands in for the atomicity a real coordination store
-gives you across machines — which is exactly what you must *not* hand-roll in production. In .NET
-that means an etcd/ZooKeeper client, a Kubernetes Lease, or a SQL-row lease like the Python tab —
+gives you across machines, which is exactly what you must *not* hand-roll in production. In .NET
+that means an etcd/ZooKeeper client, a Kubernetes Lease, or a SQL-row lease like the Python tab,
 and the fencing term is the part teams skip and later regret, because a paused-and-resumed leader
 holding a stale term is how two leaders act at once.
 
@@ -440,8 +440,8 @@ fn main() {
     thread::sleep(Duration::from_millis(10)); // let node-1 win the first election
     let b = { let l = Arc::clone(&lease); thread::spawn(move || campaign(l, "node-2", 12)) };
 
-    a.join().unwrap(); // node-1 "crashes" after 4 renewals…
-    b.join().unwrap(); // …its lease expires, and node-2 takes over
+    a.join().unwrap(); // node-1 "crashes" after 4 renewals...
+    b.join().unwrap(); // ...its lease expires, and node-2 takes over
 }
 // node-1 elected leader (term 1)
 // node-1 stopped renewing
@@ -451,7 +451,7 @@ fn main() {
 
 **🧠 Tradeoff** — `Arc<Mutex<Lease>>` plays the coordination store: the mutex provides the atomic
 check-and-set that etcd or a DB row provides across machines, and ownership makes the sharing
-explicit — no thread touches the lease except through the lock. That's the honest limit, too: in
+explicit: no thread touches the lease except through the lock. That's the honest limit, too: in
 one process the mutex *is* correct arbitration, but across machines nothing in the language helps,
 and this exact logic reimplemented over the network is the home-grown consensus the Common
 Mistakes section warns about. In production Rust you'd call etcd or use a Raft crate; the
@@ -541,11 +541,11 @@ pub fn main() void {
 ```
 
 **🧠 Tradeoff** — Running the cluster on a logical clock makes the demo deterministic and shows
-that election is only state plus rules — no allocation, no threads, every transition visible.
+that election is only state plus rules: no allocation, no threads, every transition visible.
 That explicitness is Zig's teaching advantage here, and also the honest boundary: the language
 gives you nothing for the distributed part, and a Zig service in production talks to etcd or
 Consul like any other client rather than growing its own consensus. The detail worth carrying
-away is the fencing term — the protected work must check it, or a crashed-and-revived node-1
+away is the fencing term: the protected work must check it, or a crashed-and-revived node-1
 still holding term 1 would act beside the term-2 leader.
 
 ### Java
@@ -631,10 +631,10 @@ public class Demo {
 
 **🧠 Tradeoff** — The simulation shows that election is only state plus rules: a lease, a TTL, a
 monotonic term. `synchronized` stands in for the atomic check-and-set a real coordination store
-provides across machines — and that store is exactly what you don't hand-roll. In production Java
+provides across machines, and that store is exactly what you don't hand-roll. In production Java
 you delegate: Apache Curator's `LeaderLatch`/`LeaderSelector` over ZooKeeper, an etcd client's
 election API, or a Kubernetes `Lease` when you're already on that platform. What carries over
-unchanged is the fencing term — the protected work must check it, or a paused-and-resumed node-1
+unchanged is the fencing term: the protected work must check it, or a paused-and-resumed node-1
 still holding term 1 acts beside the term-2 leader.
 
 ## Applications

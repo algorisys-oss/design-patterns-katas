@@ -15,7 +15,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Put an upper bound on every wait. If an operation — a network call, a lock, a query — doesn't
+Put an upper bound on every wait. If an operation (a network call, a lock, a query) doesn't
 complete within its deadline, **abandon it** and return a timeout error, freeing the thread,
 connection, or goroutine that was blocked on it.
 
@@ -28,9 +28,9 @@ service down. A timeout converts an unbounded wait into a bounded, handleable fa
 Waiting without a limit is a resource leak in slow motion:
 
 - **Hung calls hold resources** — a request stuck waiting on a slow dependency keeps its thread,
-  socket, and memory tied up until… never.
+  socket, and memory tied up until... never.
 - **Pool exhaustion** — enough blocked calls and the connection/thread pool is empty, so *new*
-  requests can't even start — a total outage caused by one slow dependency.
+  requests can't even start: a total outage caused by one slow dependency.
 - **Unbounded tail latency** — without a deadline, the slowest response defines the worst case, and
   there's no worst case.
 - **No propagated deadline** — a chain of services each waiting "as long as it takes" means the
@@ -191,7 +191,7 @@ async def get_quote_async(session):
 
 **🧠 Tradeoff** — `requests`' `timeout=` and `asyncio.timeout()` are the idioms; the async version
 *cancels* the coroutine on the deadline, releasing the connection. The perennial Python footgun is
-omitting `timeout=` — the default is no timeout, so a single stalled call can pin a worker
+omitting `timeout=`: the default is no timeout, so a single stalled call can pin a worker
 indefinitely. Make it a lint rule.
 
 ### Elixir
@@ -219,7 +219,7 @@ end
 
 **🧠 Tradeoff** — Elixir bakes timeouts into its concurrency primitives: `Task.await/yield`,
 `GenServer.call/3`, and `receive ... after` all take deadlines. The `yield || shutdown` idiom is
-important — it both stops waiting *and* kills the task, so the work truly stops (process isolation
+important: it both stops waiting *and* kills the task, so the work truly stops (process isolation
 makes that clean). The lesson mirrors the others: never pass `:infinity` to something that talks to
 the outside world.
 
@@ -293,8 +293,8 @@ static async Task<string> GetQuote(CancellationToken ct)
 ```
 
 **🧠 Tradeoff** — `CancellationTokenSource(TimeSpan)` is C#'s answer to Go's `context`: the token
-carries deadline and cancellation together, and every layer that accepts it — `HttpClient`,
-`Task.Delay`, database drivers — actually stops the work, not just the wait. For APIs that don't
+carries deadline and cancellation together, and every layer that accepts it (`HttpClient`,
+`Task.Delay`, database drivers) actually stops the work, not just the wait. For APIs that don't
 take a token, `task.WaitAsync(timeout)` bounds the wait but abandons the work, so prefer threading
 the token when you can. `HttpClient.Timeout` is a real backstop, but it doesn't propagate down a
 call chain the way one shared token does.
@@ -341,8 +341,8 @@ fn main() {
 
 **🧠 Tradeoff** — `recv_timeout` bounds the *wait*, not the *work*: std can't kill a thread, so the
 abandoned fetch runs to completion and its `send` lands harmlessly in a closed channel. Real
-cancellation has to live where the blocking happens — `TcpStream::set_read_timeout` pushes the
-deadline into the socket itself — or in an async runtime, where `tokio::time::timeout` cancels by
+cancellation has to live where the blocking happens (`TcpStream::set_read_timeout` pushes the
+deadline into the socket itself) or in an async runtime, where `tokio::time::timeout` cancels by
 dropping the future (a dependency these katas skip). Work that may still complete server-side is
 exactly why timeout plus retry needs idempotency.
 
@@ -411,7 +411,7 @@ fn getQuote(io: std.Io, allocator: std.mem.Allocator, limit: std.Io.Duration) !f
 ```
 
 **🧠 Tradeoff** — Zig makes the ugly truth of timeouts explicit: you can stop *waiting*, but you
-can't stop the *thread*, so a timeout is really an ownership handoff — the `abandoned` flag decides
+can't stop the *thread*, so a timeout is really an ownership handoff: the `abandoned` flag decides
 whether the waiter or the orphaned worker frees the slot. Runtimes in other languages run this same
 machinery; Zig just refuses to hide it, allocator and all. In 0.17 the wait itself is a capability
 too: the mutex, condition, and clock all go through `io`, and the `Uncancelable` variants mark the
@@ -478,10 +478,10 @@ class Quotes {
 
 **🧠 Tradeoff** — `request.timeout` is the honest one: the HTTP client abandons the exchange and
 frees the connection, so the work stops with the wait. `Future.get(timeout)` and `orTimeout` bound
-only the *wait* — the task keeps running until `cancel(true)`'s interrupt lands, and interrupts
+only the *wait*: the task keeps running until `cancel(true)`'s interrupt lands, and interrupts
 only land in code that blocks interruptibly (`java.net.http` does; a raw `InputStream.read` mostly
-doesn't). So prefer pushing the deadline into the layer that actually blocks — request timeouts,
-JDBC's `setQueryTimeout`, socket timeouts — and treat `orTimeout` as the backstop. Java has no
+doesn't). So prefer pushing the deadline into the layer that actually blocks (request timeouts,
+JDBC's `setQueryTimeout`, socket timeouts) and treat `orTimeout` as the backstop. Java has no
 ambient deadline like Go's `context`: propagating a budget across hops means passing the remaining
 time down yourself, though structured concurrency's scope-wide deadline (still in preview) is the
 emerging answer.
