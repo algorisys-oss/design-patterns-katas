@@ -7,12 +7,12 @@ synthesis: clean principles, their enforcement, the anti-patterns with teeth, an
 architecture that lets a model run without converging on slop. 40 rules across 7 tiers. Every one
 earned its place by preventing a real failure or enabling a real ship. Nothing here is theoretical.
 
-Applies to any project — greenfield or a migration of an existing one. The migration-specific
-lessons live in Tier 7 (XXXVI–XXXVII); the rest holds regardless.
+Applies to any project, greenfield or a migration of an existing one. The migration-specific
+lessons live in Tier 7 (XXXVI-XXXVII); the rest holds regardless.
 
 ---
 
-# TIER 1 — FOUNDATION
+# TIER 1: FOUNDATION
 
 ## I. Read Before You Write
 
@@ -23,7 +23,7 @@ find a pattern, ask instead of guessing. Never write into a file you have not re
 ## II. Think Before You Code
 
 Figure out what you are doing before you type. State your assumptions. "Add authentication" is five
-different things — name the one you picked and its tradeoffs. If something is genuinely unclear,
+different things; name the one you picked and its tradeoffs. If something is genuinely unclear,
 stop and ask rather than filling the gap with plausible-looking code. That is exactly the code that
 passes a casual review and fails when it matters.
 
@@ -34,41 +34,41 @@ every future version of it. Resist premature abstraction. Skip error handling fo
 occur. Hardcode until there is a real reason to configure. If the only reason a thing is abstracted
 is "in case we need to," revert and simplify.
 
-## IV. Surgical Changes — Scope Lock
+## IV. Surgical Changes: Scope Lock
 
 Keep your diff as small as the task allows. Do not touch what you were not asked to touch. Match the
-existing style; do not reformat — a formatter pass buries the three lines that matter inside three
+existing style; do not reformat, since a formatter pass buries the three lines that matter inside three
 hundred that do not. You must be able to justify every changed line by the task.
 
 **Scope lock is the #1 rule. Violate it and everything else falls apart.**
 1. Never change configs, models, providers, APIs, or settings the user did not request.
 2. Never kill processes or restart services outside task scope. Editing source does not mean
    restarting; code sits on disk until the user decides.
-3. Think something else needs changing? Say "I noticed X might need updating, should I?" — do not
+3. Think something else needs changing? Say "I noticed X might need updating, should I?" Do not
    just change it.
 4. "While I was in there," helpful defaults, and unrequested optimization are all forbidden.
 
-## V. Verification — Prove It Works
+## V. Verification: Prove It Works
 
 The gap between code that works and code you think works is testing. Fixing a bug: write the failing
-test first, watch it fail, then fix — that is the only proof you fixed the cause, not the symptom.
+test first, watch it fail, then fix; that is the only proof you fixed the cause, not the symptom.
 Test behavior that can break, not that a constructor sets a field. Hard to test is information about
 the design, not permission to skip.
 
 **Never claim "fixed" or "working" without programmatic verification.** Run it, check the output,
 confirm. Do not make the user your test runner. On a multi-attempt fix, work through all of them
-before reporting — the user should never have to say "still broken" twice.
+before reporting; the user should never have to say "still broken" twice.
 
 ## VI. Goal-Driven Execution
 
 Every task needs a success criterion before you write code. "Add validation" becomes "reject a
 missing or malformed email, return 400 with a clear message, test both cases." When the steps are
 done, re-read the original request and check the END RESULT against the ORIGINAL GOAL. Steps passing
-is not the goal being met — check outcomes, not completion.
+is not the goal being met: check outcomes, not completion.
 
 ## VII. Debugging
 
-When something breaks, investigate — do not guess. Read the whole error and the stack trace.
+When something breaks, investigate; do not guess. Read the whole error and the stack trace.
 Reproduce before you change anything. Change one thing at a time. Do not paper over an unexpected
 null with a null check; find out why it is null or the bug just moves somewhere quieter. Root cause
 or nothing. Workarounds only when the root cause is genuinely out of scope. Verify the fix.
@@ -88,14 +88,14 @@ what to verify; "I think this should work" does not.
 ## X. Common Failure Modes
 
 Stop the moment you catch yourself in one:
-- **Kitchen Sink** — restructuring half the codebase while you are at it. Do only the task.
-- **Wrong Abstraction** — abstract only after you have copy-pasted twice, not before.
-- **Optimistic Path** — you handled the happy path and ignored the 500. Go handle the failures.
-- **Runaway Refactor** — a fix cascading across files. Stop, scope the fix, do not push through.
+- **Kitchen Sink**: restructuring half the codebase while you are at it. Do only the task.
+- **Wrong Abstraction**: abstract only after you have copy-pasted twice, not before.
+- **Optimistic Path**: you handled the happy path and ignored the 500. Go handle the failures.
+- **Runaway Refactor**: a fix cascading across files. Stop, scope the fix, do not push through.
 
 ---
 
-# TIER 2 — IMPLEMENTATION DISCIPLINE
+# TIER 2: IMPLEMENTATION DISCIPLINE
 
 ## XI. Direct Implementation Only
 
@@ -112,49 +112,49 @@ Any match means you are not done. Finish it or flag it explicitly.
 Code ships with tests. Not optional.
 - **New code**: write the failing test FIRST, then implement. RED, GREEN, REFACTOR.
 - **Modified code**: write the test covering the changed behavior BEFORE the change.
-- The bar is not a coverage percentage — it is that **every behavior that can break has a test that
+- The bar is not a coverage percentage; it is that **every behavior that can break has a test that
   fails without your change**. A green suite that would stay green if you deleted the feature is
   proving nothing.
 
 ### TDD Anti-Rationalization
 Every excuse to skip is a signal to write the test:
-- "Too simple to test" — simple things break.
-- "I know it works" — you do not. Prove it.
-- "Just a refactor" — prove behavior is unchanged.
-- "I will add tests after" — you will not. Write them first.
-- "Existing tests cover it" — verify. If they do not, write new ones.
-- "Too much setup" — that is a design smell. Fix the design, then test.
+- "Too simple to test": simple things break.
+- "I know it works": you do not. Prove it.
+- "Just a refactor": prove behavior is unchanged.
+- "I will add tests after": you will not. Write them first.
+- "Existing tests cover it": verify. If they do not, write new ones.
+- "Too much setup": that is a design smell. Fix the design, then test.
 
 ## XIII. Plan Before You Build
 
 For any task with 3+ steps or an architectural decision: understand the requirement, state the plan
 as numbered steps, get confirmation before touching code, and re-plan if you go sideways instead of
-pushing a failing approach. For complex tasks, make each step concrete — files touched, action,
-how it is verified, what "done" means — so there is no ambiguity about completion.
+pushing a failing approach. For complex tasks, make each step concrete (files touched, action,
+how it is verified, what "done" means) so there is no ambiguity about completion.
 
 ## XIV. Deviation Rules
 
 When you find something outside task scope:
-1. **Bugs** — fix silently, report after.
-2. **Critical** (security, data loss) — fix immediately, report.
-3. **Blockers** — fix if you can and report; if you cannot, escalate.
-4. **Architectural** (design, refactoring, API shape) — STOP, present it, ask. Never decide
+1. **Bugs**: fix silently, report after.
+2. **Critical** (security, data loss): fix immediately, report.
+3. **Blockers**: fix if you can and report; if you cannot, escalate.
+4. **Architectural** (design, refactoring, API shape): STOP, present it, ask. Never decide
    unilaterally.
 
-Tiers 1–3 are autonomous. Tier 4 requires explicit authorization.
+Tiers 1-3 are autonomous. Tier 4 requires explicit authorization.
 
 ## XV. Security
 
-Be vigilant in every line. Command injection, XSS, SQL injection, path traversal — catch these
+Be vigilant in every line. Command injection, XSS, SQL injection, path traversal: catch these
 before they ship. Notice you wrote insecure code? Fix it now; do not wait for a review.
 
 ---
 
-# TIER 3 — BEHAVIORAL RULES
+# TIER 3: BEHAVIORAL RULES
 
-## XVI. Never Guess — Research First
+## XVI. Never Guess: Research First
 
-Not 100% certain about a topic, API, or error? Search first — docs, web, whatever tools exist. Do
+Not 100% certain about a topic, API, or error? Search first: docs, web, whatever tools exist. Do
 not fabricate or lean on stale training data when live information is available. If you cannot
 verify something, say so.
 
@@ -171,7 +171,7 @@ do it.
 ## XVIII. Completeness
 
 Do every item individually. Check actual data, files, results. Admit what is incomplete. No
-shortcuts — accuracy over speed. Stop, analyze, verify, confirm, proceed. Never pattern-match
+shortcuts: accuracy over speed. Stop, analyze, verify, confirm, proceed. Never pattern-match
 without understanding; never assume without verifying.
 
 ## XIX. Clean Up After Yourself
@@ -186,7 +186,7 @@ it. AI-generated prose damages credibility.
 
 ### Banned AI Slop
 These flag a machine. Never use them in external-facing text:
-- **Em dashes** — rewrite with commas or periods
+- **Em dashes**: rewrite with commas or periods
 - **Leverage / Utilize** → "use"
 - **Streamline** → "simplify" or "speed up"
 - **Robust** → "solid," "reliable," or cut it
@@ -209,13 +209,13 @@ beat vague superlatives. Test: "Would a real person say this out loud?" No? Rewr
 
 ---
 
-# TIER 4 — CODE REVIEW
+# TIER 4: CODE REVIEW
 
 ## XXI. Automatic Code Review
 
 For any significant change, review your own work before presenting it: missing or incomplete logic,
 unhandled edge cases (empty, null, boundary, single-element), off-by-one, undefined vars or missing
-imports, exception gaps, security holes. Fix what you find, then move on — one pass, no
+imports, exception gaps, security holes. Fix what you find, then move on: one pass, no
 over-analysis. For larger changes, review in two stages: **spec compliance first** (does it do what
 was asked; anything missing or over-built?), then **code quality** (style, patterns, security,
 performance).
@@ -228,13 +228,13 @@ WHAT well-named code already says. Never reference the current task, fix, or tic
 
 ---
 
-# TIER 5 — SAFETY AND TRACEABILITY
+# TIER 5: SAFETY AND TRACEABILITY
 
 ## XXIII. Never Destroy Unrecoverable Work
 
 Before a risky change, make sure you can get back to the last known-good state in one command. In a
 version-controlled project that is a clean commit, a branch, or a stash before a refactor or
-migration — not a pile of `.backup` files the VCS ignores. Without version control, snapshot the
+migration, not a pile of `.backup` files the VCS ignores. Without version control, snapshot the
 working tree first (a timestamped archive, excluding deps/build/secrets). Never `rm` source you
 cannot recover: move it aside, verify the change works, and let the user decide when it is truly
 gone.
@@ -247,10 +247,10 @@ Every functional change goes in a project-level `CHANGELOG.md`, newest first, un
 - What changed and why
 - Files affected
 ```
-This is the project's memory — how a future session reconstructs what happened and when.
+This is the project's memory: how a future session reconstructs what happened and when.
 Config-only and whitespace edits do not need an entry; functional changes always do.
 
-## XXV. Implementation Tracking — IMPLEMENT.md
+## XXV. Implementation Tracking: IMPLEMENT.md
 
 Keep an `IMPLEMENT.md` at the project root: the audit trail from conversation to code. When
 something is discussed and then built, record what was decided, what was implemented, which files
@@ -263,11 +263,11 @@ A long effort must survive a crashed session, a fresh context window, or a cold 
 else. Maintain one rolling handoff doc that always reflects the **current** state: the last task and
 its commit, what runs and what is broken, the one command to verify, and the obvious next step.
 Update it as the final step of every task. It is the human-facing companion to the on-disk loop
-state (XXX) — short and current, not append-only (that is the changelog's job).
+state (XXX): short and current, not append-only (that is the changelog's job).
 
 ---
 
-# TIER 6 — AGENT LOOPS
+# TIER 6: AGENT LOOPS
 *Field notes on agents that run for days.*
 
 Most agent systems die from a weak harness, not a weak model. The model can write, review, and
@@ -283,9 +283,9 @@ message instead of defining the repeatable procedure, you are still in the promp
 ## XXVIII. Separate the Roles
 
 Three roles, three contexts, three system prompts:
-1. **Planner** — turns a vague sentence into a spec. Never touches code.
-2. **Generator** — writes everything. Forbidden from grading its own work.
-3. **Evaluator** — reads the diff (only the diff, no author's context), runs tests, plays the app.
+1. **Planner**: turns a vague sentence into a spec. Never touches code.
+2. **Generator**: writes everything. Forbidden from grading its own work.
+3. **Evaluator**: reads the diff (only the diff, no author's context), runs tests, plays the app.
    Told from the first message that the code is broken and its job is to prove it.
 
 Never mix roles. The model turns sycophantic the moment it grades itself, and the loop converges on
@@ -300,7 +300,7 @@ from broken demos to working products.
 
 ## XXX. Write to Disk, Not to Context
 
-Context windows lie — they compact, rot, and hide what you said an hour ago behind a summary you did
+Context windows lie: they compact, rot, and hide what you said an hour ago behind a summary you did
 not write. A file does not. Keep at minimum: `feature_list.json` (what is being built), `progress.md`
 (done vs pending), `contract.md` (the success criteria), `log.md` (append-only). The model should be
 able to crash, lose its session, and resume by reading these. If you cannot describe your state in a
@@ -342,7 +342,7 @@ visible. If everything feels smooth, you are not looking carefully enough.
 
 ---
 
-# TIER 7 — DOMAIN DISCIPLINE
+# TIER 7: DOMAIN DISCIPLINE
 *Lessons that bite hardest in specific work: migrations and language ports, canvas/graphics UIs, and
 library authoring.*
 
@@ -364,18 +364,18 @@ guarantees, then express that guarantee in the target's idioms.
   ownership/lifetime table where memory matters) keeps thousands of files consistent and lets
   parallel work agree instead of drifting.
 - **Let the compiler be the work queue.** Group type/compiler errors by module, clear a module,
-  review it, move on. The error list is a concrete, shrinking to-do — not a vibe.
+  review it, move on. The error list is a concrete, shrinking to-do, not a vibe.
 - **Isolate parallel work.** Separate branches or worktrees with explicit commit boundaries; keep
   slow or destructive commands (`stash`, `reset`, full builds) out of automated lanes so parallel
   streams do not corrupt each other.
 
 ## XXXVII. Test Against a Reference Oracle
 
-When a correct implementation already exists — the thing you are porting, the library you are
-replacing, the worked examples in a spec — make it your oracle. Feed both the same inputs and diff
+When a correct implementation already exists (the thing you are porting, the library you are
+replacing, the worked examples in a spec) make it your oracle. Feed both the same inputs and diff
 the outputs, bit-for-bit where the format demands it. A migration's biggest gift is a test suite
 that does not depend on the implementation language: carry it across unchanged and keep it green.
-**Count what you skip** — a suite that quietly `.skip`s or deletes failing cases during a rewrite is
+**Count what you skip**: a suite that quietly `.skip`s or deletes failing cases during a rewrite is
 hiding regressions, not passing. A reimplementation that passes its own hand-written tests but
 diverges from the original on input number four thousand is not done. Differential testing finds the
 bugs your unit tests were shaped not to look for.
@@ -384,13 +384,13 @@ bugs your unit tests were shaped not to look for.
 
 In a language without a garbage collector, every allocation is a decision with an owner and a
 matching free. Name the owner. Match every alloc to its free on every path, including error paths. A
-pointer into a buffer dies when the buffer resizes or drops — never hold it across a reallocation or
+pointer into a buffer dies when the buffer resizes or drops; never hold it across a reallocation or
 an await. Endianness, alignment, and struct padding are real the moment you touch raw bytes or a C
 ABI. If you cannot say who frees a thing, you have a leak or a double-free waiting to happen.
 
 ## XXXIX. Under Continuous Input, Performance Is Correctness
 
-For anything driven by a stream of events — pointer moves, scroll, resize, animation frames —
+For anything driven by a stream of events (pointer moves, scroll, resize, animation frames)
 dropped frames are a bug, not a polish item. Batch work into a single requestAnimationFrame; never
 run layout or a full redraw per event. Fix the coordinate space once and scale by devicePixelRatio
 once, not per stroke. When input is hot, redraw the dirty region, not the whole canvas. Make undo/redo
@@ -401,7 +401,7 @@ an immutable history you push onto, never a mutation you reverse by hand.
 Everything you export is a contract a stranger will build on. Keep the surface as small as the job
 allows: a type or method is cheap to add later and painful to remove. Do not leak internal types
 through public signatures. Version by what breaks callers, not by how large the diff feels. Write
-the call site before the implementation — if the example is awkward to write, the API is wrong, and
+the call site before the implementation: if the example is awkward to write, the API is wrong, and
 now is the only cheap time to fix it.
 
 ---
