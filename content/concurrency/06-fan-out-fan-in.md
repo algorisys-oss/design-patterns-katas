@@ -3,7 +3,7 @@ id: fan-out-fan-in
 category: concurrency
 sequence: 6
 title: Fan-out / Fan-in
-also_known_as: [Scatter–Gather, Map–Reduce (in the small)]
+also_known_as: [Scatter-Gather, Map-Reduce (in the small)]
 gof: false
 intent: "Split independent work across many concurrent workers (fan-out), then merge their results back into one stream (fan-in)."
 frequency: high
@@ -15,10 +15,10 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Take a batch of independent items, **fan out** — hand each to a concurrent worker so they run in
-parallel — and then **fan in** — collect every result into a single stream or list.
+Take a batch of independent items, **fan out** by handing each to a concurrent worker so they run
+in parallel, and then **fan in** by collecting every result into a single stream or list.
 
-It's the small-scale shape of map–reduce: the "map" runs in parallel across workers, the "reduce"
+It's the small-scale shape of map-reduce: the "map" runs in parallel across workers, the "reduce"
 is the merge that waits for all of them. The point is latency: work that would take the *sum* of
 the item times now takes roughly the *slowest* item's time.
 
@@ -33,7 +33,7 @@ Processing independent items in a plain loop leaves the machine idle:
 - **Manual merging is fiddly** — start some concurrency by hand and you're suddenly juggling
   which result belongs where and when everything is done.
 
-The work is *embarrassingly parallel* — the loop just doesn't exploit it.
+The work is *embarrassingly parallel*; the loop just doesn't exploit it.
 
 ## Structure
 
@@ -53,7 +53,7 @@ Source ──fan-out─► Worker 2 ─┼─fan-in─► [ merged results ]
 
 ## When to Use
 
-- Items are independent — no result depends on another — so they can run in any order, at once.
+- Items are independent (no result depends on another), so they can run in any order, at once.
 - The per-item cost (I/O wait or CPU) is high enough that overlap pays off.
 - You want the batch's latency bounded by the slowest item, not the sum.
 - Optionally cap the width with a worker pool so fan-out doesn't become unbounded.
@@ -85,7 +85,7 @@ Source ──fan-out─► Worker 2 ─┼─fan-in─► [ merged results ]
 
 ## Key Takeaways
 
-- Fan-out parallelizes independent work; fan-in waits for all and merges — map then reduce.
+- Fan-out parallelizes independent work; fan-in waits for all and merges: map then reduce.
 - The payoff is latency: slowest-item time instead of sum-of-items time.
 - Bound the fan-out width (pool/semaphore) so parallelism doesn't become overload.
 - Decide up front how to handle order and partial failure in the merge.
@@ -123,7 +123,7 @@ async function fetchAll(urls) {
 
 **🧠 Tradeoff** — `map` + `Promise.all` is fan-out/fan-in in one line: every request starts
 immediately and `all` gathers them in input order. It's ideal for a bounded number of I/O tasks.
-The catch is *un*boundedness — `all` over ten thousand URLs opens ten thousand sockets — so for
+The catch is *un*boundedness (`all` over ten thousand URLs opens ten thousand sockets), so for
 large batches wrap the fan-out in the worker pool to cap concurrency.
 
 ### Node.js
@@ -161,7 +161,7 @@ async function hashAll(files) {
 
 **🧠 Tradeoff** — For CPU-bound work, fanning out across `worker_threads` gives real
 multi-core parallelism, and `Promise.all` still handles the fan-in. The overhead is per-worker
-setup and message passing, so this wins when each task is substantial — and you'll almost always
+setup and message passing, so this wins when each task is substantial, and you'll almost always
 route the fan-out through a bounded pool rather than a thread per file.
 
 ### Python
@@ -191,9 +191,9 @@ async def fetch_all(urls):
 #       results = list(ex.map(cpu_task, items))
 ```
 
-**🧠 Tradeoff** — `asyncio.gather` is the idiomatic scatter–gather for I/O: it schedules all
+**🧠 Tradeoff** — `asyncio.gather` is the idiomatic scatter-gather for I/O: it schedules all
 coroutines and returns results in argument order. For CPU-bound work the GIL blocks true
-parallelism, so you fan out across a `ProcessPoolExecutor` instead — same shape, processes doing
+parallelism, so you fan out across a `ProcessPoolExecutor` instead: same shape, processes doing
 the "map." Bound the width (a semaphore for asyncio, `max_workers` for the pool) on large batches.
 
 ### Elixir
@@ -219,7 +219,7 @@ items
 
 **🧠 Tradeoff** — `Task.async_stream` is fan-out/fan-in with the sharp edges already handled:
 `max_concurrency` bounds the width, `ordered: true` preserves input order, and results stream
-back as a lazy fan-in — no manual collection. For heavier data-parallel pipelines, Flow
+back as a lazy fan-in, with no manual collection. For heavier data-parallel pipelines, Flow
 generalizes it across stages. It's the most batteries-included version here; the only cost is
 learning its options.
 
@@ -274,7 +274,7 @@ func fanOutIn(items []Item, workers int) <-chan Result {
 **🧠 Tradeoff** — Go turns fan-out/fan-in into an idiom: many goroutines reading one input channel
 *is* the fan-out, all writing one output channel *is* the fan-in, and `WaitGroup` + `close`
 signals "all done." It streams results as they're produced (no waiting for the whole batch) and
-bounds width by the worker count. The price is Go's usual bookkeeping — the extra goroutine to
+bounds width by the worker count. The price is Go's usual bookkeeping: the extra goroutine to
 `Wait` then `close(out)`, and results arrive unordered unless you carry an index.
 
 ### CSharp
@@ -315,7 +315,7 @@ async Task<Result[]> ProcessAllBounded(IReadOnlyList<Item> items, int workers)
 ```
 
 **🧠 Tradeoff** — `Select` + `Task.WhenAll` is .NET's `Promise.all`: unbounded fan-out, ordered
-fan-in, right for a modest batch of I/O. `Parallel.ForAsync` is the bounded form — width is one
+fan-in, right for a modest batch of I/O. `Parallel.ForAsync` is the bounded form: width is one
 option away, close to what Elixir's `Task.async_stream` bakes in as flags. Mind the failure
 policy: `WhenAll` throws only the *first* exception and leaves the rest sitting on their tasks,
 so when partial failure matters, inspect the task states (or `Task.WhenEach`) instead of letting
@@ -375,11 +375,11 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — `thread::scope` is the load-bearing choice: scoped threads may borrow `items`
-because the compiler proves they join before the borrow ends — no `Arc`, no cloning the input.
+because the compiler proves they join before the borrow ends: no `Arc`, no cloning the input.
 Joining handles in spawn order makes the fan-in order-preserving for free. But these are OS
 threads, not goroutines: a thread per item only makes sense for small batches, so the chunked
 version is the honest std-only way to bound width. (In crates-land, rayon's
-`par_iter().map().collect()` is this whole tab in one line — much as `Task.async_stream` is for
+`par_iter().map().collect()` is this whole tab in one line, much as `Task.async_stream` is for
 Elixir.)
 
 ### Zig
@@ -431,10 +431,10 @@ pub fn main() !void {
 ```
 
 **🧠 Tradeoff** — No channels at all: partition the input *and* the output so no two threads
-share a slot, and the merge disappears — `results` is complete and in input order the moment
+share a slot, and the merge disappears: `results` is complete and in input order the moment
 `join` returns. That's the Zig-shaped answer: make the race structurally impossible with plain
 slices instead of guarding it with locks. The costs are being honest about threads (OS threads
-are expensive, hence a thread per chunk, never per item) and the static shapes here — a real
+are expensive, hence a thread per chunk, never per item) and the static shapes here: a real
 batch takes an allocator and a runtime worker count. Elixir's `Task.async_stream` gives you the
 bounded, ordered version in one line on a scheduler of cheap processes; Zig makes you place
 every thread, and shows you exactly what that line costs.
@@ -485,11 +485,11 @@ class FanOutIn {
 
 **🧠 Tradeoff** — virtual threads (Java 21) flipped the old advice. Before them, fan-out
 meant rationing platform threads through a pool; now, for I/O work, a thread per item *is*
-the plain idiom, and the width bound moves to a `Semaphore` — or simply to whatever limit
+the plain idiom, and the width bound moves to a `Semaphore`, or simply to whatever limit
 the downstream imposes. `invokeAll` is a tidy fan-in: it waits for everything and returns
 futures in input order, and failures stay on their own `Future`, so partial-failure policy
 is a per-task decision (`resultNow` throws for the tasks that failed). CPU-bound work still
-wants width equal to cores — `parallelStream` or a fixed pool. `StructuredTaskScope`
+wants width equal to cores: `parallelStream` or a fixed pool. `StructuredTaskScope`
 (still in preview) is where this shape is headed: fan-out/fan-in as a scoped block with
 cancel-on-first-failure built in.
 
@@ -499,7 +499,7 @@ cancel-on-first-failure built in.
   responses into one payload, bounding latency to the slowest (backend).
 - **Batch media/data processing** — resize, transcode, or parse thousands of items across
   workers, merged into one result set (backend).
-- **Search scatter–gather** — a query fans out to shards, results fan in and merge/rank
+- **Search scatter-gather** — a query fans out to shards, results fan in and merge/rank
   (backend).
 - **Concurrent page loads** — a frontend fires independent data requests at once and renders when
   all resolve (frontend).
@@ -519,5 +519,5 @@ cancel-on-first-failure built in.
 - **Worker Pool** — the pool bounds the fan-out width so it doesn't become unbounded parallelism;
   fan-out/fan-in is often *implemented* on top of a pool.
 - **Future / Promise** — fan-out starts many futures; fan-in is `all`/`gather` awaiting them.
-- **Producer–Consumer** — the input side of fan-out is a producer feeding many consumers; chaining
+- **Producer-Consumer** — the input side of fan-out is a producer feeding many consumers; chaining
   stages builds a pipeline.

@@ -5,7 +5,7 @@ sequence: 3
 title: Future / Promise
 also_known_as: [Deferred, Task, Eventual]
 gof: false
-intent: "Represent a value that isn't ready yet as a first-class object you can pass around, compose, and await — instead of blocking or nesting callbacks."
+intent: "Represent a value that isn't ready yet as a first-class object you can pass around, compose, and await, instead of blocking or nesting callbacks."
 frequency: high
 difficulty: beginner
 tags: [concurrency, async, composition, non-blocking, values]
@@ -19,8 +19,8 @@ Turn "a value that will exist later" into a **thing you can hold now**: a future
 future immediately, keep working, and attach continuations (`then`) or `await` it when you
 actually need the value.
 
-A future has a simple lifecycle — *pending* → *fulfilled* (with a value) or *rejected* (with an
-error) — and it settles exactly once. That single object is what lets async results be returned,
+A future has a simple lifecycle: *pending* → *fulfilled* (with a value) or *rejected* (with an
+error), and it settles exactly once. That single object is what lets async results be returned,
 stored, passed to functions, and combined, the same way ordinary values are.
 
 ## The Problem
@@ -33,7 +33,7 @@ Without futures, "do this when that finishes" has two bad shapes:
   apart: three dependent steps nest three deep ("callback hell"), error handling scatters across
   every callback, and running several in parallel and collecting results is manual bookkeeping.
 
-Neither gives you a *value* to work with — there's nothing to return from a function, store in a
+Neither gives you a *value* to work with: there's nothing to return from a function, store in a
 list, or hand to `map`.
 
 ## Structure
@@ -86,10 +86,10 @@ Producer ──────► [ Future ] ◄──────────  (pe
 
 ## Key Takeaways
 
-- A future is a *value* for a not-yet-ready result — that's what makes async composable.
+- A future is a *value* for a not-yet-ready result, and that's what makes async composable.
 - `then`/`await` attach continuations without blocking; combinators (`all`, `race`) merge many.
 - Concurrency comes from starting work *before* awaiting; `await` in sequence throws it away.
-- Every language has one, but the semantics (eager/lazy, cancellable) differ — know your runtime's.
+- Every language has one, but the semantics (eager/lazy, cancellable) differ; know your runtime's.
 
 ## Implementations
 
@@ -129,7 +129,7 @@ const [a, b] = await Promise.all([orderTotal(1), orderTotal(2)]);
 
 **🧠 Tradeoff** — Promises are native and `async/await` makes async read like sync, with
 `try/catch` for errors and `Promise.all`/`race` for combining. The sharp edge is that promises
-are *eager* (they start when created) and not cancellable — `await` in a loop quietly serializes,
+are *eager* (they start when created) and not cancellable: `await` in a loop quietly serializes,
 and there's no clean "stop this one." You trade control for ergonomics.
 
 ### Node.js
@@ -167,7 +167,7 @@ async function concat() {
 
 **🧠 Tradeoff** — Node ships promise versions of its callback APIs (`fs/promises`,
 `util.promisify`), so the whole platform composes with `await`. `Promise.all` here overlaps the
-two reads instead of serializing them — the win is real concurrency for I/O with no threads. The
+two reads instead of serializing them; the win is real concurrency for I/O with no threads. The
 caveat matches browser JS: eager, non-cancellable promises.
 
 ### Python
@@ -200,8 +200,8 @@ async def main():
 ```
 
 **🧠 Tradeoff** — `asyncio` coroutines are Python's futures: `await` for the linear form,
-`asyncio.gather` for concurrency. Unlike JS, coroutines are *lazy* — they don't run until
-scheduled on the loop — which makes `create_task`/`gather` the point where concurrency actually
+`asyncio.gather` for concurrency. Unlike JS, coroutines are *lazy* (they don't run until
+scheduled on the loop), which makes `create_task`/`gather` the point where concurrency actually
 starts. The cost is the two-color split: `async` functions and the loop are their own world you
 have to opt into.
 
@@ -231,7 +231,7 @@ task_b = Task.async(fn -> order_total(2) end)
 
 **🧠 Tradeoff** — `Task.async/await` is the future on the BEAM: each task runs in its own cheap
 process, and `await_many` collects several in parallel. Because processes are isolated, a crashing
-task fails its `await` rather than corrupting the caller — futures with fault isolation built in.
+task fails its `await` rather than corrupting the caller: futures with fault isolation built in.
 The flip side: a `Task` is tied to its owner process and has an await timeout, so it's for
 scoped concurrency, not long-lived background work (use a GenServer for that).
 
@@ -269,8 +269,8 @@ func main() {
 
 **🧠 Tradeoff** — Go deliberately omits a `Future` type; the idiom is "start a goroutine, hand
 back a channel." A one-element buffered channel *is* a fulfilled-once future, and starting two
-before receiving gives you parallelism. It's more explicit than `async/await` — no `then`
-chaining, and errors travel as a second channel value or a struct — but it composes with
+before receiving gives you parallelism. It's more explicit than `async/await` (no `then`
+chaining, and errors travel as a second channel value or a struct) but it composes with
 `select` for timeouts and cancellation via `context`.
 
 ### CSharp
@@ -314,11 +314,11 @@ static async Task<int> OrderTotalAsync(int id)
 //   int value = await tcs.Task;
 ```
 
-**🧠 Tradeoff** — `Task` is the future, and it's *hot* like a JS promise — running the
-moment it exists — but unlike JS it's cancellable via `CancellationToken`, and
+**🧠 Tradeoff** — `Task` is the future, and it's *hot* like a JS promise, running the
+moment it exists, but unlike JS it's cancellable via `CancellationToken`, and
 `Task.WhenAll`/`WhenAny` are `all`/`race`. When you're wrapping a callback API,
 `TaskCompletionSource` is the producer half: hold the source, hand out its `Task`, settle
-it once. The classic hazard is sync-over-async — `.Result` or `.Wait()` on a context thread
+it once. The classic hazard is sync-over-async: `.Result` or `.Wait()` on a context thread
 is exactly the "blocking the thread that must resolve it" deadlock from Common Mistakes.
 
 ### Rust
@@ -362,9 +362,9 @@ fn main() {
 
 **🧠 Tradeoff** — Rust has `async`/`await` and a `Future` trait, but std ships no executor:
 without a runtime crate (tokio, smol) an async fn never runs, so the honest std future is a
-thread and its `JoinHandle` — eager like a JS promise, joined exactly once, and a panic
+thread and its `JoinHandle`: eager like a JS promise, joined exactly once, and a panic
 comes back as `join`'s `Err` instead of vanishing. Know the twist before reaching for real
-async: Rust futures are *lazy* — they do nothing until polled — the exact opposite of JS.
+async: Rust futures are *lazy* (they do nothing until polled), the exact opposite of JS.
 And when you need the resolve-by-hand half, a one-shot `mpsc` channel plays the promise.
 
 ### Zig
@@ -415,12 +415,12 @@ pub fn main(init: std.process.Init) !void {
 
 **🧠 Tradeoff** — Zig grew a real future in 0.17-dev, but behind the `std.Io` capability:
 `io.async` starts the work, `await` and `cancel` settle it, and every one of those calls
-takes the `io` you were handed — concurrency is something the caller grants you, exactly
+takes the `io` you were handed: concurrency is something the caller grants you, exactly
 like an allocator. The type hides nothing: `Future(u32)` is a pending handle plus the
 result slot, the same two parts you'd wire by hand with `std.Thread.spawn` and a `*u32`.
-One honest subtlety: `async` means *may* run concurrently — the runtime is free to run it
-inline — while `io.concurrent` demands real parallelism or fails. A fallible task makes
-the future's slot an error union, and "many futures at once" is `std.Io.Group` — or the
+One honest subtlety: `async` means *may* run concurrently (the runtime is free to run it
+inline) while `io.concurrent` demands real parallelism or fails. A fallible task makes
+the future's slot an error union, and "many futures at once" is `std.Io.Group`, or the
 worker pool from kata 01.
 
 ### Java
@@ -474,12 +474,12 @@ class Demo {
 
 **🧠 Tradeoff** — `CompletableFuture` is both halves in one class: the future (`join`,
 `allOf`/`anyOf` as `all`/`race`, `orTimeout` for deadlines) and the promise
-(`complete`/`completeExceptionally`) — where JS hides the resolver inside the constructor
+(`complete`/`completeExceptionally`), where JS hides the resolver inside the constructor
 and C# splits `Task` from `TaskCompletionSource`. Like a JS promise it's hot, starting on
 the common pool the moment it exists. Java has no `async`/`await`, so composition stays
-method chaining — `thenApply`/`thenCompose` are the callbacks flattened, not removed.
+method chaining: `thenApply`/`thenCompose` are the callbacks flattened, not removed.
 Virtual threads (Java 21) undercut the whole style: when blocking parks a cheap virtual
-thread, the naive sequential code above — run on two virtual threads — often reads better
+thread, the naive sequential code above, run on two virtual threads, often reads better
 than the chain. Keep `CompletableFuture` for its combinators, not to avoid blocking.
 
 ## Applications

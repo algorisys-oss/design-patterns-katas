@@ -19,7 +19,7 @@ Hand a stream of tasks to a **fixed** number of long-lived workers that pull wor
 free up, rather than starting a fresh thread, process, or connection for every task.
 
 The pool is a valve. It decouples *how much work arrives* from *how much runs at once*, so a
-burst of ten thousand tasks still only keeps, say, eight things in flight — protecting the CPU,
+burst of ten thousand tasks still only keeps, say, eight things in flight, protecting the CPU,
 the memory, and whatever downstream service the tasks touch.
 
 ## The Problem
@@ -92,7 +92,7 @@ Producer ──► [ Task Queue ] ─────► [ Worker 2 ] ─┼──�
 ## Key Takeaways
 
 - A worker pool caps concurrency: load can spike without the number in flight spiking with it.
-- The bounded queue is the point — it's what turns overload into a well-behaved wait.
+- The bounded queue is the point: it's what turns overload into a well-behaved wait.
 - Size the pool to the bottleneck (cores or the downstream limit), not to the workload.
 - Pick the right worker for the work: threads/async for I/O, processes/worker-threads for CPU.
 
@@ -138,7 +138,7 @@ async function workerPool(tasks, size, run) {
 **🧠 Tradeoff** — In the browser there are no threads to pool; the "workers" are just concurrent
 promises and the pool is a concurrency limiter. That's exactly right for I/O (fetches, reads),
 which is what JS does. It buys you a hard ceiling on in-flight requests for a few lines; it does
-nothing for CPU-bound work, which still blocks the single event loop — reach for Web Workers or
+nothing for CPU-bound work, which still blocks the single event loop; reach for Web Workers or
 the Node version below.
 
 ### Node.js
@@ -211,7 +211,7 @@ class WorkerPool {
 **🧠 Tradeoff** — Unlike browser JS, Node's `worker_threads` are real threads, so this pool
 gives you *actual* parallelism for CPU-bound work (hashing, image resizing, parsing). The cost
 is the machinery: message passing, a lifecycle, and `destroy()` to avoid leaking threads. For
-pure I/O, skip it — the promise pool above is lighter and just as effective.
+pure I/O, skip it: the promise pool above is lighter and just as effective.
 
 ### Python
 
@@ -278,8 +278,8 @@ tasks
 # DynamicSupervisor + a counting registry plays the same role.
 ```
 
-**🧠 Tradeoff** — The BEAM's processes are so cheap that "one per task" is often genuinely fine
-— the real need is a *limit* and *backpressure*, and `Task.async_stream` delivers both as a lazy
+**🧠 Tradeoff** — The BEAM's processes are so cheap that "one per task" is often genuinely fine;
+the real need is a *limit* and *backpressure*, and `Task.async_stream` delivers both as a lazy
 stream with a `max_concurrency` knob. It's the most declarative version here: no queue or
 worker lifecycle to write. When you need workers that outlive a single batch (a supervised,
 named pool), you graduate to Poolboy or a `DynamicSupervisor`.
@@ -334,7 +334,7 @@ func workerPool(tasks []Task, size int, run func(Task) Result) []Result {
 **🧠 Tradeoff** — Go makes the pattern feel native: the `jobs` channel *is* the queue, the
 `range` loop *is* the worker, and an unbuffered channel gives you backpressure with no extra
 code. You do wire the pieces by hand (channel, `WaitGroup`, `close`), and correctness lives in
-those details — forget to `close(jobs)` and the workers block forever. That explicitness is the
+those details: forget to `close(jobs)` and the workers block forever. That explicitness is the
 Go bargain: no framework, but you own the concurrency.
 
 ### CSharp
@@ -381,7 +381,7 @@ static async Task<Result[]> WorkerPool(
 **🧠 Tradeoff** — `System.Threading.Channels` is Go's channel for .NET: bounded capacity,
 a `WriteAsync` that waits instead of blocking a thread, and `Complete()` as the close signal
 that ends every `ReadAllAsync` loop cleanly. The one-line alternative is
-`Parallel.ForEachAsync` with `MaxDegreeOfParallelism` — reach for that when all you need is
+`Parallel.ForEachAsync` with `MaxDegreeOfParallelism`; reach for that when all you need is
 a capped batch; the channel version earns its keep when the pool outlives a single batch or
 tasks are submitted from elsewhere.
 
@@ -450,11 +450,11 @@ fn worker_pool(tasks: Vec<Task>, size: usize, run: fn(Task) -> Out) -> Vec<Out> 
 ```
 
 **🧠 Tradeoff** — std's `Receiver` is single-consumer, so the workers share it behind an
-`Arc<Mutex<…>>` — the exact shape the Rust book builds its `ThreadPool` from.
+`Arc<Mutex<...>>`, the exact shape the Rust book builds its `ThreadPool` from.
 `sync_channel(0)` is Go's unbuffered channel: `send` blocks until a worker is free, and
 dropping the sender is the `close`. Ownership makes the sharing explicit where Go hides it.
 In real projects, `rayon`'s `par_iter` or a crossbeam channel dissolves all of this into a
-line or two — the std version shows what those wrap.
+line or two; the std version shows what those wrap.
 
 ### Zig
 
@@ -515,10 +515,10 @@ fn workerPool(allocator: std.mem.Allocator, tasks: []const Task, results: []Out,
 
 **🧠 Tradeoff** — with the whole batch known up front, the queue collapses into a shared
 cursor: one `fetchAdd`, no mutex, no condvar, and each worker claims indices until the list
-runs out. That's the honest Zig move — the cheapest primitive that's still safe. It only
+runs out. That's the honest Zig move: the cheapest primitive that's still safe. It only
 works because nothing is produced live; tasks arriving over time need the mutex + condition
 queue from the next kata. For spawn-shaped batches, the std-shipped pool is now
-`std.Io.Threaded` — `io.async` dispatches onto its threads — and the explicit allocator +
+`std.Io.Threaded` (`io.async` dispatches onto its threads), and the explicit allocator +
 `defer` pair is the usual Zig tax: you see every byte the pool owns.
 
 ### Java
@@ -572,10 +572,10 @@ class WorkerPool {
 **🧠 Tradeoff** — this is where the pattern has lived since Java 5: `newFixedThreadPool`
 hands you workers, queue, and futures in one line, and the try-with-resources `close()`
 is the graceful shutdown. Two honest catches. First, the factory's internal queue is
-*unbounded* — real backpressure means building `ThreadPoolExecutor` yourself with an
+*unbounded*; real backpressure means building `ThreadPoolExecutor` yourself with an
 `ArrayBlockingQueue` and a `CallerRunsPolicy`. Second, virtual threads (Java 21) changed
 the question: for I/O work, `Executors.newVirtualThreadPerTaskExecutor()` makes
-one-thread-per-task the right answer again — no pool, threads are nearly free. Pooling
+one-thread-per-task the right answer again: no pool, threads are nearly free. Pooling
 survives for what it still uniquely does: capping CPU width to the cores, or protecting
 a downstream limit (which a plain `Semaphore` handles under virtual threads).
 
@@ -604,7 +604,7 @@ a downstream limit (which a plain `Semaphore` handles under virtual threads).
 
 ## Related Patterns
 
-- **Producer–Consumer** — the worker pool *is* a producer–consumer with a fixed consumer count;
+- **Producer-Consumer** — the worker pool *is* a producer-consumer with a fixed consumer count;
   the queue between them is the shared piece.
 - **Future / Promise** — each submitted task typically hands back a future to await its result.
 - **Semaphore** — a pool of N workers is a counting semaphore permitting N concurrent tasks; a

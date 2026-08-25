@@ -2,10 +2,10 @@
 id: pub-sub
 category: concurrency
 sequence: 5
-title: Publish–Subscribe
+title: Publish-Subscribe
 also_known_as: [Pub/Sub, Event Bus]
 gof: false
-intent: "Let publishers broadcast messages to a topic and subscribers receive them, with neither side knowing about the other — a broker in the middle decouples them."
+intent: "Let publishers broadcast messages to a topic and subscribers receive them, with neither side knowing about the other; a broker in the middle decouples them."
 frequency: high
 difficulty: intermediate
 tags: [concurrency, messaging, decoupling, events, broadcast]
@@ -34,7 +34,7 @@ publisher:
 - **Rigid lifecycles** — a receiver can't appear or disappear at runtime without the sender
   managing it.
 
-This is the same coupling the Observer pattern removes for one subject — but pub/sub generalizes
+This is the same coupling the Observer pattern removes for one subject, but pub/sub generalizes
 it: many publishers, many topics, and a broker that can live in another process or machine.
 
 ## Structure
@@ -87,7 +87,7 @@ Publisher ──publish("orders", m)──►  [ Broker ]  ──► Subscriber 
 ## Key Takeaways
 
 - The broker decouples senders from receivers: both know only the topic, turning N×M into N+M.
-- Pub/sub is Observer generalized — many publishers, many topics, delivery that can cross nodes.
+- Pub/sub is Observer generalized: many publishers, many topics, delivery that can cross nodes.
 - Delivery semantics (at-most/at-least-once, ordering, durability) are a *choice*, not a given.
 - Watch subscription lifecycle and slow subscribers; neither is handled for you.
 
@@ -168,7 +168,7 @@ bus.emit("order.placed", order); // fans out to all listeners
 ```
 
 **🧠 Tradeoff** — `EventEmitter` is Node's built-in bus and the backbone of streams, sockets, and
-much of the platform — zero-dependency decoupling in-process. Its limits are the in-memory ones:
+much of the platform: zero-dependency decoupling in-process. Its limits are the in-memory ones:
 same-process, synchronous emit, no durability. Crossing processes or machines swaps the emitter
 for a broker (Redis, NATS, Kafka) while keeping the exact publish/subscribe shape.
 
@@ -243,7 +243,7 @@ end)
 
 **🧠 Tradeoff** — The BEAM ships pub/sub primitives: `Registry` for local topic dispatch,
 `Phoenix.PubSub` for cluster-wide broadcast that survives process restarts (subscribers register
-by key, not pid). You get distribution and fault tolerance without extra infrastructure — pub/sub
+by key, not pid). You get distribution and fault tolerance without extra infrastructure, and pub/sub
 across a cluster is a library call. The trade is buying into OTP's process/registry model, which
 is the native grain anyway.
 
@@ -295,7 +295,7 @@ func (b *Broker[T]) Run() {
 **🧠 Tradeoff** — A broker goroutine that owns the subscriber map (actor-style, no mutex) plus
 per-subscriber buffered channels gives clean fan-out, and the `default` case makes the slow-
 subscriber policy explicit: drop rather than block the whole bus. It's more code than
-`EventEmitter`, but every decision — buffering, drop-vs-block, unsubscribe/close — is visible and
+`EventEmitter`, but every decision (buffering, drop-vs-block, unsubscribe/close) is visible and
 yours, which is exactly what you want when delivery semantics matter.
 
 ### CSharp
@@ -365,7 +365,7 @@ public sealed class Bus<T>
 **🧠 Tradeoff** — One bounded channel per subscriber makes the slow-subscriber policy a
 constructor argument: `DropWrite` mirrors the Go tab's `default:` drop; `Wait` would push back
 on publishers instead. Snapshotting the list under the lock keeps publish safe against
-concurrent subscribes — the Python tab's copy trick. For a single hard-coded topic, a plain C#
+concurrent subscribes: the Python tab's copy trick. For a single hard-coded topic, a plain C#
 `event` already *is* in-process pub/sub. Either way it stops at the process boundary: where
 Elixir's `Phoenix.PubSub` gets cluster-wide delivery from the runtime, .NET crosses processes
 by swapping this class for Redis or NATS behind the same Publish/Subscribe shape.
@@ -445,7 +445,7 @@ fn main() {
 **🧠 Tradeoff** — The broker is the previous kata put to work: one thread owns the topic map,
 so subscribe and publish can't race by construction and there's no `Mutex` to hold wrong.
 `sync_channel` + `try_send` makes every subscriber mailbox bounded and the drop policy visible
-in one line. A dropped receiver surfaces as a send error — a `retain` on the `Vec` is where
+in one line. A dropped receiver surfaces as a send error, and a `retain` on the `Vec` is where
 unsubscribe-by-drop would go. The std library stops at the process boundary, though: the
 cluster-wide broadcast Elixir gets from `Phoenix.PubSub` as a library call is a real external
 broker away in Rust.
@@ -524,12 +524,12 @@ pub fn main(init: std.process.Init) !void {
 ```
 
 **🧠 Tradeoff** — Without closures, a subscriber is the `*anyopaque` context + function pointer
-pair — exactly what a closure compiles down to elsewhere, spelled by hand. Fixed slots make
+pair: exactly what a closure compiles down to elsewhere, spelled by hand. Fixed slots make
 capacity a visible decision. The honest catch: handlers run *under the lock*, so one slow
-subscriber stalls every publish — the exact hazard this kata warns about, which the Go tab
+subscriber stalls every publish: the exact hazard this kata warns about, which the Go tab
 dodges with per-subscriber channels. Fixing it here means giving each subscriber a mailbox and
-a thread, at which point you've rebuilt the Actor kata — and that's the lesson. Since
-0.17-dev even the lock takes an `io` — blocking moved behind the `std.Io` capability, passed
+a thread, at which point you've rebuilt the Actor kata, and that's the lesson. Since
+0.17-dev even the lock takes an `io`: blocking moved behind the `std.Io` capability, passed
 explicitly like an allocator. On the BEAM
 this whole layered build is one `Registry` call, because pub/sub lives in the runtime.
 
@@ -595,12 +595,12 @@ class Demo {
 
 **🧠 Tradeoff** — the concurrency is all in class choice: `computeIfAbsent` on a
 `ConcurrentHashMap` makes subscribe atomic, and `CopyOnWriteArrayList` is built for exactly
-this read-mostly listener list — publishers iterate a stable snapshot while subscribers
+this read-mostly listener list: publishers iterate a stable snapshot while subscribers
 come and go (the same copy trick the Python tab does by hand). `offer` versus `put` is the
 drop-vs-block policy in one method name, mirroring Go's `default:` and C#'s `DropWrite`.
 When you want backpressure handled for you, the JDK already ships a grown-up bus:
 `java.util.concurrent.Flow` with `SubmissionPublisher` is reactive-streams pub/sub in the
-standard library. Either way it ends at the process boundary — cluster-wide delivery means
+standard library. Either way it ends at the process boundary; cluster-wide delivery means
 Kafka, NATS, or Redis behind this same publish/subscribe shape.
 
 ## Applications
@@ -628,7 +628,7 @@ Kafka, NATS, or Redis behind this same publish/subscribe shape.
 
 - **Observer** — pub/sub is Observer with a broker in the middle: many publishers/topics and
   delivery that can cross processes, instead of a subject holding its observers directly.
-- **Producer–Consumer** — a queue delivers each message to *one* consumer; pub/sub delivers each
+- **Producer-Consumer** — a queue delivers each message to *one* consumer; pub/sub delivers each
   message to *every* subscriber.
 - **Actor** — actors frequently coordinate over pub/sub topics rather than by holding each
   other's addresses.

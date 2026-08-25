@@ -2,7 +2,7 @@
 id: producer-consumer
 category: concurrency
 sequence: 2
-title: Producer–Consumer
+title: Producer-Consumer
 also_known_as: [Bounded Buffer]
 gof: false
 intent: "Decouple code that creates work from code that processes it with a bounded queue between them, so each side runs at its own pace."
@@ -20,7 +20,7 @@ Producers push; consumers pull; neither calls the other directly.
 
 The queue lets the two sides run at different speeds and on different threads. A burst of
 production fills the buffer instead of overwhelming the consumer, and a full buffer makes the
-producer wait — backpressure without either side knowing the other exists.
+producer wait: backpressure without either side knowing the other exists.
 
 ## The Problem
 
@@ -84,7 +84,7 @@ Producer ──put──►  [ ▢ ▢ ▢ ▢ ]  ──take──►  Consumer
 ## Key Takeaways
 
 - The bounded queue is the whole pattern: it decouples the sides *and* provides backpressure.
-- Producers block on full, consumers block on empty — that mutual waiting is the flow control.
+- Producers block on full, consumers block on empty; that mutual waiting is the flow control.
 - Have an explicit stop signal so blocked consumers can drain and exit.
 - It's the substrate under worker pools, pipelines, and most job systems.
 
@@ -137,7 +137,7 @@ class BoundedQueue {
 
 **🧠 Tradeoff** — JavaScript has no built-in blocking queue, so you build the wait out of
 promises: `put`/`take` hand off directly when someone's already waiting, otherwise park a
-resolver. It's a real bounded buffer with backpressure, but it's hand-rolled — for streaming
+resolver. It's a real bounded buffer with backpressure, but it's hand-rolled; for streaming
 data, Node's streams (next tab) give you the same semantics with far less code.
 
 ### Node.js
@@ -156,7 +156,7 @@ for (const line of lines) process(line);
 **✅ Idiomatic**
 
 ```js
-// Streams are producer–consumer with backpressure baked in: pipe() pauses the
+// Streams are producer-consumer with backpressure baked in: pipe() pauses the
 // readable when the writable can't keep up.
 const { pipeline } = require("node:stream/promises");
 const fs = require("node:fs");
@@ -174,7 +174,7 @@ await pipeline(fs.createReadStream("huge.log"), splitLines(), parse, writeResult
 ```
 
 **🧠 Tradeoff** — Node streams *are* this pattern: the readable is the producer, the writable
-the consumer, and `highWaterMark` is the bounded buffer that drives automatic backpressure —
+the consumer, and `highWaterMark` is the bounded buffer that drives automatic backpressure:
 when the consumer lags, the producer is paused for you. You give up the explicit queue object
 (harder to inspect depth), but gain correct flow control across the whole pipeline for free.
 
@@ -214,7 +214,7 @@ threading.Thread(target=consumer).start()
 
 **🧠 Tradeoff** — `queue.Queue` is purpose-built for this: thread-safe, bounded, with blocking
 `put`/`get` so there's no busy-waiting. It's the right tool for I/O-bound producer/consumer
-across threads. For CPU-bound work the GIL still applies — reach for `multiprocessing.Queue`
+across threads. For CPU-bound work the GIL still applies; reach for `multiprocessing.Queue`
 across processes, or `asyncio.Queue` if you're already in an event loop.
 
 ### Elixir
@@ -256,7 +256,7 @@ end
 ```
 
 **🧠 Tradeoff** — Naive message passing on the BEAM has no flow control: an unbounded mailbox is
-the failure mode. GenStage inverts it to *demand-driven* — consumers pull by signalling demand,
+the failure mode. GenStage inverts it to *demand-driven*: consumers pull by signalling demand,
 so the producer can never outrun them. It's more ceremony than a channel, but it gives
 principled backpressure across a whole pipeline (and Flow/Broadway build on it).
 
@@ -304,7 +304,7 @@ func run(source []Item, consumers int) {
 
 **🧠 Tradeoff** — A buffered channel is the textbook bounded queue: capacity, blocking on
 full/empty, and `close` as the stop signal, all built in. Adding consumers is just more
-goroutines ranging over the same channel. The cost is Go's usual one — you own `close` and the
+goroutines ranging over the same channel. The cost is Go's usual one: you own `close` and the
 `WaitGroup`; forget to close and the consumers block forever.
 
 ### CSharp
@@ -353,7 +353,7 @@ await Task.WhenAll(consumers.Append(producer));
 **🧠 Tradeoff** — a bounded `Channel` is this pattern as a library type: `FullMode.Wait`
 gives backpressure, `Complete()` replaces the poison pill, and `ReadAllAsync` ends every
 consumer loop cleanly. Because the waits are `async`, a stalled producer parks a state
-machine, not a thread — that's the edge over the older `BlockingCollection`, which delivers
+machine, not a thread; that's the edge over the older `BlockingCollection`, which delivers
 the same semantics by blocking real threads. Adding consumers is just more tasks reading
 the same channel.
 
@@ -412,9 +412,9 @@ fn run(source: Vec<Item>) {
 
 **🧠 Tradeoff** — `sync_channel(100)` is the bounded queue with the blocking baked in:
 `send` waits on full, iteration waits on empty, and dropping the last `Sender` is the
-shutdown signal — no sentinel needed. Ownership adds a guarantee the others can't: each
+shutdown signal, with no sentinel needed. Ownership adds a guarantee the others can't: each
 item is *moved* through the channel, so producer and consumer can never touch it at once,
-and the racy shared-list version simply doesn't compile. The limit sits on the other end —
+and the racy shared-list version simply doesn't compile. The limit sits on the other end:
 std's `Receiver` is single-consumer, so scaling consumers means sharing it behind a `Mutex`
 (as in the worker-pool kata) or switching to a crossbeam mpmc channel.
 
@@ -494,10 +494,10 @@ fn BoundedQueue(comptime T: type, comptime capacity: usize) type {
 spuriously, and `close` + `broadcast` is the shutdown other languages hand you as `close()`.
 Nothing is hidden, which is the point: this queue is exactly what Go's buffered channel and
 C#'s bounded `Channel` wrap for you. The `comptime` capacity keeps the ring inline in the
-struct — the whole queue is one allocation-free value — at the cost of fixing the bound at
+struct (the whole queue is one allocation-free value) at the cost of fixing the bound at
 compile time; a runtime capacity means taking an allocator. And since 0.17-dev, blocking
 itself is a capability: mutex and condition live in `std.Io`, so the queue takes an `io`
-the same way allocating code takes an allocator — whoever calls you decides how you block.
+the same way allocating code takes an allocator: whoever calls you decides how you block.
 
 ### Java
 
@@ -554,11 +554,11 @@ class Demo {
 **🧠 Tradeoff** — `BlockingQueue` has been the JDK's textbook bounded buffer since Java 5;
 `put`/`take` give you backpressure and no busy-waiting with nothing to hand-roll. What it
 lacks is a `close()`: the poison pill is a convention, and with N consumers you must send N
-pills. The visible tax is `InterruptedException` on every blocking call — Java makes
+pills. The visible tax is `InterruptedException` on every blocking call: Java makes
 cancellation part of the type signature. Virtual threads (Java 21) are what make this style
 current again: blocking `put`/`take` now parks a nearly-free virtual thread instead of
-pinning an OS thread, so plain blocking producer/consumer code — the simplest form of this
-kata — is once more the idiom rather than the thing to engineer around.
+pinning an OS thread, so plain blocking producer/consumer code (the simplest form of this
+kata) is once more the idiom rather than the thing to engineer around.
 
 ## Applications
 
@@ -566,11 +566,11 @@ kata — is once more the idiom rather than the thing to engineer around.
   write them to storage (backend).
 - **Request buffering** — a web server accepts requests into a bounded queue so a spike waits
   instead of crashing the handlers (backend).
-- **UI event loops** — the browser's task queue is producer–consumer: events are produced by
+- **UI event loops** — the browser's task queue is producer-consumer: events are produced by
   the platform, consumed one at a time by the loop (frontend).
 - **Data pipelines** — ETL stages hand batches downstream through queues, each stage a
   consumer of the last and a producer for the next (backend).
-- **Job systems** — every task queue (Redis lists, SQS, RabbitMQ) is producer–consumer with a
+- **Job systems** — every task queue (Redis lists, SQS, RabbitMQ) is producer-consumer with a
   durable buffer in the middle (backend).
 
 **In modern systems:**
@@ -582,9 +582,9 @@ kata — is once more the idiom rather than the thing to engineer around.
 
 ## Related Patterns
 
-- **Worker Pool** — a worker pool is producer–consumer with a *fixed set* of consumers pulling
+- **Worker Pool** — a worker pool is producer-consumer with a *fixed set* of consumers pulling
   from the shared queue; the pool adds the consumer-count cap.
-- **Publish–Subscribe** — pub/sub broadcasts each item to *many* subscribers; a producer–consumer
+- **Publish-Subscribe** — pub/sub broadcasts each item to *many* subscribers; a producer-consumer
   queue hands each item to exactly *one* consumer.
-- **Fan-out / Fan-in** — chains producer–consumer stages: fan-out is one producer feeding many
+- **Fan-out / Fan-in** — chains producer-consumer stages: fan-out is one producer feeding many
   consumers, fan-in is many producers feeding one queue.

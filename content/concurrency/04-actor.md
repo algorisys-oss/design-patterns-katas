@@ -5,7 +5,7 @@ sequence: 4
 title: Actor
 also_known_as: [Active Object]
 gof: false
-intent: "Wrap mutable state in a process that owns it and communicates only by messages, so state is updated one message at a time — no shared memory, no locks."
+intent: "Wrap mutable state in a process that owns it and communicates only by messages, so state is updated one message at a time: no shared memory, no locks."
 frequency: medium
 difficulty: intermediate
 tags: [concurrency, message-passing, isolation, no-shared-state, mailbox]
@@ -17,7 +17,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 Give each piece of mutable state its own **actor**: a unit with private state, a **mailbox**, and
 a loop that pulls one message at a time and handles it. Nothing outside the actor touches its
-state — you send it a message and it decides what to do.
+state; you send it a message and it decides what to do.
 
 Because an actor processes messages **sequentially**, its state is only ever touched by one
 message at a time. That removes the need for locks entirely: there is no shared memory to guard,
@@ -25,7 +25,7 @@ so there is nothing to race.
 
 ## The Problem
 
-Shared mutable state across threads is the hardest thing in concurrency. The usual fix — locks —
+Shared mutable state across threads is the hardest thing in concurrency. The usual fix, locks,
 trades one problem for a pile of new ones:
 
 - **Races** — forget to guard one access and you get corruption that only shows up under load.
@@ -57,7 +57,7 @@ Sender B ──send──►┘     mailbox        handles one msg at a time
 
 - Independent stateful entities that mostly act alone (a game character, a connection, a session).
 - You want to avoid locks by construction, not discipline.
-- Work distributes naturally across machines — actors don't care if the mailbox is local or remote.
+- Work distributes naturally across machines: actors don't care if the mailbox is local or remote.
 - You need supervision/fault isolation: one actor crashing shouldn't corrupt others.
 
 ## Advantages and Disadvantages
@@ -90,7 +90,7 @@ Sender B ──send──►┘     mailbox        handles one msg at a time
 - One-message-at-a-time processing removes shared state, and with it the need for locks.
 - An actor is state + mailbox + behavior; the outside world can only send it messages.
 - Isolation buys fault tolerance (crash and restart) and location transparency (local or remote).
-- The trade is asynchrony and per-actor serialization — shard hot actors, bound mailboxes.
+- The trade is asynchrony and per-actor serialization; shard hot actors, bound mailboxes.
 
 ## Implementations
 
@@ -134,7 +134,7 @@ const account = actor({ balance: 0 }, {
 
 **🧠 Tradeoff** — JS has no actors, but the single-threaded loop plus a promise chain gives you a
 serial mailbox: chaining each message onto the previous guarantees handlers never interleave, so
-the lost-update bug is gone. It's cooperative, not parallel — one event loop — so it isolates
+the lost-update bug is gone. It's cooperative, not parallel (one event loop), so it isolates
 *logical* races, not CPU work. For true isolation across cores, use Web Workers as actors.
 
 ### Node.js
@@ -172,7 +172,7 @@ class ActorRef {
 ```
 
 **🧠 Tradeoff** — `worker_threads` give genuine actor semantics: each worker has isolated memory
-and communicates only by `postMessage`, so there is literally no shared state to race — and it's
+and communicates only by `postMessage`, so there is literally no shared state to race, and it's
 real parallelism across cores. The cost is serialization overhead on every message and the
 round-trip to model request/reply; it's worth it for CPU-bound or crash-isolated work, overkill
 for coordinating a little in-process state.
@@ -253,7 +253,7 @@ end
 **🧠 Tradeoff** — This is the actor model's home. A `GenServer` *is* an actor: isolated process,
 private state, serial message handling, and a supervisor that restarts it on crash ("let it
 crash"). You get fault tolerance and distribution nearly for free. The cost is that everything
-stateful becomes a process with an async protocol — but on the BEAM that's the natural grain, so
+stateful becomes a process with an async protocol, but on the BEAM that's the natural grain, so
 it rarely feels forced.
 
 ### Go
@@ -300,7 +300,7 @@ func Account(mailbox <-chan any) {
 
 **🧠 Tradeoff** — Go's proverb "don't communicate by sharing memory; share memory by
 communicating" is the actor model: a goroutine owns the state, a channel is its mailbox, and only
-that goroutine mutates `bal` — no mutex, no race. It's lighter than a full actor framework but
+that goroutine mutates `bal`: no mutex, no race. It's lighter than a full actor framework but
 also barer: no supervision, no addresses, no location transparency. You get the core discipline
 and wire the rest yourself.
 
@@ -371,8 +371,8 @@ public sealed class AccountActor
 
 **🧠 Tradeoff** — A `Channel` drained by one `Task` is the actor: records make the messages
 immutable, the loop is the only reader of `balance`, and `TaskCompletionSource` turns
-request/reply into a plain `await`. But it's discipline you assemble, not a runtime you inherit
-— compare the Elixir tab, where the mailbox, supervision, and restarts all ship with the BEAM.
+request/reply into a plain `await`. But it's discipline you assemble, not a runtime you inherit;
+compare the Elixir tab, where the mailbox, supervision, and restarts all ship with the BEAM.
 When you need that fuller story in .NET (addresses, supervision, distribution), that's Akka.NET
 or Orleans; this hand-rolled loop covers the common in-process case.
 
@@ -444,7 +444,7 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — This is the natural Rust form, not a workaround: the thread *owns* `balance`,
-and ownership means the compiler proves nothing else can touch it — the isolation Elixir gets
+and ownership means the compiler proves nothing else can touch it: the isolation Elixir gets
 from its runtime, Rust gets from the type system at compile time. The message enum is closed
 and exhaustively matched, so an unhandled message is a compile error, not a silent drop. What
 you don't get is the BEAM's supervision, addresses, or distribution: a panicked actor here is
@@ -530,11 +530,11 @@ pub fn main(init: std.process.Init) !void {
 
 **🧠 Tradeoff** — Zig gives you the parts, not the pattern: mailbox = ring buffer + mutex +
 condition, actor = the one thread that reads it. The discipline ("only the owning thread
-touches `balance`") is a convention — nothing enforces it, unlike Rust's ownership or the
+touches `balance`") is a convention: nothing enforces it, unlike Rust's ownership or the
 BEAM's process isolation. In the Elixir tab this entire file collapses into `use GenServer`,
 because there the actor model *is* the runtime. What Zig buys back is that every byte is
 visible: the mailbox is 16 slots you declared, so backpressure is an explicit decision in your
-code, not an unbounded default you inherit. Since 0.17-dev the blocking is visible too —
+code, not an unbounded default you inherit. Since 0.17-dev the blocking is visible too:
 mutex and condition sit behind `std.Io`, so the mailbox takes an `io` the way allocating
 code takes an allocator.
 
@@ -604,11 +604,11 @@ class Demo {
 
 **🧠 Tradeoff** — the single-thread executor is a mailbox you already had: its queue holds
 the messages, its one thread drains them serially, so `balance` needs no lock and handlers
-never interleave. Modern Java sharpens the protocol the way Rust's enum does — a sealed
+never interleave. Modern Java sharpens the protocol the way Rust's enum does: a sealed
 interface plus pattern-matching `switch` means an unhandled message type is a compile
 error, and records keep messages immutable. A `CompletableFuture` in the message is
 request/reply as a plain `await`-able. It's still discipline, not a runtime: no
-supervision, no addresses, an unbounded queue by default — Akka/Pekko supply those when
+supervision, no addresses, an unbounded queue by default; Akka/Pekko supply those when
 you need them. Virtual threads add a second honest shape: one virtual thread per actor
 looping on a `BlockingQueue` is now affordable at GenServer-like scale.
 
@@ -628,16 +628,16 @@ looping on a `BlockingQueue` is now affordable at GenServer-like scale.
 **In modern systems:**
 
 - **Multi-agent** — each agent is an actor with a mailbox: it processes one message at a time,
-  owns private state, and never shares memory — the cleanest model for concurrent agents.
+  owns private state, and never shares memory: the cleanest model for concurrent agents.
 - **Workflow engine** — a workflow instance as an actor that owns its state and is driven by
   messages (start, step-done, cancel).
 - **Low-code** — a stateful widget as an actor receiving user events serially.
 
 ## Related Patterns
 
-- **Producer–Consumer** — an actor's mailbox is a producer–consumer queue with the actor as the
+- **Producer-Consumer** — an actor's mailbox is a producer-consumer queue with the actor as the
   single consumer.
 - **Future / Promise** — an actor `call` (request/reply) hands back a future for the reply while
   the actor keeps handling other messages.
-- **Publish–Subscribe** — actors often communicate over pub/sub topics rather than direct
+- **Publish-Subscribe** — actors often communicate over pub/sub topics rather than direct
   addresses, decoupling sender from receiver.
