@@ -124,7 +124,7 @@ async function handle(email) {
 ```
 
 **🧠 Tradeoff**: Three named steps, each a focused call passing *structured* results forward, with a
-gate before the expensive draft. Each step is unit-testable with a fake `callModel`. That is three
+gate before the expensive draft. Each step is unit-testable with a fake `callModel`. That's three
 round trips instead of one, worth it when the single prompt was unreliable; overkill when it wasn't.
 
 ### Python
