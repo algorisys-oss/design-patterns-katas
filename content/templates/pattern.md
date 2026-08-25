@@ -10,7 +10,7 @@ intent: "One sentence describing what the pattern does."
 frequency: medium           # low | medium | high
 difficulty: intermediate    # beginner | intermediate | advanced
 tags: []
-related: []                 # kata ids only — the content lint fails on unknown ids
+related: []                 # kata ids only; the content lint fails on unknown ids
 languages: [javascript, python, elixir, go]
 ---
 
@@ -20,16 +20,16 @@ One crisp sentence. Then a short paragraph on what problem it solves and why it 
 
 ## The Problem
 
-The mess the pattern removes — usually a growing pile of conditionals or tight coupling.
+The mess the pattern removes: usually a growing pile of conditionals or tight coupling.
 Show the pain before the cure.
 
 ## Structure
 
 Key Components / Participants:
 
-- **Context** — …
-- **Strategy (interface)** — …
-- **Concrete Strategies** — …
+- **Context** — ...
+- **Strategy (interface)** — ...
+- **Concrete Strategies** — ...
 
 ```
 optional ASCII sketch — the build replaces it with the rendered SVG if one exists at
@@ -39,16 +39,16 @@ scripts/render-diagrams.mjs)
 
 ## When to Use
 
-- …
-- …
+- ...
+- ...
 
 ## Advantages and Disadvantages
 
 ### Advantages
-- …
+- ...
 
 ### Disadvantages
-- …
+- ...
 
 ## Common Mistakes
 
@@ -56,12 +56,12 @@ scripts/render-diagrams.mjs)
 
 ## Key Takeaways
 
-- …
+- ...
 
 ## Implementations
 
 Every language carries, in order: ❌ Naive → ✅ Idiomatic → 🧠 Tradeoff. Port the *behavior*,
-not the syntax — show each language's idiomatic form of the pattern.
+not the syntax; show each language's idiomatic form of the pattern.
 
 ### JavaScript
 
@@ -125,12 +125,12 @@ not the syntax — show each language's idiomatic form of the pattern.
 
 Real-world uses. Frontend / backend where useful.
 
-- …
+- ...
 
-**In modern systems:** (optional — how the pattern shows up in low-code / workflow / multi-agent
+**In modern systems:** (optional: how the pattern shows up in low-code / workflow / multi-agent
 systems)
 
-- …
+- ...
 
 ## Related Patterns
 

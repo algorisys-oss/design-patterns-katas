@@ -6,7 +6,7 @@ title: Orchestrating Multi-Agent Tasks
 also_known_as: [Agent Orchestration, LLM Agent Systems]
 gof: false
 kind: playbook
-intent: "Coordinate several LLM agents and their tools on one task — a supervisor routes work, agents call tools, and the whole run is logged, bounded, and resumable."
+intent: "Coordinate several LLM agents and their tools on one task: a supervisor routes work, agents call tools, and the whole run is logged, bounded, and resumable."
 frequency: high
 difficulty: advanced
 tags: [playbook, multi-agent, llm, orchestration, tools, agentic]
@@ -18,7 +18,7 @@ languages: []
 
 A multi-agent system coordinates several LLM agents and their tools on one task: a supervisor
 breaks the work down, specialist agents handle pieces, tools do the side effects, and the whole
-run must be logged, bounded, and resumable. It is the newest domain in this catalog — and it
+run must be logged, bounded, and resumable. It is the newest domain in this catalog, and it
 leans on the *oldest* patterns, because an agent is a component like any other.
 
 This playbook is the map from those patterns to an agent runtime. The surprise is how little is
@@ -87,9 +87,9 @@ assembly; those katas are the parts.
 4. **Multi-agent** — a supervisor delegates to specialists, fans work out, and gathers it back;
    the coordination is pure Mediator + Actor + Fan-out/Fan-in.
 5. **Durable agent runs** — the log is the truth, runs resume after a crash, and every tool call
-   is gated and replayable — the exact durability the workflow playbook describes.
+   is gated and replayable: the exact durability the workflow playbook describes.
 
-The model got more capable, so more of the classic patterns became necessary — not fewer. The
+The model got more capable, so more of the classic patterns became necessary, not fewer. The
 newest systems in software are built almost entirely from the oldest ideas in this catalog.
 
 ## Pitfalls
@@ -98,12 +98,12 @@ newest systems in software are built almost entirely from the oldest ideas in th
   arbitration rule into one prompt until it's unsteerable.
 - **Unbounded loops and spend.** Without a Worker Pool cap, retry limits, and a dead-letter for
   tasks that won't complete, an agent loops forever and drains the budget.
-- **Trusting tool output.** A tool call is a Command with real side effects — gate destructive
+- **Trusting tool output.** A tool call is a Command with real side effects, so gate destructive
   ones behind approval and treat every result as untrusted input.
 - **Exceptions across the loop.** Letting a tool throw unwinds the agent's turn; return `Result`
   so failure is data the agent can route around.
 - **No replay.** If the run isn't an event log, you can't reproduce a bad session or resume a
-  crashed one — the same mistake as a workflow engine that mutates state.
+  crashed one: the same mistake as a workflow engine that mutates state.
 
 ## Related Playbooks
 

@@ -18,7 +18,7 @@ languages: [javascript, python, elixir, go]
 
 > A one-line statement of the principle, quoted.
 
-A short paragraph on what it means and why it matters — the lever it gives you.
+A short paragraph on what it means and why it matters: the lever it gives you.
 
 ## The Smell
 
@@ -30,16 +30,16 @@ optional ASCII sketch (replaced by the rendered SVG if a structure.ysl exists)
 
 ## Why It Matters
 
-- …
-- …
+- ...
+- ...
 
 ## Benefits and Cautions
 
 ### Benefits
-- …
+- ...
 
 ### Cautions
-- Taken too far, it … — name the over-application failure.
+- Taken too far, it ... (name the over-application failure).
 
 ## Common Mistakes
 
@@ -47,7 +47,7 @@ optional ASCII sketch (replaced by the rendered SVG if a structure.ysl exists)
 
 ## Key Takeaways
 
-- …
+- ...
 
 ## Implementations
 
@@ -114,7 +114,7 @@ pattern template's "tradeoff" does).
 
 Where the principle shows up in practice.
 
-- …
+- ...
 
 ## Related Principles & Patterns
 

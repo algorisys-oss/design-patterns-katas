@@ -10,13 +10,13 @@ intent: "One sentence naming the trap and its cost."
 frequency: high
 difficulty: beginner
 tags: [anti-pattern]
-related: []                 # kata ids only — usually the patterns that fix this
+related: []                 # kata ids only; usually the patterns that fix this
 languages: [javascript, python, go]
 ---
 
 ## The Anti-Pattern
 
-What it is, in one paragraph — the tempting-but-wrong thing people do.
+What it is, in one paragraph: the tempting-but-wrong thing people do.
 
 ```
 optional ASCII sketch (replaced by the rendered SVG if a structure.ysl exists)
@@ -26,18 +26,18 @@ optional ASCII sketch (replaced by the rendered SVG if a structure.ysl exists)
 
 The innocent path by which code slides into it. Nobody sets out to write it.
 
-- …
+- ...
 
 ## Why It Hurts
 
-- …
-- …
+- ...
+- ...
 
 ## The Refactor
 
-The way out — which patterns/principles undo it, and the shape to move toward.
+The way out: which patterns/principles undo it, and the shape to move toward.
 
-- …
+- ...
 
 ## Warning Signs
 
@@ -45,7 +45,7 @@ The way out — which patterns/principles undo it, and the shape to move toward.
 
 ## Key Takeaways
 
-- …
+- ...
 
 ## Implementations
 

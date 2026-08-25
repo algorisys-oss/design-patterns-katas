@@ -29,21 +29,21 @@ One paragraph reading the sketch.
 
 ## The Patterns You'll Reach For
 
-The reverse index — each pattern, why it's here, and (by name) which kata teaches it.
+The reverse index: each pattern, why it's here, and (by name) which kata teaches it.
 
 - **Pattern** — what role it plays in this system.
-- **Pattern** — …
+- **Pattern** — ...
 
-(Optionally, a bridging paragraph pointing at a sibling family — e.g. the AI & LLM patterns an
+(Optionally, a bridging paragraph pointing at a sibling family, e.g. the AI & LLM patterns an
 agent runtime is built from.)
 
 ## How the Approach Changed
 
-The evolution: how this used to be built and how it's built now. Numbered stages work well —
+The evolution: how this used to be built and how it's built now. Numbered stages work well:
 show that the pattern kernel is constant while the surface modernizes.
 
-1. …
-2. …
+1. ...
+2. ...
 
 ## Pitfalls
 

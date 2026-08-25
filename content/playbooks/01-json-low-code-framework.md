@@ -6,7 +6,7 @@ title: Building a JSON Low-Code Framework
 also_known_as: [Config-Driven UI, Schema-Driven Rendering]
 gof: false
 kind: playbook
-intent: "Ship behavior as data — a JSON document describes a form, page, or rule, and a runtime turns it into a working UI or decision without a redeploy."
+intent: "Ship behavior as data: a JSON document describes a form, page, or rule, and a runtime turns it into a working UI or decision without a redeploy."
 frequency: high
 difficulty: advanced
 tags: [playbook, low-code, json, config-as-data, runtime, dsl]
@@ -17,11 +17,11 @@ languages: []
 ## Intent
 
 A low-code framework ships **behavior as data**. Instead of hand-coding each form and page,
-you describe it as JSON — fields, layout, rules, data bindings — and a runtime turns that
+you describe it as JSON (fields, layout, rules, data bindings) and a runtime turns that
 document into a working UI or a decision. Change the JSON, change the app; no redeploy.
 
 The katas in this catalog are the parts. This playbook is the assembly: which patterns you
-reach for, why, and where each one is taught. It's the reverse of a kata — you start from the
+reach for, why, and where each one is taught. It's the reverse of a kata: you start from the
 system and walk back to the patterns.
 
 ## The Shape
@@ -47,14 +47,14 @@ backend you inject.
   behind one interface.
 - **Composite** — the JSON tree itself. A `container` holds fields and other containers, and one
   recursive render treats a leaf field and a group alike.
-- **Interpreter** — JSON rule trees (`{"and": [{"eq": ["role", "admin"]}, …]}`) parsed once and
+- **Interpreter** — JSON rule trees (`{"and": [{"eq": ["role", "admin"]}, ...]}`) parsed once and
   evaluated per record. Validation, visibility, and pricing rules live as data, not code.
 - **Strategy** — a field's `"validator": "email"` or `"format": "currency"` selects a pluggable
   behavior by name straight from config; adding one is a new object, not a new branch.
 - **Bridge** — keep the component abstraction apart from its renderer so one schema drives web,
   native, or PDF by swapping the implementor.
 - **Visitor** — one pass over the node tree per operation: validate, compile, estimate render
-  cost — add an operation without touching the node types.
+  cost. Add an operation without touching the node types.
 - **Prototype / Flyweight** — clone a template node to seed a new section (Prototype); share one
   widget definition per `type` across thousands of instances (Flyweight).
 - **Decorator** — wrap a field with permission and formatting layers declared in its JSON.
@@ -73,7 +73,7 @@ When the low-code platform gains "AI" fields, the **AI & LLM Patterns** family p
 
 ## How the Approach Changed
 
-The kernel — *data describes behavior, a runtime interprets it* — is decades old. What moved is
+The kernel, *data describes behavior, a runtime interprets it*, is decades old. What moved is
 who writes the data:
 
 1. **Hardcoded** — every form is bespoke code; a new field is a deploy.
@@ -84,7 +84,7 @@ who writes the data:
 5. **LLM-assisted** — a model *generates* the schema from a plain-English description, and the
    same runtime that always validated hand-written JSON now validates machine-written JSON.
 
-The patterns didn't change. The author did — from developer, to domain expert, to model.
+The patterns didn't change. The author did: from developer, to domain expert, to model.
 
 ## Pitfalls
 
@@ -95,7 +95,7 @@ The patterns didn't change. The author did — from developer, to domain expert,
   types should be a new file, not another case (Open/Closed).
 - **Welding schema to one target.** Skip the Bridge and you can't add native or PDF output later
   without rewriting the renderer.
-- **Trusting user JSON.** Evaluating arbitrary uploaded rules is a security hole — whitelist
+- **Trusting user JSON.** Evaluating arbitrary uploaded rules is a security hole: whitelist
   operators, bound recursion, and sandbox the interpreter.
 
 ## Related Playbooks

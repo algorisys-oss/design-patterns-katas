@@ -6,7 +6,7 @@ title: Building a Workflow Engine
 also_known_as: [Orchestration Engine, Durable Execution]
 gof: false
 kind: playbook
-intent: "Run a multi-step process reliably — steps, state, retries, and compensation — where the flow is data an orchestrator drives, and a crash resumes instead of restarting."
+intent: "Run a multi-step process reliably (steps, state, retries, and compensation) where the flow is data an orchestrator drives, and a crash resumes instead of restarting."
 frequency: high
 difficulty: advanced
 tags: [playbook, workflow, orchestration, state-machine, saga, resilience]
@@ -36,7 +36,7 @@ how they compose into an engine.
               (Event Sourcing) ──▶ resume on crash
 ```
 
-Steps never call each other — they report to the orchestrator, and it decides what runs next.
+Steps never call each other; they report to the orchestrator, and it decides what runs next.
 Every transition is written to a log, so instance state is a fold over that history.
 
 ## The Patterns You'll Reach For
@@ -59,14 +59,14 @@ Every transition is written to a log, so instance state is a fold over that hist
   that fails a hung step, a breaker that fails fast when a downstream service is down.
 - **Dead-Letter Queue** — a step that exhausts its retries lands in a DLQ for inspection instead
   of killing the whole run.
-- **Producer–Consumer / Worker Pool** — the scheduler produces ready steps; a bounded pool of
+- **Producer-Consumer / Worker Pool** — the scheduler produces ready steps; a bounded pool of
   executors consumes them, so pool size caps concurrency.
 - **Memento** — a checkpoint captured before each step, so a crashed run resumes from the last
   good state.
 - **Pipes and Filters** — a linear workflow *is* pipes-and-filters: each step transforms the
   payload and passes it on.
 
-When a step's work is a model call, the **AI & LLM Patterns** family supplies the rest —
+When a step's work is a model call, the **AI & LLM Patterns** family supplies the rest:
 **Prompt Chaining** (a step that is itself a pipeline of focused calls), **Structured Output**
 (so a step returns data the orchestrator can branch on), **Model Cascade** (escalate a step to a
 stronger model when it fails a gate), and **Human-in-the-Loop** (an approval step that pauses the
@@ -82,7 +82,7 @@ instance durably).
 4. **Durable orchestration** — Temporal, Step Functions, Camunda: the flow is a definition, the
    history is the source of truth, and resume-after-crash is the headline feature.
 5. **Agentic workflows** — the same engine now runs steps whose *next step is chosen by a model*,
-   not just by a static branch — which is where the multi-agent playbook picks up.
+   not just by a static branch, which is where the multi-agent playbook picks up.
 
 The durability patterns are constant. What moved is how much of the flow is fixed data versus
 decided at runtime.
@@ -91,7 +91,7 @@ decided at runtime.
 
 - **A god orchestrator.** The Mediator warning: as routing rules pile into one place, it becomes
   the unmaintainable center. Keep step logic in the steps.
-- **Non-idempotent steps.** Retry and resume replay steps — a step that isn't idempotent double-
+- **Non-idempotent steps.** Retry and resume replay steps, so a step that isn't idempotent double-
   charges or double-ships. Design every step to be safely re-run.
 - **Forgetting compensation.** Without a Saga's undo per step, a failure halfway through leaves
   the world half-changed and no way back.

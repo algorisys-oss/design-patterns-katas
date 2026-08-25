@@ -20,13 +20,13 @@ One crisp sentence, then a short paragraph.
 
 ## The Problem
 
-The operational pain — downtime, risky big-bang releases, config drift.
+The operational pain: downtime, risky big-bang releases, config drift.
 
 ## Structure
 
 Key Components / Participants:
 
-- **Component** — …
+- **Component** — ...
 
 ```
 optional ASCII sketch (replaced by the rendered SVG if a structure.ysl exists)
@@ -34,15 +34,15 @@ optional ASCII sketch (replaced by the rendered SVG if a structure.ysl exists)
 
 ## When to Use
 
-- …
+- ...
 
 ## Advantages and Disadvantages
 
 ### Advantages
-- …
+- ...
 
 ### Disadvantages
-- …
+- ...
 
 ## Common Mistakes
 
@@ -50,13 +50,13 @@ optional ASCII sketch (replaced by the rendered SVG if a structure.ysl exists)
 
 ## Key Takeaways
 
-- …
+- ...
 
 ## Implementations
 
-The tabs are **tools**, not programming languages — set `languages:` accordingly (e.g.
+The tabs are **tools**, not programming languages, so set `languages:` accordingly (e.g.
 `[kubernetes, terraform, ci-cd, aws]`). Each tab shows the config/manifest that realizes the
-pattern in that tool; there is no ❌ Naive / ✅ Idiomatic split — a short intro plus the
+pattern in that tool; there is no ❌ Naive / ✅ Idiomatic split, just a short intro plus the
 canonical snippet per tool.
 
 ### Kubernetes
@@ -83,7 +83,7 @@ canonical snippet per tool.
 
 ## Applications
 
-- …
+- ...
 
 ## Related Patterns
 
