@@ -1,7 +1,7 @@
-// Compiles content/**/*.md into a single JSON file the React app imports.
+// Compiles content/**/*.md into the JSON the React app reads.
 // Runs at `npm run content` (and before dev/build). No backend needed; this is
 // what makes the site statically hostable.
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import matter from "gray-matter";
@@ -11,6 +11,10 @@ import hljs from "highlight.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONTENT_DIR = resolve(__dirname, "../../content");
 const OUT_DIR = resolve(__dirname, "../src/data");
+// Fetched at runtime rather than bundled, so opening the site does not download
+// every kata's rendered HTML. Vite copies public/ into dist/ verbatim.
+const PUBLIC_DIR = resolve(__dirname, "../public/content");
+const KATA_DIR = join(PUBLIC_DIR, "katas");
 // Category order comes from the shared registry (src/lib/categories.json) so the build
 // and the app agree, and new families are a one-entry data change.
 const CATEGORY_ORDER = JSON.parse(
@@ -216,14 +220,39 @@ const katas = files.map((f) => buildKata(f, titleById)).sort((a, b) => {
 const tagSet = new Set();
 for (const k of katas) for (const t of k.tags) tagSet.add(t);
 
-const payload = {
+// Three outputs, split by when the browser actually needs them.
+//   src/data/katas-index.json   bundled: metadata for the sidebar, routing, breadcrumb
+//   public/content/katas/<id>.json   fetched when a kata is opened
+//   public/content/search.json       fetched on the first search keystroke
+const index = {
   generatedAt: new Date().toISOString(),
   categories: CATEGORY_ORDER,
   tags: [...tagSet].sort(),
   count: katas.length,
-  katas,
+  // eslint-disable-next-line no-unused-vars
+  katas: katas.map(({ blocks, search, ...meta }) => meta),
 };
 
 mkdirSync(OUT_DIR, { recursive: true });
-writeFileSync(join(OUT_DIR, "katas.json"), JSON.stringify(payload, null, 2));
-console.log(`content: built ${katas.length} kata(s) → src/data/katas.json`);
+writeFileSync(join(OUT_DIR, "katas-index.json"), JSON.stringify(index, null, 2));
+
+// Wipe and rewrite, so a renamed or deleted kata cannot leave a stale file the
+// app would happily still fetch.
+rmSync(PUBLIC_DIR, { recursive: true, force: true });
+mkdirSync(KATA_DIR, { recursive: true });
+for (const k of katas) {
+  writeFileSync(join(KATA_DIR, `${k.id}.json`), JSON.stringify({ id: k.id, blocks: k.blocks }));
+}
+writeFileSync(
+  join(PUBLIC_DIR, "search.json"),
+  JSON.stringify(Object.fromEntries(katas.map((k) => [k.id, k.search]))),
+);
+
+const kb = (n) => Math.round(n / 1024);
+const indexKb = kb(JSON.stringify(index).length);
+const blocksKb = kb(katas.reduce((n, k) => n + JSON.stringify(k.blocks).length, 0));
+const searchKb = kb(katas.reduce((n, k) => n + k.search.length, 0));
+console.log(
+  `content: built ${katas.length} kata(s) - index ${indexKb} KB bundled, ` +
+    `${blocksKb} KB of katas + ${searchKb} KB search fetched on demand`,
+);

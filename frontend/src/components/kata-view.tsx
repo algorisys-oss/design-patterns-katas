@@ -4,7 +4,7 @@ import { Check, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Implementations } from "@/components/implementations";
 import { cn, freqDots } from "@/lib/utils";
-import { getAdjacent, type Kata } from "@/lib/content";
+import { getAdjacent, loadBlocks, type Block, type Kata } from "@/lib/content";
 import { categoryLabel } from "@/lib/categories";
 import { Lessons, useLessonComplete } from "@/lib/lessons";
 
@@ -16,10 +16,26 @@ export function KataView({ kata }: { kata: Kata }) {
   const endRef = React.useRef<HTMLDivElement>(null);
   const autoMarked = React.useRef(false);
 
+  // The body is an asset, not bundle. Header and nav render immediately from the
+  // metadata index while this arrives.
+  const [blocks, setBlocks] = React.useState<Block[] | null>(null);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    let live = true;
+    setBlocks(null);
+    setLoadError(null);
+    loadBlocks(kata.id)
+      .then((b) => live && setBlocks(b))
+      .catch((e: Error) => live && setLoadError(e.message));
+    return () => {
+      live = false;
+    };
+  }, [kata.id]);
+
   // Estimated reading time for this lesson (~200 wpm), floored/capped so it gates
   // auto-completion without ever being punitive.
   const minReadMs = React.useMemo(() => {
-    const text = kata.blocks
+    const text = (blocks ?? [])
       .map((b: { kind: string; html?: string; intro_html?: string; langs?: { html: string }[] }) =>
         b.kind === "impl"
           ? (b.intro_html ?? "") + " " + (b.langs ?? []).map((l) => l.html).join(" ")
@@ -29,7 +45,7 @@ export function KataView({ kata }: { kata: Kata }) {
       .replace(/<[^>]+>/g, " ");
     const words = (text.match(/\S+/g) ?? []).length;
     return Math.min(45_000, Math.max(8_000, Math.round((words / 200) * 60_000)));
-  }, [kata.blocks]);
+  }, [blocks]);
 
   // Auto-mark complete when the learner reaches the end of the lesson, but only after
   // they've spent the estimated reading time (counted while the tab is visible) and are
@@ -38,7 +54,9 @@ export function KataView({ kata }: { kata: Kata }) {
   React.useEffect(() => {
     autoMarked.current = false;
     const sentinel = endRef.current;
-    if (!sentinel) return;
+    // No body yet means nothing to have read, so the sentinel would otherwise be
+    // visible immediately and complete the lesson for free.
+    if (!sentinel || !blocks) return;
 
     let activeMs = 0;
     let resumedAt: number | null = document.visibilityState === "visible" ? Date.now() : null;
@@ -79,7 +97,7 @@ export function KataView({ kata }: { kata: Kata }) {
       clearTimeout(timer);
       io.disconnect();
     };
-  }, [kata.id, minReadMs]);
+  }, [kata.id, minReadMs, blocks]);
 
   return (
     <article className="mx-auto max-w-[760px] px-6 pb-24 pt-8 md:px-10">
@@ -130,7 +148,32 @@ export function KataView({ kata }: { kata: Kata }) {
         )}
       </header>
 
-      {kata.blocks.map((block) => (
+      {loadError && (
+        <p className="mt-11 max-w-[68ch] text-[15px] text-muted-foreground">
+          This lesson's body didn't load ({loadError}).{" "}
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="text-primary underline underline-offset-2"
+          >
+            Retry
+          </button>
+        </p>
+      )}
+
+      {!blocks && !loadError && (
+        <div className="mt-11 max-w-[68ch] space-y-3" aria-busy="true" aria-label="Loading lesson">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-4 animate-pulse rounded bg-[color-mix(in_srgb,var(--foreground)_9%,transparent)]"
+              style={{ width: `${[100, 92, 97, 64, 88][i]}%` }}
+            />
+          ))}
+        </div>
+      )}
+
+      {(blocks ?? []).map((block) => (
         <section key={block.id} className="max-w-[68ch]">
           <h2 className="mt-11 flex items-center gap-3 pt-2 text-[14px] font-bold uppercase tracking-[0.02em] text-foreground">
             <span className="h-0.5 w-[22px] flex-none" style={{ background: "var(--primary)" }} aria-hidden />

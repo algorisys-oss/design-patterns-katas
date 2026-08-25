@@ -9,8 +9,8 @@ backend/bin/
 backend/server
 
 # Generated content (rebuilt by `npm run content`)
-frontend/src/data/katas.json
-frontend/public/content/*.json
+frontend/src/data/katas-index.json
+frontend/public/content/
 
 # Editor / OS
 .DS_Store

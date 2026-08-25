@@ -3,7 +3,7 @@ import { NavLink, useSearchParams } from "react-router-dom";
 import { Search, X, ChevronRight, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { groupByCategory, searchKatas, type Kata } from "@/lib/content";
+import { groupByCategory, loadSearchIndex, searchKatas, type Kata } from "@/lib/content";
 import { categoryLabel, categoryMeta, type CategoryTrack } from "@/lib/categories";
 import { useLessonComplete, useLessonsProgress } from "@/lib/lessons";
 
@@ -14,15 +14,35 @@ const TRACK_LABEL: Record<CategoryTrack, string> = {
   modern: "Modern Patterns",
 };
 
+// Searching the lesson bodies needs a ~870 KB index, so it is fetched on the first
+// keystroke instead of at page load. Until it arrives (and if it fails), matching
+// falls back to titles, intents, and tags, which ship with the app.
+function useFullTextIndex(query: string) {
+  const [index, setIndex] = React.useState<Record<string, string> | null>(null);
+  const wanted = query.trim().length > 0;
+  React.useEffect(() => {
+    if (!wanted || index) return;
+    let live = true;
+    loadSearchIndex()
+      .then((i) => live && setIndex(i))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [wanted, index]);
+  return index;
+}
+
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [query, setQuery] = React.useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTag = searchParams.get("tag");
   const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
 
+  const fullText = useFullTextIndex(query);
   const results = React.useMemo(
-    () => searchKatas(query, activeTag ? [activeTag] : []),
-    [query, activeTag],
+    () => searchKatas(query, activeTag ? [activeTag] : [], fullText),
+    [query, activeTag, fullText],
   );
   const groups = groupByCategory(results);
   const total = results.length;
