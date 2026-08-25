@@ -346,7 +346,7 @@ fn handle(body: Option<&str>) -> String {
 **🧠 The Fix**: `Result` moves the error path into the type, and `?` is early return built into the language:
 each check either passes or exits, so there's nothing left for a flag to remember. Notice the smell needed
 three `mut` variables and the refactor needs none: in Rust, spaghetti announces itself as mutable state, and
-the borrow checker makes threading it around genuinely annoying. `validate` is a pure function; its five cases
+the borrow checker makes threading it around annoying. `validate` is a pure function; its five cases
 test in five lines.
 
 ### Zig

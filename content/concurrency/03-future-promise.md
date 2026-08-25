@@ -202,7 +202,7 @@ async def main():
 **🧠 Tradeoff**: `asyncio` coroutines are Python's futures: `await` for the linear form,
 `asyncio.gather` for concurrency. Unlike JS, coroutines are *lazy* (they don't run until
 scheduled on the loop), which makes `create_task`/`gather` the point where concurrency actually
-starts. The cost is the two-color split: `async` functions and the loop are their own world you
+starts. The price is the two-color split: `async` functions and the loop are their own world you
 have to opt into.
 
 ### Elixir

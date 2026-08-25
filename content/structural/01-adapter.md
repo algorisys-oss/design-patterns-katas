@@ -157,7 +157,7 @@ const uploader = new Uploader(
 ```
 
 **🧠 Tradeoff**: Each adapter absorbs one SDK's method names and argument shapes, so `Uploader`
-never sees S3 and local disk becomes a drop-in for tests. The cost is one wrapper per backend.
+never sees S3 and local disk becomes a drop-in for tests. That is one wrapper per backend.
 Node's own `util.promisify` is this pattern at the language level, an adapter from callback style
 to promises.
 

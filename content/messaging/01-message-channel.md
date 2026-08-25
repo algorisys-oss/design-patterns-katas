@@ -158,7 +158,7 @@ ch.consume("orders", (msg) => {
 **🧠 Tradeoff**: A durable AMQP queue as the channel decouples the services in time and rate: the
 inventory service can be down and orders wait in the queue, and you scale consumers by adding
 workers. You now run RabbitMQ and handle acks/redelivery (at-least-once → idempotent consumers). The
-gain is resilience the direct `fetch` can't offer; the cost is broker operations and async semantics.
+gain is resilience the direct `fetch` can't offer; you pay in broker operations and async semantics.
 
 ### Python
 

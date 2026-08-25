@@ -75,7 +75,7 @@ turn ──▶ prompt = recent turns + running summary + retrieved facts ──�
 
 ### Disadvantages
 - Compaction is lossy: summarizing can drop a detail that later mattered.
-- Deciding *what* to persist and *when* to retrieve is genuinely hard and app-specific.
+- Deciding *what* to persist and *when* to retrieve is hard and app-specific.
 - Two stores (short and long) add moving parts and consistency concerns.
 - Stale or wrong long-term memories poison future answers.
 
@@ -158,7 +158,7 @@ class Memory {
 **🧠 Tradeoff**: Recent turns stay verbatim, older ones fold into a rolling `summary` when the buffer
 exceeds `budget`, and long-term facts are *retrieved* per turn: the two mechanisms, side by side. The
 prompt stays bounded regardless of conversation length. The cost is a compaction call now and then plus
-the retrieval, and the judgment of what `write` should persist; the genuinely hard part is curation, not code.
+the retrieval, and the judgment of what `write` should persist; the hard part is curation, not code.
 
 ### Python
 

@@ -439,7 +439,7 @@ fn main() {
 
 **🧠 Tradeoff**: Rust layers by module (or crate), and visibility does the policing: a domain
 module that never writes `use crate::infrastructure` can't touch it, and `pub` marks exactly what
-crosses each boundary. Ownership adds a quiet bonus: `by_id` returns an *owned* `Order`, so the
+crosses each boundary. Ownership adds a bonus: `by_id` returns an *owned* `Order`, so the
 domain gets a DTO by construction, never a live reference into storage. The generic
 `OrderService<R>` fixes the store at compile time; use `Box<dyn OrderRepo>` if the store must be
 chosen at runtime.

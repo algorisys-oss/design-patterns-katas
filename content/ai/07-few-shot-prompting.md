@@ -132,7 +132,7 @@ async function classify(review, examples = EXAMPLES) {
 
 **🧠 Tradeoff**: A consistent example block pins the label set (three values, demonstrated) and the
 exact shape the model should complete. Passing `examples` as a parameter is what makes it *dynamic*:
-swap in examples retrieved by similarity to `review` for a shifting distribution. The cost is example
+swap in examples retrieved by similarity to `review` for a shifting distribution. You pay in example
 tokens on every call; when the labels are fixed, a [[structured-output]] enum is the stronger guarantee.
 
 ### Python

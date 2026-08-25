@@ -467,7 +467,7 @@ pub fn main() !void {
 
 **🧠 Tradeoff**: `OrderService(comptime Gateway: type)` is static dependency injection: the
 compiler instantiates a service per concrete gateway, calls are direct (no vtable), and a type
-missing `charge` fails at compile time. The cost is that the dependency is part of the type:
+missing `charge` fails at compile time. The downside is that the dependency is part of the type:
 `OrderService(StripeGateway)` and `OrderService(FakeGateway)` are different types, so you can't
 swap gateways at runtime or store mixed services in one array. When you need that, reach for the
 two-field vtable idiom (`*anyopaque` context + function pointer) that `std.mem.Allocator` itself

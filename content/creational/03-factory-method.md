@@ -125,7 +125,7 @@ const cache = createCache("redis");
 ```
 
 **🧠 Tradeoff**: A registry object turns "add a case" into "add a key", so the factory itself
-never changes as products grow. The cost is a lookup that can fail at runtime rather than a
+never changes as products grow. The downside is a lookup that can fail at runtime rather than a
 `switch` the compiler could (in a typed language) check for exhaustiveness.
 
 ### Node.js

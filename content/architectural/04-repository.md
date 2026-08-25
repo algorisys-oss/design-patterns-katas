@@ -133,7 +133,7 @@ const sqlUserRepo = {
 ```
 
 **🧠 Tradeoff**: Injecting a `users` repository frees `UserService` from SQL, so it tests against
-a `Map`-backed fake and could switch datastores without edits. The cost is an extra object and a
+a `Map`-backed fake and could switch datastores without edits. The price is an extra object and a
 mapping (`toUser`) between rows and domain objects, negligible next to the testability, but real
 overhead for a one-query CRUD endpoint.
 
@@ -549,7 +549,7 @@ public class Demo {
 signature and the framework derives the query from the method *name*, so you write the interface
 and never the implementation. The honest caveat mirrors C#'s EF: JPA's `EntityManager` is already
 repository-shaped, so hand-wrapping it adds the layer Spring Data exists to delete. Hand-rolled
-as here, the value is the seam itself (`UserService` tests against a `HashMap`) plus one quiet
+as here, the value is the seam itself (`UserService` tests against a `HashMap`) plus one more
 win from records: `byId` returns an immutable value, so callers can never mutate stored state
 behind the repository's back.
 

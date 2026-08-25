@@ -657,7 +657,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff**: Enum constants with constant-specific method bodies are Java's quiet superpower
+**🧠 Tradeoff**: Enum constants with constant-specific method bodies are Java's best answer
 here (it's Effective Java's own example): each constant is a singleton state object, so you get
 the GoF shape with no class hierarchy and nothing allocated per transition. Add a `BUFFERING`
 constant and the code won't compile until it supplies `play` and `pause`: the scattered-flag

@@ -108,7 +108,7 @@ function sum(arr) {
 // Simple and clear; optimize only if a profiler proves this is a hotspot (it almost never is).
 const sum = (arr) => arr.reduce((s, x) => s + x, 0);
 
-// If profiling of a genuinely hot, large-array path shows reduce is the bottleneck, THEN
+// If profiling of a hot, large-array path shows reduce is the bottleneck, THEN
 // consider a plain for-loop: measured, and commented as to why.
 ```
 
@@ -142,7 +142,7 @@ def label(x):
 def label(x):
     return f"{x.kind}:{x.state}"
 
-# If a profiler shows a genuinely hot, expensive pure function, add @functools.lru_cache: measured.
+# If a profiler shows a hot, expensive pure function, add @functools.lru_cache: measured.
 ```
 
 **🧠 The Fix**: Hand-rolling a cache (with a fragile `id()`-based key) for a cheap function called a few
@@ -223,7 +223,7 @@ static int FastSum(ReadOnlySpan<int> values)
 int[] numbers = [3, 1, 4, 1, 5, 9, 2, 6];
 Console.WriteLine(numbers.Sum()); // 31
 
-// If BenchmarkDotNet shows a genuinely hot, large-array path where Sum() matters,
+// If BenchmarkDotNet shows a hot, large-array path where Sum() matters,
 // a plain loop over the array is the next step: measured, and commented as to why.
 ```
 
@@ -373,7 +373,7 @@ class Demo {
         System.out.println(IntStream.of(numbers).sum()); // 31
     }
 }
-// If JMH shows a genuinely hot, large-array path where the stream matters,
+// If JMH shows a hot, large-array path where the stream matters,
 // a plain for loop is the next step: measured, and commented as to why.
 ```
 

@@ -416,7 +416,7 @@ const PlaceOrder = struct {
 };
 ```
 
-**🧠 The Fix**: Zig has no DI framework to quietly assemble a giant struct: every field is filled by hand at
+**🧠 The Fix**: Zig has no DI framework to assemble a giant struct behind your back: every field is filled by hand at
 every construction site, so a God struct is visible pain the moment you try to build one in a test. The split
 makes that cheap: `Pricing` needs no state at all, so it becomes a namespaced function you call directly, and
 `PlaceOrder` declares exactly the three dependencies it uses. Plain structs composed in `main` are already the

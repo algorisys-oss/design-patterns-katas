@@ -492,7 +492,7 @@ public class Demo {
 `default`. Add `Triangle` to `permits` and the compiler walks you to every switch that must
 now handle it. That's modification, but safe, compiler-guided modification. Choose the open
 interface when new shapes should arrive from packages you don't control; choose sealed + switch
-when the set genuinely won't grow and it's the *operations* that vary.
+when the set won't grow and it's the *operations* that vary.
 
 ## Applications
 

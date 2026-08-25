@@ -261,7 +261,7 @@ Real-world uses of Query Rewriting:
 
 **In modern systems:**
 
-- **Low-code**: a chat-over-your-docs widget that quietly makes follow-up questions searchable.
+- **Low-code**: a chat-over-your-docs widget that makes follow-up questions searchable.
 - **Workflow engine**: a normalization step that turns free-text input into structured search keys.
 - **Multi-agent**: an agent that reformulates a task into precise sub-queries before delegating retrieval.
 

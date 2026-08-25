@@ -148,7 +148,7 @@ async function extract(text) {
 **🧠 Tradeoff**: `output_config.format` makes the response *guaranteed* schema-valid, so `JSON.parse`
 is safe and `validate` is a belt-and-suspenders check for the refusal/truncation edge. The schema
 lives as data, so the same `extract` handles any shape; you're using the model as a typed function.
-The cost is that your schema must fit the provider's supported JSON-Schema subset.
+The constraint is that your schema must fit the provider's supported JSON-Schema subset.
 
 ### Python
 

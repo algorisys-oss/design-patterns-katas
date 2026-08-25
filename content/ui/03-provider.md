@@ -131,7 +131,7 @@ function Button()  {
 ```
 
 **🧠 Tradeoff**: React Context removes the drilling entirely: `Page` and `Toolbar` no longer carry a
-`theme` prop they don't use. The cost is that `Button`'s dependency on a theme provider is now
+`theme` prop they don't use. The catch is that `Button`'s dependency on a theme provider is now
 implicit, and a changing context value re-renders all consumers, so context suits stable,
 cross-cutting values, with a store + selectors for hot, granular state.
 

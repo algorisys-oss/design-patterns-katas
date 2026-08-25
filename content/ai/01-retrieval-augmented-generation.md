@@ -149,7 +149,7 @@ async function answer(question, retriever) {
 **🧠 Tradeoff**: The retriever is a class only because it holds the corpus; a closure over
 `chunks` returning a `retrieve` function is just as idiomatic in JS. The win is that `answer`
 depends on the *interface* (`retrieve`), so swapping the in-memory search for a real vector DB
-(pgvector, Pinecone) never touches the generation code. The cost is the whole retrieval
+(pgvector, Pinecone) never touches the generation code. The price is the whole retrieval
 pipeline you now own.
 
 ### Python

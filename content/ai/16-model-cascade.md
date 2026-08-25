@@ -27,7 +27,7 @@ Picking one model tier for everything is wrong both ways:
 
 - **Always the strong model**: you pay top-tier price and latency for "reset my password" and "what
   time is it," which a tiny model answers perfectly. Most traffic is easy; you're overpaying for it.
-- **Always the cheap model**: the small model handles the easy majority but botches the genuinely
+- **Always the cheap model**: the small model handles the easy majority but botches the
   hard requests, and there's no path to recover.
 
 The requests differ in difficulty, so the model should too, but you don't know a request's
@@ -71,7 +71,7 @@ request ──▶ cheap model ──▶ confident? ──yes──▶ answer
   everything and saves nothing.
 - Escalated requests pay *both* models, so the worst case is more expensive than going strong first.
 - More complexity than a single call; the gate is another thing to build and calibrate.
-- Getting a reliable confidence signal from an LLM is genuinely hard.
+- Getting a reliable confidence signal from an LLM is hard.
 
 ## Common Mistakes
 
@@ -254,7 +254,7 @@ Real-world uses of the Model Cascade:
 
 - **Multi-agent**: a fallback model chain (fast → strong → human) behind a single agent capability.
 - **Workflow engine**: a step that escalates to a stronger model when its output fails a validation gate.
-- **Low-code**: a cost dial that quietly serves easy "AI" requests from a cheap model.
+- **Low-code**: a cost dial that serves easy "AI" requests from a cheap model.
 
 ## Related Patterns
 

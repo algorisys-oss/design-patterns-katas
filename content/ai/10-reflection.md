@@ -133,7 +133,7 @@ const critique = (task, draft) =>
 
 **🧠 Tradeoff**: The critic returns *structured* feedback (`{ pass, feedback }`) so the loop can branch
 on `pass` and feed concrete `feedback` into the revision, not a vague "make it better." `maxRounds` caps
-the cost. The buy is real quality on hard tasks; the cost is up to `maxRounds + 1` calls per task, so
+the cost. The buy is real quality on hard tasks; you pay up to `maxRounds + 1` calls per task, so
 gate reflection to work that's worth it.
 
 ### Python

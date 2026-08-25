@@ -137,7 +137,7 @@ async function ingest(doc, store) {
 ```
 
 **🧠 Tradeoff**: Packing paragraphs up to a size, then carrying an overlap tail, keeps chunks
-about one idea without slicing sentences. `embedBatch` amortizes the model call. The cost is that
+about one idea without slicing sentences. `embedBatch` amortizes the model call. The catch is that
 a paragraph splitter is still structure-naive about tables and code; a Markdown- or AST-aware
 splitter is the next step when the corpus demands it.
 

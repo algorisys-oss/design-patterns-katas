@@ -121,7 +121,7 @@ class User {
 ```
 
 **🧠 Tradeoff**: Putting `find`/`save`/`delete` on `User` gives the intuitive `u.save()` and centralizes
-the entity's SQL, fast and readable for CRUD. The cost is that `User` now depends on `db`, so testing
+the entity's SQL, fast and readable for CRUD. The catch is that `User` now depends on `db`, so testing
 its behavior means a database (or heavy mocking), and any real domain logic added here mixes with
 persistence. Sequelize/Objection give this style with far less hand-written SQL.
 

@@ -173,7 +173,7 @@ class ActorRef {
 
 **🧠 Tradeoff**: `worker_threads` give genuine actor semantics: each worker has isolated memory
 and communicates only by `postMessage`, so there is literally no shared state to race, and it's
-real parallelism across cores. The cost is serialization overhead on every message and the
+real parallelism across cores. You pay serialization overhead on every message and the
 round-trip to model request/reply; it's worth it for CPU-bound or crash-isolated work, overkill
 for coordinating a little in-process state.
 
@@ -252,7 +252,7 @@ end
 
 **🧠 Tradeoff**: This is the actor model's home. A `GenServer` *is* an actor: isolated process,
 private state, serial message handling, and a supervisor that restarts it on crash ("let it
-crash"). You get fault tolerance and distribution nearly for free. The cost is that everything
+crash"). You get fault tolerance and distribution nearly for free. The catch is that everything
 stateful becomes a process with an async protocol, but on the BEAM that's the natural grain, so
 it rarely feels forced.
 

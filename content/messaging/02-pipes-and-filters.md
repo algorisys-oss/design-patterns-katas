@@ -255,7 +255,7 @@ for row := range formatted { write(row) }
 **🧠 Tradeoff**: Go channels are the pipes and goroutines the filters: each `filter` stage runs
 concurrently, connected by channels that provide backpressure, and you can fan-out a slow stage across
 workers (the Fan-out/Fan-in pattern). Generics keep it typed. It's genuinely concurrent
-pipes-and-filters in the standard library; the cost is wiring channels and closing them correctly, the
+pipes-and-filters in the standard library; you own the channel wiring and the close discipline, the
 usual Go bargain of explicitness.
 
 ### CSharp

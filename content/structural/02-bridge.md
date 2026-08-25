@@ -489,7 +489,7 @@ pub fn main() void {
 renderer has `circle`/`square` at instantiation and inlines every call. Choosing a backend at
 runtime needs the vtable idiom (`*anyopaque` context + function pointers) instead. And when
 the renderer set is closed and small, a tagged union plus `switch` inside each shape is
-plainer Zig. Take the bridge only when the backend axis genuinely keeps growing.
+plainer Zig. Take the bridge only when the backend axis keeps growing.
 
 ### Java
 

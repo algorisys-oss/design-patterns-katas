@@ -151,7 +151,7 @@ function placeOrder(order) { bus.emit("order:placed", order); }
 **🧠 Tradeoff**: On the backend a mediator is often an event bus or message broker: services
 coordinate through it instead of importing each other, which keeps a microservice/module mesh
 decoupled. The line between Mediator and Observer blurs here; the distinction is that a mediator
-also owns *coordination rules*, not just fan-out. The cost is indirection: the flow is no longer
+also owns *coordination rules*, not just fan-out. What you give up is directness: the flow is no longer
 readable top-to-bottom.
 
 ### Python

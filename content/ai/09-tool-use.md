@@ -136,7 +136,7 @@ async function dispatch(call) {
 
 **🧠 Tradeoff**: Tools as data (`{ description, schema, run }`) make the registry a dispatch table; the
 provider guarantees a well-formed `tool_use` block, so `dispatch` never parses prose. `validate` before
-`run` is the guard against hallucinated arguments. The cost is that descriptions and the tool set are
+`run` is the guard against hallucinated arguments. The catch is that descriptions and the tool set are
 now prompt engineering you must tune, but that's the real work, exposed instead of hidden in a regex.
 
 ### Python

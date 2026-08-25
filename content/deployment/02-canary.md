@@ -126,7 +126,7 @@ spec:
 
 **🧠 Tradeoff**: Argo Rollouts (or Flagger) turns canary into a declarative, automated flow: weighted
 steps, pauses to observe, and `analysis` templates that query Prometheus and auto-rollback on threshold
-breach: progressive delivery without hand-driving `kubectl`. The cost is running the controller and
+breach: progressive delivery without hand-driving `kubectl`. You take on running the controller and
 writing trustworthy analysis metrics, plus the two-version coexistence constraints; the payoff is
 metric-gated releases you don't babysit.
 
@@ -158,7 +158,7 @@ spec:
 
 **🧠 Tradeoff**: A service mesh (Istio, Linkerd) gives *precise*, request-level weighted routing
 independent of replica counts, plus header-based routing (send employees or a beta cohort to the canary
-first) and rich mesh metrics to judge health. It's the most flexible canary substrate. The cost is running
+first) and rich mesh metrics to judge health. It's the most flexible canary substrate. That means running
 the mesh, which is real operational weight and only justified if you're already using it or need its
 traffic-management and observability.
 

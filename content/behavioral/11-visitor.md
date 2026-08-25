@@ -70,7 +70,7 @@ Key Components:
 - **Using it when element types change often**: every new type breaks every visitor; then a method
   on the element is better.
 - **Skipping double dispatch**: a single `switch` on type in one place is simpler than Visitor and
-  often enough; only reach for Visitor when operations genuinely multiply.
+  often enough; only reach for Visitor when operations keep multiplying.
 - **Confusing "easy to add" axis**: Visitor makes operations easy and types hard; a plain method
   makes types easy and operations hard. Pick by what actually changes.
 

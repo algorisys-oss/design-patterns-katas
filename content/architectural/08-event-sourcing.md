@@ -134,7 +134,7 @@ class Account {
 
 **🧠 Tradeoff**: Recording `Deposited`/`Withdrew` events and folding them to a balance keeps the
 whole history and makes reload a replay. You separate *deciding* (the rule in `withdraw`) from
-*applying* (`#apply`, which never rejects). The cost is that every read of `balance` is derived, and
+*applying* (`#apply`, which never rejects). The catch is that every read of `balance` is derived, and
 you'll eventually need snapshots and event versioning: real work you skip with a plain field.
 
 ### Node.js

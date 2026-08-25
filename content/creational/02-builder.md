@@ -129,7 +129,7 @@ const request = new HttpRequestBuilder()
 ```
 
 **🧠 Tradeoff**: Returning `this` from each step gives the fluent chain; `build()` centralizes
-validation and freezes the result so it can't be mutated afterward. The cost is a second class
+validation and freezes the result so it can't be mutated afterward. The price is a second class
 and a mutable staging object; for a two-field object this ceremony isn't worth it.
 
 ### Node.js
@@ -583,8 +583,8 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff**: Java has no named or default arguments, so the fluent builder is genuinely
-load-bearing: this is Effective Java's Item 2, and the JDK itself ships it
+**🧠 Tradeoff**: Java has no named or default arguments, so the fluent builder is
+load-bearing here too: this is Effective Java's Item 2, and the JDK itself ships it
 (`HttpRequest.newBuilder()`, `Stream.builder()`). Records changed the product's half of the
 deal, not the builder's: `HttpRequest` gets immutability and equality for free, but its
 canonical constructor is still positional, so the builder still supplies the names, defaults,

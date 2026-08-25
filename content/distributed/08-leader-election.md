@@ -35,7 +35,7 @@ point of failure):
   someone intervenes.
 - **Manual failover is slow**: a human noticing and promoting a standby means minutes-to-hours of
   downtime and pager fatigue.
-- **Agreement is genuinely hard**: nodes must agree on one leader despite network partitions and
+- **Agreement is hard**: nodes must agree on one leader despite network partitions and
   crashes, where "is it dead or just slow?" has no perfect answer.
 
 ## Structure

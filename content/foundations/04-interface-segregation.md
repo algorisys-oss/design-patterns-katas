@@ -71,7 +71,7 @@ compatibility.
   breaks every existing call. Backward-compatible evolution is **additive**: keep the old method
   and add a new, specific one, or accept an options/request object so new fields stay optional.
   Old callers keep working; new callers opt in.
-- **Version at the seam.** When a contract genuinely must change incompatibly, *version* it
+- **Version at the seam.** When a contract has to change incompatibly, *version* it
   (`PaymentV2`, `/v2/...`) and deprecate the old one on a schedule rather than mutating it under
   live clients. Segregated interfaces make this cheap: you version the one small role that
   changed, not a god interface every client touches.
@@ -440,7 +440,7 @@ fn main() {
 **🧠 Note**: small traits are how Rust's std already works: `Read`, `Write`, and `Display` are
 each one role, and you bound on exactly what you call. Unlike Go's implicit satisfaction, an
 `impl` block states which roles a type plays, so the compiler rejects a `SimplePrinter` handed
-where a `Scanner` is needed. Where a client genuinely needs two roles, ask for the pair at that
+where a `Scanner` is needed. Where a client needs two roles, ask for the pair at that
 one seam (`P: Printer + Scanner`) rather than gluing them into a fat supertrait everyone
 inherits.
 

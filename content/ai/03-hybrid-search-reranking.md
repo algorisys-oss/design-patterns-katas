@@ -130,7 +130,7 @@ async function search(query, k = 5) {
 
 **🧠 Tradeoff**: `Promise.all` runs the two retrievers concurrently, RRF fuses by rank so BM25 and
 cosine never have to share a scale, and the rerank only touches 25 candidates. The win is
-recall *and* precision; the cost is a two-index setup and a rerank call on the hot path, so budget
+recall *and* precision; you pay for it with a two-index setup and a rerank call on the hot path, so budget
 its latency.
 
 ### Python

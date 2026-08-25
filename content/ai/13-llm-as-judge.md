@@ -136,7 +136,7 @@ async function compare(a, b, rubric) {
 
 **🧠 Tradeoff**: The judge returns structured `{ reasoning, score, pass }`, with reasoning before the score,
 so the verdict is auditable and more reliable. `compare` runs the pairwise judgment both ways to cancel
-position bias, the single most common judge failure. The cost is a model call per evaluation plus the
+position bias, the single most common judge failure. You pay a model call per evaluation plus the
 need to calibrate the rubric against human labels before you trust the numbers.
 
 ### Python

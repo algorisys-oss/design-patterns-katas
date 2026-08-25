@@ -301,7 +301,7 @@ fn total(prices: []const u32) u32 {
 // for many concrete types. One instantiation is just a function with extra steps.
 ```
 
-**🧠 The Fix**: `comptime` is Zig's Golden Hammer: it's the language's signature feature, it's genuinely
+**🧠 The Fix**: `comptime` is Zig's Golden Hammer: it's the language's signature feature, it's
 powerful, and that's exactly why it gets reached for before the problem asks for it. A type-returning function
 with one instantiation is a plain function wearing a costume: harder to read, harder to grep, same machine
 code. Zig's own culture backs the fix: the standard library keeps things concrete until multiple types force

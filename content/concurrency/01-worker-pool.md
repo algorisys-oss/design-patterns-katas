@@ -278,7 +278,7 @@ tasks
 # DynamicSupervisor + a counting registry plays the same role.
 ```
 
-**🧠 Tradeoff**: The BEAM's processes are so cheap that "one per task" is often genuinely fine;
+**🧠 Tradeoff**: The BEAM's processes are so cheap that "one per task" is often fine;
 the real need is a *limit* and *backpressure*, and `Task.async_stream` delivers both as a lazy
 stream with a `max_concurrency` knob. It's the most declarative version here: no queue or
 worker lifecycle to write. When you need workers that outlive a single batch (a supervised,

@@ -127,7 +127,7 @@ qty.value = 5; // total recomputes, the effect re-renders, no manual wiring
 
 **🧠 Tradeoff**: Signals make `total` and the DOM update themselves: change `qty` and everything
 downstream follows, because reads inside `computed`/`effect` are tracked automatically. This is the
-model behind SolidJS, Vue, Preact Signals, and Angular signals. The cost is that updates become
+model behind SolidJS, Vue, Preact Signals, and Angular signals. The downside is that updates become
 implicit control flow (great until an effect loops or a stale closure bites) so keep derivations
 pure and dispose effects.
 

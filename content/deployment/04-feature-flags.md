@@ -190,7 +190,7 @@ completes.
 **🧠 Tradeoff**: A dedicated flag-management service (LaunchDarkly, Unleash, Flagsmith, or OpenFeature +
 a provider) externalizes flag rules from the build: percentage rollouts, segment targeting, and per-env
 overrides changed in a dashboard, streamed to apps so flips are instant: no redeploy, with audit logs and
-approvals. The cost is running/paying for the service and depending on it at runtime (hence the fail-safe
+approvals. The downside is running or paying for the service and depending on it at runtime (hence the fail-safe
 defaults). It's what makes flags operationally serious versus a config file.
 
 ### Kubernetes

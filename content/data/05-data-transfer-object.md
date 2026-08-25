@@ -236,7 +236,7 @@ end
 
 **🧠 Tradeoff**: Phoenix's JSON views are DTO assemblers: the `data/1` function defines exactly the payload
 shape as a plain map, decoupled from the Ecto schema, so internals never render and the API contract is
-explicit. It fits the functional style: data-shaping functions, no behavior on the payload. The cost is
+explicit. It fits the functional style: data-shaping functions, no behavior on the payload. The work is
 writing the view/DTO per representation; the gain is API stability independent of your schemas and no
 accidental field leaks.
 
@@ -376,7 +376,7 @@ fn main() {
 **🧠 Tradeoff**: a dedicated struct plus `impl From<&User>` is the idiomatic assembler; in real services
 you'd add serde's `#[derive(Serialize, Deserialize)]` and the struct's fields *become* the wire contract
 (the katas stay dependency-free, but the shape is identical). Ownership makes the transfer cost explicit:
-the DTO clones the strings it carries, because data crossing a boundary genuinely is a copy. The type
+the DTO clones the strings it carries, because data crossing a boundary *is* a copy. The type
 system pays you back on the inbound side: a parsed `CreateUserRequest` can't be confused with a `User`,
 so mass-assigning `password_hash` isn't even expressible.
 

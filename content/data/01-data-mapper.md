@@ -574,7 +574,7 @@ public class Demo {
 of Work: entities are plain classes, `find`/`persist` do the translating, and the mapping lives in
 annotations instead of a hand-written `toRow`. The hand mapper shows the machinery the framework hides.
 The `record` makes the split visible: `UserRow` is an immutable storage snapshot, `User` a mutable
-object with behavior, and only the mapper knows both. The cost is two types plus translation per
+object with behavior, and only the mapper knows both. You pay two types plus translation per
 aggregate; the payoff (`rename` unit-tests with no database) is the argument Hibernate has been
 making since 2001.
 

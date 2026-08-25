@@ -131,7 +131,7 @@ const s3 = over(zipL, (z) => z.trim(), state); // deep modify
 
 **🧠 Tradeoff**: A tiny `lens`/`compose`/`over` kit turns the spread pyramid into a reusable `zipL`
 you can `get`, `set`, and `over`. Libraries (Ramda's `lensPath`, Optics-ts, monocle-ts) provide typed,
-richer optics (prisms, traversals). It's genuinely useful for deep, often-updated immutable state,
+richer optics (prisms, traversals). It's useful for deep, often-updated immutable state,
 but for one or two levels the spread or `immer` is simpler, so reserve lenses for where the depth
 earns them.
 
@@ -429,7 +429,7 @@ pub fn main() void {
 
 **🧠 Tradeoff**: Zig's value semantics dissolve the problem lenses solve: `var next = s` copies the
 whole nested struct in one assignment, the write path looks exactly like the read path, and the
-original is untouched because `next` is a genuinely separate value. There is no spread pyramid to
+original is untouched because `next` is a separate value. There is no spread pyramid to
 escape. You *could* build a reusable focus with comptime field-name paths and `@field`, but it would
 be machinery in search of a problem: a lens abstraction isn't worth it in Zig. The one caveat: slice
 and pointer fields (the strings here) are shared views, so the value copy is shallow for them, which is fine

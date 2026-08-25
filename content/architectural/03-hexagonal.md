@@ -88,7 +88,7 @@ Key Components:
 
 - The domain sits at the center and owns its ports; adapters depend inward on them.
 - Driving adapters call in through ports; driven adapters implement ports the core needs.
-- The payoff is swappable infrastructure and fast tests; the cost is mapping and indirection.
+- The payoff is swappable infrastructure and fast tests; you pay in mapping and indirection.
 - It's the dependency-inversion principle applied to a whole application's boundaries.
 
 ## Implementations

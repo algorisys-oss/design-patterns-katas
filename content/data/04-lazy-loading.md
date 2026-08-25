@@ -21,7 +21,7 @@ actually touches it. The first access triggers the load; subsequent accesses use
 
 Most of the time you don't need the whole object graph. Lazy loading avoids the work and memory of
 pulling data you'll never look at, making the initial fetch cheap and paying the cost of related data only
-when it's genuinely used. The classic implementation is a **virtual proxy** standing in for the real
+when it's used. The classic implementation is a **virtual proxy** standing in for the real
 object until it's needed.
 
 ## The Problem

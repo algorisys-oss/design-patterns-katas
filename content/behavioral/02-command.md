@@ -113,7 +113,7 @@ history.undo();                                // text: ""
 ```
 
 **🧠 Tradeoff**: Making each edit a command turns undo/redo into a stack of objects, the pattern
-behind every text editor and design tool. The cost is capturing enough state to reverse (`undo`
+behind every text editor and design tool. The work is in capturing enough state to reverse (`undo`
 here knows the inserted length); richer edits may store a snapshot (that's Memento's job).
 
 ### Node.js
@@ -503,7 +503,7 @@ pub fn main() void {
 **🧠 Tradeoff**: with no closures, Zig's natural command is a tagged union, the same
 commands-as-data shape as the Elixir tab, and plain bytes, so a durable queue or an audit log
 serializes it with no ceremony. The exhaustive `switch` means adding a `delete` variant makes
-the compiler point at every place that must handle it. The cost is a closed set: outside code
+the compiler point at every place that must handle it. The price is a closed set: outside code
 can't add commands without editing the union. If the set must stay open, the runtime route is
 the two-field vtable (`*anyopaque` context plus function pointers, the `std.mem.Allocator`
 shape).

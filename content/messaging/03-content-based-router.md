@@ -417,7 +417,7 @@ fn route(e: Event) void {
 
 **🧠 Tradeoff**: for a closed set of kinds, enum + exhaustive `switch` *is* the idiomatic Zig
 router: add a variant to `Kind` and the compiler lists every switch you must extend, so a routing
-rule can't be forgotten. The only genuinely unknown input is the wire string, handled once at the
+rule can't be forgotten. The only unknown input is the wire string, handled once at the
 edge: `stringToEnum` returning null is the unroutable case, routed to the dead-letter queue
 instead of dropped. When routes must stay open at runtime (loaded from config), a
 `StringHashMap` of queue pointers is the dynamic form; you trade the compile-time check for

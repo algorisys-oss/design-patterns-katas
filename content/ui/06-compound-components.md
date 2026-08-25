@@ -139,7 +139,7 @@ Tabs.Tab = Tab; Tabs.Panel = TabPanel;
 
 **🧠 Tradeoff**: Context lets `Tab` and `TabPanel` share the active index without the user threading
 it, so the markup composes freely (insert a `<Divider/>`, wrap a `<Tab>` in a tooltip). It's the API
-behind Radix, Reach UI, and headless component libraries. The cost is implicit coupling (a `<Tab>`
+behind Radix, Reach UI, and headless component libraries. The price is implicit coupling (a `<Tab>`
 outside `<Tabs>` breaks) so guard the context read with a helpful error.
 
 ### Node.js

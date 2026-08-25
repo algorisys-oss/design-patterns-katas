@@ -108,10 +108,16 @@ ids, dangling `[[wiki-links]]`, unknown categories, and language/impl-tab mismat
 
 ## Reference Material
 
-The `~/Downloads/articles/design-patterns/` PDFs are Rajesh Pillai's JavaScript pattern
-articles. They are the source for the **JavaScript** implementation and for the
-**Applications** section (their real-world "10+ examples" are applications of the pattern).
-Match the pattern's *behavior* when porting to Python/Elixir/Go; do not transliterate JS.
+The `~/Downloads/articles/rajesh/` PDFs are Rajesh Pillai's own published articles, 21 of
+them on JavaScript design patterns. They are the source for the **JavaScript** implementation
+and for the **Applications** section (their real-world "10+ examples" are applications of the
+pattern). Match the pattern's *behavior* when porting to Python/Elixir/Go; do not
+transliterate JS.
+
+They are also the **voice benchmark**. Read two or three before writing a kata: match their
+register rather than a generic technical-blog tone. Note that they are ordinary human writing
+and contain words the AI-detection checklists flag (`delve`, `leverage`, `seamless`), which is
+the reminder that scrubbing a word list is not the same thing as writing like a person.
 
 ## Voice
 

@@ -155,7 +155,7 @@ spec:
 **🧠 Tradeoff**: Kubernetes is declarative IaC for workloads: manifests describe desired state and the
 control loop continuously reconciles the cluster to match, and GitOps (Argo CD, Flux) makes the *git repo*
 the source of truth, auto-correcting drift and turning every change into a reviewed PR. It's the reference
-model for continuous reconciliation. The cost is the manifest sprawl and running the GitOps controllers, but
+model for continuous reconciliation. The price is the manifest sprawl and running the GitOps controllers, but
 you get self-healing, auditable infrastructure.
 
 ### Ansible
