@@ -22,7 +22,7 @@ doesn't mean editing every place that constructs one.
 ## The Problem
 
 You build cache backends. Everywhere you need one, you write a `switch` on a string and
-`new` the right class. Add a Redis backend and you must hunt down every switch and edit it —
+`new` the right class. Add a Redis backend and you must hunt down every switch and edit it:
 each one is a place to forget, and each one couples the caller to concrete classes.
 
 ```
@@ -30,7 +30,7 @@ function makeCache(kind) {
   switch (kind) {
     case "memory": return new InMemoryCache();
     case "disk":   return new DiskCache();
-    // add "redis" here… and in the other three switches too
+    // add "redis" here... and in the other three switches too
   }
 }
 ```
@@ -57,7 +57,7 @@ Key Components:
 
 ### Advantages
 - Callers depend on the product interface, not concrete classes.
-- New products register in one place — Open/Closed in practice.
+- New products register in one place: Open/Closed in practice.
 - Construction logic (defaults, wiring) lives in one spot.
 
 ### Disadvantages
@@ -104,8 +104,8 @@ function makeCache(kind) {
 **✅ Idiomatic**
 
 ```js
-class InMemoryCache { get(k) { /* … */ } set(k, v) { /* … */ } }
-class DiskCache     { get(k) { /* … */ } set(k, v) { /* … */ } }
+class InMemoryCache { get(k) { /* ... */ } set(k, v) { /* ... */ } }
+class DiskCache     { get(k) { /* ... */ } set(k, v) { /* ... */ } }
 
 // A registry maps a name to a constructor. New types add one entry.
 const registry = {
@@ -165,7 +165,7 @@ notifier("push")(user, "your order shipped");
 ```
 
 **🧠 Tradeoff** — Keying senders in an object turns "add a channel" into "add an entry", and the
-registry can be populated from config or plugins — even lazily with a dynamic `import()` for a
+registry can be populated from config or plugins, even lazily with a dynamic `import()` for a
 driver you only load when it's selected. The price is the registry's: an unknown key fails at
 runtime, not at compile time.
 
@@ -262,7 +262,7 @@ end
 
 **🧠 Tradeoff** — Elixir's "product" is a module implementing a behaviour, and the factory maps
 an atom to that module. Because modules are compile-time constants, the registry is a module
-attribute — fast and fixed. For runtime-extensible registries, hold the map in a process or
+attribute: fast and fixed. For runtime-extensible registries, hold the map in a process or
 application config instead of a `@registry` attribute.
 
 ### Go
@@ -381,10 +381,10 @@ public static class CacheFactory
 ```
 
 **🧠 Tradeoff** — the registry holds `Func<ICache>` delegates, so there's no GoF hierarchy of
-creator classes — a constructor reference is enough. As everywhere, the registry trades the
+creator classes; a constructor reference is enough. As everywhere, the registry trades the
 `switch` expression's compile-time exhaustiveness for runtime lookup and open registration.
 And be honest about where this lands in real .NET: the factory often dissolves into the DI
-container — keyed services (`GetRequiredKeyedService<ICache>("memory")`) are this exact
+container: keyed services (`GetRequiredKeyedService<ICache>("memory")`) are this exact
 pattern, maintained by the framework instead of your static class.
 
 ### Rust
@@ -459,7 +459,7 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — when the set of backends is closed, idiomatic Rust skips all of this: an
-`enum CacheKind` plus one exhaustive `match` gives you a factory the compiler checks — add a
+`enum CacheKind` plus one exhaustive `match` gives you a factory the compiler checks: add a
 variant and it lists every match to update. The string-keyed registry above buys *open*
 registration (backends from config or other crates) at the price of runtime failure, so
 `create` returns `Result` and the caller must face the miss. Plain `fn` pointers suffice for
@@ -552,7 +552,7 @@ pub fn main() void {
 
 **🧠 Tradeoff** — the tagged union is the honest Zig form for a closed set, and it inverts the
 kata's moral: instead of a registry that keeps `create` closed to edits, adding a backend makes
-the compiler flag every non-exhaustive `switch` — the Open/Closed loss *is* the safety win, and
+the compiler flag every non-exhaustive `switch`. The Open/Closed loss *is* the safety win, and
 `.redis` can't be a typo the way `"redis"` can. Dispatch through `inline else` is a compile-time
 fan-out, no function pointers involved. When the set genuinely must stay open at runtime, Zig's
 answer is the two-field vtable idiom (`*anyopaque` context + function pointers) that
@@ -628,12 +628,12 @@ public class Demo {
 
 **🧠 Tradeoff** — nobody writes the GoF hierarchy of Creator subclasses in modern Java:
 `Supplier<Cache>` is the whole factory-method contract, and a constructor reference
-(`InMemoryCache::new`) is a whole concrete creator. The registry buys open registration —
-backends can add themselves from anywhere, or be discovered via `ServiceLoader` — at the
+(`InMemoryCache::new`) is a whole concrete creator. The registry buys open registration,
+so backends can add themselves from anywhere, or be discovered via `ServiceLoader`, at the
 usual price: an unknown name fails at runtime. When the set is closed, flip the deal back:
 a sealed interface plus a pattern-matching `switch` makes the naive version the good
 version, because the compiler now flags the missing case. And in framework Java the factory
-often dissolves into the DI container — Spring's map-of-beans-by-name injection is exactly
+often dissolves into the DI container: Spring's map-of-beans-by-name injection is exactly
 this registry, maintained for you.
 
 ## Applications

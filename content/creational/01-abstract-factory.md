@@ -15,8 +15,8 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Build a whole *family* of related objects that must go together — and swap the entire family in
-one move — without the caller knowing the concrete classes.
+Build a whole *family* of related objects that must go together, and swap the entire family in
+one move, without the caller knowing the concrete classes.
 
 Where Factory Method makes one product, Abstract Factory makes a matched set: a button *and* a
 checkbox that share a look, a chair *and* a sofa in the same style. The guarantee it buys is
@@ -44,7 +44,7 @@ Key Components:
 - **Abstract Factory** — the interface with a creator per product (`createButton`, `createCheckbox`).
 - **Concrete Factories** — one per family (`MacFactory`, `WinFactory`).
 - **Abstract Products** — the interfaces (`Button`, `Checkbox`).
-- **Concrete Products** — the family members (`MacButton`, `WinCheckbox`, …).
+- **Concrete Products** — the family members (`MacButton`, `WinCheckbox`, ...).
 
 ## When to Use
 
@@ -123,7 +123,7 @@ const ui = buildUI(factory);   // guaranteed all-Mac or all-Windows
 
 **🧠 Tradeoff** — Passing the factory in makes the family choice explicit and singular; `buildUI`
 never mentions a concrete product. Because JS has no interfaces, the "same family" contract is a
-convention, not enforced — a typed language would make `Factory` an interface both concretes
+convention, not enforced; a typed language would make `Factory` an interface both concretes
 implement.
 
 ### Node.js
@@ -166,7 +166,7 @@ const infra = buildInfra(factory); // all-AWS or all-GCP, same creds and region
 **🧠 Tradeoff** — On the backend the "family" is a set of provider clients that must share
 credentials, region, and retry policy; the factory guarantees they're built consistently and lets
 you swap clouds by swapping one object at startup. As always in JS the shared interface is
-convention — a typed codebase would make `InfraFactory` an interface both providers implement.
+convention: a typed codebase would make `InfraFactory` an interface both providers implement.
 
 ### Python
 
@@ -211,7 +211,7 @@ factory: UIFactory = MacFactory() if os == "mac" else WinFactory()
 ```
 
 **🧠 Tradeoff** — `Protocol` gives you the family contract with static checking and no
-inheritance — `MacFactory` doesn't subclass `UIFactory`, it just matches its shape. That keeps
+inheritance: `MacFactory` doesn't subclass `UIFactory`, it just matches its shape. That keeps
 the concretes decoupled while a type checker still catches a factory that forgot a method.
 
 ### Elixir
@@ -307,7 +307,7 @@ func BuildUI(f Factory) (Button, Checkbox) {
 ```
 
 **🧠 Tradeoff** — Go's implicit interfaces make `MacFactory` and `WinFactory` satisfy `Factory`
-just by having the methods. `BuildUI` takes the interface, so it's blind to the family — swap
+just by having the methods. `BuildUI` takes the interface, so it's blind to the family: swap
 the factory value and the whole set changes. Adding a new product kind, though, means editing
 the `Factory` interface and every implementer.
 
@@ -369,7 +369,7 @@ public sealed class WinFactory : IUIFactory
 
 **🧠 Tradeoff** — Same shape as Go, but the contract is explicit: `MacFactory` declares
 `IUIFactory`, and the compiler rejects a factory that forgot a creator. The products here are
-one-liners, so the class count looks heavy — remember the factory's value is the *pairing*, not
+one-liners, so the class count looks heavy; remember the factory's value is the *pairing*, not
 the products. You could shrink a two-product family to a record of two `Func<>`s, but past that
 the interface reads better. Adding a new product kind still ripples through every factory;
 that's the pattern's tax in any language.
@@ -440,7 +440,7 @@ fn main() {
 
 **🧠 Tradeoff** — `&dyn UIFactory` and the boxed products buy a runtime family swap at the cost
 of dynamic dispatch and heap allocation. The static alternative is a generic factory with
-associated types (`type B: Button`) — zero overhead, but the family is fixed at compile time and
+associated types (`type B: Button`): zero overhead, but the family is fixed at compile time and
 everything touching it grows a type parameter. Be honest about scale, too: with exactly two
 known platforms, real Rust often skips the trait and picks the family with `#[cfg]` or one enum;
 the trait earns its keep when families are many or arrive from outside the crate.
@@ -526,7 +526,7 @@ pub fn main() void {
 
 **🧠 Tradeoff** — the function-pointer factory keeps families swappable at runtime without the
 compiler knowing the set, which is what the pattern promises. But notice what the naive version
-got wrong wasn't the switch — it was having *two* of them. With a closed platform set, idiomatic
+got wrong wasn't the switch, it was having *two* of them. With a closed platform set, idiomatic
 Zig would keep the enum and merge both creators into one exhaustive switch returning the whole
 family, or pick the factory at comptime and pay nothing at runtime. Products with state would
 need the `*anyopaque` + function-pointer vtable idiom `std.mem.Allocator` uses. Reach for the
@@ -590,7 +590,7 @@ public class Demo {
 **🧠 Tradeoff** — this is the book's own language, and the classical form fits without
 translation: interfaces, concrete families, one factory choice. Modern Java mostly trims the
 edges. The factories are stateless, so an `enum` with one constant per platform can implement
-`UIFactory` — each factory becomes a guaranteed singleton and the platform set becomes closed
+`UIFactory`, so each factory becomes a guaranteed singleton and the platform set becomes closed
 and switchable. And each creator is just a `Supplier<Button>`, so a family can shrink to a
 record of two method references when the products are this small. What no idiom removes is
 the pattern's tax: a new product kind edits `UIFactory` and every factory that implements it.
@@ -608,7 +608,7 @@ Real-world uses of Abstract Factory (from the reference article):
 **In modern systems:**
 
 - **Low-code** — a renderer family: one factory yields matching input, button, and layout widgets
-  for web; another the native set — one schema, consistent output per target.
+  for web; another the native set. One schema, consistent output per target.
 - **Multi-agent** — a provider family that produces a matching model, tokenizer, and tool-formatter
   set, so they never mismatch.
 - **Workflow engine** — an environment factory yielding matching store, queue, and executor for

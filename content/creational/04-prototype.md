@@ -20,13 +20,13 @@ expensive to build or you want a ready-made template to tweak, cloning is faster
 than reconstructing the whole thing.
 
 The catch that dominates this pattern in every language is **shallow vs deep copy**: a copy that
-shares nested references with its source isn't independent — mutating the copy corrupts the
+shares nested references with its source isn't independent: mutating the copy corrupts the
 original.
 
 ## The Problem
 
-You have a fully configured object — a form with default fields, a game entity with stats — and
-you need many similar ones. Rebuilding each from scratch repeats expensive setup. So you copy…
+You have a fully configured object (a form with default fields, a game entity with stats), and
+you need many similar ones. Rebuilding each from scratch repeats expensive setup. So you copy...
 but a shallow copy shares the nested objects, and editing one clone silently changes the others.
 
 ```
@@ -61,7 +61,7 @@ Key Components:
 
 ### Disadvantages
 - Deep-copying object graphs with cycles or shared resources is tricky.
-- Shallow copies leak shared references — a subtle, common bug.
+- Shallow copies leak shared references, a subtle and common bug.
 - Cloning objects that hold handles (sockets, files) needs care.
 
 ## Common Mistakes
@@ -77,7 +77,7 @@ Key Components:
 
 - Prototype = create by cloning, not constructing.
 - The whole game is copy depth: share what's meant to be shared, copy what isn't.
-- Each language has an idiomatic deep-copy tool — know its limits.
+- Each language has an idiomatic deep-copy tool. Know its limits.
 - Rare in modern code, but the deep-vs-shallow lesson is everywhere.
 
 ## Implementations
@@ -114,7 +114,7 @@ base.skills;            // ["dash"] — independent
 ```
 
 **🧠 Tradeoff** — `structuredClone` (built into modern runtimes) deep-copies nested data and
-even cycles, replacing the fragile `JSON.parse(JSON.stringify(x))` trick — but it throws on
+even cycles, replacing the fragile `JSON.parse(JSON.stringify(x))` trick, but it throws on
 functions and class instances. When you only need to *reset* a template, a shallow spread with
 fresh nested literals is fine; reach for the deep copy exactly when nested state must be
 independent.
@@ -154,7 +154,7 @@ defaultJob.options.priority;                    // "normal" — template untouch
 
 **🧠 Tradeoff** — Cloning a template per request is the fix for a classic Node bug: shared mutable
 state leaking across requests. `structuredClone` deep-copies nested objects and even cycles, but
-throws on functions and class instances — for objects with methods, give them a `clone()` method
+throws on functions and class instances. For objects with methods, give them a `clone()` method
 or a copy constructor instead.
 
 ### Python
@@ -222,7 +222,7 @@ clone.stats.hp  # 10
 ```
 
 **🧠 Tradeoff** — Prototype barely exists as a *problem* in Elixir: values are immutable, so
-there's no shared-mutation bug to guard against, and "deep copy" is meaningless — you can share
+there's no shared-mutation bug to guard against, and "deep copy" is meaningless; you can share
 the original freely. The pattern collapses into ordinary functional update (`put_in`,
 `update_in`, struct update `%{s | k: v}`), which returns a new term while leaving the source
 intact.
@@ -269,7 +269,7 @@ func (p Player) Clone() Player {
 
 **🧠 Tradeoff** — Go has no built-in deep copy: value fields copy on assignment, but slices,
 maps, and pointers copy only their headers, so you clone reference fields by hand in a `Clone`
-method. That's explicit and fast, but easy to get wrong as the struct grows — add a field, and
+method. That's explicit and fast, but easy to get wrong as the struct grows: add a field, and
 you must remember to copy it. For deep graphs, a generics helper or serialization round-trip is
 the fallback.
 
@@ -313,7 +313,7 @@ public sealed record Player(string Name, Stats Stats, List<string> Skills)
 
 **🧠 Tradeoff** — records give you `with`-cloning for free, but it's shallow: immutable
 fields (`Stats` is a record of ints) are safe to share, while a mutable `List<>` leaks.
-So the deep clone is `with` plus a fresh copy of each mutable field — `[.. Skills]` — and
+So the deep clone is `with` plus a fresh copy of each mutable field (`[.. Skills]`), and
 a deliberate share of everything immutable. Skip `ICloneable`: it returns `object` and
 never says whether the copy is deep. The cleaner escape is making the whole graph
 immutable (`ImmutableList<>`), where sharing is always safe and cloning collapses back
@@ -390,7 +390,7 @@ fn main() {
 **🧠 Tradeoff** — ownership makes Prototype nearly automatic: `#[derive(Clone)]` deep-copies
 every owned field, and the borrow checker won't let a stray alias mutate the original behind
 your back. The shallow-copy bug only re-enters through `Rc<RefCell<_>>`, where `.clone()`
-copies the handle *by design* — if a struct hides one, its derived clone shares state. The
+copies the handle *by design*: if a struct hides one, its derived clone shares state. The
 cost is honest and visible: every `.clone()` you type is an allocation you chose, and small
 all-value structs can opt into cheap implicit copies with `Copy` instead.
 
@@ -464,11 +464,11 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — Zig behaves like Go here — assignment copies value fields, slice headers
-share their backing memory — but adds one honest demand: a deep clone must name its
+**🧠 Tradeoff** — Zig behaves like Go here (assignment copies value fields, slice headers
+share their backing memory) but adds one honest demand: a deep clone must name its
 allocator, and the caller owns the result (`defer allocator.free`). Nothing allocates
 behind your back. Note that `dupe` copies one level: the inner strings stay shared, which
-is fine because `[]const u8` can't be written through — copy what can mutate, share what
+is fine because `[]const u8` can't be written through: copy what can mutate, share what
 can't. The Go hazard carries over too: add a field, and you must remember to clone it.
 
 ### Java
@@ -538,9 +538,9 @@ public class Demo {
 
 **🧠 Tradeoff** — Java's built-in answer is the one to avoid: `Cloneable` is a marker
 interface with no `clone()` in it, `Object.clone()` is protected, shallow, skips
-constructors, and throws a checked exception — Effective Java's verdict is simply don't.
+constructors, and throws a checked exception. Effective Java's verdict is simply don't.
 A copy constructor or copy method is the honest form: plain code, and each field's depth is
-a visible decision — fresh `ArrayList` because it mutates, shared `Stats` because it can't.
+a visible decision: fresh `ArrayList` because it mutates, shared `Stats` because it can't.
 The cleaner escape is making the whole graph immutable (`List.copyOf` in a record's compact
 constructor); then sharing is always safe and "clone" collapses into handing out the same
 value. Until then the Go hazard applies: add a field, remember to copy it.

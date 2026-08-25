@@ -24,7 +24,7 @@ object piece by piece, then finalize it once.
 
 ## The Problem
 
-A request object has a URL, method, headers, body, timeout, retries — most optional. A
+A request object has a URL, method, headers, body, timeout, retries, most of them optional. A
 single constructor becomes a wall of positional arguments nobody can read, and every new option
 means another parameter and another `null` at every call site.
 
@@ -55,7 +55,7 @@ Key Components:
 
 ### Advantages
 - Readable, self-documenting construction (each step is named).
-- The product can be immutable — set everything in `build()`, then freeze.
+- The product can be immutable: set everything in `build()`, then freeze.
 - The same steps can build different representations.
 
 ### Disadvantages
@@ -174,7 +174,7 @@ const query = new QueryBuilder().from("users").where("country", "US").limit(10).
 ```
 
 **🧠 Tradeoff** — The builder keeps values in a params array and emits only placeholders, so the
-query is safe by construction and reads in the order you think about it — this is the shape of Knex
+query is safe by construction and reads in the order you think about it. This is the shape of Knex
 and most query builders. The cost is the builder class; for a fixed one-line query a plain
 parameterized string is simpler.
 
@@ -221,7 +221,7 @@ request = HttpRequest(
 ```
 
 **🧠 Tradeoff** — Keyword arguments with defaults give you named, optional construction for free,
-and `frozen=True` makes the result immutable — so idiomatic Python rarely needs a separate
+and `frozen=True` makes the result immutable, so idiomatic Python rarely needs a separate
 builder class. Reach for a real builder only when construction is multi-step, stateful, or
 conditional (assembling a query across method calls), not merely "many optional fields."
 
@@ -319,7 +319,7 @@ func (b *Builder) Build() (Request, error) {
 ```
 
 **🧠 Tradeoff** — The fluent builder works in Go, but the more common idiom is *functional
-options* (`New(url, WithMethod("POST"), WithTimeout(30))`) — variadic `func(*Request)` values
+options* (`New(url, WithMethod("POST"), WithTimeout(30))`): variadic `func(*Request)` values
 that keep the constructor open to new options without growing its signature. Use the builder
 when steps are ordered or validated together; use options for "many optional settings."
 
@@ -375,8 +375,8 @@ public sealed class HttpRequestBuilder(string url)
 
 **🧠 Tradeoff** — like Python, C# covers "many optional fields" without a builder: object
 initializers with `required` and `init` members give named, compiler-checked construction
-(`new HttpRequest { Url = "…" }` won't compile without `Url`). So the fluent class above earns
-its place only when construction is staged, conditional, or validated as a whole — which is
+(`new HttpRequest { Url = "..." }` won't compile without `Url`). So the fluent class above earns
+its place only when construction is staged, conditional, or validated as a whole, which is
 exactly what the builders you meet in .NET (`StringBuilder`, `ConfigurationBuilder`,
 `HostApplicationBuilder`) are doing: accumulating state across calls, not naming parameters.
 
@@ -463,7 +463,7 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — Rust has no default or named arguments, so the builder is genuinely
-load-bearing here — it's all over std (`Command`, `OpenOptions`, `thread::Builder`). The
+load-bearing here; it's all over std (`Command`, `OpenOptions`, `thread::Builder`). The
 consuming style (`mut self` in, `Self` out) chains without borrows and makes a used-up builder
 unusable again, which the borrow checker enforces for free; switch to `&mut self` steps when you
 need to apply steps conditionally in a loop. `build()` returning `Result` makes "invalid
@@ -519,9 +519,9 @@ pub fn main() void {
 
 **🧠 Tradeoff** — Zig's struct literal already does most of the builder's job: fields are named,
 defaults fill the gaps, and a field without a default (like `url`) *must* appear or the program
-doesn't compile — stronger than the JS builder's runtime throw, and it costs nothing. So don't
+doesn't compile: stronger than the JS builder's runtime throw, and it costs nothing. So don't
 write a builder class here; that would be cargo-culting. A real builder struct earns its place
-when construction is staged at runtime — say, accumulating headers in a growable list — and then
+when construction is staged at runtime (say, accumulating headers in a growable list), and then
 it carries an explicit allocator, a `deinit`, and a `try build()` returning an error union for
 the paths that can fail.
 
@@ -584,12 +584,12 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — Java has no named or default arguments, so the fluent builder is genuinely
-load-bearing — this is Effective Java's Item 2, and the JDK itself ships it
+load-bearing: this is Effective Java's Item 2, and the JDK itself ships it
 (`HttpRequest.newBuilder()`, `Stream.builder()`). Records changed the product's half of the
 deal, not the builder's: `HttpRequest` gets immutability and equality for free, but its
 canonical constructor is still positional, so the builder still supplies the names, defaults,
-and the `Map.copyOf` defensive copy. In practice much of this class is generated — Lombok's
-`@Builder` writes it from one annotation — which tells you two things: the ceremony is real,
+and the `Map.copyOf` defensive copy. In practice much of this class is generated: Lombok's
+`@Builder` writes it from one annotation, which tells you two things: the ceremony is real,
 and nobody wants to type it.
 
 ## Applications

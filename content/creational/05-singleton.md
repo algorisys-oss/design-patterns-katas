@@ -15,8 +15,8 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Guarantee that a thing exists exactly once — one config object, one connection pool, one cache
-— and give everyone the same handle to it.
+Guarantee that a thing exists exactly once (one config object, one connection pool, one cache)
+and give everyone the same handle to it.
 
 Singleton is the most used and most argued-about pattern. Used well it models something that is
 genuinely single (the process's config, a shared pool). Used badly it's a global variable in a
@@ -25,8 +25,8 @@ Reach for it when *there really is only one*, not just to avoid passing an argum
 
 ## The Problem
 
-You have a cache. Two parts of the app each construct their own, so they don't share entries —
-now there are two caches pretending to be one, and a write in one is invisible to the other.
+You have a cache. Two parts of the app each construct their own, so they don't share entries.
+Now there are two caches pretending to be one, and a write in one is invisible to the other.
 
 ```
 const a = new Cache();  // part A
@@ -51,18 +51,18 @@ Key Components:
 - You need lazy, once-only initialization with a global access point.
 - A plain module-level value would work but you want controlled construction.
 
-Prefer passing the dependency in (dependency injection) when you can — it keeps code testable.
+Prefer passing the dependency in (dependency injection) when you can; it keeps code testable.
 Use Singleton when a single shared instance is a real invariant, not a convenience.
 
 ## Advantages and Disadvantages
 
 ### Advantages
-- One instance, guaranteed — no accidental duplicates of a shared resource.
+- One instance, guaranteed: no accidental duplicates of a shared resource.
 - Lazy initialization: created on first use, not at import.
 - A single, obvious access point.
 
 ### Disadvantages
-- Global state in disguise — hidden dependencies and test pollution between cases.
+- Global state in disguise: hidden dependencies and test pollution between cases.
 - Hard to substitute a fake in tests unless you design a reset or injection seam.
 - Can hide coupling: callers depend on the singleton without saying so in their signature.
 
@@ -79,7 +79,7 @@ Use Singleton when a single shared instance is a real invariant, not a convenien
 ## Key Takeaways
 
 - Singleton = one instance + one access point + lazy creation.
-- In module-based languages, a module often *is* a singleton — you may not need the ceremony.
+- In module-based languages, a module often *is* a singleton, so you may not need the ceremony.
 - Its cost is testability; design a reset or prefer injection when you can.
 - Ask "is this truly singular?" before reaching for it.
 
@@ -127,7 +127,7 @@ cache.get("token");         // "abc" — shared everywhere
 ```
 
 **🧠 Tradeoff** — In modern JS a module is evaluated once, so an exported instance is the
-simplest correct singleton — no lazy-guard needed. Use a class with a static `getInstance()`
+simplest correct singleton: no lazy-guard needed. Use a class with a static `getInstance()`
 only if construction must be deferred past import or take arguments. Private fields (`#store`)
 keep the internals from being poked at.
 
@@ -160,7 +160,7 @@ export function handler(req, res) {
 ```
 
 **🧠 Tradeoff** — Node caches each module after first evaluation, so an exported instance is a
-per-process singleton — the standard way to share a pool, config, or logger. The catch is
+per-process singleton, the standard way to share a pool, config, or logger. The catch is
 "per-process": under `cluster` or multiple workers each process gets its own pool, and serverless
 cold starts reset it, so anything that must be single *across* processes (a lock, a counter) needs
 external coordination like Redis.
@@ -208,7 +208,7 @@ print(cache.get("token"))     # abc
 
 **🧠 Tradeoff** — The Pythonic singleton is a module-level object; import machinery does the
 "once" for you. The `__new__` override or a metaclass singleton exist but are rarely worth the
-surprise — they break subclassing and confuse `isinstance` intuitions. If you need lazy
+surprise: they break subclassing and confuse `isinstance` intuitions. If you need lazy
 creation, wrap it in a function with `functools.lru_cache` or a module-level `_instance` guard.
 
 ### Elixir
@@ -248,7 +248,7 @@ CacheManager.get("token")   # "abc"
 **🧠 Tradeoff** — Elixir has no global mutable objects, so a singleton is a *named process*
 (a `GenServer`/`Agent` registered under `__MODULE__`) started once by a supervisor. The "one
 instance" guarantee comes from the name registry, and you get supervision and crash-recovery
-for free — but state lives in a process you must start, not a value you can just import.
+for free, but state lives in a process you must start, not a value you can just import.
 
 ### Go
 
@@ -362,7 +362,7 @@ public sealed class CacheManager
 **🧠 Tradeoff** — `Lazy<T>` gives thread-safe, once-only construction without hand-rolled
 double-checked locking, and the private constructor makes "one instance" a compile-time
 fact. But modern .NET rarely writes this class: `services.AddSingleton<CacheManager>()`
-gets the same lifetime from the DI container with the dependency *injected* — visible in
+gets the same lifetime from the DI container with the dependency *injected*, visible in
 constructors, swappable in tests. That's the smell to name: a `static` singleton is global
 mutable state, so callers depend on it invisibly and tests share its leftovers. Keep the
 static form for truly ambient facts, the way `TimeProvider.System` is.
@@ -422,7 +422,7 @@ fn main() {
 
 **🧠 Tradeoff** — Rust puts the singleton's cost in plain sight: a `static` is reachable
 from every thread, so the compiler forces the state behind a `Mutex` (or something else
-`Sync`) — the data race other languages let you write is a compile error here. `LazyLock`
+`Sync`): the data race other languages let you write is a compile error here. `LazyLock`
 handles lazy once-only init; reach for `OnceLock::get_or_init` when construction needs
 runtime data. Read the ceremony as the lesson: global mutable state is exactly what
 ownership exists to discourage. Passing `&cache` (or an `Arc`) down keeps the dependency
@@ -498,14 +498,14 @@ pub fn main() !void {
 ```
 
 **🧠 Tradeoff** — Zig needs no pattern for "exists once": a file-scope `var` already is
-one per process. The only real work is guarding first initialization — a mutex when init
+one per process. The only real work is guarding first initialization: a mutex when init
 needs runtime data (here, an allocator), or nothing at all when the initial value is known
 at compile time (`var instance = CacheManager{ ... }` exists before `main` runs). Note the
 mutex itself now takes a `std.Io`: blocking is a capability you pass in, the same move the
 language already makes with allocators. What the
 guard can't fix is the smell: file-scope mutable state is a global, so callers reach it
 without declaring it and tests stomp each other's entries. Zig's own std shows the better
-default — allocators are threaded through every call as parameters. Do that with your
+default: allocators are threaded through every call as parameters. Do that with your
 cache unless it's truly ambient.
 
 ### Java
@@ -526,8 +526,8 @@ class CacheManager {
     private CacheManager() {}
 
     static CacheManager getInstance() {
-        if (instance == null) {            // thread A and thread B both pass this check…
-            instance = new CacheManager(); // …and each builds its own "singleton"
+        if (instance == null) {            // thread A and thread B both pass this check...
+            instance = new CacheManager(); // ...and each builds its own "singleton"
         }
         return instance;
     }
@@ -580,10 +580,10 @@ public class Demo {
 **🧠 Tradeoff** — both idioms let the JVM do the guarding. The holder rides class loading:
 `Holder` isn't initialized until `instance()` first touches it, and class initialization is
 already once-only and thread-safe, so the double-init race from the naive version can't
-happen. The enum goes further — the JVM enforces one instance even against serialization
+happen. The enum goes further: the JVM enforces one instance even against serialization
 and reflection, which is why Effective Java calls it the best singleton. But name the
-reality: most Java singletons today aren't hand-rolled at all. They're container lifetimes —
-a Spring bean is a singleton by default — with the dependency visible in constructors and
+reality: most Java singletons today aren't hand-rolled at all. They're container lifetimes
+(a Spring bean is a singleton by default) with the dependency visible in constructors and
 swappable in tests, which fixes exactly what the static form breaks. Keep these idioms for
 genuinely ambient facts; let the container handle the rest.
 
