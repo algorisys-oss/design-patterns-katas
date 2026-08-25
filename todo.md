@@ -21,7 +21,8 @@ Completion status is also available programmatically; see
 - [x] Wire diagrams into the frontend (inlined into each kata's Structure section, both themes)
 - [x] Attribution footer baked into every diagram SVG
 - [x] Footer status bar (copyright, www.algorisys.com, version, hard-reload)
-- [~] Static deploy (GitHub Pages): `scripts/deploy.sh` wired to `npm run deploy`; not yet published
+- [x] Static deploy (GitHub Pages): `npm run deploy` publishes `dist/` to the `gh-pages` branch.
+      Live at https://algorisys-oss.github.io/design-patterns-katas/
 - [ ] Move content to fetched JSON asset (shrink JS bundle)
 - [ ] Optional Go content API (`net/http`): static build covers hosting for now
 
