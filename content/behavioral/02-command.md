@@ -15,8 +15,8 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Wrap "do this" in an object. Once an action is an object — with an `execute()` (and maybe an
-`undo()`) — you can store it, queue it, log it, retry it, or reverse it. The caller that triggers
+Wrap "do this" in an object. Once an action is an object, with an `execute()` (and maybe an
+`undo()`), you can store it, queue it, log it, retry it, or reverse it. The caller that triggers
 the action is decoupled from the code that performs it.
 
 ## The Problem
@@ -46,7 +46,7 @@ Key Components:
 - You need undo/redo, or a replayable history of actions.
 - You want to queue, schedule, or log operations.
 - You want to decouple the trigger (button, route, timer) from the work.
-- You need macros — commands composed of commands.
+- You need macros: commands composed of commands.
 
 ## Advantages and Disadvantages
 
@@ -57,7 +57,7 @@ Key Components:
 
 ### Disadvantages
 - A class (or closure) per action adds indirection.
-- Reliable undo means capturing enough state to reverse — not always trivial.
+- Reliable undo means capturing enough state to reverse, which isn't always trivial.
 
 ## Common Mistakes
 
@@ -245,7 +245,7 @@ end
 
 **🧠 Tradeoff** — In Elixir a command is naturally *data* (a tagged tuple), and executing it is a
 pure reducer `(state, command) -> state`. Because commands are plain terms, an undo stack, an
-audit log, and event sourcing all fall out for free — and the commands serialize with no special
+audit log, and event sourcing all fall out for free, and the commands serialize with no special
 handling, unlike closures.
 
 ### Go
@@ -292,7 +292,7 @@ func (h *History) Undo() {
 
 **🧠 Tradeoff** — Any type with `Execute`/`Undo` is a `Command`, so the `History` invoker stores a
 `[]Command` of mixed actions. For fire-and-forget commands (no undo), Go often uses a `func()`
-value or sends work over a channel to a worker pool — the interface earns its keep when you need
+value or sends work over a channel to a worker pool; the interface earns its keep when you need
 undo or command metadata.
 
 ### CSharp
@@ -349,7 +349,7 @@ public sealed class History
 
 **🧠 Tradeoff** — the interface earns its keep for the paired `Undo`; for fire-and-forget
 work, C# reaches for a bare delegate (`Action`), which is a command with no reverse gear.
-`History` is just a `Stack<ICommand>` — a redo stack is a second one. For the backend-queue
+`History` is just a `Stack<ICommand>`, and a redo stack is a second one. For the backend-queue
 variant of this pattern, write commands into a `System.Threading.Channels.Channel<ICommand>`
 and let a worker drain it: the same shape as the Node.js tab, with backpressure built in.
 
@@ -421,7 +421,7 @@ fn main() {
 
 **🧠 Tradeoff** — the receiver goes *into* `execute`/`undo` rather than living in the command:
 a command holding `&mut Editor` would keep the editor mutably borrowed for as long as the
-history lives, and the borrow checker rightly refuses. That nudge is useful — commands become
+history lives, and the borrow checker rightly refuses. That nudge is useful: commands become
 receiver-free data. Take the hint further and a closed command set becomes
 `enum Command { Insert(String) }` with a `match`: the Elixir tab's data form, serializable for
 free. Keep `Box<dyn Command>` when new commands must arrive from outside the crate.
@@ -577,7 +577,7 @@ public class Demo {
 `Runnable`: every `executor.submit(() -> ...)` is a command on a queue, and an
 `ExecutorService` draining a `BlockingQueue<Runnable>` is the Node.js tab's job queue shipped
 in `java.util.concurrent`. So the lambda is the default. The two-method interface earns its
-keep exactly where a lambda can't follow — the paired `undo` — which is why undo history is
+keep exactly where a lambda can't follow (the paired `undo`), which is why undo history is
 where the classic form still gets written out (Swing's `UndoableEdit` is the same shape).
 `History` is a `Deque` used as a stack; redo is a second one.
 
@@ -593,7 +593,7 @@ Real-world uses of Command (from the reference article), by tier:
 
 **In modern systems:**
 
-- **Low-code** — a button's `"action": {…}` JSON becomes a Command the runtime dispatches, so the
+- **Low-code** — a button's `"action": {...}` JSON becomes a Command the runtime dispatches, so the
   UI's behavior is authored as data, not wired in code.
 - **Workflow engine** — each step is a Command: queued, logged, retried, replayed, and rolled back
   through a paired compensating command.

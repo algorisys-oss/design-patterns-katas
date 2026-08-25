@@ -60,18 +60,18 @@ request → [ Handler A ] → [ Handler B ] → [ Handler C ] → (unhandled)
 
 - More than one object may handle a request and the handler isn't known in advance.
 - You want to issue a request without coupling the sender to a specific receiver.
-- The set of handlers — and their order — should be configurable at runtime.
+- The set of handlers, and their order, should be configurable at runtime.
 - You have a natural pipeline: validation, filtering, logging, authorization, middleware.
 
 ## Advantages and Disadvantages
 
 ### Advantages
-- Decouples sender from receiver — neither knows the other's concrete type.
+- Decouples sender from receiver: neither knows the other's concrete type.
 - Add or reorder handlers without touching existing ones (Open/Closed).
 - Each handler has a single, focused responsibility.
 
 ### Disadvantages
-- No handler is guaranteed to process the request — it can fall off the end unhandled.
+- No handler is guaranteed to process the request; it can fall off the end unhandled.
 - A long chain can hurt performance and is harder to debug ("which link answered?").
 - Behavior depends on chain order, which is easy to get wrong and invisible in the types.
 
@@ -90,7 +90,7 @@ request → [ Handler A ] → [ Handler B ] → [ Handler C ] → (unhandled)
 
 - Chain of Responsibility = an ordered line of handlers, each of which handles or forwards.
 - The sender talks only to the head and stays ignorant of which handler responds.
-- Handlers are added, removed, and reordered freely — the chain is data, not hard-wired calls.
+- Handlers are added, removed, and reordered freely: the chain is data, not hard-wired calls.
 - Most real chains you meet are middleware stacks; the pattern is already everywhere.
 
 ## Implementations
@@ -134,7 +134,7 @@ validate({ name: "email", value: "a@b.co" });  // null → valid
 
 **🧠 Tradeoff** — Functions-as-handlers drop the class hierarchy entirely; the chain is just an
 array, so reordering or swapping rule sets is a one-liner. The `??` short-circuits so later
-handlers don't run once one handles. What you give up is the explicit `next` pointer — if a
+handlers don't run once one handles. What you give up is the explicit `next` pointer: if a
 handler needs per-instance state or must decide dynamically *which* handler comes next, the
 class-based linked chain (or the `(req, next) =>` middleware form below) carries its weight better.
 
@@ -176,9 +176,9 @@ app.get("/orders", (req, res) => res.json({ orders: [] })); // terminal handler
 ```
 
 **🧠 Tradeoff** — Express, Koa, and Connect *are* this pattern: `next()` forwards, ending the
-response handles. You almost never hand-roll the chain on the backend — the framework owns it,
+response handles. You almost never hand-roll the chain on the backend; the framework owns it,
 and you just register links. The cost is that a middleware which forgets to call `next()` (and
-doesn't end the response) hangs the request forever — the "forgetting to forward" mistake made
+doesn't end the response) hangs the request forever: the "forgetting to forward" mistake made
 concrete.
 
 ### Python
@@ -226,8 +226,8 @@ print(validate({"name": "email", "value": "a@b.co"}))  # None
 ```
 
 **🧠 Tradeoff** — Callables plus a walrus-operator loop give the pythonic chain: the list is the
-order, and short-circuiting is a plain `return`. When handlers need configuration or state — a
-rate limiter holding counters, an approver holding a spending limit — promote them to a `Protocol`
+order, and short-circuiting is a plain `return`. When handlers need configuration or state (a
+rate limiter holding counters, an approver holding a spending limit), promote them to a `Protocol`
 with a `handle` method and an explicit `_next` reference, which is the classic object chain.
 
 ### Elixir
@@ -278,7 +278,7 @@ validate.(%{name: "email", value: "a@b.co"})  # :ok
 ```
 
 **🧠 Tradeoff** — `Enum.reduce_while` is Elixir's Chain of Responsibility: `:cont` forwards,
-`:halt` handles and stops, and the list of functions *is* the chain — no mutable `next` pointer
+`:halt` handles and stops, and the list of functions *is* the chain: no mutable `next` pointer
 anywhere. When handlers are long-lived or must run concurrently, model each as a process (a
 `GenStage` stage, or a `GenServer` that forwards the message it can't handle) and the chain
 becomes a supervised pipeline instead of a fold.
@@ -344,7 +344,7 @@ func Required(f Field) error {
 **🧠 Tradeoff** — A `Validator` func type plus a variadic `Chain` is the idiomatic single-method
 handler: no interface hierarchy, and the chain composes with a plain loop. For HTTP, Go's
 canonical form of this pattern is `func(http.Handler) http.Handler` middleware, wrapped
-outside-in (`logging(auth(handler))`) — same chain, expressed as function composition rather
+outside-in (`logging(auth(handler))`): same chain, expressed as function composition rather
 than a slice.
 
 ### CSharp
@@ -396,8 +396,8 @@ public sealed record Field(string Name, string Value);
 delegate *is* the handler interface, so hold off on an `IValidator` until a handler carries
 state or several members (a rate limiter with counters earns the interface and an explicit
 `SetNext`). The lazy `Select`/`FirstOrDefault` pair short-circuits, so later validators never
-run once one handles. And the pattern is already in the platform: ASP.NET Core middleware —
-`app.Use(...)` with its `next` delegate — is this exact chain.
+run once one handles. And the pattern is already in the platform: ASP.NET Core middleware,
+`app.Use(...)` with its `next` delegate, is this exact chain.
 
 ### Rust
 
@@ -461,8 +461,8 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — `find_map` is the chain in one call: walk the list, stop at the first
-`Some`. `Box<dyn Fn>` buys a mixed list — plain `fn`s and state-capturing closures like
-`max_len` side by side — at the price of a heap allocation and dynamic dispatch per handler.
+`Some`. `Box<dyn Fn>` buys a mixed list (plain `fn`s and state-capturing closures like
+`max_len` side by side) at the price of a heap allocation and dynamic dispatch per handler.
 If the rule set were closed, an enum of rules matched in the loop would drop the boxes; keep
 `dyn` here because a validation chain is exactly the kind of set that must stay open.
 
@@ -535,10 +535,10 @@ pub fn main() void {
 ```
 
 **🧠 Tradeoff** — a slice of `*const fn` pointers makes the chain plain data, and the
-`?[]const u8` return is the handle-or-pass signal — `if (handle(field)) |err|` reads it in one
+`?[]const u8` return is the handle-or-pass signal; `if (handle(field)) |err|` reads it in one
 line. The honest limits: Zig has no closures, so `maxLen50` bakes its limit into its name; a
 configurable validator needs the two-field vtable idiom (`*anyopaque` context plus a function
-pointer, the `std.mem.Allocator` shape). The messages also stay static slices — formatting
+pointer, the `std.mem.Allocator` shape). The messages also stay static slices, since formatting
 "email is required" at runtime would mean threading an allocator through the chain.
 
 ### Java
@@ -599,10 +599,10 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — `Validator` has one method, so it's a functional interface: lambdas are the
-handlers and a `List` is the chain — no abstract `Handler` base, no `setNext` plumbing. The
+handlers and a `List` is the chain: no abstract `Handler` base, no `setNext` plumbing. The
 stream is lazy, so `findFirst` short-circuits the moment a validator handles. The GoF linked
 form survives in Java as the platform's own chains: servlet filters
-(`doFilter(request, response, chain)` — call `chain.doFilter` to forward, return without it to
+(`doFilter(request, response, chain)`: call `chain.doFilter` to forward, return without it to
 handle) and Spring's `HandlerInterceptor`s are this exact pattern, order and all. Hand-roll the
 list form for your own pipelines; promote a handler to a class implementing `Validator` when it
 carries state, and it drops into the same list.

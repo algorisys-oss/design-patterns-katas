@@ -17,7 +17,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 Define a one-to-many dependency: when one object (the subject) changes, everything that
 subscribed to it is notified automatically. Subscribers come and go at runtime, and the subject
-doesn't know or care who they are — it just publishes.
+doesn't know or care who they are; it just publishes.
 
 This is the pattern behind event systems, reactive UIs, and pub/sub: the subject broadcasts,
 observers react, and the two stay decoupled.
@@ -57,7 +57,7 @@ Key Components:
 ## Advantages and Disadvantages
 
 ### Advantages
-- Subject and observers are decoupled — add/remove observers freely (Open/Closed).
+- Subject and observers are decoupled: add/remove observers freely (Open/Closed).
 - Supports broadcast to many consumers.
 - Dynamic subscription at runtime.
 
@@ -167,7 +167,7 @@ orders.place({ id: 1, total: 42 });      // both listeners fire
 
 **🧠 Tradeoff** — On the backend you rarely hand-roll a subject: `EventEmitter` gives
 `on`/`off`/`emit` out of the box, and it's the backbone of streams, servers, and sockets in Node.
-The caution is the same lapsed-listener leak (`removeListener`/`off`) plus unbounded listeners —
+The caution is the same lapsed-listener leak (`removeListener`/`off`) plus unbounded listeners:
 Node warns past 10 on one event, a hint you may be leaking subscriptions.
 
 ### Python
@@ -256,7 +256,7 @@ Store.notify(42)
 
 **🧠 Tradeoff** — Elixir ships pub/sub primitives: `Registry` for in-process dispatch, and
 `Phoenix.PubSub` for cluster-wide broadcast. Observers are often *processes* subscribed to a
-topic, so a crashing observer doesn't take the subject down — supervision replaces the manual
+topic, so a crashing observer doesn't take the subject down; supervision replaces the manual
 unsubscribe discipline you need in the OO versions.
 
 ### Go
@@ -368,7 +368,7 @@ public sealed class Store
 ```
 
 **🧠 Tradeoff** — You don't build the subject in C#: `event` is the language-native observer.
-`TotalChanged` is a multicast delegate list — `+=` subscribes, `-=` unsubscribes, and the
+`TotalChanged` is a multicast delegate list: `+=` subscribes, `-=` unsubscribes, and the
 `event` keyword means only `Store` can raise or clear it; outsiders can't `Invoke` your event.
 The lapsed-listener leak survives, though: a subscriber that never `-=`s is kept alive by the
 delegate's reference to it. For push streams that need completion and errors,
@@ -442,7 +442,7 @@ fn main() {
 variables by reference, so observers must own their state (`move`) or share it through
 `Rc<RefCell<...>>` / `Arc<Mutex<...>>`. The borrow checker also forbids what other languages
 guard against at runtime: `subscribe` needs `&mut self` while `notify` holds `&self`, so an
-observer can't mutate the subscriber list mid-notification — that bug is unrepresentable, but so
+observer can't mutate the subscriber list mid-notification. That bug is unrepresentable, but so
 is a legitimate self-unsubscribing observer, which then needs a queued or channel-based design.
 Across threads, the more Rusty broadcast is a channel per observer, same as Go's.
 
@@ -528,7 +528,7 @@ pub fn main() void {
 **🧠 Tradeoff** — Bare function pointers carry no state: Zig has no closures, so an observer
 that needs context must use the two-field vtable idiom (`*anyopaque` context + function
 pointer) that `std.mem.Allocator` uses. The fixed table of optional slots costs zero allocation
-and gives O(1) unsubscribe by id — a subject you could ship on an embedded target. Swap it for
+and gives O(1) unsubscribe by id: a subject you could ship on an embedded target. Swap it for
 a growable list and you take on an explicit allocator, plus the question of who frees the
 subscriptions.
 
@@ -590,7 +590,7 @@ public class Demo {
 
 **🧠 Tradeoff** — Java has shipped three generations of this pattern: `java.util.Observer`
 (JDK 1.0, deprecated in Java 9), `java.beans.PropertyChangeListener` with
-`PropertyChangeSupport` (still the Swing and JavaBeans standard), and today's form above —
+`PropertyChangeSupport` (still the Swing and JavaBeans standard), and today's form above, where
 a lambda *is* the observer, so you never write an interface of your own.
 `CopyOnWriteArrayList` exists precisely for observer lists: iteration walks a stable snapshot,
 so a subscriber can unsubscribe mid-`publish` without a `ConcurrentModificationException`, at

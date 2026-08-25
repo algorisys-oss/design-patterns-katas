@@ -15,7 +15,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Give a uniform way to walk through a collection — one element at a time — without the caller
+Give a uniform way to walk through a collection, one element at a time, without the caller
 knowing whether it's an array, a tree, a linked list, or a paged API. The traversal logic lives in
 an iterator, separate from the collection, so the same `for`-style loop works over any structure.
 
@@ -28,7 +28,7 @@ and switching structures rewrites the loops.
 ```
 // array:
 for (let i = 0; i < arr.length; i++) use(arr[i]);
-// tree: recursion; paged API: fetch-loop; linked list: node.next…
+// tree: recursion; paged API: fetch-loop; linked list: node.next...
 // every consumer must know the structure's shape
 ```
 
@@ -46,7 +46,7 @@ Key Components:
 
 - You want to traverse a collection without exposing its representation.
 - You need multiple or custom traversal orders over one structure.
-- You want lazy iteration — produce elements on demand, not all up front.
+- You want lazy iteration: produce elements on demand, not all up front.
 - Callers should use one loop shape across different collections.
 
 ## Advantages and Disadvantages
@@ -69,7 +69,7 @@ Key Components:
 ## Key Takeaways
 
 - Iterator = uniform, structure-agnostic traversal, often lazy.
-- Most languages have this built in (`for..of`, `__iter__`, `range`, `Enumerable`) — implement the
+- Most languages have this built in (`for..of`, `__iter__`, `range`, `Enumerable`), so implement the
   protocol rather than a custom API.
 - Prefer lazy iteration for large or streamed data.
 
@@ -109,7 +109,7 @@ const doubled = [...range].map(x => x * 2);
 ```
 
 **🧠 Tradeoff** — Implementing `Symbol.iterator` as a generator makes the object work with
-`for..of`, spread, and destructuring — the whole language's iteration machinery, for free, and
+`for..of`, spread, and destructuring: the whole language's iteration machinery, for free, and
 lazily. Rolling your own `next()`/`hasNext()` API instead would fight the language; the built-in
 protocol is almost always the right call.
 
@@ -148,7 +148,7 @@ for await (const user of users(db)) {
 ```
 
 **🧠 Tradeoff** — Async generators (`for await...of`) are the backend Iterator: they stream from
-databases, files, and network without loading everything into memory — the same protocol behind
+databases, files, and network without loading everything into memory, the same protocol behind
 Node streams and cursors. The tradeoff is holding a resource (a DB cursor/connection) open across
 the iteration, so you must close it in a `finally` if the consumer breaks early.
 
@@ -189,7 +189,7 @@ doubled = [x * 2 for x in NumberRange(0, 3)]
 
 **🧠 Tradeoff** — A generator `__iter__` makes the object a first-class iterable: `for`, `list()`,
 comprehensions, `sum()` all just work, lazily. Python's iterator protocol is so central that a
-plain generator function is often the whole pattern — you rarely write an explicit iterator class.
+plain generator function is often the whole pattern; you rarely write an explicit iterator class.
 
 ### Elixir
 
@@ -316,9 +316,9 @@ public sealed class NumberRange(int start, int end) : IEnumerable<int>
 ```
 
 **🧠 Tradeoff** — `IEnumerable<T>`/`IEnumerator<T>` *is* the GoF Iterator shipped in the box,
-and `yield return` writes the `MoveNext` state machine you'd otherwise hand-roll — `foreach`
+and `yield return` writes the `MoveNext` state machine you'd otherwise hand-roll, while `foreach`
 and all of LINQ are its clients. So in C# the pattern means implementing the protocol, never
-inventing a `HasNext`/`Next` API of your own. For streamed sources — the Node.js tab's case —
+inventing a `HasNext`/`Next` API of your own. For streamed sources (the Node.js tab's case),
 `IAsyncEnumerable<T>` with `await foreach` is the same pattern over async data, with the same
 close-the-cursor caveat.
 
@@ -382,9 +382,9 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — implement one method, `next() -> Option<Item>`, and the trait's dozens of
-provided adapters (`map`, `filter`, `take`, `collect`) come along free — all lazy, and
+provided adapters (`map`, `filter`, `take`, `collect`) come along free, all lazy, and
 monomorphized down to loop-speed code. Honesty check: for numbers you'd just write `0..3`,
-which is already an `Iterator`; you implement the trait for your own structures — tree walks,
+which is already an `Iterator`; you implement the trait for your own structures: tree walks,
 pagers, parsers. And the "mutating during iteration" hazard from the mistakes list isn't
 undefined behavior here: the borrow checker rejects it at compile time.
 
@@ -453,7 +453,7 @@ it's the one std uses everywhere (`std.fs.Dir.iterate`, hash-map iterators, the 
 tokenizers), so `while (it.next()) |n|` reads as native Zig. The `?i64` collapses
 `hasNext`/`next` into one call, and the iteration is lazy with no allocation. What you don't
 get is generator sugar: there's no `yield`, so an iterator that walks a tree must carry its own
-explicit stack in the struct — the state a JS generator or C# iterator method hides for you.
+explicit stack in the struct: the state a JS generator or C# iterator method hides for you.
 
 ### Java
 
@@ -520,11 +520,11 @@ public class Demo {
 
 **🧠 Tradeoff** — Iterator is the GoF pattern Java shipped as a core library type:
 `java.util.Iterator` *is* the `hasNext`/`next` interface from the book, and the for-each loop
-is compiler sugar that calls `iterator()` on anything `Iterable` — so in Java the pattern
+is compiler sugar that calls `iterator()` on anything `Iterable`, so in Java the pattern
 means implementing the protocol, never inventing a cursor API of your own. Honesty check: for
 numbers you'd just write `IntStream.range(0, 3)`; you implement `Iterable` for your own
 structures so they plug into for-each and `Collection` machinery. The "mutating during
-iteration" hazard isn't undefined here — `java.util` collections fail fast with
+iteration" hazard isn't undefined here: `java.util` collections fail fast with
 `ConcurrentModificationException`. What Java lacks is generator sugar: no `yield`, so a
 tree-walking iterator carries its own explicit stack, the state a JS or Python generator
 hides for you.

@@ -15,8 +15,8 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Save a snapshot of an object's state so you can roll back to it later — undo, checkpoints,
-transactions — without breaking encapsulation. The object produces an opaque token (the memento);
+Save a snapshot of an object's state so you can roll back to it later (undo, checkpoints,
+transactions) without breaking encapsulation. The object produces an opaque token (the memento);
 only the object knows how to read it back. Nobody else pokes at its private fields.
 
 ## The Problem
@@ -50,7 +50,7 @@ Key Components:
 ## Advantages and Disadvantages
 
 ### Advantages
-- Preserves encapsulation — only the originator reads its memento.
+- Preserves encapsulation: only the originator reads its memento.
 - Clean undo/redo and rollback.
 - The caretaker stays ignorant of state structure.
 
@@ -118,7 +118,7 @@ history.undo(editor);        // back to ""
 
 **🧠 Tradeoff** — `save`/`restore` keep the editor's private fields private; `History` only holds
 snapshots it can't interpret. This is the undo backbone of editors and canvases. The memento here
-is a plain object copy — fine for small state, but snapshotting a large document on every keypress
+is a plain object copy, fine for small state, but snapshotting a large document on every keypress
 needs incremental diffs instead.
 
 ### Node.js
@@ -246,7 +246,7 @@ stack = History.backup([], editor)
 ```
 
 **🧠 Tradeoff** — In Elixir every value is already an immutable snapshot, so "capturing state" is
-just keeping the old struct — no copying, no aliasing bug, and encapsulation holds because the
+just keeping the old struct: no copying, no aliasing bug, and encapsulation holds because the
 caretaker only stores opaque terms. Undo is a list of past values. For a live stateful process,
 the `GenServer` holds the history in its own state and hands back a prior value on `:undo`.
 
@@ -300,9 +300,9 @@ func (h *History) Undo(e *Editor) {
 ```
 
 **🧠 Tradeoff** — Returning a `Memento` *value* (not a pointer) gives an independent snapshot for
-free — the naive bug was storing a pointer that aliased the live editor. The unexported memento
+free; the naive bug was storing a pointer that aliased the live editor. The unexported memento
 fields keep the state opaque to the `History` caretaker. Watch copy cost if the state includes
-slices/maps — those need explicit deep copies.
+slices/maps, which need explicit deep copies.
 
 ### CSharp
 
@@ -376,7 +376,7 @@ public sealed class History
 
 **🧠 Tradeoff** — A `record` gives an immutable snapshot in one line, so the naive aliasing bug
 can't happen: nothing can mutate a stored `Memento` out from under the history. One honest
-caveat: records expose their properties, so `History` *could* peek at `Content` — C# can't make
+caveat: records expose their properties, so `History` *could* peek at `Content`. C# can't make
 the memento readable by the editor but opaque to everyone else, short of nesting it as a private
 type inside `Editor`. In practice the record's immutability, not secrecy, is what protects the
 snapshot.
@@ -472,7 +472,7 @@ impl History {
 
 **🧠 Tradeoff** — The pointer-aliasing bug from the Go naive version is a *compile error* in
 Rust: you can't hold a live `&mut Editor` and a stored reference to its insides at the same
-time, so the only naive sin left is broken encapsulation. Privacy is per-module — `Memento`'s
+time, so the only naive sin left is broken encapsulation. Privacy is per-module: `Memento`'s
 fields are invisible outside the editor's module, so the caretaker truly can't look. And
 ownership makes undo cheap: `restore` consumes the memento by value, moving the `String` back
 with no copy; `save` pays the one clone.
@@ -572,7 +572,7 @@ pub fn main() void {
 a real snapshot with zero allocation, and the naive pointer-aliasing bug can't touch it. The
 fixed `[64]u8` is the price: a real editor holds a heap slice, and then `save` must
 `allocator.dupe` the contents and `History` owns memory it has to free when snapshots are popped
-or discarded — the caretaker growing an allocator is the true cost of Memento in a
+or discarded; the caretaker growing an allocator is the true cost of Memento in a
 manual-memory language. Zig struct fields are always public, so the memento is opaque by
 convention and file scope, not enforcement.
 
@@ -658,10 +658,10 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — A `record` makes the snapshot immutable in one line, so the naive aliasing bug
-can't happen — nothing mutates a stored `Memento` behind the history's back. The accessors are
+can't happen: nothing mutates a stored `Memento` behind the history's back. The accessors are
 public, though: `History` *could* read `content()`. The GoF-strict Java fix is a marker
 interface with the real record nested privately inside `Editor`, which casts it back in
-`restore` — ceremony worth paying only when opacity is a hard requirement, since immutability
+`restore`, ceremony worth paying only when opacity is a hard requirement, since immutability
 already protects the snapshot. Watch copy depth too: `content` is an immutable `String`, but a
 mutable `List` field would need `List.copyOf` in `save`.
 

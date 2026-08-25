@@ -5,7 +5,7 @@ sequence: 8
 title: State
 also_known_as: [Objects for States]
 gof: true
-intent: "Let an object change its behavior when its internal state changes — as if it changed class."
+intent: "Let an object change its behavior when its internal state changes, as if it changed class."
 frequency: medium
 difficulty: intermediate
 tags: [behavioral, state-machine, transitions, polymorphism, conditionals]
@@ -64,7 +64,7 @@ Key Components:
 
 ### Disadvantages
 - More classes, even for simple machines.
-- Transition logic is distributed across states — the whole map can be harder to see at once.
+- Transition logic is distributed across states, so the whole map can be harder to see at once.
 
 ## Common Mistakes
 
@@ -136,7 +136,7 @@ class PausedState {
 
 **🧠 Tradeoff** — Each state class owns both its behavior and where it transitions, so the illegal
 moves ("pause when stopped") live in exactly one place. The player has no status conditionals at
-all. The price is a class per state — worth it once the machine has more than two or three.
+all. The price is a class per state, worth it once the machine has more than two or three.
 
 ### Node.js
 
@@ -180,7 +180,7 @@ order.apply("deliver");  // "delivered"
 ```
 
 **🧠 Tradeoff** — On the backend, a state machine is often a *data* transition table rather than a
-class per state — the whole machine is visible in one object, easy to persist and audit, and
+class per state: the whole machine is visible in one object, easy to persist and audit, and
 illegal transitions fail loudly. Use the object-per-state form when each state carries rich
 behavior; use a table when states are mostly about which transitions are legal (orders, workflows).
 
@@ -337,7 +337,7 @@ func (Paused) Pause(p *Player) string { return "already paused" }
 
 **🧠 Tradeoff** — Each state is a tiny struct satisfying `State`; the player delegates and states
 flip `p.state`. Because the states are stateless value types, they cost nothing to allocate. For
-transition-heavy workflows Go code often uses a `map[state]map[event]state` table instead — same
+transition-heavy workflows Go code often uses a `map[state]map[event]state` table instead, the same
 tradeoff as the Node version.
 
 ### CSharp
@@ -414,7 +414,7 @@ public sealed class Paused : IState
 **🧠 Tradeoff** — The classic form maps cleanly: each `sealed` state class owns its behavior and
 flips `p.State`, so the player has no conditionals at all. The states here are stateless, so
 real code often shares `static readonly` instances instead of `new`-ing one per transition. For
-simple machines, modern C# frequently skips the classes entirely — an enum plus one `switch`
+simple machines, modern C# frequently skips the classes entirely: an enum plus one `switch`
 expression per action reads like the transition table and keeps the whole machine on one screen.
 The class form earns its keep when states carry rich behavior, not just a next-state rule.
 
@@ -506,7 +506,7 @@ fn main() {
 
 **🧠 Tradeoff** — The trait-object form (`Box<dyn State>`) exists in Rust, but for a closed set
 of states the enum is the honest form: `Copy`, no allocation, and every `match` is checked for
-exhaustiveness — add `State::Buffering` and the compiler lists every method that must handle it,
+exhaustiveness: add `State::Buffering` and the compiler lists every method that must handle it,
 the exact opposite of the scattered-flag failure mode. Variants can carry data
 (`Playing { position: u32 }`) and the `match` arm extracts it. Reach for a trait only when
 downstream crates must add states your enum has never heard of.
@@ -585,7 +585,7 @@ pub fn main() void {
 ```
 
 **🧠 Tradeoff** — Same verdict as Rust: for a closed set, `enum` plus exhaustive `switch` *is*
-the pattern in Zig — an unhandled state is a compile error, so adding `.buffering` turns every
+the pattern in Zig: an unhandled state is a compile error, so adding `.buffering` turns every
 `switch` into a checklist of places to update. When a state needs its own data, upgrade the enum
 to a tagged union (`union(enum)`) and each arm captures the payload. The GoF object-per-state
 form would need the vtable idiom (`*anyopaque` + function pointers); pay that only if states
@@ -660,7 +660,7 @@ public class Demo {
 **🧠 Tradeoff** — Enum constants with constant-specific method bodies are Java's quiet superpower
 here (it's Effective Java's own example): each constant is a singleton state object, so you get
 the GoF shape with no class hierarchy and nothing allocated per transition. Add a `BUFFERING`
-constant and the code won't compile until it supplies `play` and `pause` — the scattered-flag
+constant and the code won't compile until it supplies `play` and `pause`: the scattered-flag
 failure mode turned into a checklist. The limit is that enum constants can't carry per-instance
 data; when a state needs its own fields (a `Playing` with a position), fall back to the classic
 interface-and-classes form, which fits Java exactly as the book wrote it.

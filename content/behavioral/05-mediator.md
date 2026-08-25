@@ -15,7 +15,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-When a set of objects all talk to each other, the direct connections turn into a tangle — every
+When a set of objects all talk to each other, the direct connections turn into a tangle: every
 object knows every other. A mediator becomes the hub: objects talk to *it*, and it coordinates who
 needs to know what. The many-to-many web collapses into many-to-one.
 
@@ -110,7 +110,7 @@ dialog.canSubmit;   // true
 
 **🧠 Tradeoff** — The enable rule lives once, in the mediator; controls don't know about each
 other, so adding a control means teaching only the mediator. The risk is the mediator accreting
-every rule — if a dialog grows huge, split the mediator or move to a state machine.
+every rule; if a dialog grows huge, split the mediator or move to a state machine.
 
 ### Node.js
 
@@ -150,7 +150,7 @@ function placeOrder(order) { bus.emit("order:placed", order); }
 
 **🧠 Tradeoff** — On the backend a mediator is often an event bus or message broker: services
 coordinate through it instead of importing each other, which keeps a microservice/module mesh
-decoupled. The line between Mediator and Observer blurs here — the distinction is that a mediator
+decoupled. The line between Mediator and Observer blurs here; the distinction is that a mediator
 also owns *coordination rules*, not just fan-out. The cost is indirection: the flow is no longer
 readable top-to-bottom.
 
@@ -197,7 +197,7 @@ Control("agree", m).change(True)
 ```
 
 **🧠 Tradeoff** — Colleagues hold a reference to the mediator and report changes; the rule lives
-once. Straightforward in Python — the pattern is about the reference topology (star, not mesh),
+once. Straightforward in Python: the pattern is about the reference topology (star, not mesh),
 not any special language feature. Keep the mediator focused so it doesn't become a catch-all.
 
 ### Elixir
@@ -245,7 +245,7 @@ end
 **🧠 Tradeoff** — A `GenServer` is a natural mediator: colleague processes send it messages and it
 coordinates, so processes never hold each other's pids directly. This is exactly how chat lobbies
 and game rooms are built on the BEAM. The mediator process can become a bottleneck under high
-throughput — then you shard it or use `Phoenix.PubSub` for pure fan-out.
+throughput; then you shard it or use `Phoenix.PubSub` for pure fan-out.
 
 ### Go
 
@@ -368,7 +368,7 @@ public sealed class Control(string name, IMediator mediator)
 **🧠 Tradeoff** — The `IMediator` interface keeps controls testable with a fake hub, and
 `Control`'s primary constructor makes the one dependency explicit. This shape is so common in
 .NET that it became a library: MediatR routes request objects to handlers in exactly this star
-topology. The warning is the same as everywhere — the mediator is one `switch` arm away from
+topology. The warning is the same as everywhere: the mediator is one `switch` arm away from
 becoming a god object, so split it when the rules multiply.
 
 ### Rust
@@ -438,7 +438,7 @@ fn main() {
 **🧠 Tradeoff** — Rust pushes you toward Mediator whether you asked or not: the naive mesh needs
 `Rc<RefCell<...>>` because the borrow checker won't allow a web of mutable references, while the
 star has one owner and no interior mutability at all. The `Change` enum replaces the
-stringly-typed `who` — a new control kind is a new variant, and every `match` that misses it
+stringly-typed `who`: a new control kind is a new variant, and every `match` that misses it
 fails to compile. Note the colleagues don't *store* a `&mut` to the mediator (that would lock
 everyone else out); they borrow it per call, or send `Change` messages over an `mpsc` channel
 when they live on other threads.
@@ -516,7 +516,7 @@ pub fn main() void {
 design choice you make, not one the compiler forces. Plain pointers wire each control to the hub
 with zero overhead, and the tagged union plus exhaustive `switch` means a new control kind can't
 be silently ignored. One thing to watch: the mediator stores the `[]const u8` slice it's handed
-without copying, so the caller's string must outlive the mediator — dupe it with an allocator
+without copying, so the caller's string must outlive the mediator; dupe it with an allocator
 when it won't.
 
 ### Java
@@ -587,10 +587,10 @@ public class Demo {
 
 **🧠 Tradeoff** — The classic Java form takes a `Mediator` interface and a stringly-typed
 `changed(String who, Object value)`; sealed records replace that pair with types. A new control
-kind is a new record, and the pattern-matching `switch` must stay exhaustive — the compiler
+kind is a new record, and the pattern-matching `switch` must stay exhaustive, so the compiler
 points at every rule that hasn't handled it, where the string version failed silently. The
 topology lesson is unchanged: colleagues hold the hub, the hub holds the rule, and the mediator
-is still one `case` away from becoming a god object — split it when the rules multiply.
+is still one `case` away from becoming a god object. Split it when the rules multiply.
 
 ## Applications
 

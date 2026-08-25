@@ -21,11 +21,11 @@ evaluates it. The sentence becomes an abstract syntax tree; interpreting it mean
 over that tree.
 
 This is the pattern behind rules engines, query languages, formula evaluators, and small
-DSLs — anything where *data or text describes behavior* and something has to evaluate it.
+DSLs: anything where *data or text describes behavior* and something has to evaluate it.
 
 ## The Problem
 
-You want users to configure eligibility rules — "age over 18 and country is US" — without
+You want users to configure eligibility rules ("age over 18 and country is US") without
 redeploying. The tempting shortcut is to evaluate the string directly:
 
 ```
@@ -60,20 +60,20 @@ Key Components:
 ## When to Use
 
 - You have a simple, stable grammar and want to evaluate its sentences repeatedly.
-- You want configuration or text — a DSL — to drive behavior instead of hard-coded logic.
+- You want configuration or text (a DSL) to drive behavior instead of hard-coded logic.
 - The grammar is small: a handful of rules, not a full programming language.
 - Rules engines, query filters, math/formula evaluation, template expansion.
 
 ## Advantages and Disadvantages
 
 ### Advantages
-- The grammar is explicit and each rule lives in one place — easy to reason about and extend
+- The grammar is explicit and each rule lives in one place, so it's easy to reason about and extend
   with new node types.
 - Behavior becomes data: rules ship as config, not code.
 - The tree is a Composite, so evaluation is a clean recursion.
 
 ### Disadvantages
-- Grammars of any real size explode into a class (or clause) per rule — unmaintainable fast.
+- Grammars of any real size explode into a class (or clause) per rule, unmaintainable fast.
 - It only *evaluates* a tree; you still need a lexer/parser to build the tree from text.
 - Deep recursion over large sentences can be slow and stack-hungry.
 
@@ -92,7 +92,7 @@ Key Components:
 
 - Interpreter = one node type per grammar rule + a recursive `interpret` over the tree.
 - The AST is a Composite; interpreting is a depth-first walk.
-- It shines on small, stable DSLs and rules engines — and only there.
+- It shines on small, stable DSLs and rules engines, and only there.
 - Where to put `interpret` (inside each node vs. outside in a Visitor) is the Expression Problem.
 
 ## Implementations
@@ -137,7 +137,7 @@ expr.interpret(); // 7
 ```
 
 **🧠 Tradeoff** — Putting `interpret` on each node is the textbook form: adding a new node type
-(say `Sub`) needs no changes to the existing ones. The cost is the mirror image — adding a new
+(say `Sub`) needs no changes to the existing ones. The cost is the mirror image: adding a new
 *operation* over the tree (pretty-print, optimize) means editing every class. That asymmetry is
 the Expression Problem, and it's exactly what Visitor trades the other way.
 
@@ -269,7 +269,7 @@ Interpreter.eval(expr)  # 7
 **🧠 Tradeoff** — Tagged tuples and multiple function heads *are* the interpreter — no classes,
 no dispatch machinery, the compiler checks your clauses. It's the most direct expression of the
 pattern in any of these languages. As with Python, new operations are cheap (another function),
-new node types touch every clause — the same Expression-Problem tradeoff, made explicit by the
+new node types touch every clause: the same Expression-Problem tradeoff, made explicit by the
 data-first style.
 
 ### Go
@@ -317,10 +317,10 @@ func (m Mul) Interpret() int { return m.L.Interpret() * m.R.Interpret() }
 ```
 
 **🧠 Tradeoff** — A small `Expr` interface with each node implementing `Interpret()` is the
-idiomatic Go form — implicit satisfaction means no `extends`, just a method. Like the JS class
+idiomatic Go form; implicit satisfaction means no `extends`, just a method. Like the JS class
 version, it's open to new node types and closed to new operations. Go has no pattern matching, so
 the data-first alternative (a type switch over a tagged struct) reads worse than the interface
-here — the method-per-node form is the one to reach for.
+here; the method-per-node form is the one to reach for.
 
 ### CSharp
 
@@ -365,7 +365,7 @@ public sealed record Mul(Expr Left, Expr Right) : Expr;
 interpreter reads like the grammar, and a new *operation* (pretty-print, optimize) is just
 another function. Two honest notes. C# can't check a record hierarchy for exhaustiveness, so
 the `_` arm is load-bearing where Rust's `match` would simply refuse to compile. And the
-classic alternative — an abstract `Interpret()` on `Expr` — flips the axis: cheap new nodes,
+classic alternative (an abstract `Interpret()` on `Expr`) flips the axis: cheap new nodes,
 expensive new operations. Pick the axis you expect to grow.
 
 ### Rust
@@ -417,11 +417,11 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — an enum AST with an exhaustive `match` isn't a workaround here; it's the
-natural Rust form — the Rust compiler's own AST is built this way. No `_` arm means adding a
+natural Rust form, and the Rust compiler's own AST is built this way. No `_` arm means adding a
 `Sub` variant makes every `match` that forgets it fail to compile. The `Box` is non-negotiable:
 a recursive type needs indirection to have a known size. Trait objects (`Box<dyn Expr>` with an
 `interpret` method) exist for open node sets, but reach for them only when outside code must
-add nodes — otherwise you're paying dynamic dispatch to give up exhaustiveness.
+add nodes; otherwise you're paying dynamic dispatch to give up exhaustiveness.
 
 ### Zig
 
@@ -483,10 +483,10 @@ pub fn main() void {
 
 **🧠 Tradeoff** — a tagged union plus exhaustive `switch` is idiomatic Zig for a closed
 grammar, and the same guarantee as Rust: no `else` branch, so a new variant flags every switch
-at compile time. The demo builds the tree as `const` nodes with address-of — no allocator in
+at compile time. The demo builds the tree as `const` nodes with address-of: no allocator in
 sight; a real parser allocates nodes with an explicit allocator, and the Zig way is an arena
 freed in one shot when evaluation ends. New operations are one more function; new node types
-touch every switch — the data-first side of the Expression Problem, shared with the Python and
+touch every switch: the data-first side of the Expression Problem, shared with the Python and
 Elixir tabs.
 
 ### Java
@@ -539,7 +539,7 @@ public class Demo {
 **🧠 Tradeoff** — the GoF book wrote this pattern in Java's ancestors' style: an abstract
 `Expr` with `interpret()` overridden in every node class. That still compiles, but modern Java
 has a better axis for a small DSL: a sealed interface, records for nodes, and one
-pattern-matching switch. Because the hierarchy is sealed, the switch needs no `default` — add
+pattern-matching switch. Because the hierarchy is sealed, the switch needs no `default`: add
 a `Sub` record and every switch that forgets it fails to compile, the same guarantee as Rust's
 `match`. New operations (pretty-print, optimize) are just more functions; the node set is
 closed, which is exactly right for the small, stable grammars where Interpreter belongs at all.
@@ -558,7 +558,7 @@ Real-world uses of Interpreter (from the reference article), by tier:
 
 **In modern systems:**
 
-- **Low-code** — a JSON rule tree (`{"and": [{"eq": ["role", "admin"]}, …]}`) parsed once and
+- **Low-code** — a JSON rule tree (`{"and": [{"eq": ["role", "admin"]}, ...]}`) parsed once and
   evaluated per record. This *is* the core of a JSON low-code engine: behavior shipped as data.
 - **Workflow engine** — step conditions and transition guards written as data, interpreted to
   decide which node runs next, so the flow is editable without a redeploy.
@@ -571,5 +571,5 @@ Real-world uses of Interpreter (from the reference article), by tier:
   recurses over it.
 - **Visitor** — the other way to evaluate an AST: Visitor keeps operations outside the node types
   (easy to add operations, hard to add nodes), classic Interpreter keeps `interpret` inside them
-  (easy to add nodes, hard to add operations) — the two halves of the Expression Problem.
+  (easy to add nodes, hard to add operations): the two halves of the Expression Problem.
 - **Iterator** — commonly used to walk the token stream while parsing text into the tree.

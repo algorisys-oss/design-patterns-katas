@@ -20,7 +20,7 @@ swappable at runtime.
 
 Strategy lets a caller pick *how* a piece of work gets done without knowing the details, and
 lets you add a new way of doing it without touching the caller. It's the pattern you reach for
-the moment a method starts sprouting `if method === 'a' … else if method === 'b'` branches
+the moment a method starts sprouting `if method === 'a' ... else if method === 'b'` branches
 that each hold a different algorithm.
 
 ## The Problem
@@ -67,7 +67,7 @@ Key Components:
 ## When to Use
 
 - You have several variants of one algorithm and want to switch between them at runtime.
-- A class has a big conditional that selects behavior — each branch is a candidate strategy.
+- A class has a big conditional that selects behavior; each branch is a candidate strategy.
 - You want to isolate an algorithm's details from the code that uses it.
 - Different callers need different variants of the same operation (sort orders, validators,
   compressors, pricing rules).
@@ -76,12 +76,12 @@ Key Components:
 
 ### Advantages
 - Swap algorithms at runtime without touching the context.
-- New strategies don't modify existing code — Open/Closed in practice.
+- New strategies don't modify existing code: Open/Closed in practice.
 - Each algorithm is isolated, so it's easy to test in isolation.
 - Replaces sprawling conditionals with small, named objects or functions.
 
 ### Disadvantages
-- More moving parts — a class or function per algorithm.
+- More moving parts: a class or function per algorithm.
 - The caller must know enough to pick the right strategy.
 - Overkill when there are only one or two variants that never change. Don't reach for it to
   abstract a single `if`.
@@ -102,7 +102,7 @@ Key Components:
 - Strategy = one interface, many interchangeable algorithms, chosen at runtime.
 - The context delegates; it never contains the algorithm.
 - It's the direct cure for "a method that's really four algorithms behind a conditional."
-- In languages with first-class functions, a strategy is often just a function — no class
+- In languages with first-class functions, a strategy is often just a function, with no class
   hierarchy required.
 
 ## Implementations
@@ -167,7 +167,7 @@ console.log(context.pay(300));          // Paid 300 using Crypto.
 
 **🧠 Tradeoff** — JS has no interfaces, so the "contract" is just the duck-typed `pay(amount)`
 method. That's flexible but unenforced: nothing stops you passing an object without a `pay`.
-For a single-method strategy you could skip classes entirely and pass a plain function — the
+For a single-method strategy you could skip classes entirely and pass a plain function; the
 class version pays off when a strategy carries its own configuration or state.
 
 ### Node.js
@@ -208,7 +208,7 @@ app.post("/pay", (req, res) => {
 ```
 
 **🧠 Tradeoff** — On the backend a strategy is usually just a function keyed in an object, so
-"add a strategy" becomes "add a key" — no classes, no context object. This is how Passport.js
+"add a strategy" becomes "add a key": no classes, no context object. This is how Passport.js
 registers auth strategies (`passport.use(new LocalStrategy(...))`) and how payment SDKs dispatch
 gateways. The looseness is the same duck-typing bargain: an unknown key must be handled
 explicitly, since nothing verifies the map is complete.
@@ -334,7 +334,7 @@ end
 ```
 
 **🧠 Tradeoff** — Elixir has no objects to hold a mutable `strategy` field, so there's no
-"context with a setStrategy" — you pass the strategy on each call, or store it in the state of
+"context with a setStrategy"; you pass the strategy on each call, or store it in the state of
 a process/`GenServer` if it must persist. Functions are the lightweight idiom; behaviours add
 a named contract and a compile-time warning when a module forgets to implement a callback, at
 the cost of one module per strategy.
@@ -415,7 +415,7 @@ func main() {
 **🧠 Tradeoff** — Go interfaces are satisfied *implicitly*: `CreditCard` never declares it
 implements `PaymentStrategy`, it just has the method. That keeps strategies decoupled from the
 interface. For a single-method strategy you can skip the structs and use a function type
-(`type PaymentStrategy func(int) string`), which is often the leaner Go form — use the
+(`type PaymentStrategy func(int) string`), which is often the leaner Go form; use the
 interface when a strategy needs fields or more than one method.
 
 ### CSharp
@@ -475,7 +475,7 @@ public sealed class PaymentContext(IPaymentStrategy strategy)
 **🧠 Tradeoff** — unlike JS duck typing, `IPaymentStrategy` is checked at compile time:
 you cannot hand the context an object without a `Pay`. The classical form above earns its
 keep when a strategy carries configuration or several members. For a single method, modern
-C# often skips the interface entirely and stores a `Func<int, string>` — the pattern
+C# often skips the interface entirely and stores a `Func<int, string>`, and the pattern
 collapses into a delegate, which is Strategy in all but name.
 
 ### Rust
@@ -547,7 +547,7 @@ fn main() {
 
 **🧠 Tradeoff** — `Box<dyn PaymentStrategy>` buys runtime swapping at the cost of a heap
 allocation and dynamic dispatch. A generic `PaymentContext<S: PaymentStrategy>` compiles
-each strategy to zero-overhead code but fixes it at compile time — Rust makes you pick,
+each strategy to zero-overhead code but fixes it at compile time. Rust makes you pick,
 where Go and C# hide the choice. And when the set of strategies is closed, plain Rust
 often prefers an enum with a `match` over trait objects; reach for `dyn` when the set
 must stay open. A closure `Box<dyn Fn(u32) -> String>` covers the single-method case.
@@ -623,7 +623,7 @@ pub fn main() void {
 needs its own state, Zig's answer is the two-field vtable idiom (`*anyopaque` context +
 function pointer) that `std.mem.Allocator` uses. Be honest about the naive version,
 though: when the set of strategies is closed, the enum + exhaustive `switch` *is*
-idiomatic Zig — zero indirection, and the compiler flags every unhandled case. The
+idiomatic Zig: zero indirection, and the compiler flags every unhandled case. The
 pointer form pays off only when new strategies must arrive without touching the switch.
 
 ### Java
@@ -692,7 +692,7 @@ public class Demo {
 **🧠 Tradeoff** — this is the GoF book's home language, and the classical form fits with
 no translation: interface, concrete classes, context. What modern Java changes is the
 floor. Since any single-method interface is a functional interface, a lambda replaces the
-strategy class — `Comparator` passed to `sort` is the standard library doing exactly this.
+strategy class; `Comparator` passed to `sort` is the standard library doing exactly this.
 Write the class when a strategy carries configuration or state; reach for the lambda when
 it's one stateless method, which is most of the time.
 

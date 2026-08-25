@@ -15,11 +15,11 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Write the fixed shape of an algorithm once — the order of steps, the shared scaffolding — and
+Write the fixed shape of an algorithm once (the order of steps, the shared scaffolding) and
 leave named holes for the parts that vary. Each variant fills in the holes without touching the
 overall structure. The base owns the *when*; the variant owns the *how* of specific steps.
 
-It's the "Hollywood Principle" in action: don't call us, we'll call you — the skeleton calls your
+It's the "Hollywood Principle" in action: don't call us, we'll call you. The skeleton calls your
 step, not the other way around.
 
 ## The Problem
@@ -73,7 +73,7 @@ Key Components:
 
 - Template Method = fixed algorithm skeleton + variant-supplied steps.
 - The base controls the sequence; variants fill the holes.
-- In languages without inheritance (Go, functional code), express it as higher-order functions —
+- In languages without inheritance (Go, functional code), express it as higher-order functions,
   which is really Strategy.
 
 ## Implementations
@@ -130,7 +130,7 @@ new CsvExporter().export(data);
 ```
 
 **🧠 Tradeoff** — `export()` fixes the sequence; subclasses supply only `header`/`row`/`wrap`, so
-the open/close scaffolding lives once. The coupling to a base class is the cost — if the steps
+the open/close scaffolding lives once. The coupling to a base class is the cost: if the steps
 varied independently you'd inject them as functions instead (that's Strategy), which JS's
 first-class functions make easy.
 
@@ -181,7 +181,7 @@ class UserImport extends EtlJob {
 **🧠 Tradeoff** — On the backend, Template Method captures pipeline skeletons (ETL, request
 handling, job runners): the base guarantees the order and shared concerns (transactions, logging),
 subclasses fill the steps. Modern Node often prefers passing the step functions in (Strategy /
-middleware), which avoids a class hierarchy and composes better — pick inheritance only when the
+middleware), which avoids a class hierarchy and composes better; pick inheritance only when the
 steps truly belong together.
 
 ### Python
@@ -231,7 +231,7 @@ class JsonExporter(Exporter):
 
 **🧠 Tradeoff** — An `ABC` marks the required step (`row`) as abstract while leaving hooks with
 defaults; `export` fixes the flow. This is the textbook Template Method. Python's first-class
-functions also let you pass steps into a single `export(data, header=…, row=…)` function — the
+functions also let you pass steps into a single `export(data, header=..., row=...)` function, the
 functional alternative when inheritance feels heavy.
 
 ### Elixir
@@ -278,7 +278,7 @@ Exporter.export(CsvExporter, data)
 ```
 
 **🧠 Tradeoff** — With no inheritance, the template is a shared function that takes the implementing
-*module* and calls its callbacks in a fixed order — the behaviour documents the required steps.
+*module* and calls its callbacks in a fixed order; the behaviour documents the required steps.
 Idiomatic Elixir often skips even this and just passes the varying steps as functions to a reducer;
 that's Strategy, and for many cases it's the cleaner choice on the BEAM.
 
@@ -338,9 +338,9 @@ var CSV = Format{
 ```
 
 **🧠 Tradeoff** — Without inheritance, Go realizes Template Method by passing the varying steps into
-a skeleton function — which is composition, i.e. Strategy. That's the point: the two patterns
+a skeleton function, which is composition, i.e. Strategy. That's the point: the two patterns
 converge when you can't (or won't) subclass. If you want a partial default, embed a struct with
-default step methods and let callers override by shadowing — but the function-fields form above is
+default step methods and let callers override by shadowing, but the function-fields form above is
 the more idiomatic Go.
 
 ### CSharp
@@ -408,7 +408,7 @@ public sealed class JsonExporter : Exporter
 can rewrite the flow; `abstract` marks the step every format must supply, `protected virtual`
 marks the hooks. The compiler enforces the split that JS and Python only document. The cost is
 the usual one: single inheritance, and variants welded to the base. When the steps vary
-independently, modern C# passes them in as `Func<Row, string>` delegates instead — that's
+independently, modern C# passes them in as `Func<Row, string>` delegates instead. That's
 Strategy, and it composes where inheritance stacks.
 
 ### Rust
@@ -475,7 +475,7 @@ fn main() {
 
 **🧠 Tradeoff** — a trait with default methods gives Template Method without inheritance: the
 trait is both the contract (`row` has no body, so every format must supply it) and the skeleton
-(`export` has one). Dispatch is static — each impl compiles to its own specialized `export`, no
+(`export` has one). Dispatch is static: each impl compiles to its own specialized `export`, no
 vtable. One honest gap versus C#: Rust can't seal a single method, so an impl *may* override
 `export` and rewrite the flow. If the sequence must be untouchable, move it out to a free
 function `fn export<E: Exporter>(e: &E, data: &[Row])` and keep only the steps in the trait.
@@ -560,10 +560,10 @@ pub fn main() void {
 
 **🧠 Tradeoff** — `comptime Format: type` is Zig's version of Go's function-fields form, minus
 the runtime cost: each format stamps out its own specialized `exportWith`, and a type missing
-`row` or `separator` is a compile error. The catch is that the contract is implicit — nothing in
+`row` or `separator` is a compile error. The catch is that the contract is implicit: nothing in
 the code names the required steps, so the error shows up at the call site, not on the format
 type. And because the format is picked at compile time, you can't choose one from user input;
-for that, fall back to function pointers per step — which is Strategy again.
+for that, fall back to function pointers per step, which is Strategy again.
 
 ### Java
 
@@ -642,7 +642,7 @@ public class Demo {
 calling your `doGet`, JUnit's setup/teardown, `AbstractList` needing only `get` and `size`. The
 abstract-class form is textbook here, and the keywords carry the design: `final` on `export`
 means no subclass can rewrite the flow, `abstract` marks the one step every format owes, and
-plain overridable methods are the hooks. The cost is the classic one — single inheritance, and
+plain overridable methods are the hooks. The cost is the classic one: single inheritance, and
 every variant welded to the base. When steps vary independently, modern Java passes them in as
 `Function<Row, String>` lambdas instead; that's Strategy, and it's the right call the moment a
 variant would need two bases.
