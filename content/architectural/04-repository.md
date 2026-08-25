@@ -15,13 +15,13 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Give the domain a **collection-like interface** for its objects — `find`, `save`, `remove`,
-`all` — and put every detail of *how* they're stored behind it. Callers ask a repository for a
+Give the domain a **collection-like interface** for its objects (`find`, `save`, `remove`,
+`all`) and put every detail of *how* they're stored behind it. Callers ask a repository for a
 `User`; whether that user comes from Postgres, an in-memory map, or a REST call is the
 repository's private business.
 
 The repository is a seam. It keeps persistence concerns out of the business logic and gives you a
-single, swappable place where storage lives — which also makes the domain testable against a fake
+single, swappable place where storage lives, which also makes the domain testable against a fake
 that never touches a database.
 
 ## The Problem
@@ -40,7 +40,7 @@ Scatter data access through the codebase and queries end up everywhere:
 
 Key Components:
 
-- **Repository interface** — the collection-like contract the domain depends on (`find`, `save`…).
+- **Repository interface** — the collection-like contract the domain depends on (`find`, `save`...).
 - **Concrete Repositories** — implementations for each backing store (SQL, in-memory, HTTP).
 - **Domain objects / entities** — what the repository stores and returns; storage models stay hidden.
 - **Client** — services and use cases that depend only on the interface.
@@ -87,7 +87,7 @@ Service ──uses──► «UserRepository»  find(id) / save(u)
 ## Key Takeaways
 
 - A repository is a collection-like façade over storage; the domain depends on the interface only.
-- Its biggest everyday win is testability — an in-memory implementation replaces the database.
+- Its biggest everyday win is testability: an in-memory implementation replaces the database.
 - Give it intention-revealing finders; don't leak SQL or return raw rows.
 - It pairs with Unit of Work when several repository changes must commit atomically.
 
@@ -134,7 +134,7 @@ const sqlUserRepo = {
 
 **🧠 Tradeoff** — Injecting a `users` repository frees `UserService` from SQL, so it tests against
 a `Map`-backed fake and could switch datastores without edits. The cost is an extra object and a
-mapping (`toUser`) between rows and domain objects — negligible next to the testability, but real
+mapping (`toUser`) between rows and domain objects, negligible next to the testability, but real
 overhead for a one-query CRUD endpoint.
 
 ### Node.js
@@ -167,7 +167,7 @@ function makeProductRepo(pool) {
 
 **🧠 Tradeoff** — Naming finders (`active`, `byId`) instead of scattering SQL gives one place to
 tune queries, add caching, or swap `pg` for another driver, and keeps routes thin. Node has no
-repository framework, so you hand-roll the module — lighter than a full ORM's repository layer, but
+repository framework, so you hand-roll the module: lighter than a full ORM's repository layer, but
 you own the mapping and the connection handling.
 
 ### Python
@@ -209,7 +209,7 @@ class DjangoUserRepository:                   # one implementation
 **🧠 Tradeoff** — A `Protocol` describes the repository and the domain depends on it, so
 `Deactivate` tests with an in-memory list and never imports the ORM. It's clean and type-checked,
 but in Django especially the ORM's own manager/queryset *is* a repository-ish layer, so an extra
-repository can feel redundant — worth it when you want the domain framework-free, less so for
+repository can feel redundant, worth it when you want the domain framework-free, less so for
 ORM-centric apps.
 
 ### Elixir
@@ -256,7 +256,7 @@ end
 **🧠 Tradeoff** — A **behaviour** as the repository contract lets `Accounts.promote` take the
 implementation as an argument (defaulting to the Ecto one), so tests pass `Users.InMemory`. It's
 idiomatic, but Elixir teams often treat the **context** module itself as the repository boundary
-and skip the extra behaviour — fine until you actually need to swap or fake the store.
+and skip the extra behaviour, which is fine until you actually need to swap or fake the store.
 
 ### Go
 
@@ -297,7 +297,7 @@ func (s UserService) Promote(id string) error {
 ```
 
 **🧠 Tradeoff** — A tiny `UserRepo` interface, defined where it's used, lets `UserService` test
-against a map and swap SQL for anything satisfying the interface — very idiomatic Go (small,
+against a map and swap SQL for anything satisfying the interface: very idiomatic Go (small,
 consumer-defined interfaces). The explicit mapping between DB rows and `User`, and the hand-wiring
 in `main`, are the costs; there's no ORM magic, but also no magic to fight.
 
@@ -349,7 +349,7 @@ public sealed class InMemoryUsers : IUserRepository
 
 **🧠 Tradeoff** — Records make the domain object immutable: `user with { Role = "admin" }`
 produces a new value to save, so nothing outside the repository ever mutates stored state in
-place. The honest C# caveat is EF Core — `DbSet<User>` is already repository-shaped, and wrapping
+place. The honest C# caveat is EF Core: `DbSet<User>` is already repository-shaped, and wrapping
 it in `IUserRepository` is a classic over-abstraction. Add the interface when you want the domain
 free of EF types or genuinely expect a second store; skip it when EF *is* the persistence story.
 
@@ -408,7 +408,7 @@ impl UserRepo for InMemoryUsers {
 
 **🧠 Tradeoff** — Ownership makes the repository seam unusually sharp: `by_id` returns a *cloned*
 `User`, so callers can never hold a live reference into storage, and the clone is the mapping
-cost made visible. The trait keeps the domain crate free of any database dependency — sqlx and
+cost made visible. The trait keeps the domain crate free of any database dependency; sqlx and
 diesel stay in the adapter crate. As usual Rust makes the dispatch explicit: `UserService<R>` is
 static and monomorphized; reach for `Box<dyn UserRepo>` only when the store is chosen at runtime.
 
@@ -476,10 +476,10 @@ pub fn main() !void {
 
 **🧠 Tradeoff** — The comptime generic gives a duck-typed repository: any type with `byId` and
 `save` fits, checked at the instantiation site, with static dispatch and zero indirection. What
-you give up is a named contract — nothing in the source says "this is the repository interface,"
+you give up is a named contract: nothing in the source says "this is the repository interface,"
 so the expected shape lives in a comment (or a `comptime` assertion). If the store must be picked
 at runtime, switch to the `*anyopaque` + function-pointer vtable from the hexagonal kata. And
-since Zig has no ORM to escape, the repository here isn't about framework independence at all —
+since Zig has no ORM to escape, the repository here isn't about framework independence at all;
 it's purely the test seam, which is reason enough.
 
 ### Java
@@ -546,10 +546,10 @@ public class Demo {
 
 **🧠 Tradeoff** — Java made this pattern famous, and Spring Data made it almost free: declare
 `interface UserRepository extends CrudRepository<User, String>` with a `findByEmail(String email)`
-signature and the framework derives the query from the method *name* — you write the interface
+signature and the framework derives the query from the method *name*, so you write the interface
 and never the implementation. The honest caveat mirrors C#'s EF: JPA's `EntityManager` is already
 repository-shaped, so hand-wrapping it adds the layer Spring Data exists to delete. Hand-rolled
-as here, the value is the seam itself — `UserService` tests against a `HashMap` — plus one quiet
+as here, the value is the seam itself (`UserService` tests against a `HashMap`) plus one quiet
 win from records: `byId` returns an immutable value, so callers can never mutate stored state
 behind the repository's back.
 

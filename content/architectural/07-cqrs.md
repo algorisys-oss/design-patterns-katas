@@ -17,7 +17,7 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 Use **two models instead of one**: a write model that handles **commands** (do something, change
 state) and a read model that answers **queries** (give me this shape of data). They can have
-different schemas, different stores, and different scaling — because reads and writes rarely have
+different schemas, different stores, and different scaling, because reads and writes rarely have
 the same shape or the same load.
 
 The insight is that the structure optimized for enforcing business rules on a change is almost
@@ -91,7 +91,7 @@ Client ───────────────► Write Model      Read Mo
 
 - Separate the write model (commands, rules) from the read model (queries, display shapes).
 - The read model is one or more denormalized projections kept in sync with writes.
-- The price is eventual consistency and extra machinery — spend it only where reads and writes
+- The price is eventual consistency and extra machinery, so spend it only where reads and writes
   genuinely diverge.
 - CQRS is independent of event sourcing, though they combine naturally.
 
@@ -136,7 +136,7 @@ const queries = {
 **🧠 Tradeoff** — Routing writes through `commands` (normalized, validated) and reads through
 `queries` (a pre-shaped summary) lets each side be exactly what it needs, and the dashboard query
 becomes a cheap lookup. The cost is the `projectOrderSummary` step and the window where the summary
-lags the write — worth it for read-heavy screens, needless for a simple form.
+lags the write: worth it for read-heavy screens, needless for a simple form.
 
 ### Node.js
 
@@ -170,7 +170,7 @@ app.get("/reports/sales", (_req, res) => readDb.salesRollup().then((r) => res.js
 **🧠 Tradeoff** — Publishing an event on write and projecting into a separate read store moves
 reporting load off the transactional database and makes the report a fast lookup. The `202` and the
 projection lag are the honest signal that reads are eventually consistent. It's real infrastructure
-(a bus, a projector, a read store) — justified when read load threatens writes, overkill otherwise.
+(a bus, a projector, a read store), justified when read load threatens writes, overkill otherwise.
 
 ### Python
 
@@ -250,7 +250,7 @@ end
 ```
 
 **🧠 Tradeoff** — Elixir splits cleanly into command/query contexts, and a `GenServer` projector
-subscribed via `Phoenix.PubSub` keeps the read model current — the BEAM's process and pub/sub
+subscribed via `Phoenix.PubSub` keeps the read model current; the BEAM's process and pub/sub
 primitives make the projection machinery natural. Libraries like Commanded formalize this. The
 consistency lag between the broadcast and the projection is the same trade CQRS always makes.
 
@@ -289,7 +289,7 @@ func (q Queries) SalesRollup() ([]Rollup, error) { return q.read.Rollup() } // f
 ```
 
 **🧠 Tradeoff** — Two types (`Commands`, `Queries`) over two store interfaces make the split
-explicit and each side independently testable and swappable — very Go. Nothing here forces event
+explicit and each side independently testable and swappable: very Go. Nothing here forces event
 sourcing; the "projection" can be a synchronous upsert into a read table. You own the wiring and the
 consistency handling, but the read/write separation is plain and inspectable.
 
@@ -332,10 +332,10 @@ public sealed class Queries(IReadStore read)
 ```
 
 **🧠 Tradeoff** — Records make commands what they should be: immutable, equatable messages with no
-behavior. Two small classes over two store interfaces are the whole pattern — in .NET this often
+behavior. Two small classes over two store interfaces are the whole pattern. In .NET this often
 runs through MediatR (`IRequest`/`IRequestHandler`), but that's dispatch plumbing, not CQRS itself.
 The classic .NET pairing is EF Core on the write side (rules, change tracking) and Dapper or raw
-SQL on the read side (fast, shaped rows) — two data-access styles in one app, each fitting its
+SQL on the read side (fast, shaped rows): two data-access styles in one app, each fitting its
 half. The projection step and the consistency lag are the usual price.
 
 ### Rust
@@ -401,11 +401,11 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — In Rust the split shows up in the receivers: commands take `&mut self`, queries
-take `&self`, so the borrow checker *enforces* that the query side cannot write — a guarantee the
+take `&self`, so the borrow checker *enforces* that the query side cannot write: a guarantee the
 other languages leave to convention. Here the projection is a synchronous map update inside the
 command, which keeps reads instantly consistent; the asynchronous version (a projector thread fed
 by `std::sync::mpsc`) buys write throughput back at the price of lag. Split `App` into separate
-command and query types when the two sides grow their own stores — the `&`/`&mut` discipline
+command and query types when the two sides grow their own stores; the `&`/`&mut` discipline
 carries over unchanged.
 
 ### Zig
@@ -487,9 +487,9 @@ pub fn main() !void {
 
 **🧠 Tradeoff** — The wiring is pointers, and the pointer types carry the rule: `Commands` holds
 mutable `*WriteStore`/`*Rollup`, `Queries` holds `*const Rollup`, so a write through the query side
-is a compile error — const-correctness doing what CQRS asks for. The projection is a synchronous
+is a compile error: const-correctness doing what CQRS asks for. The projection is a synchronous
 field update, which is all most Zig programs need; an asynchronous projector means `std.Thread`, a
-mutex, and a queue you build yourself. No bus, no framework — CQRS in Zig is just data separation
+mutex, and a queue you build yourself. No bus, no framework: CQRS in Zig is just data separation
 made visible in the types.
 
 ### Java
@@ -577,7 +577,7 @@ public class Demo {
 with no behavior. Sealing the `Command` set adds what most languages here can't: the `switch` is
 exhaustive with no default arm, so adding a `RefundOrder` command fails every handler that ignores
 it at compile time. In production Java the dispatch usually runs through Spring beans or an
-Axon-style command bus — that's plumbing, not the pattern — and the classic pairing is JPA on the
+Axon-style command bus (that's plumbing, not the pattern), and the classic pairing is JPA on the
 write side (rules, change tracking) with jOOQ, plain JDBC, or a materialized view on the read side:
 two data-access styles, each fitting its half. The projection step and the consistency lag are the
 usual price.
@@ -599,6 +599,6 @@ usual price.
 
 - **Event Sourcing** — a common write side for CQRS: commands append events, projections build the
   read models from the event stream.
-- **Publish–Subscribe** — the usual transport for keeping read models in sync with writes.
+- **Publish-Subscribe** — the usual transport for keeping read models in sync with writes.
 - **Layered / Hexagonal** — CQRS refines the application layer into distinct command and query
   paths, each with its own model and store.

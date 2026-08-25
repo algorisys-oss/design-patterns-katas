@@ -2,7 +2,7 @@
 id: model-view-controller
 category: architectural
 sequence: 2
-title: Model–View–Controller
+title: Model-View-Controller
 also_known_as: [MVC]
 gof: false
 intent: "Split a UI into a Model (state and rules), a View (presentation), and a Controller (input handling), so each can change independently."
@@ -84,8 +84,8 @@ User ─────────► Controller ─────────► Mo
 
 ## Key Takeaways
 
-- Three roles: Model (state+rules), View (render), Controller (input) — each changes independently.
-- The model notifies; views observe and re-render — it never reaches into the view directly.
+- Three roles: Model (state+rules), View (render), Controller (input), each changing independently.
+- The model notifies; views observe and re-render. It never reaches into the view directly.
 - Controllers write to the model, views read from it; keep that direction clean.
 - MVP and MVVM are variants that move where the presentation logic lives (see Related).
 
@@ -126,7 +126,7 @@ model.subscribe(view);                                                        //
 document.querySelector("#btn").addEventListener("click", () => model.increment()); // controller
 ```
 
-**🧠 Tradeoff** — Splitting into model/view/controller means the rule (`min(10, …)`) lives in one
+**🧠 Tradeoff** — Splitting into model/view/controller means the rule (`min(10, ...)`) lives in one
 testable place and the view is a pure function of state. For a single counter it's more code than
 the inline handler; the payoff appears the moment a second view (a progress bar) subscribes to the
 same model with zero changes to the logic.
@@ -202,9 +202,9 @@ model.subscribe(lambda c: label.config(text=str(c)))     # view
 button.config(command=model.increment)                    # controller
 ```
 
-**🧠 Tradeoff** — The model owns the `min(10, …)` rule and publishes changes; the view is just a
-subscriber. On the server, Django is famously "MVT" — its *template* is the view and its *view*
-is the controller — the same three roles under different names. The discipline in plain Python is
+**🧠 Tradeoff** — The model owns the `min(10, ...)` rule and publishes changes; the view is just a
+subscriber. On the server, Django is famously "MVT": its *template* is the view and its *view*
+is the controller, the same three roles under different names. The discipline in plain Python is
 yours to keep; the payoff is a rule you can unit-test with no GUI.
 
 ### Elixir
@@ -279,7 +279,7 @@ func (h *Handler) counter(w http.ResponseWriter, r *http.Request) { // controlle
 
 **🧠 Tradeoff** — Go has no MVC framework blessing the split, so you assemble it: a `Counter` type
 holds state and the rule, `html/template` is the view, and the handler is a thin controller. The
-explicitness is very Go — no magic wiring — and the model tests with a plain unit test. The cost
+explicitness is very Go (no magic wiring) and the model tests with a plain unit test. The cost
 is that nothing enforces the boundaries, so team discipline keeps handlers from growing fat.
 
 ### CSharp
@@ -323,10 +323,10 @@ public sealed class CounterModel
 ```
 
 **🧠 Tradeoff** — C# builds the model-notifies-view link into the language: `event` *is* the
-Observer hookup, one declaration and one `+=`. The rule tests as a plain unit test — call
+Observer hookup, one declaration and one `+=`. The rule tests as a plain unit test: call
 `Increment`, assert `Count`, no UI attached. Note where the frameworks sit: ASP.NET Core MVC
 names the three roles outright, while WPF and MAUI prefer MVVM, where data binding replaces the
-hand-wired subscription — same separation, the binding engine does the notifying.
+hand-wired subscription; same separation, but the binding engine does the notifying.
 
 ### Rust
 
@@ -374,10 +374,10 @@ fn main() {
 
 **🧠 Tradeoff** — The hand-rolled observer works, but push it toward a real UI and the borrow
 checker starts objecting: views that also hold state mean shared mutation, which drags in
-`Rc<RefCell<…>>`. That's why Rust UI libraries (iced, and egui in spirit) favor Model–View–Update
+`Rc<RefCell<...>>`. That's why Rust UI libraries (iced, and egui in spirit) favor Model-View-Update
 instead: a `Message` enum, an `update` function that `match`es messages into model changes, and a
 view that's a pure function of the model. Same three roles, with the controller collapsed into an
-exhaustive `match` — the more idiomatic Rust shape.
+exhaustive `match`, the more idiomatic Rust shape.
 
 ### Zig
 
@@ -428,7 +428,7 @@ pub fn main() void {
 
 **🧠 Tradeoff** — With no closures, a Zig view is a bare function pointer, which only covers
 stateless views; a widget that carries its own state needs the two-field vtable idiom
-(`*anyopaque` context + function pointer). The rule still tests clean — call `increment`, assert
+(`*anyopaque` context + function pointer). The rule still tests clean: call `increment`, assert
 `count`, no rendering involved. Honestly, Zig has no mainstream UI framework to bless the split;
 where it earns its keep is embedded and immediate-mode rendering, where "update the model" and
 "draw the model" are already separate phases and MVC just names them.
@@ -487,10 +487,10 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — Classic Java would declare an `Observer` interface and anonymous inner classes
-to implement it; `IntConsumer` plus a lambda deletes all of that — the view subscribes in one
+to implement it; `IntConsumer` plus a lambda deletes all of that, and the view subscribes in one
 line. The rule now tests as plain JUnit: call `increment`, assert `count`, no window open. Java's
-frameworks bless the split on both sides of the wire. Swing was designed around it — every
-`JButton` already has a separate `ButtonModel` — and on the server, Spring MVC names the roles
+frameworks bless the split on both sides of the wire. Swing was designed around it (every
+`JButton` already has a separate `ButtonModel`), and on the server, Spring MVC names the roles
 outright: a `@Controller` method takes the input, writes to a `Model`, and picks the view template
 that renders it. Same three roles, whether the view is a label or an HTML page.
 

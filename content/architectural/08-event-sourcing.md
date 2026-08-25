@@ -5,7 +5,7 @@ sequence: 8
 title: Event Sourcing
 also_known_as: [Event Log, Append-Only State]
 gof: false
-intent: "Store state as an append-only log of events that happened, and rebuild current state by replaying them — instead of storing only the latest snapshot."
+intent: "Store state as an append-only log of events that happened, and rebuild current state by replaying them, instead of storing only the latest snapshot."
 frequency: medium
 difficulty: advanced
 tags: [architecture, events, audit, append-only, replay]
@@ -25,7 +25,7 @@ by replaying events you already have.
 
 ## The Problem
 
-Storing only the latest state — the normal `UPDATE` — quietly destroys information:
+Storing only the latest state, the normal `UPDATE`, quietly destroys information:
 
 - **Lost history** — an `UPDATE` overwrites the old value; *why* and *when* it changed is gone
   unless you bolted on audit logging.
@@ -76,7 +76,7 @@ Command ──► Aggregate ──emits──► Event Store  (append-only log)
 
 ## Common Mistakes
 
-- **Events as CRUD in disguise** — `UserUpdated { fields… }` throws away intent; model meaningful
+- **Events as CRUD in disguise** — `UserUpdated { fields... }` throws away intent; model meaningful
   domain events (`EmailChanged`, `SubscriptionCancelled`).
 - **No snapshots** — folding thousands of events on every load gets slow; snapshot aggregate state
   periodically and replay only the tail.
@@ -87,7 +87,7 @@ Command ──► Aggregate ──emits──► Event Store  (append-only log)
 
 ## Key Takeaways
 
-- Store the stream of events; derive current state by folding them — the log is the truth.
+- Store the stream of events; derive current state by folding them. The log is the truth.
 - You gain audit, time-travel, and replayable projections; you pay in complexity and consistency.
 - Events are immutable and forever, so model them as meaningful facts and plan for versioning.
 - It pairs naturally with CQRS: events on the write side, projections as the read models.
@@ -135,7 +135,7 @@ class Account {
 **🧠 Tradeoff** — Recording `Deposited`/`Withdrew` events and folding them to a balance keeps the
 whole history and makes reload a replay. You separate *deciding* (the rule in `withdraw`) from
 *applying* (`#apply`, which never rejects). The cost is that every read of `balance` is derived, and
-you'll eventually need snapshots and event versioning — real work you skip with a plain field.
+you'll eventually need snapshots and event versioning: real work you skip with a plain field.
 
 ### Node.js
 
@@ -166,9 +166,9 @@ async function load(pool, streamId) {
 ```
 
 **🧠 Tradeoff** — A single append-only `events` table with a per-stream sequence is a serviceable
-event store, and `reduce(applyEvent, …)` rebuilds state. It gives you audit and replay on ordinary
-Postgres. You now own optimistic concurrency (the `seq`), projections, and snapshots for hot streams
-— which is why dedicated stores (EventStoreDB) exist for heavier use.
+event store, and `reduce(applyEvent, ...)` rebuilds state. It gives you audit and replay on ordinary
+Postgres. You now own optimistic concurrency (the `seq`), projections, and snapshots for hot streams,
+which is why dedicated stores (EventStoreDB) exist for heavier use.
 
 ### Python
 
@@ -216,7 +216,7 @@ class Account:
 
 **🧠 Tradeoff** — A `replay` classmethod plus `_record`/`_apply` gives clean event sourcing in
 plain Python: decide-then-apply, full history in `events`. It's a natural fit for DDD aggregates and
-testable without a database. The perennial costs apply — snapshots for long streams and a versioning
+testable without a database. The perennial costs apply: snapshots for long streams and a versioning
 plan for the event shapes, since those tuples/dicts are your permanent schema.
 
 ### Elixir
@@ -305,7 +305,7 @@ func Replay(events []Event) *Account {
 **🧠 Tradeoff** — Go keeps it explicit: a command method validates, calls `apply`, and returns the
 events for the caller to persist; `Replay` folds a slice back into state. No framework hides the
 mechanics, so the event flow is obvious and testable. You build the store, concurrency control, and
-projections yourself — the usual Go bargain of clarity for hand-written plumbing.
+projections yourself: the usual Go bargain of clarity for hand-written plumbing.
 
 ### CSharp
 
@@ -371,11 +371,11 @@ public sealed class Account
 ```
 
 **🧠 Tradeoff** — Records are the right event shape in C#: immutable, value-equal, one line each,
-and the type-pattern `switch` is the fold. The weak spot is that a record hierarchy is open — the
+and the type-pattern `switch` is the fold. The weak spot is that a record hierarchy is open: the
 compiler can't know `Deposited` and `Withdrew` are the only events, so every fold needs a default
 arm, and a newly added event type silently falls into it instead of failing the build (Rust's enum
 does better here). For real systems, Marten turns Postgres into an event store and EventStoreDB is
-the dedicated one — the versioning and snapshot work remains yours either way.
+the dedicated one; the versioning and snapshot work remains yours either way.
 
 ### Rust
 
@@ -460,10 +460,10 @@ fn main() {
 
 **🧠 Tradeoff** — The enum is exactly what an event schema wants to be: a closed set, and the
 exhaustive `match` means adding a `TransferredOut` variant breaks every fold that doesn't handle
-it — at compile time. For a permanent, append-only schema, that's the strongest guarantee any
+it, at compile time. For a permanent, append-only schema, that's the strongest guarantee any
 language here offers. The decide/apply split falls out of the types too: `withdraw` returns
 `Result` (commands can fail), `apply` returns nothing (facts can't be rejected). Persistence means
-serializing the enum (serde) — and event versioning is still your problem; the compiler checks
+serializing the enum (serde), and event versioning is still your problem; the compiler checks
 today's variants, not last year's bytes on disk.
 
 ### Zig
@@ -546,9 +546,9 @@ pub fn main() !void {
 
 **🧠 Tradeoff** — The tagged union gives Zig the same guarantee as Rust's enum: the event set is
 closed, and an exhaustive `switch` means a new event variant fails every fold that misses it at
-compile time — the property you most want for a schema that lives forever. The fixed array stands
+compile time: the property you most want for a schema that lives forever. The fixed array stands
 in for the log; a real store appends with an explicit allocator and writes bytes you laid out
-yourself (`std.json` or hand-packed) — no serialization magic, which makes the event-versioning
+yourself (`std.json` or hand-packed): no serialization magic, which makes the event-versioning
 problem visible instead of deferred. Commands return error unions, `apply` returns `void`: the
 decide/apply split, in the signatures.
 
@@ -625,12 +625,12 @@ public class Demo {
 
 **🧠 Tradeoff** — The sealed interface is Java catching up to Rust's enum and Zig's tagged union:
 the event set is closed, so the pattern-matching `switch` is exhaustive with no default arm, and
-adding a `TransferredOut` event breaks every fold that ignores it — at compile time, the guarantee
+adding a `TransferredOut` event breaks every fold that ignores it, at compile time, the guarantee
 you most want for a schema that lives forever. Contrast the C# tab, where the open record hierarchy
 forces a default arm that swallows new events silently. Records keep each event to one immutable,
 value-equal line, and the decide/apply split reads clearly: `withdraw` can reject, `apply` never
 does. Persistence still means serializing the records (Jackson) into an events table or a store
-like Axon or EventStoreDB — and versioning old events stays your problem; the compiler checks
+like Axon or EventStoreDB, and versioning old events stays your problem; the compiler checks
 today's types, not last year's bytes.
 
 ## Applications
@@ -659,7 +659,7 @@ today's types, not last year's bytes.
 
 - **CQRS** — the natural read side: projections consume the event stream to build query models,
   while events are the write side's source of truth.
-- **Publish–Subscribe** — events are typically published so projections and other services react to
+- **Publish-Subscribe** — events are typically published so projections and other services react to
   them.
 - **Unit of Work** — appending an aggregate's new events is itself a small transactional unit; the
   event store commits them atomically.

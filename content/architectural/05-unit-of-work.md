@@ -5,7 +5,7 @@ sequence: 5
 title: Unit of Work
 also_known_as: [Change Tracker]
 gof: false
-intent: "Track every change made during a business transaction and commit them to the datastore as a single atomic unit — or roll them all back."
+intent: "Track every change made during a business transaction and commit them to the datastore as a single atomic unit, or roll them all back."
 frequency: medium
 difficulty: intermediate
 tags: [architecture, persistence, transaction, atomicity, consistency]
@@ -16,8 +16,8 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 ## Intent
 
 Collect all the reads and writes of one business operation into a **Unit of Work** that remembers
-what was created, modified, and deleted, and then writes them out **together** — inside a single
-transaction — on `commit`, or discards them all on `rollback`.
+what was created, modified, and deleted, and then writes them out **together**, inside a single
+transaction, on `commit`, or discards them all on `rollback`.
 
 It gives a business operation an all-or-nothing boundary. Either every change lands or none does,
 so the datastore never ends up in the half-updated state that a crash between two separate writes
@@ -90,7 +90,7 @@ Service ──uses──► UnitOfWork  { new, dirty, removed }
 - A unit of work makes a multi-object operation atomic: one commit, or a full rollback.
 - It tracks new/dirty/removed objects and flushes them in one transaction.
 - Scope it tightly to a single business operation to avoid lock and staleness problems.
-- Most ORMs already implement it as the "session"/"context" — reach for that first.
+- Most ORMs already implement it as the "session"/"context"; reach for that first.
 
 ## Implementations
 
@@ -137,7 +137,7 @@ class UnitOfWork {
 **🧠 Tradeoff** — Deferring writes into a unit and flushing them inside one `begin/commit/rollback`
 makes the transfer atomic with a small helper. In JS you're leaning on the driver's transaction
 API; the unit adds the *tracking* and a single boundary. For one two-statement operation a raw
-transaction is enough — the unit earns its keep when many repositories contribute changes.
+transaction is enough; the unit earns its keep when many repositories contribute changes.
 
 ### Node.js
 
@@ -180,7 +180,7 @@ async function withUnitOfWork(pool, work) {
 ```
 
 **🧠 Tradeoff** — Binding every write in an operation to one checked-out client and wrapping it in
-`BEGIN/COMMIT/ROLLBACK` is the idiomatic Node unit of work — the callback scopes it and `finally`
+`BEGIN/COMMIT/ROLLBACK` is the idiomatic Node unit of work: the callback scopes it and `finally`
 guarantees the client returns to the pool. It's explicit rather than tracked (you pass `tx`
 around), which is simpler to reason about but less automatic than an ORM session.
 
@@ -221,7 +221,7 @@ def unit_of_work(Session):
 ```
 
 **🧠 Tradeoff** — SQLAlchemy's `Session` already tracks new/dirty/deleted objects and flushes them
-in dependency order on `commit` — it's a textbook unit of work, so you mostly *wrap* it in a
+in dependency order on `commit`. It's a textbook unit of work, so you mostly *wrap* it in a
 context manager for a clean boundary rather than build tracking yourself. The lesson: when the ORM
 gives you a session, use it; hand-rolling change tracking duplicates a solved problem.
 
@@ -256,7 +256,7 @@ end)
 **🧠 Tradeoff** — `Ecto.Multi` is the functional take on unit of work: you *build up* a data
 structure of named operations and hand it to `Repo.transaction/1`, which runs them atomically and
 returns `{:ok, results}` or `{:error, failed_step, changes_so_far}`. Because it's a value, the unit
-is composable and inspectable before it runs — very Elixir. The cost is learning Multi's API for
+is composable and inspectable before it runs: very Elixir. The cost is learning Multi's API for
 anything beyond simple chains.
 
 ### Go
@@ -302,8 +302,8 @@ func withTx(db *sql.DB, work func(*sql.Tx) error) (err error) {
 ```
 
 **🧠 Tradeoff** — Go's `*sql.Tx` is the unit of work; the `withTx` helper (with a `defer` that
-rolls back on error or panic and commits otherwise) gives one clean boundary. It's explicit — you
-thread `tx` through every write — which is verbose but leaves the transaction scope unmistakable.
+rolls back on error or panic and commits otherwise) gives one clean boundary. It's explicit (you
+thread `tx` through every write), which is verbose but leaves the transaction scope unmistakable.
 Change *tracking* (auto-detecting dirty objects) isn't idiomatic Go; you register writes directly.
 
 ### CSharp
@@ -357,8 +357,8 @@ public sealed class UnitOfWork(DbConnection conn)
 ```
 
 **🧠 Tradeoff** — The hand-rolled unit is a list of deferred `Func<DbTransaction, Task>` writes
-flushed inside one transaction — useful when you're on raw ADO.NET or Dapper. But in .NET this
-pattern usually comes for free: EF Core's `DbContext` *is* a unit of work — it tracks added, dirty,
+flushed inside one transaction, useful when you're on raw ADO.NET or Dapper. But in .NET this
+pattern usually comes for free: EF Core's `DbContext` *is* a unit of work. It tracks added, dirty,
 and removed entities and `SaveChangesAsync` flushes them all in one transaction. Reach for that
 first; build your own only when the ORM isn't there.
 
@@ -436,9 +436,9 @@ fn main() {
 ```
 
 **🧠 Tradeoff** — The copy *is* the transaction: ops run against a clone, and only complete success
-swaps it in, so rollback is just dropping the working copy — fine in memory, while a real database
+swaps it in, so rollback is just dropping the working copy: fine in memory, while a real database
 uses the driver's transaction (sqlx and diesel both expose one). Ownership adds a nice guarantee:
-`commit(self)` consumes the unit, so a committed unit can't be reused — the type system enforces the
+`commit(self)` consumes the unit, so a committed unit can't be reused; the type system enforces the
 one-shot boundary. The boxed closures cost a heap allocation and dynamic dispatch per registered op.
 
 ### Zig
@@ -527,7 +527,7 @@ pub fn main() !void {
 do; instead the stageable writes are a tagged union, switched exhaustively. That's restrictive but
 honest: everything a unit can do is enumerated in one place, and the compiler flags any op a phase
 forgets. The two-phase commit (validate everything, then apply) buys atomicity without cloning
-state — the price is that every rule must be checkable up front, which a real database transaction
+state; the price is that every rule must be checkable up front, which a real database transaction
 doesn't require.
 
 ### Java
@@ -596,7 +596,7 @@ public class Demo {
 **🧠 Tradeoff** — In Java this pattern ships in the box: JPA's `EntityManager` (Hibernate's
 `Session`) *is* a unit of work. The persistence context tracks every managed entity, detects dirty
 state on its own, and flushes inserts, updates, and deletes in dependency order inside one
-transaction on commit — exactly the machinery this kata hand-rolls. So reach for that first; the
+transaction on commit: exactly the machinery this kata hand-rolls. So reach for that first; the
 in-memory version above is for when JPA isn't there, and on plain JDBC the boundary is a
 `Connection` with auto-commit off plus explicit `commit`/`rollback`. Note the registration API:
 `Op` is a single-method contract, so every deferred write is just a lambda.

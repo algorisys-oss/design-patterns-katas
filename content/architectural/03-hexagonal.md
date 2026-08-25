@@ -15,14 +15,14 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Make the **domain the center** of the system and surround it with **ports** — interfaces the
-domain defines — that the outside world implements as **adapters**. HTTP, the database, the
+Make the **domain the center** of the system and surround it with **ports**, interfaces the
+domain defines, that the outside world implements as **adapters**. HTTP, the database, the
 message bus, the clock: all of them are adapters plugged into ports, and none of them are visible
 to the core.
 
 The defining rule is that **dependencies point inward**. The domain depends on nothing; adapters
 depend on the domain's ports. Swap Postgres for an in-memory store, or REST for gRPC, by writing a
-new adapter — the business logic doesn't change and doesn't even know.
+new adapter; the business logic doesn't change and doesn't even know.
 
 ## The Problem
 
@@ -131,7 +131,7 @@ export const mongoOrders = {
 
 **🧠 Tradeoff** — The use case now depends on a `orders.save` *shape*, not Mongo, so the same core
 runs against a real adapter in production and a one-line fake in tests. In dynamic JS the "port" is
-just a duck-typed object — cheap to define, but nothing enforces the contract, so a mismatched
+just a duck-typed object: cheap to define, but nothing enforces the contract, so a mismatched
 adapter fails at runtime rather than compile time.
 
 ### Node.js
@@ -168,7 +168,7 @@ const smtpMailer = { send: (to, text) => transport.sendMail({ to, text }) };
 
 **🧠 Tradeoff** — Wrapping `pg` and `nodemailer` behind `users`/`mailer` ports means the notify
 use case is transport- and provider-agnostic: switch to SES or a different datastore by writing an
-adapter. You pay for a composition root that wires everything and for the wrapper objects — worth
+adapter. You pay for a composition root that wires everything and for the wrapper objects, worth
 it when providers change, overkill for a script that emails once.
 
 ### Python
@@ -208,7 +208,7 @@ class SqlOrders:                        # driven adapter
 
 **🧠 Tradeoff** — `typing.Protocol` gives a structural port with no inheritance: `SqlOrders`
 satisfies `Orders` just by having `save`, and a fake with a `save` works in tests. It's the
-cleanest expression here — real interfaces, checked by the type checker, without a class hierarchy.
+cleanest expression here: real interfaces, checked by the type checker, without a class hierarchy.
 The mapping (`to_row`) between domain and ORM models is the recurring tax.
 
 ### Elixir
@@ -249,8 +249,8 @@ end
 ```
 
 **🧠 Tradeoff** — Elixir's **behaviours** are the ports and application config picks the adapter,
-so tests swap in `Orders.InMemory` with one config line. It's idiomatic OTP — named contracts plus
-runtime configuration — and gives fast, DB-free tests. The subtlety is that compile-time adapter
+so tests swap in `Orders.InMemory` with one config line. It's idiomatic OTP (named contracts plus
+runtime configuration) and gives fast, DB-free tests. The subtlety is that compile-time adapter
 selection (`compile_env`) versus runtime selection changes how easily you swap per-test.
 
 ### Go
@@ -294,7 +294,7 @@ func (r PostgresOrders) Save(o Order) error { _, err := r.db.Exec("INSERT ...");
 ```
 
 **🧠 Tradeoff** — Go's implicit interfaces make hexagonal feel native: the core package declares
-`Orders`, and the postgres package implements it by importing the *core* — so dependencies point
+`Orders`, and the postgres package implements it by importing the *core*, so dependencies point
 inward with no wiring framework. Tests pass a struct with a `Save` method. Verbosity lives in the
 composition root in `main`, where every adapter is constructed and injected by hand.
 
@@ -352,7 +352,7 @@ public sealed class PostgresOrders(NpgsqlDataSource db) : IOrders
 core project has zero package references, so an EF or Npgsql import in the domain is a build
 error, not a code-review catch. ASP.NET's DI container is the composition root, which trims the
 wiring Go writes by hand at the cost of some indirection. For a single-method port a
-`Func<Order, Task>` would technically do — but hexagonal is about *naming* the seams, and
+`Func<Order, Task>` would technically do, but hexagonal is about *naming* the seams, and
 `IOrders` is the name.
 
 ### Rust
@@ -413,7 +413,7 @@ fn main() {
 
 **🧠 Tradeoff** — The trait is the port, and crate boundaries enforce the direction: a core crate
 whose `Cargo.toml` lists no database dependency provably can't depend on one. Rust then makes you
-pick what Go and C# hide — `PlaceOrder<O: Orders>` monomorphizes each adapter to static-dispatch
+pick what Go and C# hide: `PlaceOrder<O: Orders>` monomorphizes each adapter to static-dispatch
 code but fixes it at compile time, while `Box<dyn Orders>` lets config choose the adapter at
 runtime for a vtable hop. Ownership is a bonus at the boundary: `save` takes the `Order` by
 value, so the core hands data outward and keeps no strings attached.
@@ -482,10 +482,10 @@ pub fn main() !void {
 
 **🧠 Tradeoff** — Zig won't give you an interface, so the port is built by hand: an `*anyopaque`
 context, a function pointer, and an `@ptrCast` back on the adapter side. That's more ceremony
-than `interface`/`trait` — and more honest, because the indirection you pay is sitting right
+than `interface`/`trait`, and more honest, because the indirection you pay is sitting right
 there in the source. When every adapter is known at compile time, a comptime generic
 (`orders: anytype`) gives the same seam with static dispatch and no casts; the vtable earns its
-keep when the adapter is picked at runtime — config in production, a fake in tests, no
+keep when the adapter is picked at runtime: config in production, a fake in tests, no
 recompile. Stripped of language sugar, hexagonal's claim is plain here: a port is just a calling
 convention the core owns.
 
@@ -551,12 +551,12 @@ public class Demo {
 
 **🧠 Tradeoff** — Java's `interface` was built for exactly this seam, and putting the core in its
 own build module makes the direction enforceable: a core module with zero dependencies provably
-can't import JDBC. JPMS goes one step further — `module-info.java` exporting only the ports is
-the architecture written as code — but a Maven/Gradle module split is where most teams sensibly
+can't import JDBC. JPMS goes one step further: `module-info.java` exporting only the ports is
+the architecture written as code, but a Maven/Gradle module split is where most teams sensibly
 stop. Two modern touches earn their keep here: the `Order` record crosses the port as an immutable
 value, so no adapter can mutate core state, and a single-method port is a functional interface, so
 the test fake is a lambda instead of a stub class. The mapping tax and the hand-wired (or
-DI-container-wired) composition root remain — that part no language sugar removes.
+DI-container-wired) composition root remain, and that part no language sugar removes.
 
 ## Applications
 

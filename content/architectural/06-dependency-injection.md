@@ -15,11 +15,11 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Instead of an object reaching out and `new`-ing up the things it needs, **hand them to it** — via
+Instead of an object reaching out and `new`-ing up the things it needs, **hand them to it**: via
 its constructor, a function parameter, or configuration. The object declares *what* it depends on
 (usually as an interface); a separate place decides *which* concrete thing it gets.
 
-That move — construction pulled out of the object and up to a wiring layer — is what makes
+That move, construction pulled out of the object and up to a wiring layer, is what makes
 dependencies swappable. The same service runs against a real payment gateway in production and a
 fake in tests, with no change to the service itself.
 
@@ -83,10 +83,10 @@ Container ──creates──► OrderService ──depends on──► «Gatewa
 
 ## Key Takeaways
 
-- Push dependencies in from the outside instead of constructing them inside — that's the whole move.
+- Push dependencies in from the outside instead of constructing them inside. That's the whole move.
 - Depend on interfaces; let a single composition root choose the concretes.
 - The big everyday payoff is testability: inject a fake with no global patching.
-- You don't need a framework — a constructor parameter is dependency injection.
+- You don't need a framework: a constructor parameter is dependency injection.
 
 ## Implementations
 
@@ -127,7 +127,7 @@ const test = new OrderService({ charge: async (n) => ({ ok: true, amount: n }) }
 
 **🧠 Tradeoff** — Passing the gateway into the constructor turns an untestable class into one you
 test with a two-line fake, and lets you swap providers by changing the wiring. JS needs no DI
-framework — a constructor argument is enough — but nothing enforces the "shape," so a wrong fake
+framework (a constructor argument is enough), but nothing enforces the "shape," so a wrong fake
 fails at call time rather than compile time.
 
 ### Node.js
@@ -203,7 +203,7 @@ service = ReportService(db=FakeDB(rows), clock=FrozenClock("2026-01-01"))
 **🧠 Tradeoff** — Plain constructor injection with `Protocol`-typed parameters is idiomatic and
 enough for most Python: fakes drop in, and a `FrozenClock` makes time-dependent logic testable.
 Frameworks (`dependency-injector`, FastAPI's `Depends`) add containers and request-scoped wiring
-when an app grows — useful, but constructor injection covers the 90% case without them.
+when an app grows; useful, but constructor injection covers the 90% case without them.
 
 ### Elixir
 
@@ -236,7 +236,7 @@ end
 **🧠 Tradeoff** — Elixir "injects" through application config plus behaviours: the module looks up
 its collaborators, and each environment (or `Mox` in tests) supplies a different implementation.
 It's the community norm and keeps modules pure of hard-wired concretes. The subtlety is
-implicitness — the dependency is resolved inside the module rather than handed in — so passing deps
+implicitness (the dependency is resolved inside the module rather than handed in), so passing deps
 as function arguments is often clearer for library code.
 
 ### Go
@@ -273,7 +273,7 @@ svc := NewOrderService(NewStripeGateway(os.Getenv("STRIPE_KEY")))
 ```
 
 **🧠 Tradeoff** — Idiomatic Go DI is exactly this: depend on a small interface, accept it as a
-parameter, and wire concretes in `main`. No framework, no tags — the dependency graph is plain
+parameter, and wire concretes in `main`. No framework, no tags: the dependency graph is plain
 Go you can read top to bottom. For very large graphs, code generators (Google's `wire`) automate
 the wiring while keeping it compile-time and explicit, avoiding runtime reflection containers.
 
@@ -327,7 +327,7 @@ public sealed record Cart(int Total);
 box: `new ServiceCollection().AddSingleton<IGateway, StripeGateway>()` builds an `IServiceProvider`,
 and ASP.NET Core resolves constructor parameters from it automatically, with lifetimes (singleton,
 scoped-per-request, transient) you'd otherwise manage by hand. The catch is that a missing
-registration surfaces at startup, not compile time — the container trades visible wiring for
+registration surfaces at startup, not compile time; the container trades visible wiring for
 convenience. For a library or a small app, plain `new` in `Main` is still the clearest root.
 
 ### Rust
@@ -400,7 +400,7 @@ fn main() {
 manual wiring in `main` is the honest, standard form, not a compromise. The generic
 `OrderService<G>` monomorphizes each concrete gateway to zero-overhead calls, but the type parameter
 spreads to everything that holds the service; `Box<dyn Gateway>` flattens that to one runtime type
-at the cost of dynamic dispatch. Either way the compiler checks the entire dependency graph — a
+at the cost of dynamic dispatch. Either way the compiler checks the entire dependency graph: a
 missing or wrong dependency is a build error, not a startup surprise.
 
 ### Zig
@@ -467,11 +467,11 @@ pub fn main() !void {
 
 **🧠 Tradeoff** — `OrderService(comptime Gateway: type)` is static dependency injection: the
 compiler instantiates a service per concrete gateway, calls are direct (no vtable), and a type
-missing `charge` fails at compile time. The cost is that the dependency is part of the type —
+missing `charge` fails at compile time. The cost is that the dependency is part of the type:
 `OrderService(StripeGateway)` and `OrderService(FakeGateway)` are different types, so you can't
 swap gateways at runtime or store mixed services in one array. When you need that, reach for the
 two-field vtable idiom (`*anyopaque` context + function pointer) that `std.mem.Allocator` itself
-uses — which is Zig injecting its most important dependency, the allocator, by hand everywhere.
+uses, which is Zig injecting its most important dependency, the allocator, by hand everywhere.
 
 ### Java
 
@@ -533,12 +533,12 @@ public class Demo {
 ```
 
 **🧠 Tradeoff** — Constructor injection into a `final` field is the whole pattern, and no framework
-appears in the code above — a fake is one lambda because `Gateway` is a functional interface. What
+appears in the code above; a fake is one lambda because `Gateway` is a functional interface. What
 Java is famous for is the container layer on top: Spring, Guice, and CDI scan for components,
 resolve constructor parameters by type, and manage lifecycles (singleton, request-scoped) and
 proxies. That earns its keep in large apps, but it moves wiring errors from compile time to startup
 and hides the graph behind annotations. Telling detail: modern Spring's own advice is plain
-constructor injection — the container ends up calling the same constructor `main` would. For
+constructor injection; the container ends up calling the same constructor `main` would. For
 libraries and small services, wiring by hand in `main` stays the clearest composition root.
 
 ## Applications

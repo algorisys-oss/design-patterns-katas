@@ -15,8 +15,8 @@ languages: [javascript, node-js, python, elixir, go, csharp, rust, zig, java]
 
 ## Intent
 
-Split the system into stacked **layers** — typically presentation, application, domain, and
-infrastructure — where each layer only calls **downward**. Presentation talks to application,
+Split the system into stacked **layers** (typically presentation, application, domain, and
+infrastructure) where each layer only calls **downward**. Presentation talks to application,
 application to domain, and so on; nothing reaches back up.
 
 The one-directional dependency rule is the whole idea. It gives every concern a home, keeps a
@@ -26,7 +26,7 @@ knowing only the contract of the layer below.
 ## The Problem
 
 Without layers, responsibilities smear across the codebase. A single request handler parses HTTP,
-runs business rules, builds SQL, and formats the response — all in one function:
+runs business rules, builds SQL, and formats the response, all in one function:
 
 - **No separation of concerns** — UI, rules, and persistence tangle, so you can't change the
   database without risking the business logic.
@@ -60,7 +60,7 @@ Key Components:
 - A team needs a familiar, conventional structure everyone can navigate.
 - Concerns (UI, rules, persistence) change at different rates and should be isolated.
 - You want the business rules testable without a web server or database.
-- The domain is moderately complex — enough to warrant separating rules from plumbing.
+- The domain is moderately complex, enough to warrant separating rules from plumbing.
 
 ## Advantages and Disadvantages
 
@@ -90,7 +90,7 @@ Key Components:
 ## Key Takeaways
 
 - Layers give concerns a home; the downward-only dependency rule keeps change contained.
-- The domain should be the most isolated, testable part — no HTTP, no SQL.
+- The domain should be the most isolated, testable part: no HTTP, no SQL.
 - Map at the boundaries (DTOs) so layers don't leak each other's models.
 - When the domain must "use" infrastructure, invert the dependency with an interface.
 
@@ -185,7 +185,7 @@ router.get("/orders/:id", (req, res, next) =>
 
 **🧠 Tradeoff** — The Express route shrinks to transport; the service owns orchestration and the
 repo owns SQL, so you can unit-test the service with a stub repo and no HTTP. The price is Node's
-usual wiring — modules, a bit of dependency passing — but it keeps a growing API from becoming a
+usual wiring (modules, a bit of dependency passing), but it keeps a growing API from becoming a
 pile of fat route handlers.
 
 ### Python
@@ -235,7 +235,7 @@ def create_user(request):
 ```
 
 **🧠 Tradeoff** — Pulling rules into a pure `domain` module and the use case into `application`
-lets you test them with plain `pytest` and a fake repo — no test client, no database fixtures.
+lets you test them with plain `pytest` and a fake repo: no test client, no database fixtures.
 Python won't stop you from importing the ORM into the domain, so the discipline is on you; a
 `Protocol` for the repository keeps the domain honestly decoupled.
 
@@ -288,7 +288,7 @@ end
 **🧠 Tradeoff** — Phoenix bakes layering in: the web layer (controllers/views) is deliberately
 thin, and **contexts** hold the application+domain logic that can be tested and reused without the
 endpoint. You get the boundary as a framework convention rather than hand-rolled folders. The
-subtlety is context design — too many tiny contexts, or a "God context," both erode the benefit.
+subtlety is context design: too many tiny contexts, or a "God context," both erode the benefit.
 
 ### Go
 
@@ -334,7 +334,7 @@ func (h Handler) getOrder(w http.ResponseWriter, r *http.Request) {
 
 **🧠 Tradeoff** — Go layers by package, and its small implicit interfaces make the clean version
 natural: the domain declares the `OrderRepo` interface it needs, and the infrastructure package
-implements it — so the dependency points *inward* even though infra sits at the bottom. Wiring is
+implements it, so the dependency points *inward* even though infra sits at the bottom. Wiring is
 explicit in `main` (no container), which is verbose but leaves the dependency graph obvious.
 
 ### CSharp
@@ -381,7 +381,7 @@ public sealed class OrderService(IOrderRepo repo)
 **🧠 Tradeoff** — In C# the layers are usually separate *projects*, and that makes the rule
 mechanical: the domain project has no reference to the infrastructure project, so importing EF
 into the domain won't compile. ASP.NET's built-in DI container is the composition root Go writes
-by hand — less wiring code, but the dependency graph now lives in `AddScoped` calls rather than
+by hand: less wiring code, but the dependency graph now lives in `AddScoped` calls rather than
 in plain constructors, so it takes discipline to keep it readable.
 
 ### Rust
@@ -439,7 +439,7 @@ fn main() {
 
 **🧠 Tradeoff** — Rust layers by module (or crate), and visibility does the policing: a domain
 module that never writes `use crate::infrastructure` can't touch it, and `pub` marks exactly what
-crosses each boundary. Ownership adds a quiet bonus — `by_id` returns an *owned* `Order`, so the
+crosses each boundary. Ownership adds a quiet bonus: `by_id` returns an *owned* `Order`, so the
 domain gets a DTO by construction, never a live reference into storage. The generic
 `OrderService<R>` fixes the store at compile time; use `Box<dyn OrderRepo>` if the store must be
 chosen at runtime.
@@ -505,7 +505,7 @@ pub fn main() !void {
 
 **🧠 Tradeoff** — Zig has no interfaces, so the layer contract here is *structural*: the comptime
 generic accepts any type with a `byId` method, checked only where `OrderService(InMemoryOrders)`
-is instantiated. That's zero-cost layering, but there is no named contract to read — the "layer
+is instantiated. That's zero-cost layering, but there is no named contract to read: the "layer
 below" is whatever methods the service happens to call, so a doc comment carries the contract.
 Swapping the store at *runtime* needs the vtable idiom instead (see the hexagonal kata). Be
 honest, too: small Zig programs usually layer by file and skip the generic entirely.
@@ -575,12 +575,12 @@ public class Demo {
 
 **🧠 Tradeoff** — Java layers by package, and one build module (Maven/Gradle) per layer makes the
 rule mechanical the way C# projects do: the domain module lists no infrastructure dependency, so
-importing the JDBC driver into `OrderService` won't compile. JPMS can tighten that further — a
-`module-info.java` that exports only the domain's interfaces states the architecture in code —
+importing the JDBC driver into `OrderService` won't compile. JPMS can tighten that further: a
+`module-info.java` that exports only the domain's interfaces states the architecture in code,
 though most teams stop at build modules. This is Spring's home turf: `@Controller`, `@Service`,
 and `@Repository` are the three layers as stereotype annotations, with the container doing the
-constructor wiring `Demo` does by hand. The pattern doesn't need the framework — a constructor
-taking an interface is the whole trick — the framework just made it the default shape of Java.
+constructor wiring `Demo` does by hand. The pattern doesn't need the framework (a constructor
+taking an interface is the whole trick); the framework just made it the default shape of Java.
 
 ## Applications
 
