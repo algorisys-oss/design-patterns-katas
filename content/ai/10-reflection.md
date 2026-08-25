@@ -17,13 +17,13 @@ languages: [javascript, python, elixir, go]
 ## Intent
 
 Reflection improves an answer by making the model review its own work. Generate a draft, then ask
-the model to **critique** it against explicit criteria, then **revise** based on the critique —
+the model to **critique** it against explicit criteria, then **revise** based on the critique,
 looping until the critique finds nothing wrong or you hit a cap. Models are often better at spotting
 a flaw in a finished draft than at avoiding it in the first pass, and Reflection harnesses that gap.
 
 ## The Problem
 
-A first draft ships whatever the model produced in one pass — including the mistakes it would have
+A first draft ships whatever the model produced in one pass, including the mistakes it would have
 caught if asked to look:
 
 - A summary that missed the key caveat, code that doesn't handle the empty case, an answer that
@@ -31,7 +31,7 @@ caught if asked to look:
 - Prompting harder ("be careful, double-check everything") helps a little but still bakes the review
   into the same forward pass that made the error.
 
-Separating *generation* from *evaluation* — draft, then critique, then fix — catches errors the
+Separating *generation* from *evaluation* (draft, then critique, then fix) catches errors the
 single pass didn't, because the model now judges a concrete artifact instead of predicting the next
 token.
 
@@ -66,19 +66,19 @@ task ──▶ generate ──▶ draft ──┐
 
 ### Advantages
 - Catches errors the single pass missed, often substantially improving quality.
-- Criteria are explicit and inspectable — you can see *why* a draft was revised.
+- Criteria are explicit and inspectable: you can see *why* a draft was revised.
 - Works with a separate critic model for independent judgment.
 - The loop naturally stops when quality is reached.
 
 ### Disadvantages
 - Multiplies calls (and latency and cost) per task.
-- A self-critiquing model can be blind to its own systematic errors — a separate critic helps.
+- A self-critiquing model can be blind to its own systematic errors, so a separate critic helps.
 - Diminishing returns: after a couple of rounds, revisions rarely improve.
 - A vague critic ("make it better") produces churn without progress.
 
 ## Common Mistakes
 
-- **No iteration cap** — reflection can loop indefinitely chasing marginal gains. Cap it (2–3 rounds
+- **No iteration cap** — reflection can loop indefinitely chasing marginal gains. Cap it (2-3 rounds
   is usually enough).
 - **Vague critique prompts** — "improve this" yields aimless rewrites. Give the critic concrete
   criteria and ask for *specific, actionable* feedback.
@@ -91,7 +91,7 @@ task ──▶ generate ──▶ draft ──┐
 
 - Separate generation from evaluation; the model critiques better than it self-corrects in one pass.
 - Give the critic explicit criteria and demand actionable feedback.
-- Always cap the loop — returns diminish fast.
+- Always cap the loop; returns diminish fast.
 - Use an independent critic model for high-stakes or blind-spot-prone work.
 
 ## Implementations
@@ -132,7 +132,7 @@ const critique = (task, draft) =>
 ```
 
 **🧠 Tradeoff** — The critic returns *structured* feedback (`{ pass, feedback }`) so the loop can branch
-on `pass` and feed concrete `feedback` into the revision — not a vague "make it better." `maxRounds` caps
+on `pass` and feed concrete `feedback` into the revision, not a vague "make it better." `maxRounds` caps
 the cost. The buy is real quality on hard tasks; the cost is up to `maxRounds + 1` calls per task, so
 gate reflection to work that's worth it.
 
@@ -170,7 +170,7 @@ def write(task: str, max_rounds: int = 3) -> str:
 
 **🧠 Tradeoff** — Generate and revise are the same `call_model` with a different prompt; the critic is a
 separate structured call. Passing a *different* model to `critique` turns self-reflection into
-independent judgment with a one-line change — the seam is already there. Keep the criteria list concrete;
+independent judgment with a one-line change; the seam is already there. Keep the criteria list concrete;
 it's what makes the feedback actionable instead of churny.
 
 ### Elixir
@@ -209,7 +209,7 @@ end
 ```
 
 **🧠 Tradeoff** — The loop is recursion with the round budget as the base case, and `case` on the
-critique's shape branches pass vs. revise — the guardrail is structural. Swapping `critique` to call a
+critique's shape branches pass vs. revise: the guardrail is structural. Swapping `critique` to call a
 stronger model is a one-line change. The recursive form reads naturally once you see the round count as
 "fuel," which is the idiomatic Elixir way to bound a loop.
 
@@ -248,8 +248,8 @@ func Critique(task, draft string) CritiqueResult {
 
 **🧠 Tradeoff** — A bounded `for` loop over rounds with an early `break` on pass. `Critique` returns a
 typed `CritiqueResult`, so the branch is on a real field, not parsed prose. Making the critic a separate,
-stronger model is a config change to `Critique`. The explicit loop makes the cost visible — every round
-is a call — which is the right thing to see when deciding whether reflection is worth it here.
+stronger model is a config change to `Critique`. The explicit loop makes the cost visible (every round
+is a call) which is the right thing to see when deciding whether reflection is worth it here.
 
 ## Applications
 

@@ -60,22 +60,22 @@ question ──▶ embed ──▶ retriever ──▶ top-k chunks
 
 ## When to Use
 
-- The answer depends on data the model wasn't trained on — internal docs, recent events, a
+- The answer depends on data the model wasn't trained on: internal docs, recent events, a
   specific user's records.
 - You need citations or provenance for the answer.
 - The knowledge base is too large to fit (or too expensive to send) in every prompt.
-- Facts change often and you can't retrain — update the store, not the model.
+- Facts change often and you can't retrain, so update the store, not the model.
 
 ## Advantages and Disadvantages
 
 ### Advantages
 - Grounds answers in your data and makes them citable.
 - Knowledge updates are a store write, not a retrain or a fine-tune.
-- Sends only the relevant few chunks — cheaper and sharper than stuffing everything.
+- Sends only the relevant few chunks, cheaper and sharper than stuffing everything.
 - The retriever is swappable (keyword, vector, hybrid) behind one interface.
 
 ### Disadvantages
-- Answer quality is capped by retrieval quality — miss the right chunk and the model can't
+- Answer quality is capped by retrieval quality: miss the right chunk and the model can't
   recover ("garbage in, garbage out").
 - Adds moving parts: chunking, embedding, a vector store, and their failure modes.
 - Chunk boundaries can split the very fact you needed across two chunks.
@@ -97,12 +97,12 @@ question ──▶ embed ──▶ retriever ──▶ top-k chunks
 - RAG = retrieve the relevant few, then generate *from that context*.
 - The retriever is an interface; the vector store is one implementation.
 - Instruct the model to stay grounded and to admit when the answer isn't in the context.
-- Answer quality is retrieval quality — invest there before touching the prompt.
+- Answer quality is retrieval quality, so invest there before touching the prompt.
 
 ## Implementations
 
-We model the two boundaries as plain functions — `embed(text)` turns text into a vector, and
-`callModel(prompt)` is the LLM call — so each language shows the *pattern's* structure, not SDK
+We model the two boundaries as plain functions: `embed(text)` turns text into a vector, and
+`callModel(prompt)` is the LLM call, so each language shows the *pattern's* structure, not SDK
 boilerplate. The naive version answers from the model's memory; the idiomatic version retrieves
 first, then grounds the generation.
 
@@ -191,7 +191,7 @@ def answer(question: str, retriever: Retriever) -> str:
 **🧠 Tradeoff** — `Retriever` as a `Protocol` types the seam without a base class: any object with
 `retrieve` satisfies it, so a `KeywordRetriever` or a pgvector-backed one drops in structurally.
 That's the Pythonic way to make the retriever swappable. The judgment call is `k` and the
-grounding instruction — both matter more to answer quality than the code around them.
+grounding instruction; both matter more to answer quality than the code around them.
 
 ### Elixir
 
@@ -234,7 +234,7 @@ end
 
 **🧠 Tradeoff** — Elixir has no vector-DB SDK to hide behind, so the pattern shows as a pure
 pipeline: retrieve, join, generate, each a testable function. For a real corpus you'd embed with
-Bumblebee and store vectors in Postgres via `pgvector`, but the shape is the same — a `retrieve/3`
+Bumblebee and store vectors in Postgres via `pgvector`, but the shape is the same: a `retrieve/3`
 function the pipeline calls. If you need a named contract, a `behaviour` with `retrieve/3` lets you
 swap implementations; for a single retriever the plain function is leaner.
 
@@ -283,7 +283,7 @@ func Answer(question string, r Retriever) string {
 ```
 
 **🧠 Tradeoff** — Go's implicit interface makes the retriever seam free: `Answer` takes a
-`Retriever`, and any type with `Retrieve` satisfies it — no declaration, so a keyword or pgvector
+`Retriever`, and any type with `Retrieve` satisfies it with no declaration, so a keyword or pgvector
 retriever swaps in without touching `Answer`. There's no first-party Claude SDK for Go, so
 `CallModel` is a plain HTTP POST to the Messages API; that boundary is exactly where the interface
 earns its keep, keeping the transport out of the pattern.

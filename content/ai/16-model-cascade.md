@@ -19,7 +19,7 @@ languages: [javascript, python, elixir, go]
 A Model Cascade sends each request to the cheapest model that can handle it, escalating only when
 needed. Try a small, fast model first; if its answer clears a confidence bar, ship it; if not, fall
 back to a stronger, pricier model. Most requests are easy and the cheap model nails them, so you pay
-premium prices only for the hard minority — cutting cost and latency without capping quality.
+premium prices only for the hard minority, cutting cost and latency without capping quality.
 
 ## The Problem
 
@@ -30,7 +30,7 @@ Picking one model tier for everything is wrong both ways:
 - **Always the cheap model** — the small model handles the easy majority but botches the genuinely
   hard requests, and there's no path to recover.
 
-The requests differ in difficulty, so the model should too — but you don't know a request's
+The requests differ in difficulty, so the model should too, but you don't know a request's
 difficulty until you try. A cascade tries cheap first and escalates on evidence.
 
 ## Structure
@@ -61,15 +61,15 @@ request ──▶ cheap model ──▶ confident? ──yes──▶ answer
 ## Advantages and Disadvantages
 
 ### Advantages
-- Big cost and latency savings — the cheap model absorbs the easy majority.
-- No quality cap — hard requests still reach the strong model.
+- Big cost and latency savings: the cheap model absorbs the easy majority.
+- No quality cap: hard requests still reach the strong model.
 - Doubles as resilience: escalate on the cheap model's error, timeout, or rate limit.
-- Tiers are configurable — add, reorder, or swap models without touching callers.
+- Tiers are configurable: add, reorder, or swap models without touching callers.
 
 ### Disadvantages
 - A bad confidence gate is the whole risk: too lax ships wrong cheap answers; too strict escalates
   everything and saves nothing.
-- Escalated requests pay *both* models — worst case is more expensive than going strong first.
+- Escalated requests pay *both* models, so the worst case is more expensive than going strong first.
 - More complexity than a single call; the gate is another thing to build and calibrate.
 - Getting a reliable confidence signal from an LLM is genuinely hard.
 
@@ -87,9 +87,9 @@ request ──▶ cheap model ──▶ confident? ──yes──▶ answer
 
 ## Key Takeaways
 
-- Try cheap first, escalate on a confidence (or failure) signal — pay premium only for the hard tail.
+- Try cheap first, escalate on a confidence (or failure) signal, and pay premium only for the hard tail.
 - The gate is the crux: calibrate false-accept vs. escalation rate on real traffic.
-- Escalation pays both models — watch the escalation rate against break-even.
+- Escalation pays both models, so watch the escalation rate against break-even.
 - The same structure handles fallback on error, rate limit, and refusal.
 
 ## Implementations
@@ -130,7 +130,7 @@ async function answer(question, confident = defaultGate) {
 ```
 
 **🧠 Tradeoff** — The tier list plus a pluggable `confident` gate is the whole pattern: accept a tier's
-answer or fall through to the next, treating an *error* as an automatic escalation. The gate is the crux —
+answer or fall through to the next, treating an *error* as an automatic escalation. The gate is the crux:
 a schema check or a verifier model is far better than self-reported confidence. Watch the escalation rate:
 past break-even, escalated requests that pay two models cost more than going strong-first.
 
@@ -163,7 +163,7 @@ def answer(question: str, confident=default_gate) -> str:
 
 **🧠 Tradeoff** — A tier list and an injected gate; escalation happens on both a failed gate and a caught
 error, folding the cost cascade and the resilience [[circuit-breaker]]/[[retry]] behavior into one loop.
-`confident` is where the engineering lives — agreement across samples, a validator, or an
+`confident` is where the engineering lives: agreement across samples, a validator, or an
 [[llm-as-judge]] beats "are you sure?". Log which tier answered to keep the escalation rate honest.
 
 ### Elixir
@@ -198,7 +198,7 @@ end
 ```
 
 **🧠 Tradeoff** — `Enum.reduce_while` walks the tiers, `{:halt, res}` accepting on the gate and `{:cont, _}`
-escalating on low confidence or a rescued failure — the accumulator carries the last attempt as the floor.
+escalating on low confidence or a rescued failure; the accumulator carries the last attempt as the floor.
 The tier functions are values in a module attribute, so reordering or adding a model is a one-line change.
 The `try_tier` rescue folds error-escalation into the same loop, the resilience half of the pattern.
 
@@ -237,7 +237,7 @@ func Answer(question string, confident func(string, string) bool) string {
 
 **🧠 Tradeoff** — A `[]Model` (each a `func(string) (string, error)`) tried in order, with an injected
 `confident` gate. The `err != nil` branch escalates on failure, unifying the cost cascade with fallback
-resilience. It's plain and testable — add a tier by appending to the slice. The real work, in every
+resilience. It's plain and testable: add a tier by appending to the slice. The real work, in every
 language, is the confidence gate: a cheap verifiable check calibrated on real traffic, not a self-assessment.
 
 ## Applications

@@ -17,7 +17,7 @@ languages: [javascript, python, elixir, go]
 ## Intent
 
 A Router looks at an incoming request, decides what *kind* it is, and dispatches it to the handler
-built for that kind — a specialized prompt, a particular model, a tool, a sub-agent, or a canned
+built for that kind: a specialized prompt, a particular model, a tool, a sub-agent, or a canned
 response. One entry point, many routes. It's how a system serves a diverse mix of requests without
 forcing every one through the same expensive, do-everything path.
 
@@ -65,12 +65,12 @@ request ──▶ router (classify) ──▶ route key
 
 ### Advantages
 - Each route is focused and easy to optimize independently.
-- Cost and latency drop — cheap routes handle the easy majority.
+- Cost and latency drop: cheap routes handle the easy majority.
 - New categories are new routes; existing ones are untouched (open for extension).
 - The classification is a clear, inspectable decision point.
 
 ### Disadvantages
-- A misclassification sends the request to the wrong handler — routing quality caps everything.
+- A misclassification sends the request to the wrong handler, so routing quality caps everything.
 - The router is another call (latency) and another thing to maintain.
 - Too many fine-grained routes get hard to keep distinct and to classify reliably.
 - A catch-all default can silently swallow requests that deserved a real route.
@@ -133,7 +133,7 @@ async function handle(request) {
 
 **🧠 Tradeoff** — Routes as a name→handler map make dispatch a table lookup, and classification runs on
 the *cheap* model so routing is nearly free. The `routes[route] ? ... : "small_talk"` guard guarantees a
-default. Adding a category is one map entry — the router is open for extension. The risk is
+default. Adding a category is one map entry, so the router is open for extension. The risk is
 misclassification; keep the categories distinct and monitor the default bucket.
 
 ### Python
@@ -165,7 +165,7 @@ def handle(request: str) -> str:
 ```
 
 **🧠 Tradeoff** — A dict of handlers is the dispatch table; `classify` uses the cheap model and falls back
-to a default when the label is unknown. This is [[content-based-router]] with an LLM classifier — same
+to a default when the label is unknown. This is [[content-based-router]] with an LLM classifier: same
 shape as routing a message by a field, except the "field" is inferred. To route on similarity instead of
 a model call, replace `classify` with a nearest-centroid embedding lookup; the dispatch is unchanged.
 
@@ -202,7 +202,7 @@ end
 ```
 
 **🧠 Tradeoff** — A map of route keys to function values, with `Map.get/3`'s third argument giving the
-default route for free — a clean expression of "dispatch, with a fallback." Classification is a piped
+default route for free, a clean expression of "dispatch, with a fallback." Classification is a piped
 cheap-model call. If routing rules grow branchy (priority, tenant, fallback chains), a
 [[chain-of-responsibility]] of handlers each deciding "is this mine?" scales better than one classifier.
 
@@ -241,7 +241,7 @@ func Handle(request string) string {
 
 **🧠 Tradeoff** — A `map[string]func(string) string` is the dispatch table; the `_, ok` check enforces the
 default so an unknown label can't panic on a nil handler. Classification stays on the cheap model. It's
-plain and testable — swap `classify` for an embedding-based router without touching dispatch. The whole
+plain and testable: swap `classify` for an embedding-based router without touching dispatch. The whole
 pattern is "one entry, many focused exits, cheap decision in the middle."
 
 ## Applications

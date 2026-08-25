@@ -6,7 +6,7 @@ title: Guardrails
 also_known_as: [Input/Output Validation, Content Filtering, Safety Rails]
 gof: false
 kind: pattern
-intent: "Validate and filter inputs and outputs against policy — schema, content, safety, PII — before they reach the model or the user."
+intent: "Validate and filter inputs and outputs against policy (schema, content, safety, PII) before they reach the model or the user."
 frequency: high
 difficulty: intermediate
 tags: [ai, llm, guardrails, safety, validation, security]
@@ -33,7 +33,7 @@ A raw model call is an open door in both directions:
   malformed data that breaks downstream code, or PII it shouldn't repeat. Shipped straight to the
   user, any of these is an incident.
 
-Wrapping the call — check input, then generate, then check output — turns an unbounded surface into
+Wrapping the call (check input, then generate, then check output) turns an unbounded surface into
 a controlled one.
 
 ## Structure
@@ -71,7 +71,7 @@ input ──▶ input guards ──▶ model ──▶ output guards ──▶ d
 
 ### Disadvantages
 - Every guard adds latency (and LLM-based guards add cost).
-- Over-strict guards produce false positives — blocking legitimate requests frustrates users.
+- Over-strict guards produce false positives: blocking legitimate requests frustrates users.
 - Guards are not perfect; a determined injection can still slip through. Defense in depth, not a wall.
 - More components to build, test, and keep aligned with policy.
 
@@ -90,8 +90,8 @@ input ──▶ input guards ──▶ model ──▶ output guards ──▶ d
 ## Key Takeaways
 
 - Guard input *and* output; the model sits between two checkpoints.
-- Real guards run outside the model — self-guarding via the prompt is not enough.
-- Guards can block, redact, or rewrite — not just reject.
+- Real guards run outside the model; self-guarding via the prompt is not enough.
+- Guards can block, redact, or rewrite, not just reject.
 - Compose small guards in a chain; log every block; assume defense in depth, not perfection.
 
 ## Implementations
@@ -139,7 +139,7 @@ async function ask(input) {
 ```
 
 **🧠 Tradeoff** — Guards are uniform `(value) → { ok, value?, reason? }` functions, so the chain is a
-plain loop that blocks on the first failure and threads transforms (redaction) forward — a
+plain loop that blocks on the first failure and threads transforms (redaction) forward: a
 [[chain-of-responsibility]] where a handler can stop the flow. Adding a guard is one array entry.
 Each guard costs latency (LLM-based ones cost tokens too); order the cheap deterministic checks first
 so expensive judge calls only run on inputs that passed them.
@@ -184,7 +184,7 @@ def ask(user_input: str) -> str:
 
 **🧠 Tradeoff** — Each guard is a callable returning a `Result`; the chain short-circuits on the first
 block. Deterministic guards (regex PII, schema) are cheap; safety and groundedness guards are
-[[llm-as-judge]] calls — put the cheap ones first. The uniform interface means a rules-based guard and a
+[[llm-as-judge]] calls, so put the cheap ones first. The uniform interface means a rules-based guard and a
 model-based guard compose identically, which is the whole point.
 
 ### Elixir
@@ -227,7 +227,7 @@ end
 **🧠 Tradeoff** — `Enum.reduce_while` is the idiomatic short-circuiting chain: guards run in order and
 `{:halt, {:block, _}}` stops at the first block, threading transformed values through `{:cont, {:ok, _}}`.
 The outer `with` composes the input gate, the model call, and the output gate, falling to `refuse` on any
-block. Guards as function values in a list make the chain trivially reorderable — the reduce is the whole engine.
+block. Guards as function values in a list make the chain trivially reorderable; the reduce is the whole engine.
 
 ### Go
 
@@ -273,9 +273,9 @@ func Ask(input string) string {
 ```
 
 **🧠 Tradeoff** — A `Guard` is a `func(string) (string, error)`: return the transformed value to pass, an
-error to block. The chain loops and stops at the first error — Go's error return *is* the block signal, so
+error to block. The chain loops and stops at the first error: Go's error return *is* the block signal, so
 no special result type is needed. Ordering deterministic guards before LLM-based ones keeps the expensive
-checks off inputs that already failed cheaply. Wrapping `CallModel` this way is also a [[decorator]] — behavior added around the core call without changing it.
+checks off inputs that already failed cheaply. Wrapping `CallModel` this way is also a [[decorator]]: behavior added around the core call without changing it.
 
 ## Applications
 

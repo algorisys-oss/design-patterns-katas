@@ -6,7 +6,7 @@ title: Memory
 also_known_as: [Agent Memory, Short-Term & Long-Term Memory, Context Management]
 gof: false
 kind: pattern
-intent: "Give an agent memory beyond one context window — a rolling short-term summary and a retrievable long-term store — instead of resending everything."
+intent: "Give an agent memory beyond one context window (a rolling short-term summary and a retrievable long-term store) instead of resending everything."
 frequency: medium
 difficulty: advanced
 tags: [ai, llm, memory, context, state]
@@ -17,8 +17,8 @@ languages: [javascript, python, elixir, go]
 ## Intent
 
 Memory lets an agent remember across a long conversation and across sessions, without stuffing the
-entire history into every prompt. It splits into two: **short-term memory** — a rolling, compacted
-view of the current conversation that fits the context window — and **long-term memory** — a
+entire history into every prompt. It splits into two. **Short-term memory** is a rolling, compacted
+view of the current conversation that fits the context window; **long-term memory** is a
 persistent store of facts and past interactions, *retrieved* into the prompt only when relevant.
 
 The model itself is stateless. Memory is the machinery around it that makes an agent feel like it
@@ -63,18 +63,18 @@ turn ──▶ prompt = recent turns + running summary + retrieved facts ──�
 - Conversations run long enough to exceed the context window.
 - The agent must remember facts across sessions (preferences, prior decisions, user profile).
 - Resending full history is too costly or slow.
-- Different information has different lifetimes — some is turn-local, some is permanent.
+- Different information has different lifetimes: some is turn-local, some is permanent.
 
 ## Advantages and Disadvantages
 
 ### Advantages
 - Conversations and agents that outlast a single context window.
-- Cost and latency stay bounded — you send a compacted view, not the full transcript.
+- Cost and latency stay bounded: you send a compacted view, not the full transcript.
 - Durable facts persist across sessions, so the agent doesn't re-ask.
 - Retrieval keeps the prompt focused on what's relevant *now*.
 
 ### Disadvantages
-- Compaction is lossy — summarizing can drop a detail that later mattered.
+- Compaction is lossy: summarizing can drop a detail that later mattered.
 - Deciding *what* to persist and *when* to retrieve is genuinely hard and app-specific.
 - Two stores (short and long) add moving parts and consistency concerns.
 - Stale or wrong long-term memories poison future answers.
@@ -94,10 +94,10 @@ turn ──▶ prompt = recent turns + running summary + retrieved facts ──�
 
 ## Key Takeaways
 
-- Short-term memory is compaction; long-term memory is retrieval — two mechanisms.
+- Short-term memory is compaction; long-term memory is retrieval. Two mechanisms.
 - Keep recent turns verbatim, summarize the tail, retrieve durable facts on demand.
 - Curate what you persist; long-term memory is facts, not a transcript dump.
-- Support correcting and expiring memories — a wrong one poisons every future answer.
+- Support correcting and expiring memories: a wrong one poisons every future answer.
 
 ## Implementations
 
@@ -156,9 +156,9 @@ class Memory {
 ```
 
 **🧠 Tradeoff** — Recent turns stay verbatim, older ones fold into a rolling `summary` when the buffer
-exceeds `budget`, and long-term facts are *retrieved* per turn — the two mechanisms, side by side. The
+exceeds `budget`, and long-term facts are *retrieved* per turn: the two mechanisms, side by side. The
 prompt stays bounded regardless of conversation length. The cost is a compaction call now and then plus
-the retrieval, and the judgment of what `write` should persist — the genuinely hard part is curation, not code.
+the retrieval, and the judgment of what `write` should persist; the genuinely hard part is curation, not code.
 
 ### Python
 
@@ -208,7 +208,7 @@ class Memory:
 **🧠 Tradeoff** — The class holds both memories; `store` is injected so short-term (compaction) and
 long-term (a vector store, Redis, or the provider's memory tool) evolve independently. Keeping the last
 few turns verbatim while summarizing the tail is the standard balance between fidelity and budget. The
-Anthropic memory tool and server-side compaction can own pieces of this — the pattern is the same shape.
+Anthropic memory tool and server-side compaction can own pieces of this; the pattern is the same shape.
 
 ### Elixir
 
@@ -253,7 +253,7 @@ end
 
 **🧠 Tradeoff** — A GenServer *is* the memory: an [[actor]] that owns its `recent`/`summary`/`store`
 state and processes `say` messages serially, so there's no shared mutable history to race on. Compaction
-is a guarded private function — the `when length(r) > b` clause fires it only over budget. This is the
+is a guarded private function: the `when length(r) > b` clause fires it only over budget. This is the
 most natural home for agent memory in Elixir: one process per conversation, state encapsulated.
 
 ### Go
@@ -307,7 +307,7 @@ func (m *Memory) compact() {
 
 **🧠 Tradeoff** — `Memory` holds both stores; `Store` is a small interface (`Retrieve`, `Write`) so the
 long-term backend swaps freely. The compaction slice-arithmetic keeps the last four turns verbatim.
-This struct isn't goroutine-safe as written — a chat server would guard `Say` with a mutex or run one
+This struct isn't goroutine-safe as written: a chat server would guard `Say` with a mutex or run one
 `Memory` per goroutine, the Go equivalent of the Elixir actor's serial processing.
 
 ## Applications

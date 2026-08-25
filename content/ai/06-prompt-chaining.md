@@ -17,7 +17,7 @@ languages: [javascript, python, elixir, go]
 ## Intent
 
 Prompt Chaining decomposes a hard task into a pipeline of small, focused model calls. Each step does
-one thing — extract, then classify, then draft, then format — and passes its output to the next.
+one thing (extract, then classify, then draft, then format) and passes its output to the next.
 Each step is easier to prompt, cheaper to run at the right model size, and simple to test in
 isolation, so the whole is more reliable than one prompt asked to do everything at once.
 
@@ -27,7 +27,7 @@ The instinct is to write one mega-prompt: "read this email, extract the customer
 its urgency, look up the relevant policy, draft a reply, and format it as JSON." The model tries to
 do all five in one pass and does each of them a little worse:
 
-- Errors compound silently — a misread issue produces a wrong classification produces a wrong reply,
+- Errors compound silently: a misread issue produces a wrong classification produces a wrong reply,
   with no place to catch it.
 - You can't tell *which* sub-task failed when the output is bad.
 - You can't insert a check, a retry, or a human between steps.
@@ -63,7 +63,7 @@ input ──▶ step 1 ──▶ step 2 ──▶ step 3 ──▶ output
 
 ### Advantages
 - Each step is simpler to prompt and easier to get right.
-- Failures are localized — you know which stage broke.
+- Failures are localized: you know which stage broke.
 - Gates enable validation, retries, and human-in-the-loop between steps.
 - Right-size the model per step; cheap steps don't pay for the expensive model.
 
@@ -88,7 +88,7 @@ input ──▶ step 1 ──▶ step 2 ──▶ step 3 ──▶ output
 - Decompose a hard task into focused steps; each is easier and testable.
 - Thread *structured* output between steps, not prose.
 - Gate critical steps to catch failures before they propagate.
-- Chain only when it helps — over-decomposition is its own cost.
+- Chain only when it helps; over-decomposition is its own cost.
 
 ## Implementations
 
@@ -125,7 +125,7 @@ async function handle(email) {
 
 **🧠 Tradeoff** — Three named steps, each a focused call passing *structured* results forward, with a
 gate before the expensive draft. Each step is unit-testable with a fake `callModel`. The cost is three
-round trips instead of one — worth it when the single prompt was unreliable; overkill when it wasn't.
+round trips instead of one, worth it when the single prompt was unreliable; overkill when it wasn't.
 
 ### Python
 
@@ -158,7 +158,7 @@ def handle(email: str) -> str:
 
 **🧠 Tradeoff** — Plain functions compose the chain; typed structured returns make each seam explicit
 and testable. Because steps are ordinary functions, wrapping the pipeline in `functools.reduce` over a
-step list, or parallelizing independent steps with `asyncio.gather`, is a small change. Keep the gate —
+step list, or parallelizing independent steps with `asyncio.gather`, is a small change. Keep the gate;
 it's what stops a bad classification from producing a confidently-wrong reply.
 
 ### Elixir
@@ -189,7 +189,7 @@ end
 ```
 
 **🧠 Tradeoff** — The `with` chain *is* the pipeline: each step returns `{:ok, _}` or `{:error, _}`, and
-the guard `when level != "unknown"` is the gate expressed as a pattern — a mismatch falls to `else`.
+the guard `when level != "unknown"` is the gate expressed as a pattern, and a mismatch falls to `else`.
 This is the most natural fit of any language, because Elixir's pipeline-and-`with` idiom was built for
 "a sequence of steps, any of which can fail." No exceptions, just data.
 
@@ -224,7 +224,7 @@ func Handle(email string) (string, error) {
 
 **🧠 Tradeoff** — Go has no pipeline sugar, so the chain is explicit: each step returns a value and an
 error, checked and wrapped so a failure names its stage. It's more verbose than the `with` form, but
-the verbosity *is* the gate — every seam is a visible decision point. For a dynamic step list, define a
+the verbosity *is* the gate: every seam is a visible decision point. For a dynamic step list, define a
 `type Step func(any) (any, error)` and fold over a slice; for a fixed chain, the straight-line form is
 clearest.
 

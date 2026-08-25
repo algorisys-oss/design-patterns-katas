@@ -17,7 +17,7 @@ languages: [javascript, python, elixir, go]
 ## Intent
 
 Tool Use is the mechanism that lets a model *do* things instead of just talk. You declare a set of
-tools — each a name, a description, and a typed input schema. The model, when it needs one, emits a
+tools, each a name, a description, and a typed input schema. The model, when it needs one, emits a
 structured **tool call**; your runtime executes it and returns the result; the model continues with
 that result in hand. It's how an LLM reaches a database, an API, a calculator, or your own functions.
 
@@ -29,8 +29,8 @@ names an action, how you run it, and how the result flows back.
 A bare model is sealed off from everything real:
 
 - It can't fetch the current price, look up a record, send an email, or run a calculation.
-- The tempting hack — "tell the model to output `ACTION: search(query)` and parse it from the prose"
-  — is exactly the fragile string-scraping that [[structured-output]] exists to kill. The model
+- The tempting hack ("tell the model to output `ACTION: search(query)` and parse it from the prose")
+  is exactly the fragile string-scraping that [[structured-output]] exists to kill. The model
   wraps it in a sentence, misspells the tool name, or malforms the args, and your parser breaks.
 
 Tool Use replaces the hack with a first-class, typed protocol: the provider guarantees a
@@ -59,21 +59,21 @@ tools ──▶ model ──▶ tool_call { name, input, id }
 
 - The model needs live data or must take an action (query, fetch, compute, send).
 - You want typed, validated arguments to your functions, not parsed prose.
-- You're building an agent — Tool Use is the substrate the [[react]] loop runs on.
+- You're building an agent: Tool Use is the substrate the [[react]] loop runs on.
 - You need to gate, log, or audit the actions the model takes.
 
 ## Advantages and Disadvantages
 
 ### Advantages
-- Typed, validated arguments — no prose parsing (it's [[structured-output]] for actions).
+- Typed, validated arguments, with no prose parsing (it's [[structured-output]] for actions).
 - Each tool call is a first-class object you can log, gate, and replay (a [[command]]).
-- New capabilities are new tools — the model surface grows without prompt rewrites.
+- New capabilities are new tools, so the model surface grows without prompt rewrites.
 - Clear boundary between "the model decides" and "your code executes."
 
 ### Disadvantages
-- A large or overlapping tool set confuses the model — it picks the wrong one.
+- A large or overlapping tool set confuses the model, and it picks the wrong one.
 - Tools with side effects are real actions; an unguarded destructive tool is a liability.
-- Descriptions are load-bearing prompt engineering — vague ones get misused.
+- Descriptions are load-bearing prompt engineering: vague ones get misused.
 - The model can hallucinate arguments; validate before executing.
 
 ## Common Mistakes
@@ -91,7 +91,7 @@ tools ──▶ model ──▶ tool_call { name, input, id }
 
 ## Key Takeaways
 
-- Tool Use is structured output for *actions* — a typed call the runtime dispatches.
+- Tool Use is structured output for *actions*: a typed call the runtime dispatches.
 - Descriptions decide selection; keep the set small and each tool distinct.
 - Every tool call is a Command: loggable, gate-able, replayable.
 - Validate arguments and gate side effects; tool output is untrusted.
@@ -137,7 +137,7 @@ async function dispatch(call) {
 **🧠 Tradeoff** — Tools as data (`{ description, schema, run }`) make the registry a dispatch table; the
 provider guarantees a well-formed `tool_use` block, so `dispatch` never parses prose. `validate` before
 `run` is the guard against hallucinated arguments. The cost is that descriptions and the tool set are
-now prompt engineering you must tune — but that's the real work, exposed instead of hidden in a regex.
+now prompt engineering you must tune, but that's the real work, exposed instead of hidden in a regex.
 
 ### Python
 
@@ -222,7 +222,7 @@ end
 
 **🧠 Tradeoff** — Tools are a map to a struct holding a `run` function value; `dispatch` pattern-matches
 the call and `with` threads validation before execution. If you want a named contract per tool, a
-`behaviour` with `run/1` and `schema/0` callbacks lets each tool be its own module — cleaner when tools
+`behaviour` with `run/1` and `schema/0` callbacks lets each tool be its own module, which is cleaner when tools
 grow logic. For a handful, the map-of-functions is leaner. There's no Claude SDK here, so the tool-call
 protocol rides on the raw HTTP `tools` field.
 
@@ -272,7 +272,7 @@ func Dispatch(call ToolCall) (string, error) {
 
 **🧠 Tradeoff** — A `Tool` struct with a `Run` func field and a name→`Tool` map is the dispatch table; the
 `(string, error)` returns make validation and unknown-tool failures explicit and un-ignorable. Go has no
-tool-runner, so `Dispatch` is the loop's act step — exactly where you'd add a permission check for a
+tool-runner, so `Dispatch` is the loop's act step: exactly where you'd add a permission check for a
 destructive tool. The `any`-typed args are the seam where the model's untyped output meets your typed code;
 validate there.
 

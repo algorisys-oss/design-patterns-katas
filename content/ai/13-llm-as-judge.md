@@ -6,7 +6,7 @@ title: LLM-as-Judge
 also_known_as: [Model-Graded Evaluation, AI Evaluator]
 gof: false
 kind: pattern
-intent: "Use a model to evaluate outputs against a rubric — scoring, comparing, or gating — where no deterministic check exists."
+intent: "Use a model to evaluate outputs against a rubric (scoring, comparing, or gating) where no deterministic check exists."
 frequency: high
 difficulty: intermediate
 tags: [ai, llm, evaluation, judge, quality, testing]
@@ -16,8 +16,8 @@ languages: [javascript, python, elixir, go]
 
 ## Intent
 
-LLM-as-Judge uses one model to evaluate another's output. When there's no exact-match test — is this
-summary faithful? is this answer helpful? which of two replies is better? — you give a judge model a
+LLM-as-Judge uses one model to evaluate another's output. When there's no exact-match test (is this
+summary faithful? is this answer helpful? which of two replies is better?) you give a judge model a
 **rubric** and a candidate, and it returns a score, a verdict, or a preference. It's how you evaluate
 open-ended generation at a scale humans can't, and it powers evals, [[reflection]], and output
 [[guardrails]].
@@ -33,7 +33,7 @@ Most LLM output can't be checked with `==`:
 - **The criteria are semantic** — faithfulness, relevance, tone, safety are judgments about meaning,
   exactly what a model is good at and a regex is not.
 
-A model, given a clear rubric, can render these judgments consistently and cheaply — turning
+A model, given a clear rubric, can render these judgments consistently and cheaply, turning
 "quality" into a measurable, automatable signal.
 
 ## Structure
@@ -56,7 +56,7 @@ reference ─┘        │
 ## When to Use
 
 - Evaluating open-ended output where no deterministic check works.
-- Running evals at scale — regression testing prompts, comparing model versions.
+- Running evals at scale: regression testing prompts, comparing model versions.
 - Gating output before it reaches a user (as a [[guardrails]] check).
 - Ranking or selecting among several candidate generations.
 
@@ -64,20 +64,20 @@ reference ─┘        │
 
 ### Advantages
 - Evaluates semantic quality that exact-match and n-gram metrics miss.
-- Scales past human grading — thousands of judgments, on every change.
+- Scales past human grading: thousands of judgments, on every change.
 - The rubric is explicit and the judge returns reasoning you can audit.
 - One judge serves eval, reflection, and guardrails behind one interface.
 
 ### Disadvantages
-- The judge has biases — position bias (favors the first option), length bias (favors longer),
+- The judge has biases: position bias (favors the first option), length bias (favors longer),
   self-preference (favors its own model family).
 - A vague rubric produces noisy, inconsistent scores.
-- It's an approximation of human judgment, not a replacement — calibrate against human labels.
+- It's an approximation of human judgment, not a replacement, so calibrate against human labels.
 - Costs a model call per evaluation.
 
 ## Common Mistakes
 
-- **Vague rubrics** — "rate the quality 1–10" gives noise. Decompose into concrete, independently
+- **Vague rubrics** — "rate the quality 1-10" gives noise. Decompose into concrete, independently
   gradeable criteria and ask for evidence per criterion.
 - **Ignoring position bias in pairwise** — the judge favors whichever candidate comes first. Swap the
   order and average, or randomize.
@@ -171,7 +171,7 @@ def compare(a: str, b: str, rubric: str) -> str:     # pairwise, bias-controlled
 
 **🧠 Tradeoff** — A Pydantic `Verdict` types the judge's output; reasoning-then-score is baked into the
 schema order. Running the pairwise comparison twice with swapped inputs is the standard defense against
-position bias. Passing a *stronger* model to `judge` for high-stakes evaluation is a one-line change —
+position bias. Passing a *stronger* model to `judge` for high-stakes evaluation is a one-line change;
 the seam is the injected model, same as [[reflection]]'s critic.
 
 ### Elixir
@@ -214,7 +214,7 @@ end
 ```
 
 **🧠 Tradeoff** — The judge is a structured HTTP call; `compare` uses `Task.async_stream` to run both
-orderings concurrently before deciding — the bias control comes with the concurrency for free. Keeping
+orderings concurrently before deciding, so the bias control comes with the concurrency for free. Keeping
 the rubric as a module attribute makes it the single, reviewable source of the evaluation criteria. A
 stronger judge model is a config swap.
 
@@ -263,7 +263,7 @@ func Compare(a, b, rubric string) string {
 
 **🧠 Tradeoff** — A typed `Verdict` and an `(Verdict, error)` return make the judgment machine-usable and
 its failure explicit. `Compare` fans the two orderings out to goroutines to control position bias. The
-whole pattern hinges on rubric quality, not code — the same reason evals need calibration against human
+whole pattern hinges on rubric quality, not code, the same reason evals need calibration against human
 labels before the scores mean anything.
 
 ## Applications

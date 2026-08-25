@@ -17,12 +17,12 @@ languages: [javascript, python, elixir, go]
 ## Intent
 
 Structured Output turns a model from a prose generator into a typed function. You give it a schema;
-it returns data that validates against that schema — JSON with the fields you asked for, the enums
+it returns data that validates against that schema: JSON with the fields you asked for, the enums
 you allowed, the types you need. Downstream code then works with a parsed object, not a paragraph
 it has to regex.
 
-This is the seam between an LLM and the rest of your program. Everything that follows — routing on
-a field, storing a record, calling the next step — needs data, not prose.
+This is the seam between an LLM and the rest of your program. Everything that follows (routing on
+a field, storing a record, calling the next step) needs data, not prose.
 
 ## The Problem
 
@@ -67,12 +67,12 @@ schema ──▶ request (output_config.format = json_schema)
 - The output feeds code: routing, storage, a downstream call, an API response.
 - You're extracting fields from unstructured text (a form, an email, a document).
 - You need enums or a fixed label set from a classification.
-- Any time you'd otherwise write a regex to pull data out of the model's prose — stop and use a schema.
+- Any time you'd otherwise write a regex to pull data out of the model's prose, stop and use a schema.
 
 ## Advantages and Disadvantages
 
 ### Advantages
-- Guaranteed-parseable output — no prose-scraping, no fenced-block hunting.
+- Guaranteed-parseable output: no prose-scraping, no fenced-block hunting.
 - The schema documents the contract and validates it in one place.
 - Enums constrain classification to valid labels.
 - Turns the model into a drop-in function with a typed return.
@@ -80,7 +80,7 @@ schema ──▶ request (output_config.format = json_schema)
 ### Disadvantages
 - The schema must be expressible in the model's supported JSON-Schema subset (no arbitrary
   regex/length constraints on some providers).
-- Over-constraining can hurt quality — a model boxed into a rigid shape may drop nuance.
+- Over-constraining can hurt quality: a model boxed into a rigid shape may drop nuance.
 - A refusal or a truncated response can still violate the schema; you must handle the failure.
 
 ## Common Mistakes
@@ -98,7 +98,7 @@ schema ──▶ request (output_config.format = json_schema)
 ## Key Takeaways
 
 - Use the API's schema mechanism, not a "please return JSON" instruction.
-- Validate the result — a schema request can still fail (refusal, truncation).
+- Validate the result: a schema request can still fail (refusal, truncation).
 - Constrain enums and mark fields required; keep the schema tight.
 - Structured output is the seam that makes an LLM callable from code.
 
@@ -147,7 +147,7 @@ async function extract(text) {
 
 **🧠 Tradeoff** — `output_config.format` makes the response *guaranteed* schema-valid, so `JSON.parse`
 is safe and `validate` is a belt-and-suspenders check for the refusal/truncation edge. The schema
-lives as data, so the same `extract` handles any shape — you're using the model as a typed function.
+lives as data, so the same `extract` handles any shape; you're using the model as a typed function.
 The cost is that your schema must fit the provider's supported JSON-Schema subset.
 
 ### Python
@@ -182,7 +182,7 @@ def extract(text: str) -> Customer:
 
 **🧠 Tradeoff** — A Pydantic model *is* the schema and the validator: `messages.parse` derives the
 JSON-Schema, constrains the model, and returns a validated `Customer`. `Literal` pins the enum. This
-is the tightest expression of the pattern — one class, no manual parsing — at the cost of coupling to
+is the tightest expression of the pattern (one class, no manual parsing) at the cost of coupling to
 the SDK's parse helper (drop to `output_config.format` + `model_validate_json` if you need the raw path).
 
 ### Elixir
@@ -220,8 +220,8 @@ end
 ```
 
 **🧠 Tradeoff** — Elixir has no first-party structured-output SDK, so `call_structured/2` posts the
-schema as `output_config.format` over HTTP. The `with` chain threads the fallible steps — request,
-decode, validate — and short-circuits to the first `{:error, _}`, which is exactly the
+schema as `output_config.format` over HTTP. The `with` chain threads the fallible steps (request,
+decode, validate) and short-circuits to the first `{:error, _}`, which is exactly the
 [[option-result]] shape for "any of these can fail." Callers pattern-match `{:ok, data}` and handle
 failure as data, no exceptions.
 
@@ -271,7 +271,7 @@ func Extract(text string) (Customer, error) {
 
 **🧠 Tradeoff** — The struct plus tags is the target shape; the schema map is what constrains the
 model over HTTP (no Go SDK for structured outputs). Go's explicit `(Customer, error)` return makes
-the failure path unmissable — the caller can't ignore a decode or validation error. The duplication
+the failure path unmissable: the caller can't ignore a decode or validation error. The duplication
 between struct tags and the schema map is the price of no code-gen; a helper that derives one from the
 other removes it.
 

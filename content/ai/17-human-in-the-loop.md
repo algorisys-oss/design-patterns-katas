@@ -17,7 +17,7 @@ languages: [javascript, python, elixir, go]
 ## Intent
 
 Human-in-the-Loop puts a person at the decision points that matter. An agent runs autonomously up to
-a checkpoint — a destructive action, a low-confidence call, a policy-sensitive step — then **pauses**
+a checkpoint (a destructive action, a low-confidence call, a policy-sensitive step) then **pauses**
 and hands control to a human to approve, edit, or reject. On the human's decision it **resumes**.
 It's how you get the throughput of automation with human judgment exactly where the cost of a wrong
 autonomous action is too high.
@@ -27,7 +27,7 @@ autonomous action is too high.
 A fully autonomous agent acts on its own judgment everywhere, including where it shouldn't:
 
 - **Irreversible actions** — it deletes the account, sends the email, issues the refund, merges the
-  PR — on a hallucinated argument or a misread instruction, with no one to catch it.
+  PR, on a hallucinated argument or a misread instruction, with no one to catch it.
 - **Low-confidence calls** — it proceeds past a step it's genuinely unsure about because nothing
   makes it stop and ask.
 - **Policy-sensitive decisions** — it takes an action that a human, by policy or law, must sign off on.
@@ -42,7 +42,7 @@ Key Components / Participants:
 - **Agent** — runs autonomously until it reaches a gated step.
 - **Gate** — the policy deciding which steps require a human (by tool, by confidence, by amount, by rule).
 - **Checkpoint** — a pause that surfaces the proposed action to a human and *persists the state* so
-  the run survives the wait (a [[memento]]/[[saga]] concern — the pause can be minutes or days).
+  the run survives the wait (a [[memento]]/[[saga]] concern, since the pause can be minutes or days).
 - **Decision** — approve, edit (approve a modified action), or reject; the agent resumes accordingly.
 
 ```
@@ -60,7 +60,7 @@ agent ──▶ step ──▶ gated? ──no──▶ execute ──▶ contin
 - Actions are irreversible or high-stakes (financial, destructive, external-facing).
 - The agent's confidence is low and the cost of a wrong action is high.
 - Policy, compliance, or law requires human sign-off.
-- You're rolling out an agent gradually — gate everything, then loosen as trust builds.
+- You're rolling out an agent gradually: gate everything, then loosen as trust builds.
 
 ## Advantages and Disadvantages
 
@@ -68,11 +68,11 @@ agent ──▶ step ──▶ gated? ──no──▶ execute ──▶ contin
 - Human judgment exactly where autonomy is too risky; automation everywhere else.
 - Catches hallucinated or misjudged actions before they cause harm.
 - Creates an audit trail of who approved what.
-- A dial for trust — gate broadly at first, narrow the gates as the agent proves out.
+- A dial for trust: gate broadly at first, narrow the gates as the agent proves out.
 
 ### Disadvantages
 - A human in the path adds latency and caps throughput at that step.
-- Over-gating creates approval fatigue — people rubber-stamp, defeating the purpose.
+- Over-gating creates approval fatigue: people rubber-stamp, defeating the purpose.
 - Requires durable pause/resume: the run must survive a wait of minutes to days.
 - The human is now a bottleneck and a single point of delay.
 
@@ -92,7 +92,7 @@ agent ──▶ step ──▶ gated? ──no──▶ execute ──▶ contin
 ## Key Takeaways
 
 - Automate the reversible; gate the irreversible and the uncertain.
-- Gate by blast radius, not everywhere — over-gating breeds rubber-stamping.
+- Gate by blast radius, not everywhere; over-gating breeds rubber-stamping.
 - Persist state at the checkpoint; the pause can outlive the process.
 - Offer approve / edit / reject, and define a timeout policy.
 
@@ -135,7 +135,7 @@ async function step(action, runId) {
 ```
 
 **🧠 Tradeoff** — `needsApproval` gates by blast radius (destructive tools) *and* confidence, so only
-risky steps pause — the rest run at full speed. The `checkpoint` before `requestApproval` is what lets the
+risky steps pause; the rest run at full speed. The `checkpoint` before `requestApproval` is what lets the
 pause outlive the process, a [[saga]]/[[memento]] concern since the wait can be long. Offering `edit`, not
 just approve/reject, means a human can fix an action instead of vetoing the whole run. Gate narrowly or
 approval fatigue turns the gate into a rubber stamp.
@@ -169,10 +169,10 @@ async def step(action, run_id: str) -> dict:
 ```
 
 **🧠 Tradeoff** — The gate combines a policy set (`DESTRUCTIVE`) with a confidence threshold; `match`
-handles the three human verdicts. `checkpoint` before the await is the durability seam — back it with a
+handles the three human verdicts. `checkpoint` before the await is the durability seam: back it with a
 DB or a workflow engine (Temporal, Step Functions) so a pending approval survives a deploy. The Anthropic
-tool runner's per-turn hooks let you gate inside the loop without hand-writing this, but the shape — pause,
-persist, await, resume — is the same.
+tool runner's per-turn hooks let you gate inside the loop without hand-writing this, but the shape (pause,
+persist, await, resume) is the same.
 
 ### Elixir
 
@@ -206,7 +206,7 @@ end
 
 **🧠 Tradeoff** — Pattern matching on the approval verdict makes approve/edit/reject three clean clauses.
 `Checkpoint.save` before `Approval.await` persists the run, and because Elixir agents are naturally
-processes (an [[actor]]), the awaiting run can be a supervised GenServer that survives and resumes — a good
+processes (an [[actor]]), the awaiting run can be a supervised GenServer that survives and resumes, a good
 fit for durable pause/resume. The gate stays a small predicate; keep it tight to avoid approval fatigue.
 
 ### Go
@@ -249,7 +249,7 @@ func Step(ctx context.Context, a Action, runID string) (string, error) {
 ```
 
 **🧠 Tradeoff** — The gate is a predicate over a destructive-tool set and a confidence threshold. Passing
-`context.Context` into `RequestApproval` gives you the timeout policy for free — a pending approval that
+`context.Context` into `RequestApproval` gives you the timeout policy for free: a pending approval that
 never comes cancels via `ctx` instead of blocking forever. `Checkpoint` before the wait persists the run.
 The explicit error returns make the reject and timeout paths impossible to ignore, which is exactly what
 you want at a high-stakes gate.

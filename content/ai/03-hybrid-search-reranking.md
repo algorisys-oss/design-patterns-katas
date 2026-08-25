@@ -31,7 +31,7 @@ A single retriever leaves answers on the table:
   chunk titled "Refund policy" scores zero because the words don't overlap.
 
 Even when you retrieve the right chunk, it may sit at rank 8 while three near-misses rank above it.
-The model reads top-to-bottom and weights early context more — order matters. Reranking fixes the
+The model reads top-to-bottom and weights early context more, so order matters. Reranking fixes the
 order that first-stage retrieval got roughly right.
 
 ## Structure
@@ -62,13 +62,13 @@ query ──┬──▶ sparse (BM25) ──┐
 ## Advantages and Disadvantages
 
 ### Advantages
-- Catches both exact-term and semantic matches — higher recall than either alone.
+- Catches both exact-term and semantic matches: higher recall than either alone.
 - Reranking sharply improves precision-at-k, which is what the model actually sees.
-- Fusion (RRF) needs no score calibration between the two retrievers — it merges ranks.
+- Fusion (RRF) needs no score calibration between the two retrievers; it merges ranks.
 - Each retriever and the reranker are swappable behind their interfaces.
 
 ### Disadvantages
-- More moving parts and more latency — two searches plus a rerank per query.
+- More moving parts and more latency: two searches plus a rerank per query.
 - Reranking a large candidate set is expensive; you must bound the set first.
 - Two indexes (inverted + vector) to build and keep in sync.
 
@@ -85,7 +85,7 @@ query ──┬──▶ sparse (BM25) ──┐
 
 ## Key Takeaways
 
-- Combine sparse (exact) and dense (semantic) retrieval — neither alone is enough.
+- Combine sparse (exact) and dense (semantic) retrieval; neither alone is enough.
 - Fuse by rank (RRF) to avoid calibrating incompatible scores.
 - Rerank a *small* candidate set to fix precision-at-k, the order the model reads.
 - Retrieve wide, rerank narrow.
@@ -130,7 +130,7 @@ async function search(query, k = 5) {
 
 **🧠 Tradeoff** — `Promise.all` runs the two retrievers concurrently, RRF fuses by rank so BM25 and
 cosine never have to share a scale, and the rerank only touches 25 candidates. The win is
-recall *and* precision; the cost is a two-index setup and a rerank call on the hot path — budget
+recall *and* precision; the cost is a two-index setup and a rerank call on the hot path, so budget
 its latency.
 
 ### Python
@@ -202,7 +202,7 @@ end
 **🧠 Tradeoff** — `Task.async_stream` fires both retrievers concurrently, then the results flow
 through a pure `rrf` pipeline into the rerank. Fusion as a group-by-and-sum reads cleanly in
 Elixir's pipeline style. The cost, as always here, is that the real retrievers (a BM25 index, a
-vector store) live outside the process — this shows the orchestration, which is the pattern.
+vector store) live outside the process; this shows the orchestration, which is the pattern.
 
 ### Go
 

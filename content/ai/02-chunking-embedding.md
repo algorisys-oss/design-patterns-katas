@@ -18,7 +18,7 @@ languages: [javascript, python, elixir, go]
 
 Chunking & Embedding is the ingestion half of RAG. Before you can retrieve, you have to turn a
 pile of documents into searchable units: **split** each document into passages small enough to be
-about one thing, then **embed** each passage into a vector. Retrieval quality is decided here — a
+about one thing, then **embed** each passage into a vector. Retrieval quality is decided here: a
 retriever can only find chunks that were cut and embedded well.
 
 ## The Problem
@@ -55,21 +55,21 @@ document ──▶ loader ──▶ splitter ──▶ chunks ──▶ embedder
 
 ## When to Use
 
-- You're building RAG and need documents to become retrievable — this is the prerequisite.
+- You're building RAG and need documents to become retrievable; this is the prerequisite.
 - Documents are long and heterogeneous (manuals, transcripts, codebases).
 - You want retrieval to return a citable passage, not a whole file.
 
 ## Advantages and Disadvantages
 
 ### Advantages
-- Right-sized chunks make similarity search sharp — one chunk, one idea.
+- Right-sized chunks make similarity search sharp: one chunk, one idea.
 - Overlap keeps boundary-spanning facts intact.
 - Batch embedding amortizes the per-call cost of the embedding model.
 - Metadata on each chunk (source, page) gives you citations for free.
 
 ### Disadvantages
 - The "right" chunk size is data-dependent and needs tuning per corpus.
-- Re-chunking means re-embedding — a full-corpus cost when you change the strategy.
+- Re-chunking means re-embedding, a full-corpus cost when you change the strategy.
 - Structure-blind splitters still mangle tables, code, and lists.
 
 ## Common Mistakes
@@ -77,7 +77,7 @@ document ──▶ loader ──▶ splitter ──▶ chunks ──▶ embedder
 - **Fixed-size character splits** — ignore sentence and paragraph boundaries and you cut facts in
   half. Split on structure first, then size.
 - **No overlap** — a definition that starts at the end of chunk A and finishes in chunk B is
-  retrievable from neither. A small overlap (10–20%) fixes it.
+  retrievable from neither. A small overlap (10-20%) fixes it.
 - **Chunks too large** — a whole section per chunk dilutes the embedding and drags in irrelevant
   text; retrieval gets fuzzy.
 - **Embedding one at a time** — a per-chunk network round trip is slow and expensive; batch.
@@ -86,9 +86,9 @@ document ──▶ loader ──▶ splitter ──▶ chunks ──▶ embedder
 ## Key Takeaways
 
 - Split on natural boundaries, size to one idea, and add a little overlap.
-- Retrieval quality is set at ingestion — you can't retrieve what you chunked badly.
+- Retrieval quality is set at ingestion: you can't retrieve what you chunked badly.
 - Batch the embedding calls; carry source metadata through to the store.
-- Changing the chunking strategy means re-embedding the corpus — decide early.
+- Changing the chunking strategy means re-embedding the corpus, so decide early.
 
 ## Implementations
 
@@ -138,7 +138,7 @@ async function ingest(doc, store) {
 
 **🧠 Tradeoff** — Packing paragraphs up to a size, then carrying an overlap tail, keeps chunks
 about one idea without slicing sentences. `embedBatch` amortizes the model call. The cost is that
-a paragraph splitter is still structure-naive about tables and code — a Markdown- or AST-aware
+a paragraph splitter is still structure-naive about tables and code; a Markdown- or AST-aware
 splitter is the next step when the corpus demands it.
 
 ### Python
@@ -172,7 +172,7 @@ def ingest(doc, store, embed_batch) -> None:
 
 **🧠 Tradeoff** — Plain functions compose the pipeline; `embed_batch` is injected so the ingest
 step is testable without a network. Python's ecosystem (LangChain's `RecursiveCharacterTextSplitter`,
-`unstructured`) offers structure-aware splitters — reach for them when paragraphs aren't enough,
+`unstructured`) offers structure-aware splitters; reach for them when paragraphs aren't enough,
 but the pattern is unchanged: a `chunk` function feeding a batched embed.
 
 ### Elixir
@@ -216,7 +216,7 @@ end
 ```
 
 **🧠 Tradeoff** — The splitter is a `reduce` over paragraphs, and `Task.async_stream` embeds chunks
-concurrently with a bounded pool — the idiomatic Elixir way to parallelize the network-bound embed
+concurrently with a bounded pool: the idiomatic Elixir way to parallelize the network-bound embed
 step without spawning unboundedly. The reduce-with-accumulator is a little denser than the
 imperative loop, but it stays pure and the concurrency comes almost for free.
 
@@ -270,7 +270,7 @@ func Ingest(doc Doc, store Store, embedBatch func([]string) [][]float64) {
 
 **🧠 Tradeoff** — A single pass with a byte buffer keeps the splitter allocation-light, and
 `embedBatch` is a `func` parameter so the transport (and its retries) stays out of the loop. Go's
-byte-slicing on `overlap` is fine for ASCII; for multi-byte text slice on rune boundaries instead —
+byte-slicing on `overlap` is fine for ASCII; for multi-byte text slice on rune boundaries instead,
 a reminder that structure-blind splitting has edge cases in every language.
 
 ## Applications

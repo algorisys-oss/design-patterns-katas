@@ -6,7 +6,7 @@ title: Query Rewriting
 also_known_as: [Query Expansion, Multi-Query, HyDE]
 gof: false
 kind: pattern
-intent: "Transform the user's raw question before retrieval — expand, decompose, or hypothesize — so the search actually matches the stored chunks."
+intent: "Transform the user's raw question before retrieval (expand, decompose, or hypothesize) so the search actually matches the stored chunks."
 frequency: medium
 difficulty: intermediate
 tags: [ai, llm, rag, retrieval, query-rewriting]
@@ -18,7 +18,7 @@ languages: [javascript, python, elixir, go]
 
 Query Rewriting reshapes the question *before* it hits the retriever. Users ask terse, ambiguous,
 context-dependent questions; your chunks are written in full, standalone prose. Rewriting bridges
-that gap — expanding, decomposing, or generating a hypothetical answer — so the search vector lands
+that gap by expanding, decomposing, or generating a hypothetical answer, so the search vector lands
 near the chunk that actually holds the answer.
 
 ## The Problem
@@ -32,7 +32,7 @@ The raw query is often a poor search key:
 - **Multi-part** — "compare the free and pro tiers on storage and support" is really four
   retrievals fused into one; a single search can't serve them all.
 
-The retriever isn't the problem — the *query* is. Rewrite it into something the index can match.
+The retriever isn't the problem; the *query* is. Rewrite it into something the index can match.
 
 ## Structure
 
@@ -57,19 +57,19 @@ history ───┴──▶ rewriter (LLM) ──▶ [q1, q2, q3]  ──▶ r
 - Queries arrive mid-conversation with pronouns and implicit context.
 - The corpus is written in full sentences but users type keywords (or vice versa).
 - Questions are compound and one retrieval can't cover them.
-- Recall is low even with good chunks and hybrid search — the query itself is the bottleneck.
+- Recall is low even with good chunks and hybrid search: the query itself is the bottleneck.
 
 ## Advantages and Disadvantages
 
 ### Advantages
-- Turns unsearchable questions into searchable ones — a direct recall boost.
+- Turns unsearchable questions into searchable ones, a direct recall boost.
 - Multi-query and decomposition cover compound questions a single search can't.
 - HyDE closes the "short question vs. long answer" vector gap.
-- Cheap relative to the win — one small model call before retrieval.
+- Cheap relative to the win: one small model call before retrieval.
 
 ### Disadvantages
 - Adds a model call (latency and cost) before every retrieval.
-- A bad rewrite can *steer retrieval wrong* — drift away from what the user meant.
+- A bad rewrite can *steer retrieval wrong*, drifting away from what the user meant.
 - Multi-query multiplies retrieval work; you must fuse and cap results.
 
 ## Common Mistakes
@@ -85,10 +85,10 @@ history ───┴──▶ rewriter (LLM) ──▶ [q1, q2, q3]  ──▶ r
 
 ## Key Takeaways
 
-- Fix the query before blaming the retriever — often the query is the bottleneck.
+- Fix the query before blaming the retriever; often the query is the bottleneck.
 - Contextualize mid-conversation questions into standalone ones.
 - Multi-query and decomposition cover what a single search misses; fuse the results.
-- Gate rewriting — don't pay for it when the query is already good.
+- Gate rewriting: don't pay for it when the query is already good.
 
 ## Implementations
 
@@ -127,7 +127,7 @@ async function retrieve(query, history) {
 
 **🧠 Tradeoff** — One model call expands the query into standalone, searchable variants; `Promise.all`
 runs the retrievals concurrently and `fuse` (RRF) merges them. The recall gain is real, but you've
-added a model call on the hot path and multiplied retrieval work — gate the rewrite for queries that
+added a model call on the hot path and multiplied retrieval work, so gate the rewrite for queries that
 are already clear, and cap the query count.
 
 ### Python
@@ -157,7 +157,7 @@ def retrieve(query: str, history: str) -> list[str]:
 ```
 
 **🧠 Tradeoff** — The rewriter returns a list, so *contextualize*, *multi-query*, and *decompose* are
-all the same shape — one prompt, N queries out. Swap the prompt (or add a HyDE variant) without
+all the same shape: one prompt, N queries out. Swap the prompt (or add a HyDE variant) without
 touching `retrieve`. For factual lookups, gate the rewrite behind a cheap "is this query already
 standalone?" check to avoid steering retrieval off the user's intent.
 
@@ -200,7 +200,7 @@ end
 ```
 
 **🧠 Tradeoff** — The rewrite is one piped model call producing a list of queries, and
-`Task.async_stream` retrieves them concurrently before `fuse` merges — the same fan-out shape as the
+`Task.async_stream` retrieves them concurrently before `fuse` merges: the same fan-out shape as the
 hybrid-search kata, reused. Pattern matching on `{:ok, list}` keeps the happy path clean; add an
 `{:error, _}` clause when a retrieval can fail and you want to drop it rather than crash the stream.
 
@@ -246,7 +246,7 @@ func Retrieve(query, history string) []string {
 
 **🧠 Tradeoff** — Each rewritten query retrieves in its own goroutine, writing into a pre-sized slot
 so there's no shared-map contention, then `RRF` fuses. Passing `i, q` into the closure avoids the
-classic loop-variable capture bug. The rewrite call is sequential and on the critical path — the
+classic loop-variable capture bug. The rewrite call is sequential and on the critical path, which is the
 place to add gating so trivially-clear queries skip it.
 
 ## Applications

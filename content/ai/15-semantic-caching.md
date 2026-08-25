@@ -20,7 +20,7 @@ Semantic Caching serves a cached answer when a new request *means the same thing
 even if the words differ. Ordinary caching keys on exact input; two users asking "what's your refund
 policy?" and "how do I get a refund?" miss each other and both pay for a full model call. Semantic
 caching keys on the input's **embedding** and matches by similarity, so paraphrases hit the same
-entry — cutting cost and latency on the repetitive long tail of real traffic.
+entry, cutting cost and latency on the repetitive long tail of real traffic.
 
 ## The Problem
 
@@ -63,14 +63,14 @@ request ──▶ embed ──▶ nearest entry ──▶ similarity ≥ thresho
 
 ### Advantages
 - Real hit rates on natural-language traffic where exact caching gets ~zero.
-- Cuts cost and latency on the repetitive tail — often the majority of volume.
+- Cuts cost and latency on the repetitive tail, often the majority of volume.
 - Sits in front of any model as a [[cache-aside]] layer; the caller is unchanged.
 - Tunable: raise the threshold for precision, lower it for hit rate.
 
 ### Disadvantages
 - A too-low threshold serves subtly-wrong answers to *similar-but-different* questions.
 - Adds an embed + vector lookup to every request (cheap, but non-zero).
-- Stale answers if the underlying data changed — needs invalidation for volatile content.
+- Stale answers if the underlying data changed, so volatile content needs invalidation.
 - Personalized or context-dependent answers must not be cached across users.
 
 ## Common Mistakes
@@ -88,7 +88,7 @@ request ──▶ embed ──▶ nearest entry ──▶ similarity ≥ thresho
 
 - Key on meaning (embedding), not exact text, to hit paraphrases.
 - The similarity threshold is the dial: precision vs. hit rate.
-- Scope by user/context and invalidate on stale data — never serve the wrong or old answer.
+- Scope by user/context and invalidate on stale data; never serve the wrong or old answer.
 - It's [[cache-aside]] with a vector lookup; the model call is the miss path.
 
 ## Implementations
@@ -181,7 +181,7 @@ class SemanticCache:
 
 **🧠 Tradeoff** — A [[cache-aside]] layer keyed by similarity: the model call is the miss path, and the
 threshold is the precision/hit-rate dial. `max(..., default=None)` handles the cold cache cleanly. This is
-semantic [[memoization]] — same idea as caching a pure function's result, generalized from exact key to
+semantic [[memoization]]: same idea as caching a pure function's result, generalized from exact key to
 near key. Swap the list for a real ANN index in production; scope and TTL as the data demands.
 
 ### Elixir

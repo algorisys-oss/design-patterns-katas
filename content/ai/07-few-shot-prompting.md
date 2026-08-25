@@ -18,7 +18,7 @@ languages: [javascript, python, elixir, go]
 
 Few-Shot Prompting teaches the model by example, in the prompt itself. Instead of describing the
 output you want in words, you *show* it: a handful of input→output pairs, then the real input. The
-model infers the pattern — the format, the label set, the tone, the edge-case handling — and follows
+model infers the pattern (the format, the label set, the tone, the edge-case handling) and follows
 it. No fine-tuning, no training run; the "learning" happens in-context, per request.
 
 ## The Problem
@@ -63,7 +63,7 @@ instruction
 ## Advantages and Disadvantages
 
 ### Advantages
-- No training — steer behavior by editing the prompt.
+- No training: steer behavior by editing the prompt.
 - Examples pin format, labels, and edge cases better than prose.
 - Dynamic (retrieved) examples adapt the prompt to each input.
 - Fast to iterate: change an example, change the behavior.
@@ -88,10 +88,10 @@ instruction
 
 ## Key Takeaways
 
-- Show, don't just tell — examples pin behavior instructions can't.
+- Show, don't just tell: examples pin behavior instructions can't.
 - Curate for coverage and balance; order and class mix matter.
 - Retrieve examples per-input when the input distribution is wide.
-- Examples cost tokens every call — use the fewest that pin the behavior.
+- Examples cost tokens every call, so use the fewest that pin the behavior.
 
 ## Implementations
 
@@ -131,7 +131,7 @@ async function classify(review, examples = EXAMPLES) {
 ```
 
 **🧠 Tradeoff** — A consistent example block pins the label set (three values, demonstrated) and the
-exact shape the model should complete. Passing `examples` as a parameter is what makes it *dynamic* —
+exact shape the model should complete. Passing `examples` as a parameter is what makes it *dynamic*:
 swap in examples retrieved by similarity to `review` for a shifting distribution. The cost is example
 tokens on every call; when the labels are fixed, a [[structured-output]] enum is the stronger guarantee.
 
@@ -166,7 +166,7 @@ def classify(review: str, examples: list[tuple[str, str]] = EXAMPLES) -> str:
 
 **🧠 Tradeoff** — Examples as data (`list[tuple]`) separate the *content* of the demonstration from the
 *formatting*, so you can curate, balance, or retrieve them independently. To go dynamic, replace the
-default with `select_similar(review, pool, k=3)` — the same signature, retrieval-backed. The judgment
+default with `select_similar(review, pool, k=3)`: the same signature, retrieval-backed. The judgment
 is curation, not code: representative, balanced, consistently formatted examples.
 
 ### Elixir
@@ -209,7 +209,7 @@ end
 **🧠 Tradeoff** — `Enum.map_join` builds the example block in one pass, and the default `@examples`
 arg makes the static case ergonomic while leaving the door open to pass retrieved examples. The
 heredoc keeps the prompt readable. For dynamic selection you'd embed the pool once and pass the
-nearest few — the function signature already supports it.
+nearest few; the function signature already supports it.
 
 ### Go
 
@@ -252,7 +252,7 @@ func Classify(review string, examples []Shot) string {
 ```
 
 **🧠 Tradeoff** — A `Shot` struct and a `strings.Builder` keep example formatting explicit and
-allocation-light. Taking `examples []Shot` as a parameter is the seam for dynamic selection — pass the
+allocation-light. Taking `examples []Shot` as a parameter is the seam for dynamic selection: pass the
 package-level `examples` for the static case, or the retrieved nearest-k for a shifting distribution.
 No magic; the whole pattern is "format demonstrations consistently, then the query."
 
