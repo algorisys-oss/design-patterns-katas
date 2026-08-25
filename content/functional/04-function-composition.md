@@ -28,23 +28,23 @@ from small collaborators.
 
 The alternatives to composition are a monolith or a nesting pyramid:
 
-- **One giant function** — a single function that parses, validates, transforms, and formats is hard
+- **One giant function**: a single function that parses, validates, transforms, and formats is hard
   to read, test, and reuse; changing one stage risks the others.
-- **Nested calls** — `format(validate(parse(normalize(input))))` reads inside-out, right-to-left, the
+- **Nested calls**: `format(validate(parse(normalize(input))))` reads inside-out, right-to-left, the
   opposite of the order things happen.
-- **Temporary-variable sprawl** — `const a = f(x); const b = g(a); const c = h(b);` works but is
+- **Temporary-variable sprawl**: `const a = f(x); const b = g(a); const c = h(b);` works but is
   noisy and invents names for every intermediate.
-- **No reuse** — logic welded into a big function can't be lifted out and used elsewhere.
+- **No reuse**: logic welded into a big function can't be lifted out and used elsewhere.
 
 ## Structure
 
 Key Components:
 
-- **Small functions** — each a single transformation, ideally pure and unary (one input, one output).
-- **Compose / Pipe** — the combinator: `compose(h, g, f)` (math order) or `pipe(f, g, h)`
+- **Small functions**: each a single transformation, ideally pure and unary (one input, one output).
+- **Compose / Pipe**: the combinator: `compose(h, g, f)` (math order) or `pipe(f, g, h)`
   (left-to-right reading order) produces one function.
-- **Data flow** — the output type of each function matches the input type of the next.
-- **Pipeline** — the composed function; call it with the initial value to run all stages.
+- **Data flow**: the output type of each function matches the input type of the next.
+- **Pipeline**: the composed function; call it with the initial value to run all stages.
 
 ```
 Input x ──► f ──f(x)──► g ──g(f(x))──► h ──► Output
@@ -61,26 +61,26 @@ Input x ──► f ──f(x)──► g ──g(f(x))──► h ──► Out
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Readable** — a pipeline reads top-to-bottom in execution order.
-- **Reusable & testable** — each small function stands alone; flows are recombinations.
-- **Easy to extend** — insert, remove, or reorder a stage without touching the others.
+- **Readable**: a pipeline reads top-to-bottom in execution order.
+- **Reusable & testable**: each small function stands alone; flows are recombinations.
+- **Easy to extend**: insert, remove, or reorder a stage without touching the others.
 
 ### Disadvantages
-- **Type/shape alignment** — each step's output must match the next's input; mismatches need adapters.
-- **Debugging mid-pipeline** — inspecting the value between stages is less obvious than with named
+- **Type/shape alignment**: each step's output must match the next's input; mismatches need adapters.
+- **Debugging mid-pipeline**: inspecting the value between stages is less obvious than with named
   temporaries.
-- **Point-free excess** — composing everything to avoid naming can become cryptic; some steps read
+- **Point-free excess**: composing everything to avoid naming can become cryptic; some steps read
   better named.
 
 ## Common Mistakes
 
-- **Composing functions with side effects** — hidden effects make a pipeline's behavior depend on
+- **Composing functions with side effects**: hidden effects make a pipeline's behavior depend on
   order and context, defeating the reasoning benefit; keep stages pure (or isolate effects).
-- **Steps that don't line up** — forcing mismatched shapes together with ad-hoc adapters inside the
+- **Steps that don't line up**: forcing mismatched shapes together with ad-hoc adapters inside the
   pipeline; design the stage signatures to chain.
-- **Over-composing into unreadable point-free code** — a wall of `compose(a, b, c, d, e)` with no
+- **Over-composing into unreadable point-free code**: a wall of `compose(a, b, c, d, e)` with no
   names hurts more than it helps; name meaningful sub-pipelines.
-- **Confusing compose vs. pipe order** — `compose` runs right-to-left, `pipe` left-to-right; mixing
+- **Confusing compose vs. pipe order**: `compose` runs right-to-left, `pipe` left-to-right; mixing
   them silently reverses your pipeline.
 
 ## Key Takeaways
@@ -99,7 +99,7 @@ Input x ──► f ──f(x)──► g ──g(f(x))──► h ──► Out
 **❌ Naive**
 
 ```js
-// Nested, inside-out calls — read right-to-left, hard to extend.
+// Nested, inside-out calls: read right-to-left, hard to extend.
 const slug = format(dedupe(lowercase(trim(input))));
 ```
 
@@ -118,7 +118,7 @@ const toSlug = pipe(trim, lowercase, dedupe, slugify); // one reusable function
 toSlug("  Hello   World  "); // "hello-world"
 ```
 
-**🧠 Tradeoff** — A one-line `pipe` (reduce over the functions) turns the inside-out nest into a
+**🧠 Tradeoff**: A one-line `pipe` (reduce over the functions) turns the inside-out nest into a
 readable, reusable `toSlug` built from tiny testable parts, and adding a stage is inserting one name.
 Ramda/lodard-fp provide `pipe`/`compose`; the TC39 pipeline operator (`|>`) may make it native. Keep
 the stages pure: a side-effecting step makes the pipeline's result depend on hidden context.
@@ -154,7 +154,7 @@ const handle = pipeAsync(
 ); // each stage is a small, testable unit reused across endpoints
 ```
 
-**🧠 Tradeoff** — An async `pipe` (reduce with `.then`) composes the request stages into one flow
+**🧠 Tradeoff**: An async `pipe` (reduce with `.then`) composes the request stages into one flow
 that reads as a list of steps and lets you reuse `sanitize`/`validate` across routes. It's the
 functional cousin of Express middleware. The care points are error handling (a rejected stage
 short-circuits the chain; pair with Result if you want explicit branches) and keeping stages free of
@@ -190,7 +190,7 @@ clean("  HELLO  ")  # "hello"
 #   tpipe(raw, parse, transform, validate)
 ```
 
-**🧠 Tradeoff** — A `reduce`-based `pipe` gives Python readable composition, and `toolz` provides
+**🧠 Tradeoff**: A `reduce`-based `pipe` gives Python readable composition, and `toolz` provides
 `compose`/`pipe` plus lazy, composable data pipelines. Python's method chaining (pandas, string
 methods) and generator composition express the same idea idiomatically for data work. Deeply
 point-free style is less Pythonic than named steps, so compose meaningful chunks and name them.
@@ -222,7 +222,7 @@ process = fn input ->
 end
 ```
 
-**🧠 Tradeoff** — Elixir's `|>` operator makes composition the *default* way to write code: data flows
+**🧠 Tradeoff**: Elixir's `|>` operator makes composition the *default* way to write code: data flows
 top-to-bottom through small functions, each taking the previous result as its first argument. It's
 the language's signature idiom and reads beautifully. The constraint is the "data first" convention:
 functions must take the piped value as the first argument, which shapes how you design APIs, and
@@ -257,7 +257,7 @@ clean := Pipe(strings.TrimSpace, strings.ToLower, dedupe) // one reusable func
 clean("  Hello  ") // "hello"
 ```
 
-**🧠 Tradeoff** — Generics let Go express a typed `Pipe` for same-type stages, and it reads cleanly
+**🧠 Tradeoff**: Generics let Go express a typed `Pipe` for same-type stages, and it reads cleanly
 for string/data transforms. Go's static typing makes heterogeneous pipelines (each stage a different
 type) awkward (you'd need per-shape helpers or interfaces) so idiomatic Go often prefers explicit
 sequential statements for clarity over clever composition. Where the stages share a type, `Pipe` is
@@ -270,7 +270,7 @@ tidy; where they don't, plain code wins.
 **❌ Naive**
 
 ```csharp
-// Nested, inside-out calls — read right-to-left, hard to extend.
+// Nested, inside-out calls: read right-to-left, hard to extend.
 var slug = Slugify(Dedupe(Lowercase(Trim(input))));
 ```
 
@@ -292,7 +292,7 @@ static class FuncExtensions
 }
 ```
 
-**🧠 Tradeoff** — C# has no pipe operator, but delegates plus a two-line `Then` extension give you
+**🧠 Tradeoff**: C# has no pipe operator, but delegates plus a two-line `Then` extension give you
 typed composition that reads in execution order, and because `Then` is generic over three types, the
 stages don't have to share a shape; the compiler checks each output feeds the next input. Method
 chaining is C#'s native pipeline, and for sequences LINQ (`.Where().Select()`) is usually what you
@@ -306,7 +306,7 @@ store, pass, or build from configuration.
 **❌ Naive**
 
 ```rust
-// Nested, inside-out calls — read right-to-left.
+// Nested, inside-out calls: read right-to-left.
 let slug = slugify(lowercase(trim(input)));
 ```
 
@@ -319,7 +319,7 @@ fn compose<A, B, C>(f: impl Fn(A) -> B, g: impl Fn(B) -> C) -> impl Fn(A) -> C {
 }
 
 fn main() {
-    // Everyday Rust composes by method chaining — the pipeline is built in:
+    // Everyday Rust composes by method chaining: the pipeline is built in:
     let chained: String = "  Hello   World  ".to_lowercase().split_whitespace().collect::<Vec<_>>().join("-");
     println!("{chained}"); // hello-world
 
@@ -332,7 +332,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — method chaining *is* Rust's pipeline: string methods and iterator adapters already
+**🧠 Tradeoff**: method chaining *is* Rust's pipeline: string methods and iterator adapters already
 read left-to-right, so most Rust code never writes `compose`. When you do need the pipeline as a
 value, a generic `compose` monomorphizes each nesting to zero-cost code, but Rust has no variadic
 compose without a macro, so deep pipelines nest the calls. Storing swappable stages in a `Vec` forces
@@ -347,7 +347,7 @@ what a pipeline wants.
 **❌ Naive**
 
 ```zig
-// Nested calls work, but read inside-out — the opposite of execution order.
+// Nested calls work, but read inside-out: the opposite of execution order.
 const out = slugify(lowercase(trim(&buf)));
 ```
 
@@ -356,7 +356,7 @@ const out = slugify(lowercase(trim(&buf)));
 ```zig
 const std = @import("std");
 
-// No closures in Zig — stages are function pointers sharing one signature.
+// No closures in Zig: stages are function pointers sharing one signature.
 // These transform a caller-owned buffer in place, so no allocator is needed.
 const Stage = *const fn ([]u8) []u8;
 
@@ -394,7 +394,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — be honest about the limits: without closures, every stage must share one signature
+**🧠 Tradeoff**: be honest about the limits: without closures, every stage must share one signature
 and can't capture configuration, and transforming a buffer in place gives up purity: the original is
 overwritten, which is composition's shape without immutability's guarantees. What Zig buys is a
 pipeline that's a plain array of function pointers (data you can build at runtime) with zero hidden
@@ -409,7 +409,7 @@ functions in sequence and let the reader see every step.
 **❌ Naive**
 
 ```java
-// Nested, inside-out calls — read right-to-left, hard to extend.
+// Nested, inside-out calls: read right-to-left, hard to extend.
 var slug = slugify(dedupe(lowercase(trim(input))));
 ```
 
@@ -429,14 +429,14 @@ public class Demo {
         var toSlug = trim.andThen(lowercase).andThen(dedupe).andThen(slugify);
         System.out.println(toSlug.apply("  Hello   World  ")); // hello-world
 
-        // stages needn't share a type — the compiler checks each output feeds the next input:
+        // stages needn't share a type: the compiler checks each output feeds the next input:
         var slugLength = toSlug.andThen(String::length);
         System.out.println(slugLength.apply("  Hello   World  ")); // 11
     }
 }
 ```
 
-**🧠 Tradeoff** — Java shipped this pattern in the standard library: `Function.andThen` is `pipe` and
+**🧠 Tradeoff**: Java shipped this pattern in the standard library: `Function.andThen` is `pipe` and
 `compose` is the math order, so there's no combinator to write: method references chain in execution
 order, and the generic signatures let stages change type along the way. For sequences, Streams
 (`map`/`filter`/`collect`) are Java's native pipeline and usually the better fit. Explicit `Function`
@@ -446,20 +446,20 @@ pipe operator.
 
 ## Applications
 
-- **Data transformation** — parse → normalize → validate → format pipelines for input processing
+- **Data transformation**: parse → normalize → validate → format pipelines for input processing
   (backend & frontend).
-- **Middleware chains** — HTTP middleware, stream transforms, and interceptors compose small handlers
+- **Middleware chains**: HTTP middleware, stream transforms, and interceptors compose small handlers
   (backend).
-- **Reactive/stream operators** — RxJS/Elixir Stream pipelines chain `map`/`filter`/`reduce`-style
+- **Reactive/stream operators**: RxJS/Elixir Stream pipelines chain `map`/`filter`/`reduce`-style
   operators (frontend & backend).
-- **Build & ETL pipelines** — each stage a composable transformation over records (backend).
-- **UI derivation** — deriving view data through a chain of selectors/formatters (frontend).
+- **Build & ETL pipelines**: each stage a composable transformation over records (backend).
+- **UI derivation**: deriving view data through a chain of selectors/formatters (frontend).
 
 ## Related Patterns
 
-- **Currying & Partial Application** — supplies the unary functions composition needs, and specializes
+- **Currying & Partial Application**: supplies the unary functions composition needs, and specializes
   stages before composing them.
-- **Option / Result** — composing fallible steps uses `map`/`andThen` so a pipeline short-circuits on
+- **Option / Result**: composing fallible steps uses `map`/`andThen` so a pipeline short-circuits on
   the first failure.
-- **Decorator** — a functional cousin: composing behavior by wrapping, where each layer adds to the
+- **Decorator**: a functional cousin: composing behavior by wrapping, where each layer adds to the
   next rather than transforming a data value.

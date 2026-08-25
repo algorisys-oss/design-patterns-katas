@@ -41,29 +41,29 @@ Every transition is written to a log, so instance state is a fold over that hist
 
 ## The Patterns You'll Reach For
 
-- **Command** — each step is a Command: queued, logged, retried, replayed, and rolled back
+- **Command**: each step is a Command: queued, logged, retried, replayed, and rolled back
   through a paired compensating command. This is the atom of the whole engine.
-- **Mediator** — the orchestrator *is* the mediator. A step reports completion; the orchestrator,
+- **Mediator**: the orchestrator *is* the mediator. A step reports completion; the orchestrator,
   not the step, chooses the successor. Coordination lives in one auditable place.
-- **State** — a workflow instance is a state machine: `pending → running → waiting → done |
+- **State**: a workflow instance is a state machine: `pending → running → waiting → done |
   failed`, with only legal transitions allowed and each one captured.
-- **Saga** — the resilience model for long-running flows: each step carries a compensating
+- **Saga**: the resilience model for long-running flows: each step carries a compensating
   action, so a late failure unwinds the earlier committed steps in reverse.
-- **Event Sourcing** — the run's history is its event log; state is derived by folding it, which
+- **Event Sourcing**: the run's history is its event log; state is derived by folding it, which
   gives replay, resume, and audit for free.
-- **Chain of Responsibility** — step middleware (auth → quota → audit) each step passes through
+- **Chain of Responsibility**: step middleware (auth → quota → audit) each step passes through
   before it runs.
-- **Template Method** — a step base fixes the skeleton (validate → run → record) and each concrete
+- **Template Method**: a step base fixes the skeleton (validate → run → record) and each concrete
   step fills in only `run`.
-- **Retry / Timeout / Circuit Breaker** — per-step resilience: retry with backoff, a deadline
+- **Retry / Timeout / Circuit Breaker**: per-step resilience: retry with backoff, a deadline
   that fails a hung step, a breaker that fails fast when a downstream service is down.
-- **Dead-Letter Queue** — a step that exhausts its retries lands in a DLQ for inspection instead
+- **Dead-Letter Queue**: a step that exhausts its retries lands in a DLQ for inspection instead
   of killing the whole run.
-- **Producer-Consumer / Worker Pool** — the scheduler produces ready steps; a bounded pool of
+- **Producer-Consumer / Worker Pool**: the scheduler produces ready steps; a bounded pool of
   executors consumes them, so pool size caps concurrency.
-- **Memento** — a checkpoint captured before each step, so a crashed run resumes from the last
+- **Memento**: a checkpoint captured before each step, so a crashed run resumes from the last
   good state.
-- **Pipes and Filters** — a linear workflow *is* pipes-and-filters: each step transforms the
+- **Pipes and Filters**: a linear workflow *is* pipes-and-filters: each step transforms the
   payload and passes it on.
 
 When a step's work is a model call, the **AI & LLM Patterns** family supplies the rest:
@@ -74,14 +74,14 @@ instance durably).
 
 ## How the Approach Changed
 
-1. **Cron + scripts** — steps chained by shell and prayer; a mid-run crash means manual cleanup.
-2. **Job queues** — durable steps (Sidekiq, Celery, Oban) with retries, but the *flow between*
+1. **Cron + scripts**: steps chained by shell and prayer; a mid-run crash means manual cleanup.
+2. **Job queues**: durable steps (Sidekiq, Celery, Oban) with retries, but the *flow between*
    steps still lives in code.
-3. **State machines** — the transitions become explicit and enforced, but state is often a column
+3. **State machines**: the transitions become explicit and enforced, but state is often a column
    you mutate.
-4. **Durable orchestration** — Temporal, Step Functions, Camunda: the flow is a definition, the
+4. **Durable orchestration**: Temporal, Step Functions, Camunda: the flow is a definition, the
    history is the source of truth, and resume-after-crash is the headline feature.
-5. **Agentic workflows** — the same engine now runs steps whose *next step is chosen by a model*,
+5. **Agentic workflows**: the same engine now runs steps whose *next step is chosen by a model*,
    not just by a static branch, which is where the multi-agent playbook picks up.
 
 The durability patterns are constant. What moved is how much of the flow is fixed data versus
@@ -100,7 +100,7 @@ decided at runtime.
 
 ## Related Playbooks
 
-- **Building a JSON Low-Code Framework** — a workflow definition is a low-code graph; same
+- **Building a JSON Low-Code Framework**: a workflow definition is a low-code graph; same
   data-describes-behavior kernel, applied to steps.
-- **Orchestrating Multi-Agent Tasks** — a multi-agent run is a workflow whose next step a model
+- **Orchestrating Multi-Agent Tasks**: a multi-agent run is a workflow whose next step a model
   decides; the durability patterns here carry straight over.

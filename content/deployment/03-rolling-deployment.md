@@ -27,27 +27,27 @@ all-at-once switch for a gradual, in-place replacement that keeps capacity up th
 
 Replacing all instances at once, or taking the service down to upgrade, is disruptive:
 
-- **Downtime** — stopping everything to deploy the new version means an outage window.
-- **Capacity loss** — replacing all instances simultaneously drops serving capacity during the swap.
-- **All-at-once risk** — every instance flips together, so a broken new version takes the whole service
+- **Downtime**: stopping everything to deploy the new version means an outage window.
+- **Capacity loss**: replacing all instances simultaneously drops serving capacity during the swap.
+- **All-at-once risk**: every instance flips together, so a broken new version takes the whole service
   down with no healthy old instances left.
-- **No health gating** — a naive replace doesn't wait to confirm new instances are actually serving before
+- **No health gating**: a naive replace doesn't wait to confirm new instances are actually serving before
   removing old ones.
 
 ## Structure
 
 Key Components:
 
-- **Replica set** — the pool of instances behind a load balancer.
-- **Rolling controller** — replaces instances in batches, respecting surge/unavailable limits.
-- **Health checks / readiness probes** — confirm a new instance is serving before old ones are removed.
-- **Surge & max-unavailable** — knobs controlling how many extra/absent instances during the roll.
-- **Automatic rollback** — halting and reversing the roll if new instances fail health checks.
+- **Replica set**: the pool of instances behind a load balancer.
+- **Rolling controller**: replaces instances in batches, respecting surge/unavailable limits.
+- **Health checks / readiness probes**: confirm a new instance is serving before old ones are removed.
+- **Surge & max-unavailable**: knobs controlling how many extra/absent instances during the roll.
+- **Automatic rollback**: halting and reversing the roll if new instances fail health checks.
 
 ```
 Service ──► Old Pods (v1) [ ■ ■ ■ ■ ]   replicas draining ↓
         └─► New Pods (v2) [ ■ ■ □ □ ]   replicas ramping ↑
-   a few at a time, health-checked, until all are v2 — capacity maintained throughout
+   a few at a time, health-checked, until all are v2: capacity maintained throughout
 ```
 
 ## When to Use
@@ -60,25 +60,25 @@ Service ──► Old Pods (v1) [ ■ ■ ■ ■ ]   replicas draining ↓
 ## Advantages and Disadvantages
 
 ### Advantages
-- **No extra environment** — replaces in place; cheaper than blue-green.
-- **Zero downtime** — a healthy mix always serves traffic; capacity is maintained.
-- **Built-in** — orchestrators (Kubernetes, ECS, Swarm) do it natively with health gating.
+- **No extra environment**: replaces in place; cheaper than blue-green.
+- **Zero downtime**: a healthy mix always serves traffic; capacity is maintained.
+- **Built-in**: orchestrators (Kubernetes, ECS, Swarm) do it natively with health gating.
 
 ### Disadvantages
-- **Mixed versions during the roll** — old and new run simultaneously; both must be compatible.
-- **Slower rollback** — reversing means rolling back through the batches, not an instant switch.
-- **No blast-radius control** — unlike canary, it's not metric-gated; a bad version rolls out to everyone
+- **Mixed versions during the roll**: old and new run simultaneously; both must be compatible.
+- **Slower rollback**: reversing means rolling back through the batches, not an instant switch.
+- **No blast-radius control**: unlike canary, it's not metric-gated; a bad version rolls out to everyone
   (just gradually) unless health checks catch it.
 
 ## Common Mistakes
 
-- **No/weak readiness probes** — removing old instances before new ones actually serve causes errors or an
+- **No/weak readiness probes**: removing old instances before new ones actually serve causes errors or an
   outage mid-roll; gate on real readiness.
-- **Incompatible versions coexisting** — a breaking API/schema change while both versions run breaks
+- **Incompatible versions coexisting**: a breaking API/schema change while both versions run breaks
   requests during the roll; keep changes backward-compatible.
-- **Surge/unavailable set wrong** — too aggressive drops capacity; too conservative makes rolls glacial;
+- **Surge/unavailable set wrong**: too aggressive drops capacity; too conservative makes rolls glacial;
   tune to your capacity headroom.
-- **Assuming it's a canary** — a rolling update isn't metric-gated; add canary/analysis if you need
+- **Assuming it's a canary**: a rolling update isn't metric-gated; add canary/analysis if you need
   blast-radius control by traffic percentage.
 
 ## Key Takeaways
@@ -105,7 +105,7 @@ spec:
 **✅ Idiomatic**
 
 ```yaml
-# RollingUpdate with surge/unavailable limits and a readiness probe — the default, done right.
+# RollingUpdate with surge/unavailable limits and a readiness probe: the default, done right.
 apiVersion: apps/v1
 kind: Deployment
 metadata: { name: app }
@@ -126,7 +126,7 @@ spec:
 # kubectl rollout status deployment/app   ·   kubectl rollout undo deployment/app  (rollback)
 ```
 
-**🧠 Tradeoff** — Kubernetes' native `RollingUpdate` with `maxUnavailable: 0` and a real `readinessProbe`
+**🧠 Tradeoff**: Kubernetes' native `RollingUpdate` with `maxUnavailable: 0` and a real `readinessProbe`
 is zero-downtime rolling out of the box: new pods must pass readiness before old ones are removed, and
 `kubectl rollout undo` reverses it. It's the cheap default (no second environment). The constraints are the
 usual: versions coexist mid-roll (keep compatible), and it's not metric-gated: health checks, not
@@ -137,7 +137,7 @@ business metrics, decide, so pair with canary for blast-radius control.
 **❌ Naive**
 
 ```bash
-# Stop the container, then start the new image — a gap where nothing serves.
+# Stop the container, then start the new image: a gap where nothing serves.
 docker stop app && docker rm app && docker run -d --name app myapp:v2   # downtime between stop and ready
 ```
 
@@ -159,7 +159,7 @@ services:
 # docker service update --image myapp:v2 app   ← rolls with the config above
 ```
 
-**🧠 Tradeoff** — Docker Swarm's `update_config` with `order: start-first` and a `healthcheck` gives
+**🧠 Tradeoff**: Docker Swarm's `update_config` with `order: start-first` and a `healthcheck` gives
 rolling updates with automatic rollback for Compose/Swarm setups: the same incremental, health-gated
 replacement without Kubernetes. It fits smaller deployments. You still ensure versions coexist during the
 roll and that the health check truly reflects readiness, since it gates the whole rollout.
@@ -169,14 +169,14 @@ roll and that the health check truly reflects readiness, since it gates the whol
 **❌ Naive**
 
 ```bash
-# Loop that replaces every node at once (or with no health wait) — capacity dips or an outage.
+# Loop that replaces every node at once (or with no health wait): capacity dips or an outage.
 for host in $HOSTS; do ssh $host "deploy v2"; done   # all together, no readiness gate
 ```
 
 **✅ Idiomatic**
 
 ```bash
-# Roll node-by-node: drain, deploy, health-check, return to pool — abort on failure.
+# Roll node-by-node: drain, deploy, health-check, return to pool; abort on failure.
 for host in $HOSTS; do
   lb-drain "$host"                       # stop sending it new traffic
   ssh "$host" "deploy v2 && systemctl restart app"
@@ -185,7 +185,7 @@ for host in $HOSTS; do
 done                                     # (abort + re-add drained nodes on failure = rollback)
 ```
 
-**🧠 Tradeoff** — For non-orchestrated fleets, a pipeline that drains a node from the load balancer,
+**🧠 Tradeoff**: For non-orchestrated fleets, a pipeline that drains a node from the load balancer,
 deploys, waits for health, then re-adds it, one at a time, is rolling deployment by hand. Capacity stays
 up (only one node out at a time) and a failed health check aborts the roll. It's more script to own than an
 orchestrator's built-in rolling, but it's the same principle and works anywhere you have a load balancer
@@ -211,7 +211,7 @@ Service:
 # ECS replaces tasks incrementally, waiting for ALB health checks before draining old tasks.
 ```
 
-**🧠 Tradeoff** — AWS ECS rolling deployments (and ASG instance refresh) provide managed rolling with
+**🧠 Tradeoff**: AWS ECS rolling deployments (and ASG instance refresh) provide managed rolling with
 `MinimumHealthyPercent`/`MaximumPercent` controlling surge and capacity, and ALB health checks gating each
 step: the platform maintains capacity and drains old tasks only after new ones are healthy. You configure
 the percentages and trust the health check; the orchestrator handles the incremental replacement and can
@@ -219,17 +219,17 @@ auto-roll-back via CodeDeploy on alarms.
 
 ## Applications
 
-- **Kubernetes workloads** — the default Deployment strategy for stateless services (backend).
-- **Container orchestrators** — ECS, Nomad, and Swarm roll service updates natively (backend).
-- **Auto Scaling Groups** — instance refresh rolls a fleet to a new AMI/launch template (backend).
-- **Managed app platforms** — Heroku/App Engine roll new releases across dynos/instances (backend).
-- **Stateless web tiers** — the common case: interchangeable replicas behind a load balancer (backend).
+- **Kubernetes workloads**: the default Deployment strategy for stateless services (backend).
+- **Container orchestrators**: ECS, Nomad, and Swarm roll service updates natively (backend).
+- **Auto Scaling Groups**: instance refresh rolls a fleet to a new AMI/launch template (backend).
+- **Managed app platforms**: Heroku/App Engine roll new releases across dynos/instances (backend).
+- **Stateless web tiers**: the common case: interchangeable replicas behind a load balancer (backend).
 
 ## Related Patterns
 
-- **Blue-Green Deployment** — trades the second environment for instant all-at-once switch and rollback;
+- **Blue-Green Deployment**: trades the second environment for instant all-at-once switch and rollback;
   rolling is cheaper but rollback is slower and versions mix.
-- **Canary Release** — adds metric-gated, percentage-based exposure; a rolling update is health-gated but
+- **Canary Release**: adds metric-gated, percentage-based exposure; a rolling update is health-gated but
   not traffic-weighted by business metrics.
-- **Feature Flags** — decouple release from deploy so a rolling deploy ships code dark, enabled later per
+- **Feature Flags**: decouple release from deploy so a rolling deploy ships code dark, enabled later per
   flag.

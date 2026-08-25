@@ -40,9 +40,9 @@ Template Method keeps the shared flow in one place and varies only the format-sp
 
 Key Components:
 
-- **Template Method** — the fixed algorithm that calls the steps in order.
-- **Abstract/primitive steps** — the holes each variant must fill.
-- **Hooks** — optional steps with a default the variant may override.
+- **Template Method**: the fixed algorithm that calls the steps in order.
+- **Abstract/primitive steps**: the holes each variant must fill.
+- **Hooks**: optional steps with a default the variant may override.
 
 ## When to Use
 
@@ -64,9 +64,9 @@ Key Components:
 
 ## Common Mistakes
 
-- **Overriding the template method itself** — variants should fill steps, not rewrite the flow.
-- **Too many hooks** — a template riddled with optional overrides is hard to reason about.
-- **Reaching for inheritance when composition fits** — if steps vary independently, Strategy
+- **Overriding the template method itself**: variants should fill steps, not rewrite the flow.
+- **Too many hooks**: a template riddled with optional overrides is hard to reason about.
+- **Reaching for inheritance when composition fits**: if steps vary independently, Strategy
   (inject the steps) is usually cleaner.
 
 ## Key Takeaways
@@ -108,7 +108,7 @@ function exportJson(data) {
 ```js
 // The base owns the flow; subclasses fill header()/row()/wrap().
 class Exporter {
-  export(data) {                    // the template method — fixed sequence
+  export(data) {                    // the template method: fixed sequence
     const lines = [this.header(), ...data.map(r => this.row(r))];
     return this.wrap(lines);
   }
@@ -129,7 +129,7 @@ class JsonExporter extends Exporter {
 new CsvExporter().export(data);
 ```
 
-**🧠 Tradeoff** — `export()` fixes the sequence; subclasses supply only `header`/`row`/`wrap`, so
+**🧠 Tradeoff**: `export()` fixes the sequence; subclasses supply only `header`/`row`/`wrap`, so
 the open/close scaffolding lives once. The coupling to a base class is the cost: if the steps
 varied independently you'd inject them as functions instead (that's Strategy), which JS's
 first-class functions make easy.
@@ -178,7 +178,7 @@ class UserImport extends EtlJob {
 }
 ```
 
-**🧠 Tradeoff** — On the backend, Template Method captures pipeline skeletons (ETL, request
+**🧠 Tradeoff**: On the backend, Template Method captures pipeline skeletons (ETL, request
 handling, job runners): the base guarantees the order and shared concerns (transactions, logging),
 subclasses fill the steps. Modern Node often prefers passing the step functions in (Strategy /
 middleware), which avoids a class hierarchy and composes better; pick inheritance only when the
@@ -229,7 +229,7 @@ class JsonExporter(Exporter):
     def wrap(self, lines: list[str]) -> str: return "[" + ",".join(lines) + "]"
 ```
 
-**🧠 Tradeoff** — An `ABC` marks the required step (`row`) as abstract while leaving hooks with
+**🧠 Tradeoff**: An `ABC` marks the required step (`row`) as abstract while leaving hooks with
 defaults; `export` fixes the flow. This is the textbook Template Method. Python's first-class
 functions also let you pass steps into a single `export(data, header=..., row=...)` function, the
 functional alternative when inheritance feels heavy.
@@ -277,7 +277,7 @@ end
 Exporter.export(CsvExporter, data)
 ```
 
-**🧠 Tradeoff** — With no inheritance, the template is a shared function that takes the implementing
+**🧠 Tradeoff**: With no inheritance, the template is a shared function that takes the implementing
 *module* and calls its callbacks in a fixed order; the behaviour documents the required steps.
 Idiomatic Elixir often skips even this and just passes the varying steps as functions to a reducer;
 that's Strategy, and for many cases it's the cleaner choice on the BEAM.
@@ -337,7 +337,7 @@ var CSV = Format{
 }
 ```
 
-**🧠 Tradeoff** — Without inheritance, Go realizes Template Method by passing the varying steps into
+**🧠 Tradeoff**: Without inheritance, Go realizes Template Method by passing the varying steps into
 a skeleton function, which is composition, i.e. Strategy. That's the point: the two patterns
 converge when you can't (or won't) subclass. If you want a partial default, embed a struct with
 default step methods and let callers override by shadowing, but the function-fields form above is
@@ -378,7 +378,7 @@ public record Row(int Id, string Name);
 
 public abstract class Exporter
 {
-    public string Export(IEnumerable<Row> data) // the template method — fixed, not virtual
+    public string Export(IEnumerable<Row> data) // the template method: fixed, not virtual
     {
         var lines = new List<string>();
         if (Header() is { Length: > 0 } h) lines.Add(h);
@@ -404,7 +404,7 @@ public sealed class JsonExporter : Exporter
 }
 ```
 
-**🧠 Tradeoff** — this is Template Method on home turf. `Export` is non-virtual, so no subclass
+**🧠 Tradeoff**: this is Template Method on home turf. `Export` is non-virtual, so no subclass
 can rewrite the flow; `abstract` marks the step every format must supply, `protected virtual`
 marks the hooks. The compiler enforces the split that JS and Python only document. The cost is
 the usual one: single inheritance, and variants welded to the base. When the steps vary
@@ -473,7 +473,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — a trait with default methods gives Template Method without inheritance: the
+**🧠 Tradeoff**: a trait with default methods gives Template Method without inheritance: the
 trait is both the contract (`row` has no body, so every format must supply it) and the skeleton
 (`export` has one). Dispatch is static: each impl compiles to its own specialized `export`, no
 vtable. One honest gap versus C#: Rust can't seal a single method, so an impl *may* override
@@ -514,7 +514,7 @@ const std = @import("std");
 
 const Row = struct { id: u32, name: []const u8 };
 
-// The skeleton is generic over a comptime format type — duck typing, but checked
+// The skeleton is generic over a comptime format type: duck typing, but checked
 // at compile time: pass a type missing a step and the build fails.
 fn exportWith(comptime Format: type, data: []const Row) void {
     Format.open();
@@ -558,7 +558,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — `comptime Format: type` is Zig's version of Go's function-fields form, minus
+**🧠 Tradeoff**: `comptime Format: type` is Zig's version of Go's function-fields form, minus
 the runtime cost: each format stamps out its own specialized `exportWith`, and a type missing
 `row` or `separator` is a compile error. The catch is that the contract is implicit: nothing in
 the code names the required steps, so the error shows up at the call site, not on the format
@@ -603,7 +603,7 @@ record Row(int id, String name) {}
 
 // The base owns the flow; `final` means no subclass can rewrite it.
 abstract class Exporter {
-    final String export(List<Row> data) { // the template method — fixed sequence
+    final String export(List<Row> data) { // the template method: fixed sequence
         var lines = new ArrayList<String>();
         if (!header().isEmpty()) lines.add(header());
         for (var r : data) lines.add(row(r));
@@ -638,7 +638,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — This is the pattern Java's frameworks were built on: `HttpServlet.service`
+**🧠 Tradeoff**: This is the pattern Java's frameworks were built on: `HttpServlet.service`
 calling your `doGet`, JUnit's setup/teardown, `AbstractList` needing only `get` and `size`. The
 abstract-class form is textbook here, and the keywords carry the design: `final` on `export`
 means no subclass can rewrite the flow, `abstract` marks the one step every format owes, and
@@ -651,24 +651,24 @@ variant would need two bases.
 
 Where Template Method shows up in practice:
 
-- **Frontend** — component lifecycle skeletons (mount/render/unmount hooks), export/serialization
+- **Frontend**: component lifecycle skeletons (mount/render/unmount hooks), export/serialization
   flows, wizard step frameworks.
-- **Backend** — ETL/data pipelines, request-handling skeletons, test setup/teardown harnesses,
+- **Backend**: ETL/data pipelines, request-handling skeletons, test setup/teardown harnesses,
   batch-job runners with overridable steps.
-- **Both** — any "fixed sequence, varying steps" algorithm.
+- **Both**: any "fixed sequence, varying steps" algorithm.
 
 **In modern systems:**
 
-- **Workflow engine** — a step base fixes the skeleton (validate → run → record) and each concrete
+- **Workflow engine**: a step base fixes the skeleton (validate → run → record) and each concrete
   step fills in only `run`.
-- **Multi-agent** — an agent-turn template (gather context → decide → act → reflect) with the
+- **Multi-agent**: an agent-turn template (gather context → decide → act → reflect) with the
   decide/act steps overridden per agent role.
-- **Low-code** — a base renderer fixes the mount/update/unmount flow; each widget type supplies
+- **Low-code**: a base renderer fixes the mount/update/unmount flow; each widget type supplies
   just its draw step.
 
 ## Related Patterns
 
-- **Strategy** — Template Method varies steps via inheritance (compile-time); Strategy injects the
+- **Strategy**: Template Method varies steps via inheritance (compile-time); Strategy injects the
   whole algorithm via composition (runtime). In languages without inheritance they converge.
-- **Factory Method** — often *is* a step within a template method (the base defines the flow, a
+- **Factory Method**: often *is* a step within a template method (the base defines the flow, a
   factory step creates the object it needs).

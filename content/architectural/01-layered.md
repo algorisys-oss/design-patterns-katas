@@ -28,21 +28,21 @@ knowing only the contract of the layer below.
 Without layers, responsibilities smear across the codebase. A single request handler parses HTTP,
 runs business rules, builds SQL, and formats the response, all in one function:
 
-- **No separation of concerns** — UI, rules, and persistence tangle, so you can't change the
+- **No separation of concerns**: UI, rules, and persistence tangle, so you can't change the
   database without risking the business logic.
-- **Untestable core** — the rules can't run without a web request and a live database bolted on.
-- **Duplication** — the same validation and query logic gets copy-pasted into every handler.
-- **Unclear dependencies** — anything calls anything, so a small change has an unknown blast
+- **Untestable core**: the rules can't run without a web request and a live database bolted on.
+- **Duplication**: the same validation and query logic gets copy-pasted into every handler.
+- **Unclear dependencies**: anything calls anything, so a small change has an unknown blast
   radius.
 
 ## Structure
 
 Key Components:
 
-- **Presentation** — controllers, views, serializers; turns transport (HTTP, CLI) into calls.
-- **Application** — use cases / services; orchestrates a request, owns no business rules itself.
-- **Domain** — entities and business rules; the heart, ignorant of the outside world.
-- **Infrastructure** — databases, HTTP clients, file systems; the concrete outside world.
+- **Presentation**: controllers, views, serializers; turns transport (HTTP, CLI) into calls.
+- **Application**: use cases / services; orchestrates a request, owns no business rules itself.
+- **Domain**: entities and business rules; the heart, ignorant of the outside world.
+- **Infrastructure**: databases, HTTP clients, file systems; the concrete outside world.
 
 ```
 ┌──────────────────────────┐  Presentation   (controllers, views)
@@ -65,26 +65,26 @@ Key Components:
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Separation of concerns** — each layer has one job and one reason to change.
-- **Testability** — lower layers mock cleanly; the domain runs with no infrastructure.
-- **Familiarity** — nearly every developer already understands the shape.
+- **Separation of concerns**: each layer has one job and one reason to change.
+- **Testability**: lower layers mock cleanly; the domain runs with no infrastructure.
+- **Familiarity**: nearly every developer already understands the shape.
 
 ### Disadvantages
-- **Pass-through tax** — trivial features touch every layer, adding ceremony for little gain.
-- **Leaky layering** — teams "cheat" by calling down two layers or leaking DB models upward,
+- **Pass-through tax**: trivial features touch every layer, adding ceremony for little gain.
+- **Leaky layering**: teams "cheat" by calling down two layers or leaking DB models upward,
   eroding the boundaries.
-- **The dependency trap** — naive layering has the domain depend *on* infrastructure; clean
+- **The dependency trap**: naive layering has the domain depend *on* infrastructure; clean
   designs invert that (see Related).
 
 ## Common Mistakes
 
-- **Skipping layers** — a controller reaching straight into the database bypasses the rules and
+- **Skipping layers**: a controller reaching straight into the database bypasses the rules and
   defeats the structure; always go through the layer below.
-- **Leaking models** — returning ORM/database entities to the presentation layer couples the UI
+- **Leaking models**: returning ORM/database entities to the presentation layer couples the UI
   to the schema; map to DTOs at the boundary.
-- **A domain that depends on infrastructure** — importing the database client into domain code
+- **A domain that depends on infrastructure**: importing the database client into domain code
   makes the core untestable; invert it with an interface the infra layer implements.
-- **An anemic pass-through** — layers that only forward calls add cost with no separation; collapse
+- **An anemic pass-through**: layers that only forward calls add cost with no separation; collapse
   layers that don't earn their keep.
 
 ## Key Takeaways
@@ -103,7 +103,7 @@ Key Components:
 **❌ Naive**
 
 ```js
-// One function does transport, rules, and persistence — nothing is separable.
+// One function does transport, rules, and persistence, nothing is separable.
 async function handleSignup(req, res) {
   if (!req.body.email.includes("@")) return res.status(400).send("bad email");
   const db = await connect();
@@ -118,12 +118,12 @@ async function handleSignup(req, res) {
 
 ```js
 // Presentation → application → domain → infrastructure, each its own module.
-// domain/user.js — rules, no I/O
+// domain/user.js: rules, no I/O
 export function validateEmail(email) {
   if (!email.includes("@")) throw new DomainError("bad email");
 }
 
-// application/signup.js — orchestrates, depends on a repo interface
+// application/signup.js, orchestrates, depends on a repo interface
 export function makeSignup(users) {
   return async (email) => {
     validateEmail(email);
@@ -132,7 +132,7 @@ export function makeSignup(users) {
   };
 }
 
-// presentation/routes.js — transport only
+// presentation/routes.js: transport only
 router.post("/signup", async (req, res) => {
   try {
     await signup(req.body.email);
@@ -143,7 +143,7 @@ router.post("/signup", async (req, res) => {
 });
 ```
 
-**🧠 Tradeoff** — Splitting one handler into presentation/application/domain modules costs extra
+**🧠 Tradeoff**: Splitting one handler into presentation/application/domain modules costs extra
 files and a repository indirection, but each piece is now testable alone: the domain runs with no
 web or DB, the use case runs against a fake `users`. For a throwaway script it's over-structure;
 for anything that lives, the isolation pays back the first time you swap the datastore.
@@ -183,7 +183,7 @@ router.get("/orders/:id", (req, res, next) =>
   orderService.get(req.params.id).then((o) => res.json(o)).catch(next));
 ```
 
-**🧠 Tradeoff** — The Express route shrinks to transport; the service owns orchestration and the
+**🧠 Tradeoff**: The Express route shrinks to transport; the service owns orchestration and the
 repo owns SQL, so you can unit-test the service with a stub repo and no HTTP. The price is Node's
 usual wiring (modules, a bit of dependency passing), but it keeps a growing API from becoming a
 pile of fat route handlers.
@@ -209,12 +209,12 @@ def create_user(request):
 **✅ Idiomatic**
 
 ```python
-# domain/user.py — pure rules
+# domain/user.py: pure rules
 def validate_email(email: str) -> None:
     if "@" not in email:
         raise DomainError("bad email")
 
-# application/signup.py — use case against a repo protocol
+# application/signup.py: use case against a repo protocol
 class Signup:
     def __init__(self, users: "UserRepository"):
         self.users = users
@@ -225,7 +225,7 @@ class Signup:
             raise DomainError("taken")
         return self.users.create(email)
 
-# presentation/views.py — transport only
+# presentation/views.py: transport only
 def create_user(request):
     try:
         signup(request.POST["email"])
@@ -234,7 +234,7 @@ def create_user(request):
         return HttpResponse(str(e), status=e.status)
 ```
 
-**🧠 Tradeoff** — Pulling rules into a pure `domain` module and the use case into `application`
+**🧠 Tradeoff**: Pulling rules into a pure `domain` module and the use case into `application`
 lets you test them with plain `pytest` and a fake repo: no test client, no database fixtures.
 Python won't stop you from importing the ORM into the domain, so the discipline is on you; a
 `Protocol` for the repository keeps the domain honestly decoupled.
@@ -285,7 +285,7 @@ defmodule MyAppWeb.UserController do
 end
 ```
 
-**🧠 Tradeoff** — Phoenix bakes layering in: the web layer (controllers/views) is deliberately
+**🧠 Tradeoff**: Phoenix bakes layering in: the web layer (controllers/views) is deliberately
 thin, and **contexts** hold the application+domain logic that can be tested and reused without the
 endpoint. You get the boundary as a framework convention rather than hand-rolled folders. The
 subtlety is context design: too many tiny contexts, or a "God context," both erode the benefit.
@@ -332,7 +332,7 @@ func (h Handler) getOrder(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-**🧠 Tradeoff** — Go layers by package, and its small implicit interfaces make the clean version
+**🧠 Tradeoff**: Go layers by package, and its small implicit interfaces make the clean version
 natural: the domain declares the `OrderRepo` interface it needs, and the infrastructure package
 implements it, so the dependency points *inward* even though infra sits at the bottom. Wiring is
 explicit in `main` (no container), which is verbose but leaves the dependency graph obvious.
@@ -356,14 +356,14 @@ app.MapGet("/orders/{id}", async (string id) =>
 **✅ Idiomatic**
 
 ```csharp
-// Presentation — the endpoint depends on the service, not the database.
+// Presentation: the endpoint depends on the service, not the database.
 app.MapGet("/orders/{id}", async (string id, OrderService svc) =>
     Results.Json(await svc.GetAsync(id)));
 
 // Infrastructure registers itself in the composition root:
 // builder.Services.AddScoped<IOrderRepo, PostgresOrderRepo>();
 
-// Domain — owns the contract and the rules; references no infrastructure.
+// Domain: owns the contract and the rules; references no infrastructure.
 public record Order(string Id, decimal Total);
 
 public interface IOrderRepo
@@ -378,7 +378,7 @@ public sealed class OrderService(IOrderRepo repo)
 }
 ```
 
-**🧠 Tradeoff** — In C# the layers are usually separate *projects*, and that makes the rule
+**🧠 Tradeoff**: In C# the layers are usually separate *projects*, and that makes the rule
 mechanical: the domain project has no reference to the infrastructure project, so importing EF
 into the domain won't compile. ASP.NET's built-in DI container is the composition root Go writes
 by hand: less wiring code, but the dependency graph now lives in `AddScoped` calls rather than
@@ -391,7 +391,7 @@ in plain constructors, so it takes discipline to keep it readable.
 **❌ Naive**
 
 ```rust
-// One function looks up, applies the rule, and formats — nothing is separable.
+// One function looks up, applies the rule, and formats, nothing is separable.
 fn get_order(store: &std::collections::HashMap<String, i64>, id: &str) -> String {
     match store.get(id) {
         Some(cents) => format!("{{\"total\": {}}}", *cents as f64 / 100.0), // formatting inline
@@ -421,7 +421,7 @@ impl<R: OrderRepo> OrderService<R> {
     }
 }
 
-// infrastructure — implements the domain's trait
+// infrastructure: implements the domain's trait
 struct InMemoryOrders(HashMap<String, i64>);
 
 impl OrderRepo for InMemoryOrders {
@@ -437,7 +437,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — Rust layers by module (or crate), and visibility does the policing: a domain
+**🧠 Tradeoff**: Rust layers by module (or crate), and visibility does the policing: a domain
 module that never writes `use crate::infrastructure` can't touch it, and `pub` marks exactly what
 crosses each boundary. Ownership adds a quiet bonus: `by_id` returns an *owned* `Order`, so the
 domain gets a DTO by construction, never a live reference into storage. The generic
@@ -470,7 +470,7 @@ fn getOrder(id: []const u8) void {
 ```zig
 const std = @import("std");
 
-// domain — the service is generic over any repo type with a byId method.
+// domain: the service is generic over any repo type with a byId method.
 fn OrderService(comptime Repo: type) type {
     return struct {
         repo: Repo,
@@ -482,7 +482,7 @@ fn OrderService(comptime Repo: type) type {
     };
 }
 
-// infrastructure — satisfies the shape just by having byId.
+// infrastructure: satisfies the shape just by having byId.
 const InMemoryOrders = struct {
     cents: std.StringHashMap(i64),
 
@@ -503,7 +503,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — Zig has no interfaces, so the layer contract here is *structural*: the comptime
+**🧠 Tradeoff**: Zig has no interfaces, so the layer contract here is *structural*: the comptime
 generic accepts any type with a `byId` method, checked only where `OrderService(InMemoryOrders)`
 is instantiated. That's zero-cost layering, but there is no named contract to read: the "layer
 below" is whatever methods the service happens to call, so a doc comment carries the contract.
@@ -539,7 +539,7 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 // Package-per-layer; the domain owns the interface, infrastructure implements it.
-// domain — contract and rules; imports nothing from the layers below
+// domain: contract and rules; imports nothing from the layers below
 record Order(String id, double total) {}
 
 interface OrderRepo {
@@ -555,7 +555,7 @@ class OrderService {
     }
 }
 
-// infrastructure — implements the domain's interface
+// infrastructure: implements the domain's interface
 class InMemoryOrders implements OrderRepo {
     private final Map<String, Integer> cents = Map.of("o1", 2500);
 
@@ -564,7 +564,7 @@ class InMemoryOrders implements OrderRepo {
     }
 }
 
-// presentation — depends on the service, not the store
+// presentation: depends on the service, not the store
 public class Demo {
     public static void main(String[] args) {
         var svc = new OrderService(new InMemoryOrders());
@@ -573,7 +573,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — Java layers by package, and one build module (Maven/Gradle) per layer makes the
+**🧠 Tradeoff**: Java layers by package, and one build module (Maven/Gradle) per layer makes the
 rule mechanical the way C# projects do: the domain module lists no infrastructure dependency, so
 importing the JDBC driver into `OrderService` won't compile. JPMS can tighten that further: a
 `module-info.java` that exports only the domain's interfaces states the architecture in code,
@@ -584,21 +584,21 @@ taking an interface is the whole trick); the framework just made it the default 
 
 ## Applications
 
-- **Web applications** — the near-universal controller → service → repository → database split
+- **Web applications**: the near-universal controller → service → repository → database split
   (backend).
-- **Enterprise systems** — classic N-tier (presentation / business / data) deployments, sometimes
+- **Enterprise systems**: classic N-tier (presentation / business / data) deployments, sometimes
   as separate physical tiers (backend).
-- **Mobile & desktop apps** — UI / view-model / domain / data layers keep platform code out of the
+- **Mobile & desktop apps**: UI / view-model / domain / data layers keep platform code out of the
   business logic (frontend).
-- **Framework conventions** — Rails, Django, Spring, and Phoenix all encode a layered default so
+- **Framework conventions**: Rails, Django, Spring, and Phoenix all encode a layered default so
   teams share one structure (backend).
-- **APIs** — request handlers stay thin over a reusable service/domain core shared across REST,
+- **APIs**: request handlers stay thin over a reusable service/domain core shared across REST,
   GraphQL, and gRPC surfaces (backend).
 
 ## Related Patterns
 
-- **Hexagonal (Ports & Adapters)** — layering's evolution: instead of a straight downward stack,
+- **Hexagonal (Ports & Adapters)**: layering's evolution: instead of a straight downward stack,
   the domain is centered and infrastructure plugs in through interfaces it *owns*.
-- **Repository** — the standard seam between the application/domain layers and the data layer.
-- **Dependency Inversion** — the principle that keeps the domain from depending on infrastructure,
+- **Repository**: the standard seam between the application/domain layers and the data layer.
+- **Dependency Inversion**: the principle that keeps the domain from depending on infrastructure,
   turning a leaky stack into clean layers.

@@ -29,24 +29,24 @@ into a result.
 When related messages arrive separately (out of order, across time, from parallel workers) you need to
 reassemble them, and doing it ad hoc is hard:
 
-- **Correlation** — matching messages that belong to the same group requires tracking a correlation id
+- **Correlation**: matching messages that belong to the same group requires tracking a correlation id
   across arrivals.
-- **Completion detection** — knowing when a group is *done* (all N parts? a timeout?) is non-trivial,
+- **Completion detection**: knowing when a group is *done* (all N parts? a timeout?) is non-trivial,
   especially when some parts may never arrive.
-- **Out-of-order arrival** — parallel processing means parts land in any order; you can't just append.
-- **State & timeouts** — you must hold partial groups in memory/store and decide what to do when they
+- **Out-of-order arrival**: parallel processing means parts land in any order; you can't just append.
+- **State & timeouts**: you must hold partial groups in memory/store and decide what to do when they
   never complete.
 
 ## Structure
 
 Key Components:
 
-- **Aggregator** — stateful component holding in-progress groups keyed by correlation id.
-- **Correlation id** — the key that groups related messages together.
-- **Completion condition** — the rule that decides a group is ready: count reached, all expected parts
+- **Aggregator**: stateful component holding in-progress groups keyed by correlation id.
+- **Correlation id**: the key that groups related messages together.
+- **Completion condition**: the rule that decides a group is ready: count reached, all expected parts
   present, or a timeout.
-- **Aggregation function** — folds the collected messages into the single output message.
-- **Timeout / eviction** — a policy for groups that never complete (emit partial, or discard).
+- **Aggregation function**: folds the collected messages into the single output message.
+- **Timeout / eviction**: a policy for groups that never complete (emit partial, or discard).
 
 ```
 Message(a, batch=1) ──┐
@@ -64,26 +64,26 @@ Message(c, batch=1) ──┘   (buffers by correlation id, waits for completion
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Reassembly** — turns scattered/parallel results back into a coherent whole.
-- **Decouples timing** — absorbs out-of-order, cross-time arrivals and emits when ready.
-- **Completion semantics** — one place owns "when is this group done."
+- **Reassembly**: turns scattered/parallel results back into a coherent whole.
+- **Decouples timing**: absorbs out-of-order, cross-time arrivals and emits when ready.
+- **Completion semantics**: one place owns "when is this group done."
 
 ### Disadvantages
-- **Stateful** — must hold partial groups; that state needs memory/persistence and cleanup.
-- **Completion is tricky** — deciding when to give up on missing parts (timeouts) risks partial or lost
+- **Stateful**: must hold partial groups; that state needs memory/persistence and cleanup.
+- **Completion is tricky**: deciding when to give up on missing parts (timeouts) risks partial or lost
   results.
-- **A bottleneck & failure point** — the aggregator holds critical in-flight state; losing it loses
+- **A bottleneck & failure point**: the aggregator holds critical in-flight state; losing it loses
   groups unless persisted.
 
 ## Common Mistakes
 
-- **No timeout for incomplete groups** — waiting forever for a part that will never arrive leaks memory
+- **No timeout for incomplete groups**: waiting forever for a part that will never arrive leaks memory
   and stalls the result; always have a timeout/eviction policy.
-- **Losing state on restart** — an in-memory aggregator that crashes drops all partial groups; persist
+- **Losing state on restart**: an in-memory aggregator that crashes drops all partial groups; persist
   state if the groups matter.
-- **Wrong completion condition** — emitting before all parts arrive (or never emitting) produces wrong
+- **Wrong completion condition**: emitting before all parts arrive (or never emitting) produces wrong
   or missing results; match the condition to the source.
-- **Unbounded group state** — many concurrent incomplete groups can exhaust memory; bound and evict.
+- **Unbounded group state**: many concurrent incomplete groups can exhaust memory; bound and evict.
 
 ## Key Takeaways
 
@@ -101,7 +101,7 @@ Message(c, batch=1) ──┘   (buffers by correlation id, waits for completion
 **❌ Naive**
 
 ```js
-// Assumes all parts arrive together and in order — breaks with async/parallel results.
+// Assumes all parts arrive together and in order: breaks with async/parallel results.
 function onResults(parts) {
   return combine(parts); // no correlation, no completion handling, no timeout
 }
@@ -130,7 +130,7 @@ function makeAggregator(onComplete, timeoutMs = 5000) {
 }
 ```
 
-**🧠 Tradeoff** — Keying partial groups by `batchId`, indexing by `seq` (so out-of-order arrivals are
+**🧠 Tradeoff**: Keying partial groups by `batchId`, indexing by `seq` (so out-of-order arrivals are
 fine), and completing on count-reached *or* timeout is the whole pattern. The timeout is essential: it
 bounds memory and guarantees the group eventually resolves (as partial). This in-memory version loses
 groups on crash; production aggregators persist the partial state.
@@ -142,7 +142,7 @@ groups on crash; production aggregators persist the partial state.
 **❌ Naive**
 
 ```js
-// Collect responses with Promise.all — fine for a fixed set, but no timeout or partial handling.
+// Collect responses with Promise.all: fine for a fixed set, but no timeout or partial handling.
 const results = await Promise.all(services.map((s) => s.query(id))); // one hang blocks forever
 ```
 
@@ -162,7 +162,7 @@ async function scatterGather(services, id, timeoutMs = 2000) {
 }
 ```
 
-**🧠 Tradeoff** — `Promise.allSettled` + a per-call timeout race is the request-scoped aggregator:
+**🧠 Tradeoff**: `Promise.allSettled` + a per-call timeout race is the request-scoped aggregator:
 scatter to services, gather what returns in time, and combine, so a slow service degrades to a partial
 result instead of hanging the whole response. It's simpler than a stateful message aggregator because
 the group is one request. For cross-message aggregation over a broker, you need the persistent,
@@ -199,7 +199,7 @@ class Aggregator:
             g = self.groups.pop(bid); self.on_complete(bid, list(g["parts"].values()), partial=True)
 ```
 
-**🧠 Tradeoff** — A dict of partial groups keyed by correlation id, completing on count with a periodic
+**🧠 Tradeoff**: A dict of partial groups keyed by correlation id, completing on count with a periodic
 `sweep` for timeouts, is a clear stateful aggregator. Celery's `chord` does split→aggregate as a
 first-class workflow (a group of tasks with a callback). The `sweep`/timeout is what keeps incomplete
 groups from leaking; persist `groups` if a crash mustn't lose them.
@@ -211,7 +211,7 @@ groups from leaking; persist `groups` if a crash mustn't lose them.
 **❌ Naive**
 
 ```elixir
-# No correlation or completion — just combines whatever's passed.
+# No correlation or completion: just combines whatever's passed.
 def aggregate(parts), do: combine(parts)
 ```
 
@@ -237,7 +237,7 @@ defmodule Aggregator do
 end
 ```
 
-**🧠 Tradeoff** — A `GenServer` is the natural home for aggregator state: partial groups live in its
+**🧠 Tradeoff**: A `GenServer` is the natural home for aggregator state: partial groups live in its
 state, `handle_cast` folds arrivals, and `Process.send_after` handles timeouts, all with OTP
 supervision. If durability matters, back it with ETS/a database so a restart doesn't drop groups.
 Commanded/Broadway offer higher-level aggregation for event-sourced and streaming systems.
@@ -287,7 +287,7 @@ func Aggregate(in <-chan Msg, out chan<- Result, timeout time.Duration) {
 }
 ```
 
-**🧠 Tradeoff** — A single goroutine owning the `groups` map (no mutex — the Actor pattern) folds
+**🧠 Tradeoff**: A single goroutine owning the `groups` map (no mutex, the Actor pattern) folds
 correlated messages and evicts stale groups on a ticker, giving race-free stateful aggregation. It's
 explicit and testable. As always in Go, durability is yours to add: this in-memory aggregator loses
 partial groups on crash, so persist them if the groups are precious.
@@ -345,10 +345,10 @@ static async Task Aggregate(ChannelReader<Msg> input, ChannelWriter<Result> outp
         }
     }
 }
-// a PeriodicTimer task writes Sweep into the same channel — one owner, no locks.
+// a PeriodicTimer task writes Sweep into the same channel: one owner, no locks.
 ```
 
-**🧠 Tradeoff** — a single consumer task owning `groups` is the same Actor move as the Go goroutine:
+**🧠 Tradeoff**: a single consumer task owning `groups` is the same Actor move as the Go goroutine:
 no locks, because only one reader ever touches the state. C# has no `select`, so the tick arrives *as
 a message*: a `PeriodicTimer` task writes `Sweep` into the same channel, and one pattern-matching
 `switch` handles both kinds. The records make the message set explicit and compiler-checked. It's
@@ -404,13 +404,13 @@ fn aggregate(input: mpsc::Receiver<Part>, output: mpsc::Sender<AggResult>, timeo
                     output.send(combine_partial(g)).unwrap();
                 }
             }
-            Err(mpsc::RecvTimeoutError::Disconnected) => break, // senders gone — clean exit
+            Err(mpsc::RecvTimeoutError::Disconnected) => break, // senders gone; clean exit
         }
     }
 }
 ```
 
-**🧠 Tradeoff** — `recv_timeout` folds Go's two `select` arms into one call: a message means fold it
+**🧠 Tradeoff**: `recv_timeout` folds Go's two `select` arms into one call: a message means fold it
 in, a timeout means sweep. The `match` on the result is exhaustive, so channel hangup is handled
 deliberately (`Disconnected` → clean exit) rather than by accident. One thread owning `groups` means
 no `Mutex` at all: ownership delivers what the Actor pattern promises. The borrow checker shapes the
@@ -434,7 +434,7 @@ fn aggregate(parts: []const Part) Result {
 ```zig
 const std = @import("std");
 
-// A part or a sweep tick — one tagged union, one exhaustive switch (Go's select, spelled out).
+// A part or a sweep tick: one tagged union, one exhaustive switch (Go's select, spelled out).
 const Msg = union(enum) {
     part: Part,
     sweep: void,
@@ -445,7 +445,7 @@ const Group = struct { parts: []?Item, filled: usize, deadline: i64 };
 
 const Aggregator = struct {
     allocator: std.mem.Allocator,
-    io: std.Io, // the clock is a capability too — threaded in like the allocator
+    io: std.Io, // the clock is a capability too; threaded in like the allocator
     groups: std.StringHashMap(Group),
     timeout_ms: i64,
 
@@ -472,7 +472,7 @@ const Aggregator = struct {
         }
         const g = entry.value_ptr;
         if (g.parts[p.seq] == null) g.filled += 1;
-        g.parts[p.seq] = p.item;                     // out-of-order safe — indexed by seq
+        g.parts[p.seq] = p.item;                     // out-of-order safe: indexed by seq
         if (g.filled == g.parts.len) {               // completion by count
             complete(p.batch_id, g.parts, false);
             self.allocator.free(g.parts);
@@ -481,7 +481,7 @@ const Aggregator = struct {
     }
 
     fn evictStale(self: *Aggregator) void {          // timeout eviction of stale groups
-        var stale_ids: [16][]const u8 = undefined;   // bounded sweep — plenty for a demo
+        var stale_ids: [16][]const u8 = undefined;   // bounded sweep; plenty for a demo
         var n: usize = 0;
         var it = self.groups.iterator();
         while (it.next()) |e| {
@@ -492,7 +492,7 @@ const Aggregator = struct {
         }
         for (stale_ids[0..n]) |id| {
             const g = self.groups.get(id).?;
-            complete(id, g.parts, true);             // partial — the timeout resolves the group
+            complete(id, g.parts, true);             // partial: the timeout resolves the group
             self.allocator.free(g.parts);
             _ = self.groups.remove(id);
         }
@@ -500,7 +500,7 @@ const Aggregator = struct {
 };
 ```
 
-**🧠 Tradeoff** — everything the pattern needs is spelled out: the `parts` slice is allocated per
+**🧠 Tradeoff**: everything the pattern needs is spelled out: the `parts` slice is allocated per
 group (one slot per `seq`, so out-of-order arrival is literal indexing) and freed the moment the
 group resolves. There's no runtime, so the timeout isn't a timer: `sweep` is a message you feed in
 from your own loop, which is honest about what Go's ticker was doing for you. The clock is honest
@@ -558,7 +558,7 @@ static void aggregate(BlockingQueue<Part> input, BlockingQueue<Result> output, D
 }
 ```
 
-**🧠 Tradeoff** — `poll` with a timeout folds Go's two `select` arms into one call, the same move as
+**🧠 Tradeoff**: `poll` with a timeout folds Go's two `select` arms into one call, the same move as
 Rust's `recv_timeout`: a part means fold it in, `null` means sweep. One thread owning `groups` is the
 Actor discipline: a plain `HashMap`, not a `ConcurrentHashMap`, because only this thread ever touches
 it. `computeIfAbsent` makes get-or-create one expression, the `Part` record can't be edited after
@@ -567,20 +567,20 @@ groups die with the process, so persist them if losing a group is unacceptable.
 
 ## Applications
 
-- **Scatter-gather queries** — fan a request to many services/shards and combine their responses
+- **Scatter-gather queries**: fan a request to many services/shards and combine their responses
   (backend).
-- **Split reassembly** — recombining the per-item results a splitter produced back into a batch result
+- **Split reassembly**: recombining the per-item results a splitter produced back into a batch result
   (backend).
-- **Order completion** — waiting for payment + inventory + shipping confirmations before marking an
+- **Order completion**: waiting for payment + inventory + shipping confirmations before marking an
   order done (backend).
-- **Sensor/data fusion** — combining readings from multiple sources within a time window (backend).
-- **Batch response building** — collecting async job results into a single report (backend).
+- **Sensor/data fusion**: combining readings from multiple sources within a time window (backend).
+- **Batch response building**: collecting async job results into a single report (backend).
 
 ## Related Patterns
 
-- **Splitter** — the inverse: the aggregator recombines what a splitter broke apart, using the
+- **Splitter**: the inverse: the aggregator recombines what a splitter broke apart, using the
   correlation the splitter attached.
-- **Fan-out / Fan-in** — aggregation is the fan-in step; the completion condition is what "wait for all"
+- **Fan-out / Fan-in**: aggregation is the fan-in step; the completion condition is what "wait for all"
   means concretely.
-- **Saga** — a saga waits for and correlates step outcomes much like an aggregator, adding compensation
+- **Saga**: a saga waits for and correlates step outcomes much like an aggregator, adding compensation
   on failure.

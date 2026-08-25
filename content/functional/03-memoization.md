@@ -28,26 +28,26 @@ by input is always safe: the cached value is exactly what recomputing would prod
 
 Recomputing the same expensive result over and over wastes time:
 
-- **Redundant work** — a costly calculation (a parse, a layout, a Fibonacci-style recursion) is
+- **Redundant work**: a costly calculation (a parse, a layout, a Fibonacci-style recursion) is
   called repeatedly with the same inputs, redoing the whole thing each time.
-- **Exponential blowups** — naive recursive algorithms (Fibonacci, edit distance) recompute the same
+- **Exponential blowups**: naive recursive algorithms (Fibonacci, edit distance) recompute the same
   sub-results an exponential number of times.
-- **Repeated derived state** — a UI recomputes a derived value on every render even though its inputs
+- **Repeated derived state**: a UI recomputes a derived value on every render even though its inputs
   didn't change.
-- **Hot pure calls** — a pure function on a hot path is called thousands of times a second with a
+- **Hot pure calls**: a pure function on a hot path is called thousands of times a second with a
   small set of distinct arguments.
 
 ## Structure
 
 Key Components:
 
-- **Pure function** — the function to cache; its output must depend only on its arguments (no side
+- **Pure function**: the function to cache; its output must depend only on its arguments (no side
   effects), or caching is unsound.
-- **Cache** — a map from a key derived from the arguments to the computed result.
-- **Key function** — turns the arguments into a cache key (identity for primitives; a serialization
+- **Cache**: a map from a key derived from the arguments to the computed result.
+- **Key function**: turns the arguments into a cache key (identity for primitives; a serialization
   or structural key for objects).
-- **Wrapper** — checks the cache on each call: hit → return stored; miss → compute, store, return.
-- **Eviction (optional)** — a size/TTL bound so the cache doesn't grow without limit.
+- **Wrapper**: checks the cache on each call: hit → return stored; miss → compute, store, return.
+- **Eviction (optional)**: a size/TTL bound so the cache doesn't grow without limit.
 
 ```
 call(x) ──► [ memoized ] ──hit──► cached result
@@ -66,26 +66,26 @@ call(x) ──► [ memoized ] ──hit──► cached result
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Speed** — repeated calls become a cache lookup; can turn exponential algorithms into linear.
-- **Transparent** — same signature and behavior; callers don't change.
-- **Simple** — a wrapper plus a map, for pure functions.
+- **Speed**: repeated calls become a cache lookup; can turn exponential algorithms into linear.
+- **Transparent**: same signature and behavior; callers don't change.
+- **Simple**: a wrapper plus a map, for pure functions.
 
 ### Disadvantages
-- **Memory** — the cache holds results indefinitely unless bounded; unbounded caches leak.
-- **Only sound for pure functions** — caching a function with side effects or hidden inputs returns
+- **Memory**: the cache holds results indefinitely unless bounded; unbounded caches leak.
+- **Only sound for pure functions**: caching a function with side effects or hidden inputs returns
   wrong/stale results.
-- **Key cost & correctness** — turning complex arguments into a correct, cheap cache key is
+- **Key cost & correctness**: turning complex arguments into a correct, cheap cache key is
   non-trivial; a bad key causes false hits or misses.
 
 ## Common Mistakes
 
-- **Memoizing an impure function** — caching something that depends on time, randomness, or external
+- **Memoizing an impure function**: caching something that depends on time, randomness, or external
   state returns stale/incorrect values; only memoize pure functions.
-- **Unbounded cache** — no size/TTL limit turns memoization into a memory leak on high-cardinality
+- **Unbounded cache**: no size/TTL limit turns memoization into a memory leak on high-cardinality
   inputs; bound it (LRU/TTL).
-- **Bad keys for object arguments** — using reference identity when you meant structural equality (or
+- **Bad keys for object arguments**: using reference identity when you meant structural equality (or
   a slow/incorrect serialization) causes misses or wrong hits.
-- **Memoizing cheap functions** — the cache lookup and memory can cost more than recomputing; measure
+- **Memoizing cheap functions**: the cache lookup and memory can cost more than recomputing; measure
   before caching trivial work.
 
 ## Key Takeaways
@@ -104,7 +104,7 @@ call(x) ──► [ memoized ] ──hit──► cached result
 **❌ Naive**
 
 ```js
-// Exponential recomputation — fib(40) recalculates the same subproblems billions of times.
+// Exponential recomputation: fib(40) recalculates the same subproblems billions of times.
 function fib(n) {
   return n < 2 ? n : fib(n - 1) + fib(n - 2);
 }
@@ -128,7 +128,7 @@ function memoize(fn, keyOf = (...a) => a.join("|")) {
 const fib = memoize((n) => (n < 2 ? n : fib(n - 1) + fib(n - 2))); // subproblems cached → linear
 ```
 
-**🧠 Tradeoff** — A `Map`-backed wrapper turns exponential `fib` into linear by caching each `n`
+**🧠 Tradeoff**: A `Map`-backed wrapper turns exponential `fib` into linear by caching each `n`
 once. It's transparent (same signature) and generic via `keyOf`. In React, `useMemo`/`memo` apply
 the same idea to derived values and components. The unshown risks are the usual ones: this cache is
 unbounded (fine for `fib`, a leak for high-cardinality inputs) and the default `join` key is wrong
@@ -165,7 +165,7 @@ function render(templateSource, data) {
 }
 ```
 
-**🧠 Tradeoff** — Memoizing just the pure, expensive part (compiling the template) with a **bounded**
+**🧠 Tradeoff**: Memoizing just the pure, expensive part (compiling the template) with a **bounded**
 LRU is the production-safe shape: repeated sources are compiled once, and the cache can't grow
 without limit. The important discipline is memoizing only the pure step: `data` changes per call, so
 you cache `compiled`, not the rendered output. Bounding is what separates a cache from a leak.
@@ -177,7 +177,7 @@ you cache `compiled`, not the rendered output. Bounding is what separates a cach
 **❌ Naive**
 
 ```python
-# Recomputes overlapping subproblems — exponential.
+# Recomputes overlapping subproblems: exponential.
 def fib(n):
     return n if n < 2 else fib(n - 1) + fib(n - 2)
 ```
@@ -196,7 +196,7 @@ def fib(n):
 #   @cached(TTLCache(maxsize=500, ttl=60))
 ```
 
-**🧠 Tradeoff** — `functools.lru_cache` is Python's built-in, idiomatic memoization: one decorator,
+**🧠 Tradeoff**: `functools.lru_cache` is Python's built-in, idiomatic memoization: one decorator,
 optional `maxsize` bound, and it turns exponential `fib` linear. It requires **hashable** arguments
 (that's your key), so it's perfect for pure functions of primitives/tuples. For TTLs, object keys, or
 method caching, `cachetools` extends it. The footgun is `maxsize=None` on high-cardinality inputs, which is a
@@ -216,7 +216,7 @@ def expensive(n), do: heavy_calculation(n)   # redone every call
 **✅ Idiomatic**
 
 ```elixir
-# Cache in ETS (shared, fast) — the functional analog of memoization across processes.
+# Cache in ETS (shared, fast): the functional analog of memoization across processes.
 def expensive(n) do
   case :ets.lookup(:memo, n) do
     [{^n, result}] -> result                     # hit
@@ -229,7 +229,7 @@ end
 # (libraries like Cachex or Nebulex add TTL, LRU, and bounds over ETS)
 ```
 
-**🧠 Tradeoff** — Elixir data is immutable and processes don't share memory, so "memoization" means a
+**🧠 Tradeoff**: Elixir data is immutable and processes don't share memory, so "memoization" means a
 shared cache in **ETS** (or a GenServer's state), giving cross-process reuse that a plain closure
 can't. `Cachex`/`Nebulex` add bounds and TTLs. For within-a-recursion memoization you thread an
 accumulator map instead. The functional model reframes memoization as an explicit cache rather than
@@ -268,7 +268,7 @@ func Memoize[K comparable, V any](fn func(K) V) func(K) V {
 // For concurrent callers that must compute a missing key exactly once, use singleflight.
 ```
 
-**🧠 Tradeoff** — Generics give Go a clean, typed `Memoize[K, V]` wrapper, and `sync.Map` makes it
+**🧠 Tradeoff**: Generics give Go a clean, typed `Memoize[K, V]` wrapper, and `sync.Map` makes it
 safe under concurrency. For the case where many goroutines miss the same key at once,
 `golang.org/x/sync/singleflight` ensures the work runs once (the same tool as cache-aside). Go has no
 decorator sugar, so you wrap explicitly, and you own bounding: a plain map/`sync.Map` grows
@@ -281,7 +281,7 @@ unbounded, so add an LRU (e.g. `hashicorp/golang-lru`) for open-ended inputs.
 **❌ Naive**
 
 ```csharp
-// Exponential recomputation — Fib(40) makes over a billion recursive calls.
+// Exponential recomputation: Fib(40) makes over a billion recursive calls.
 Console.WriteLine(Fib(40));
 
 static long Fib(long n) => n < 2 ? n : Fib(n - 1) + Fib(n - 2);
@@ -292,11 +292,11 @@ static long Fib(long n) => n < 2 ? n : Fib(n - 1) + Fib(n - 2);
 ```csharp
 using System.Collections.Concurrent;
 
-// A generic memoizer over ConcurrentDictionary — thread-safe, transparent to callers.
+// A generic memoizer over ConcurrentDictionary: thread-safe, transparent to callers.
 Func<long, long> fib = null!;
 fib = Memoize<long, long>(n => n < 2 ? n : fib(n - 1) + fib(n - 2));
 
-Console.WriteLine(fib(80)); // 23416728348467685 — subproblems cached once, linear
+Console.WriteLine(fib(80)); // 23416728348467685: subproblems cached once, linear
 
 static Func<TIn, TOut> Memoize<TIn, TOut>(Func<TIn, TOut> fn) where TIn : notnull
 {
@@ -305,7 +305,7 @@ static Func<TIn, TOut> Memoize<TIn, TOut>(Func<TIn, TOut> fn) where TIn : notnul
 }
 ```
 
-**🧠 Tradeoff** — `ConcurrentDictionary.GetOrAdd` gives a thread-safe map-backed memoizer in one
+**🧠 Tradeoff**: `ConcurrentDictionary.GetOrAdd` gives a thread-safe map-backed memoizer in one
 line, and generics keep it typed. C# has no decorator sugar, so you wrap delegates explicitly;
 the `null!`-then-assign dance exists so the recursive call goes through the *memoized* `fib`,
 not the raw lambda. Two cautions: `GetOrAdd` may run the factory more than once when threads
@@ -319,7 +319,7 @@ is unbounded; reach for `MemoryCache` when inputs are open-ended.
 **❌ Naive**
 
 ```rust
-// Recomputes overlapping subproblems — exponential.
+// Recomputes overlapping subproblems: exponential.
 fn fib(n: u64) -> u64 {
     if n < 2 { n } else { fib(n - 1) + fib(n - 2) }
 }
@@ -330,7 +330,7 @@ fn fib(n: u64) -> u64 {
 ```rust
 use std::collections::HashMap;
 
-// Thread the cache explicitly — ownership makes the memo state visible in the signature.
+// Thread the cache explicitly: ownership makes the memo state visible in the signature.
 fn fib(n: u64, memo: &mut HashMap<u64, u64>) -> u64 {
     if n < 2 {
         return n;
@@ -345,11 +345,11 @@ fn fib(n: u64, memo: &mut HashMap<u64, u64>) -> u64 {
 
 fn main() {
     let mut memo = HashMap::new();
-    println!("{}", fib(80, &mut memo)); // 23416728348467685 — instant
+    println!("{}", fib(80, &mut memo)); // 23416728348467685: instant
 }
 ```
 
-**🧠 Tradeoff** — Rust won't let a plain closure quietly mutate a captured cache the way JS
+**🧠 Tradeoff**: Rust won't let a plain closure quietly mutate a captured cache the way JS
 does; a transparent wrapper needs interior mutability (`RefCell`, or `Mutex` across threads).
 So idiomatic Rust usually threads `&mut HashMap` through the recursion: more explicit, and the
 signature now admits the function carries state, which is honest. The `cached` crate restores
@@ -365,7 +365,7 @@ the decorator feel (`#[cached]`) when you want it; for sharing across threads, w
 ```zig
 const std = @import("std");
 
-// Recomputes the same subproblems — exponential.
+// Recomputes the same subproblems: exponential.
 fn fib(n: u64) u64 {
     if (n < 2) return n;
     return fib(n - 1) + fib(n - 2);
@@ -381,13 +381,13 @@ pub fn main() void {
 ```zig
 const std = @import("std");
 
-// The cache is a HashMap you allocate — and inserting can fail, so fib returns !u64.
+// The cache is a HashMap you allocate, and inserting can fail, so fib returns !u64.
 fn fib(memo: *std.AutoHashMap(u64, u64), n: u64) !u64 {
     if (n < 2) return n;
     if (memo.get(n)) |v| return v; // hit
     const a = try fib(memo, n - 1);
     const b = try fib(memo, n - 2);
-    try memo.put(n, a + b); // store — may allocate, hence `try`
+    try memo.put(n, a + b); // store: may allocate, hence `try`
     return a + b;
 }
 
@@ -399,7 +399,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — nothing is hidden: the cache takes an explicit allocator, `put` can fail so
+**🧠 Tradeoff**: nothing is hidden: the cache takes an explicit allocator, `put` can fail so
 the memoized `fib` returns `!u64` even though the arithmetic can't, and `defer memo.deinit()`
 is you paying the memory back. That's the pattern's fine print made visible: memoization always
 costs memory somewhere; Zig makes you sign for it. No decorator form exists, and bounding is
@@ -413,7 +413,7 @@ fills a fixed `[81]u64` table, cheaper than hashing and impossible to leak.
 **❌ Naive**
 
 ```java
-// Exponential recomputation — fib(40) makes over a billion recursive calls.
+// Exponential recomputation: fib(40) makes over a billion recursive calls.
 public class Demo {
     static long fib(long n) { return n < 2 ? n : fib(n - 1) + fib(n - 2); }
 
@@ -437,7 +437,7 @@ public class Demo {
         return k -> cache.computeIfAbsent(k, fn); // for non-recursive functions
     }
 
-    // Recursion can't go through computeIfAbsent — the mapping function would re-enter
+    // Recursion can't go through computeIfAbsent: the mapping function would re-enter
     // the map mid-update (ConcurrentModificationException). Use the two-step form:
     static final Map<Long, Long> memo = new HashMap<>();
 
@@ -445,7 +445,7 @@ public class Demo {
         if (n < 2) return n;
         var hit = memo.get(n);
         if (hit != null) return hit;      // hit
-        var v = fib(n - 1) + fib(n - 2);  // compute — the recursion finishes before...
+        var v = fib(n - 1) + fib(n - 2);  // compute: the recursion finishes before...
         memo.put(n, v);                   // ...the store touches the map
         return v;
     }
@@ -453,12 +453,12 @@ public class Demo {
     public static void main(String[] args) {
         Function<String, String> slug = memoize(s -> s.toLowerCase().replace(' ', '-'));
         System.out.println(slug.apply("Design Patterns")); // computed once, cached after
-        System.out.println(fib(80)); // 23416728348467685 — subproblems cached once, linear
+        System.out.println(fib(80)); // 23416728348467685: subproblems cached once, linear
     }
 }
 ```
 
-**🧠 Tradeoff** — `computeIfAbsent` is the built-in memoizer, and on a `ConcurrentHashMap` it's
+**🧠 Tradeoff**: `computeIfAbsent` is the built-in memoizer, and on a `ConcurrentHashMap` it's
 thread-safe *and* runs the factory at most once per key: the compute-once guarantee C#'s
 `GetOrAdd` only gets with `Lazy<T>`. The catch is recursion: the mapping function must not touch
 the map, so a recursive `fib` inside `computeIfAbsent` throws (`ConcurrentModificationException`
@@ -468,18 +468,18 @@ pocket LRU, and Caffeine is the production answer with size and TTL bounds.
 
 ## Applications
 
-- **Dynamic programming** — memoizing overlapping subproblems (Fibonacci, edit distance, knapsack)
+- **Dynamic programming**: memoizing overlapping subproblems (Fibonacci, edit distance, knapsack)
   collapses exponential to polynomial (backend).
-- **Derived UI state** — `useMemo`/computed values recompute only when inputs change (frontend).
-- **Expensive parses/compiles** — template/regex/schema compilation cached by source (backend).
-- **Pure request handlers** — caching pure transformations keyed by input on hot paths (backend).
-- **Selector libraries** — Reselect memoizes derived state selectors in Redux apps (frontend).
+- **Derived UI state**: `useMemo`/computed values recompute only when inputs change (frontend).
+- **Expensive parses/compiles**: template/regex/schema compilation cached by source (backend).
+- **Pure request handlers**: caching pure transformations keyed by input on hot paths (backend).
+- **Selector libraries**: Reselect memoizes derived state selectors in Redux apps (frontend).
 
 ## Related Patterns
 
-- **Cache-Aside** — memoization is cache-aside scoped to one pure function; cache-aside generalizes it
+- **Cache-Aside**: memoization is cache-aside scoped to one pure function; cache-aside generalizes it
   to a shared store with invalidation across the app.
-- **Flyweight** — both trade memory to avoid repeated work/allocation; flyweight shares immutable
+- **Flyweight**: both trade memory to avoid repeated work/allocation; flyweight shares immutable
   objects, memoization shares computed results.
-- **Currying** — memoization is often applied to specialized (curried) functions to cache results per
+- **Currying**: memoization is often applied to specialized (curried) functions to cache results per
   fixed configuration.

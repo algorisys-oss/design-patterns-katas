@@ -26,9 +26,9 @@ entry, cutting cost and latency on the repetitive long tail of real traffic.
 
 Exact-match caching barely helps LLM traffic:
 
-- **Natural language varies infinitely** — the same question arrives in a hundred phrasings, and an
+- **Natural language varies infinitely**: the same question arrives in a hundred phrasings, and an
   exact-key cache treats each as a miss. Hit rates stay near zero.
-- **LLM calls are the expensive part** — every miss is a slow, paid generation. On a support bot
+- **LLM calls are the expensive part**: every miss is a slow, paid generation. On a support bot
   where 40% of questions are the same five FAQs in different words, exact caching leaves that saving
   on the table.
 
@@ -38,11 +38,11 @@ Matching by meaning turns "the same question, reworded" into a cache hit.
 
 Key Components / Participants:
 
-- **Embedder** — turns the request into a vector (see [[chunking-embedding]]).
-- **Cache store** — holds `(embedding, request, response)` entries and answers nearest-neighbour
+- **Embedder**: turns the request into a vector (see [[chunking-embedding]]).
+- **Cache store**: holds `(embedding, request, response)` entries and answers nearest-neighbour
   queries.
-- **Threshold** — the similarity cutoff above which a match counts as a hit (the key tuning knob).
-- **Fallback** — on a miss, call the model, then store the new `(embedding, request, response)`.
+- **Threshold**: the similarity cutoff above which a match counts as a hit (the key tuning knob).
+- **Fallback**: on a miss, call the model, then store the new `(embedding, request, response)`.
 
 ```
 request ──▶ embed ──▶ nearest entry ──▶ similarity ≥ threshold?
@@ -75,13 +75,13 @@ request ──▶ embed ──▶ nearest entry ──▶ similarity ≥ thresho
 
 ## Common Mistakes
 
-- **Threshold too loose** — "how do I cancel?" and "how do I renew?" can embed close together;
+- **Threshold too loose**: "how do I cancel?" and "how do I renew?" can embed close together;
   a low cutoff serves the wrong answer. Tune conservatively and monitor false hits.
-- **Caching personalized answers** — a response about *this user's* account must never be served to
+- **Caching personalized answers**: a response about *this user's* account must never be served to
   another. Scope the cache key by user/context, or don't cache it.
-- **No invalidation** — caching answers over data that changes (prices, inventory) serves stale
+- **No invalidation**: caching answers over data that changes (prices, inventory) serves stale
   facts. Expire by TTL or invalidate on write.
-- **Ignoring the embed cost** — every request now embeds; batch or use a small, fast embedder so the
+- **Ignoring the embed cost**: every request now embeds; batch or use a small, fast embedder so the
   cache layer doesn't cost more than it saves on low-hit traffic.
 
 ## Key Takeaways
@@ -102,7 +102,7 @@ similarity.
 **❌ Naive**
 
 ```js
-// Exact-string key — every rephrase misses.
+// Exact-string key: every rephrase misses.
 const cache = new Map();
 async function ask(q) {
   if (cache.has(q)) return cache.get(q);
@@ -142,7 +142,7 @@ class SemanticCache {
 }
 ```
 
-**🧠 Tradeoff** — Keying on the embedding and matching above `threshold` turns paraphrases into hits — the
+**🧠 Tradeoff**: Keying on the embedding and matching above `threshold` turns paraphrases into hits, the
 whole win. `0.92` is deliberately conservative; monitor for false hits and tune. The linear `nearest` is
 fine for a small cache; back it with a real vector index (Redis, pgvector) at scale. Scope the entries by
 user for anything personalized, and add a TTL for answers over changing data.
@@ -179,7 +179,7 @@ class SemanticCache:
         return response
 ```
 
-**🧠 Tradeoff** — A [[cache-aside]] layer keyed by similarity: the model call is the miss path, and the
+**🧠 Tradeoff**: A [[cache-aside]] layer keyed by similarity: the model call is the miss path, and the
 threshold is the precision/hit-rate dial. `max(..., default=None)` handles the cold cache cleanly. This is
 semantic [[memoization]]: same idea as caching a pure function's result, generalized from exact key to
 near key. Swap the list for a real ANN index in production; scope and TTL as the data demands.
@@ -218,7 +218,7 @@ defmodule SemanticCache do
 end
 ```
 
-**🧠 Tradeoff** — With no mutable state, the cache is threaded: `ask` takes entries and returns the answer
+**🧠 Tradeoff**: With no mutable state, the cache is threaded: `ask` takes entries and returns the answer
 plus updated entries, so a caller (or a GenServer wrapping this) owns the store. `Enum.max_by` with a
 default handles the empty cache. Pattern matching the `{score, resp}` guard expresses "hit only above
 threshold" cleanly. For a shared cache, wrap this in a GenServer or use `:ets` for concurrent reads.
@@ -278,7 +278,7 @@ func (c *SemanticCache) Ask(query string) string {
 }
 ```
 
-**🧠 Tradeoff** — A `sync.RWMutex` makes the cache safe for concurrent callers — reads (the common case)
+**🧠 Tradeoff**: A `sync.RWMutex` makes the cache safe for concurrent callers; reads (the common case)
 take the read lock, only a miss takes the write lock. The threshold gates hits. The linear scan under the
 read lock is fine at small scale; a real deployment fronts a vector store and this struct becomes a thin
 [[proxy]] over it. Scope entries per user and expire them for data that changes.
@@ -287,21 +287,21 @@ read lock is fine at small scale; a real deployment fronts a vector store and th
 
 Real-world uses of Semantic Caching:
 
-- **FAQ / support bots** — the same handful of questions in endless phrasings hit one entry each.
-- **Search & autocomplete** — cache answers to semantically-common queries.
-- **Expensive RAG pipelines** — skip retrieve-and-generate when a near-identical question was answered.
-- **API cost control** — a caching layer in front of the model to cap spend on repetitive traffic.
-- **Latency-sensitive UX** — instant cached answers for the common case, model call for the rest.
+- **FAQ / support bots**: the same handful of questions in endless phrasings hit one entry each.
+- **Search & autocomplete**: cache answers to semantically-common queries.
+- **Expensive RAG pipelines**: skip retrieve-and-generate when a near-identical question was answered.
+- **API cost control**: a caching layer in front of the model to cap spend on repetitive traffic.
+- **Latency-sensitive UX**: instant cached answers for the common case, model call for the rest.
 
 **In modern systems:**
 
-- **Multi-agent** — cache tool/model results shared across agents working the same problem.
-- **Workflow engine** — memoize an expensive LLM step keyed by the semantic content of its input.
-- **Low-code** — a transparent cache behind an "AI answer" field so common questions are free and instant.
+- **Multi-agent**: cache tool/model results shared across agents working the same problem.
+- **Workflow engine**: memoize an expensive LLM step keyed by the semantic content of its input.
+- **Low-code**: a transparent cache behind an "AI answer" field so common questions are free and instant.
 
 ## Related Patterns
 
-- **Memoization** — semantic caching is memoization generalized from exact key to near key.
-- **Cache-Aside** — the load-through structure: check cache, miss → call model → store.
-- **Proxy** — a caching proxy in front of the model that intercepts and serves repeats.
-- **Chunking & Embedding** — the same embedding machinery, here used to key the cache.
+- **Memoization**: semantic caching is memoization generalized from exact key to near key.
+- **Cache-Aside**: the load-through structure: check cache, miss → call model → store.
+- **Proxy**: a caching proxy in front of the model that intercepts and serves repeats.
+- **Chunking & Embedding**: the same embedding machinery, here used to key the cache.

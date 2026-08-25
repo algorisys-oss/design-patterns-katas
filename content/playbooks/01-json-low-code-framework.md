@@ -41,29 +41,29 @@ backend you inject.
 
 ## The Patterns You'll Reach For
 
-- **Factory Method / Abstract Factory** — the `"type"` discriminator on each node is dispatched
+- **Factory Method / Abstract Factory**: the `"type"` discriminator on each node is dispatched
   to the matching widget constructor. This is the engine's core: *data names the type, the
   factory builds it*. An Abstract Factory swaps a whole widget family (web / native / print)
   behind one interface.
-- **Composite** — the JSON tree itself. A `container` holds fields and other containers, and one
+- **Composite**: the JSON tree itself. A `container` holds fields and other containers, and one
   recursive render treats a leaf field and a group alike.
-- **Interpreter** — JSON rule trees (`{"and": [{"eq": ["role", "admin"]}, ...]}`) parsed once and
+- **Interpreter**: JSON rule trees (`{"and": [{"eq": ["role", "admin"]}, ...]}`) parsed once and
   evaluated per record. Validation, visibility, and pricing rules live as data, not code.
-- **Strategy** — a field's `"validator": "email"` or `"format": "currency"` selects a pluggable
+- **Strategy**: a field's `"validator": "email"` or `"format": "currency"` selects a pluggable
   behavior by name straight from config; adding one is a new object, not a new branch.
-- **Bridge** — keep the component abstraction apart from its renderer so one schema drives web,
+- **Bridge**: keep the component abstraction apart from its renderer so one schema drives web,
   native, or PDF by swapping the implementor.
-- **Visitor** — one pass over the node tree per operation: validate, compile, estimate render
+- **Visitor**: one pass over the node tree per operation: validate, compile, estimate render
   cost. Add an operation without touching the node types.
-- **Prototype / Flyweight** — clone a template node to seed a new section (Prototype); share one
+- **Prototype / Flyweight**: clone a template node to seed a new section (Prototype); share one
   widget definition per `type` across thousands of instances (Flyweight).
-- **Decorator** — wrap a field with permission and formatting layers declared in its JSON.
-- **Adapter** — fit an external REST endpoint to the datasource interface a binding assumes.
-- **Dependency Injection** — the runtime injects datasources, validators, and theme into the
+- **Decorator**: wrap a field with permission and formatting layers declared in its JSON.
+- **Adapter**: fit an external REST endpoint to the datasource interface a binding assumes.
+- **Dependency Injection**: the runtime injects datasources, validators, and theme into the
   renderer, so the same schema runs against different backends and is testable with fakes.
-- **Content-Based Router** — route a record to the form or handler named by a discriminator
+- **Content-Based Router**: route a record to the form or handler named by a discriminator
   field.
-- **Event Sourcing / Memento** — store every builder edit as an event (or snapshot) so undo and
+- **Event Sourcing / Memento**: store every builder edit as an event (or snapshot) so undo and
   an audit trail come almost for free.
 
 When the low-code platform gains "AI" fields, the **AI & LLM Patterns** family plugs in:
@@ -76,12 +76,12 @@ When the low-code platform gains "AI" fields, the **AI & LLM Patterns** family p
 The kernel, *data describes behavior, a runtime interprets it*, is decades old. What moved is
 who writes the data:
 
-1. **Hardcoded** — every form is bespoke code; a new field is a deploy.
-2. **Templating** — HTML templates pull dynamic values, but structure is still code.
-3. **Config-driven** — a settings file toggles behavior; the shapes are fixed.
-4. **JSON low-code** — the whole UI and its rules are a document; domain experts edit it in a
+1. **Hardcoded**: every form is bespoke code; a new field is a deploy.
+2. **Templating**: HTML templates pull dynamic values, but structure is still code.
+3. **Config-driven**: a settings file toggles behavior; the shapes are fixed.
+4. **JSON low-code**: the whole UI and its rules are a document; domain experts edit it in a
    visual builder, no developer in the loop.
-5. **LLM-assisted** — a model *generates* the schema from a plain-English description, and the
+5. **LLM-assisted**: a model *generates* the schema from a plain-English description, and the
    same runtime that always validated hand-written JSON now validates machine-written JSON.
 
 The patterns didn't change. The author did: from developer, to domain expert, to model.
@@ -100,7 +100,7 @@ The patterns didn't change. The author did: from developer, to domain expert, to
 
 ## Related Playbooks
 
-- **Building a Workflow Engine** — a workflow definition *is* a low-code graph; the same
+- **Building a Workflow Engine**: a workflow definition *is* a low-code graph; the same
   data-describes-behavior kernel, applied to steps instead of fields.
-- **Orchestrating Multi-Agent Tasks** — an agent's plan is a small DSL too, interpreted by a
+- **Orchestrating Multi-Agent Tasks**: an agent's plan is a small DSL too, interpreted by a
   runtime rather than executed as raw code.

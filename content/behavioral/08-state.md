@@ -44,9 +44,9 @@ State pulls each status into an object that knows its own behavior and transitio
 
 Key Components:
 
-- **Context** — holds a current State and delegates requests to it.
-- **State** — the interface for state-specific behavior (`play`, `pause`).
-- **Concrete States** — one per state; each implements the behavior and returns/sets the next
+- **Context**: holds a current State and delegates requests to it.
+- **State**: the interface for state-specific behavior (`play`, `pause`).
+- **Concrete States**: one per state; each implements the behavior and returns/sets the next
   state.
 
 ## When to Use
@@ -68,10 +68,10 @@ Key Components:
 
 ## Common Mistakes
 
-- **Leaving the conditionals** — adding state objects but still branching on a status flag elsewhere.
-- **Context micromanaging transitions** — let states decide the next state, or you've just moved
+- **Leaving the conditionals**: adding state objects but still branching on a status flag elsewhere.
+- **Context micromanaging transitions**: let states decide the next state, or you've just moved
   the switch.
-- **Confusing it with Strategy** — same shape; State transitions itself, Strategy is picked by
+- **Confusing it with Strategy**: same shape; State transitions itself, Strategy is picked by
   the client and is transition-free.
 
 ## Key Takeaways
@@ -134,7 +134,7 @@ class PausedState {
 }
 ```
 
-**🧠 Tradeoff** — Each state class owns both its behavior and where it transitions, so the illegal
+**🧠 Tradeoff**: Each state class owns both its behavior and where it transitions, so the illegal
 moves ("pause when stopped") live in exactly one place. The player has no status conditionals at
 all. The price is a class per state, worth it once the machine has more than two or three.
 
@@ -179,7 +179,7 @@ order.apply("ship");     // "shipped"
 order.apply("deliver");  // "delivered"
 ```
 
-**🧠 Tradeoff** — On the backend, a state machine is often a *data* transition table rather than a
+**🧠 Tradeoff**: On the backend, a state machine is often a *data* transition table rather than a
 class per state: the whole machine is visible in one object, easy to persist and audit, and
 illegal transitions fail loudly. Use the object-per-state form when each state carries rich
 behavior; use a table when states are mostly about which transitions are legal (orders, workflows).
@@ -240,7 +240,7 @@ class Paused(State):
     def pause(self) -> str: return "already paused"
 ```
 
-**🧠 Tradeoff** — The state objects hold a back-reference to the player to trigger transitions.
+**🧠 Tradeoff**: The state objects hold a back-reference to the player to trigger transitions.
 Python's `enum` plus a transition dict is a lighter alternative for simple machines; the class
 form pays off when each state has substantial behavior beyond "which state comes next."
 
@@ -276,7 +276,7 @@ end
 {state, _msg} = Player.pause(state)     # {:paused, "paused"}
 ```
 
-**🧠 Tradeoff** — Pattern matching on the state atom *is* the State pattern in Elixir: each clause
+**🧠 Tradeoff**: Pattern matching on the state atom *is* the State pattern in Elixir: each clause
 is a state's behavior and returns the next state, with illegal transitions caught by a catch-all
 clause. For long-running stateful entities, `:gen_statem` (OTP's state-machine behaviour) gives
 this with supervision, timeouts, and events built in.
@@ -335,7 +335,7 @@ func (Paused) Play(p *Player) string  { p.state = Playing{}; return "resumed" }
 func (Paused) Pause(p *Player) string { return "already paused" }
 ```
 
-**🧠 Tradeoff** — Each state is a tiny struct satisfying `State`; the player delegates and states
+**🧠 Tradeoff**: Each state is a tiny struct satisfying `State`; the player delegates and states
 flip `p.state`. Because the states are stateless value types, they cost nothing to allocate. For
 transition-heavy workflows Go code often uses a `map[state]map[event]state` table instead, the same
 tradeoff as the Node version.
@@ -411,7 +411,7 @@ public sealed class Paused : IState
 }
 ```
 
-**🧠 Tradeoff** — The classic form maps cleanly: each `sealed` state class owns its behavior and
+**🧠 Tradeoff**: The classic form maps cleanly: each `sealed` state class owns its behavior and
 flips `p.State`, so the player has no conditionals at all. The states here are stateless, so
 real code often shares `static readonly` instances instead of `new`-ing one per transition. For
 simple machines, modern C# frequently skips the classes entirely: an enum plus one `switch`
@@ -504,7 +504,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — The trait-object form (`Box<dyn State>`) exists in Rust, but for a closed set
+**🧠 Tradeoff**: The trait-object form (`Box<dyn State>`) exists in Rust, but for a closed set
 of states the enum is the honest form: `Copy`, no allocation, and every `match` is checked for
 exhaustiveness: add `State::Buffering` and the compiler lists every method that must handle it,
 the exact opposite of the scattered-flag failure mode. Variants can carry data
@@ -584,7 +584,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — Same verdict as Rust: for a closed set, `enum` plus exhaustive `switch` *is*
+**🧠 Tradeoff**: Same verdict as Rust: for a closed set, `enum` plus exhaustive `switch` *is*
 the pattern in Zig: an unhandled state is a compile error, so adding `.buffering` turns every
 `switch` into a checklist of places to update. When a state needs its own data, upgrade the enum
 to a tagged union (`union(enum)`) and each arm captures the payload. The GoF object-per-state
@@ -620,7 +620,7 @@ class Player {
 **✅ Idiomatic**
 
 ```java
-// Each state is an enum constant with its own behavior — a singleton state object.
+// Each state is an enum constant with its own behavior: a singleton state object.
 enum State {
     STOPPED {
         String play(Player p)  { p.state = PLAYING; return "playing"; }
@@ -657,7 +657,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — Enum constants with constant-specific method bodies are Java's quiet superpower
+**🧠 Tradeoff**: Enum constants with constant-specific method bodies are Java's quiet superpower
 here (it's Effective Java's own example): each constant is a singleton state object, so you get
 the GoF shape with no class hierarchy and nothing allocated per transition. Add a `BUFFERING`
 constant and the code won't compile until it supplies `play` and `pause`: the scattered-flag
@@ -669,24 +669,24 @@ interface-and-classes form, which fits Java exactly as the book wrote it.
 
 Real-world uses of State (from the reference article), by tier:
 
-- **Frontend** — media players (playing/paused/stopped), modals (open/closed), wizard/checkout
+- **Frontend**: media players (playing/paused/stopped), modals (open/closed), wizard/checkout
   steps, drag-and-drop interaction states, input validation states.
-- **Backend** — order fulfillment (pending/shipped/delivered), auth sessions
+- **Backend**: order fulfillment (pending/shipped/delivered), auth sessions
   (logged-out/logged-in/expired), document workflow (draft/review/published), connection
   lifecycle.
-- **Both** — finite state machines, game entity AI states.
+- **Both**: finite state machines, game entity AI states.
 
 **In modern systems:**
 
-- **Workflow engine** — a workflow instance *is* a state machine: `pending → running → waiting →
+- **Workflow engine**: a workflow instance *is* a state machine: `pending → running → waiting →
   done | failed`, with only legal transitions allowed and each captured for audit.
-- **Multi-agent** — an agent's lifecycle (thinking → calling-tool → waiting → done) modeled as
+- **Multi-agent**: an agent's lifecycle (thinking → calling-tool → waiting → done) modeled as
   explicit states instead of scattered boolean flags.
-- **Low-code** — a wizard's step-to-step navigation driven by a state map declared in config.
+- **Low-code**: a wizard's step-to-step navigation driven by a state map declared in config.
 
 ## Related Patterns
 
-- **Strategy** — same structure; Strategy variants are client-chosen and transition-free, State
+- **Strategy**: same structure; Strategy variants are client-chosen and transition-free, State
   drives its own transitions.
-- **Observer** — a state change is often what notifies observers.
-- **Command** — commands can trigger state transitions in a machine.
+- **Observer**: a state change is often what notifies observers.
+- **Command**: commands can trigger state transitions in a machine.

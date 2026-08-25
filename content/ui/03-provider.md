@@ -28,31 +28,31 @@ components that are just passing it along.
 To get a value from the top of a tree to a deep leaf, you pass it down every level, which is **prop
 drilling**:
 
-- **Tedious threading** — a `theme` needed by a deeply nested button is passed through ten
+- **Tedious threading**: a `theme` needed by a deeply nested button is passed through ten
   components that don't use it, just to hand it along.
-- **Fragile plumbing** — add a level, or move a component, and you re-thread the prop through new
+- **Fragile plumbing**: add a level, or move a component, and you re-thread the prop through new
   intermediaries.
-- **Polluted signatures** — every intermediate component's props are cluttered with values it
+- **Polluted signatures**: every intermediate component's props are cluttered with values it
   merely forwards.
-- **Coupling to structure** — components become coupled to the tree shape because they exist partly
+- **Coupling to structure**: components become coupled to the tree shape because they exist partly
   to pass things down.
 
 ## Structure
 
 Key Components:
 
-- **Provider** — sits high in the tree, holds the value (state, config, a service), and makes it
+- **Provider**: sits high in the tree, holds the value (state, config, a service), and makes it
   available to its subtree.
-- **Context / Scope** — the named channel through which the value flows; consumers look it up by it.
-- **Consumers** — components anywhere below that read the value directly, regardless of depth.
-- **Intermediate components** — neither provide nor consume; they're blissfully unaware.
+- **Context / Scope**: the named channel through which the value flows; consumers look it up by it.
+- **Consumers**: components anywhere below that read the value directly, regardless of depth.
+- **Intermediate components**: neither provide nor consume; they're blissfully unaware.
 
 ```
 [ Provider (value) ]
       ├─ intermediate ─ intermediate ─► Consumer A  (reads value)
       ├─ intermediate ──────────────► Consumer B  (reads value)
       └────────────────────────────► Consumer C  (reads value)
-   value skips the intermediates — no prop drilling
+   value skips the intermediates, no prop drilling
 ```
 
 ## When to Use
@@ -65,27 +65,27 @@ Key Components:
 ## Advantages and Disadvantages
 
 ### Advantages
-- **No prop drilling** — provide once, consume anywhere below; intermediates stay clean.
-- **Scoped, not global** — the value lives in a subtree; different subtrees can have different providers.
-- **Decoupling** — consumers depend on the context, not on the components between them and the provider.
+- **No prop drilling**: provide once, consume anywhere below; intermediates stay clean.
+- **Scoped, not global**: the value lives in a subtree; different subtrees can have different providers.
+- **Decoupling**: consumers depend on the context, not on the components between them and the provider.
 
 ### Disadvantages
-- **Hidden dependencies** — a consumer's needs aren't visible in its props; you must know a provider
+- **Hidden dependencies**: a consumer's needs aren't visible in its props; you must know a provider
   exists above it.
-- **Re-render breadth** — a naive provider re-renders its whole subtree on every value change; needs
+- **Re-render breadth**: a naive provider re-renders its whole subtree on every value change; needs
   care (memoization, splitting contexts).
-- **Overuse as a global** — stuffing everything into context recreates global-state problems with
+- **Overuse as a global**: stuffing everything into context recreates global-state problems with
   extra indirection.
 
 ## Common Mistakes
 
-- **Putting frequently-changing state in one context** — every change re-renders all consumers;
+- **Putting frequently-changing state in one context**: every change re-renders all consumers;
   split contexts by change frequency or use a store with selectors.
-- **Using context for everything** — it's for cross-cutting, relatively stable values (theme, auth),
+- **Using context for everything**: it's for cross-cutting, relatively stable values (theme, auth),
   not a dumping ground for all state.
-- **Consuming without a provider** — a consumer with no provider above it silently gets a default (or
+- **Consuming without a provider**: a consumer with no provider above it silently gets a default (or
   errors); guard with a clear error.
-- **New object value every render** — passing a freshly-created object as the value defeats
+- **New object value every render**: passing a freshly-created object as the value defeats
   memoization and re-renders all consumers; stabilize it.
 
 ## Key Takeaways
@@ -102,7 +102,7 @@ Key Components:
 **❌ Naive**
 
 ```jsx
-// theme threaded through every level to reach a deep button — prop drilling.
+// theme threaded through every level to reach a deep button: prop drilling.
 function App()    { return <Page theme="dark" />; }
 function Page({ theme })   { return <Toolbar theme={theme} />; }        // just forwarding
 function Toolbar({ theme }) { return <Button theme={theme} />; }        // just forwarding
@@ -130,7 +130,7 @@ function Button()  {
 }
 ```
 
-**🧠 Tradeoff** — React Context removes the drilling entirely: `Page` and `Toolbar` no longer carry a
+**🧠 Tradeoff**: React Context removes the drilling entirely: `Page` and `Toolbar` no longer carry a
 `theme` prop they don't use. The cost is that `Button`'s dependency on a theme provider is now
 implicit, and a changing context value re-renders all consumers, so context suits stable,
 cross-cutting values, with a store + selectors for hot, granular state.
@@ -161,7 +161,7 @@ function repo()    { audit(); }                // no threading
 function audit()   { const { user, requestId } = ctx.getStore(); log(user, requestId); } // consume
 ```
 
-**🧠 Tradeoff** — `AsyncLocalStorage` is the server-side provider: it makes request-scoped values
+**🧠 Tradeoff**: `AsyncLocalStorage` is the server-side provider: it makes request-scoped values
 (user, trace id) available to any function in the async call chain without threading them through
 every signature: the same "provide at the top, consume below" idea for backend code. The tradeoff
 mirrors the UI one: the dependency becomes implicit, and it's for cross-cutting request context, not
@@ -197,7 +197,7 @@ def repo():    audit()                        # no threading
 def audit():   log(current_user.get())        # consume anywhere downstream
 ```
 
-**🧠 Tradeoff** — `contextvars` is Python's provider, and it's async/thread-aware, so request-scoped
+**🧠 Tradeoff**: `contextvars` is Python's provider, and it's async/thread-aware, so request-scoped
 values (user, locale, trace id) reach any downstream function without threading, and each async task
 gets its own copy. In UI frameworks (Reflex, Flet) a `State`/context object plays the same role for
 components. As always the dependency goes implicit, so it's for cross-cutting scope, not ordinary
@@ -217,7 +217,7 @@ def toolbar(assigns), do: ~H"<.button theme={@theme} />"   # forwarding
 
 ```elixir
 # LiveView assigns flow down; for cross-cutting values, use the process dictionary
-# sparingly or a context struct — but the idiomatic tree provider is assigns + slots.
+# sparingly or a context struct, but the idiomatic tree provider is assigns + slots.
 # Provide once; nested function components read from a shared assign:
 def app(assigns) do
   ~H"""
@@ -230,7 +230,7 @@ end
 # Logger.metadata(user_id: user.id)  # available to any log downstream in this process
 ```
 
-**🧠 Tradeoff** — Elixir leans on explicit assigns and **slots** for the component tree (values flow
+**🧠 Tradeoff**: Elixir leans on explicit assigns and **slots** for the component tree (values flow
 down HEEx, and slots let a parent inject content), which keeps dependencies visible. For truly
 cross-cutting, per-process values it uses `Logger.metadata` or the process dictionary as an implicit
 provider, deliberately reserved for cross-cutting concerns. The BEAM's process isolation means
@@ -264,7 +264,7 @@ func repo(ctx context.Context) {
 }
 ```
 
-**🧠 Tradeoff** — `context.Context` is Go's provider for request-scoped values: attach at the top,
+**🧠 Tradeoff**: `context.Context` is Go's provider for request-scoped values: attach at the top,
 read anywhere downstream, and only `ctx` threads through, not every value. It's the idiomatic way to
 carry a user, trace id, or deadline through a call tree. Go's community wisely limits it to
 *request-scoped* data (not optional config), because, like all providers, values-in-context are
@@ -272,21 +272,21 @@ implicit dependencies that type signatures don't reveal.
 
 ## Applications
 
-- **Theming & i18n** — a theme or locale provided at the root and read by any component (frontend).
-- **Auth / current user** — the logged-in user available everywhere without prop drilling (frontend
+- **Theming & i18n**: a theme or locale provided at the root and read by any component (frontend).
+- **Auth / current user**: the logged-in user available everywhere without prop drilling (frontend
   & backend).
-- **Request context** — user, trace id, and deadline carried through a server call tree
+- **Request context**: user, trace id, and deadline carried through a server call tree
   (`context.Context`, `AsyncLocalStorage`, `contextvars`) (backend).
-- **Shared stores** — a state store made available to the component tree so any component can
+- **Shared stores**: a state store made available to the component tree so any component can
   subscribe (frontend).
-- **Design-system config** — spacing, density, and RTL settings provided once and honored by all
+- **Design-system config**: spacing, density, and RTL settings provided once and honored by all
   components below (frontend).
 
 ## Related Patterns
 
-- **Dependency Injection** — Provider is DI scoped to a tree: injecting a value into a subtree instead
+- **Dependency Injection**: Provider is DI scoped to a tree: injecting a value into a subtree instead
   of into a constructor.
-- **Container / Presentational** — Provider solves the prop-drilling that the container/presentational
+- **Container / Presentational**: Provider solves the prop-drilling that the container/presentational
   split can otherwise create.
-- **Unidirectional Data Flow** — a store is typically handed to the tree via a provider, then consumed
+- **Unidirectional Data Flow**: a store is typically handed to the tree via a provider, then consumed
   by the components that need it.

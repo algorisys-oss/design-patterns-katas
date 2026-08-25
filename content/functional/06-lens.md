@@ -30,23 +30,23 @@ operation.
 
 Immutable updates to nested data are verbose and error-prone:
 
-- **Spread pyramids** — changing one deep field requires copying every level above it:
+- **Spread pyramids**: changing one deep field requires copying every level above it:
   `{ ...s, a: { ...s.a, b: { ...s.a.b, c: newVal } } }`, tedious and easy to get wrong.
-- **Miss a level, mutate by accident** — forget to copy one intermediate object and you mutate shared
+- **Miss a level, mutate by accident**: forget to copy one intermediate object and you mutate shared
   state instead of producing a new value.
-- **No reuse** — the path-copy logic for `user.address.zip` is rewritten at every call site.
-- **Reading and writing diverge** — the read path (`s.a.b.c`) and the write path (the spread pyramid)
+- **No reuse**: the path-copy logic for `user.address.zip` is rewritten at every call site.
+- **Reading and writing diverge**: the read path (`s.a.b.c`) and the write path (the spread pyramid)
   look nothing alike, so they drift.
 
 ## Structure
 
 Key Components:
 
-- **Lens** — a pair `{ get, set }` focused on one part `A` of a whole `S`.
-- **Getter** — `get(s) → a`: extract the focused part.
-- **Immutable setter** — `set(s, a) → s'`: return a *new* whole with the part replaced (never mutates).
-- **over / modify** — apply a function to the focus: `over(lens, f, s) = set(s, f(get(s)))`.
-- **Composition** — `compose(outer, inner)` yields a lens onto the nested focus, chaining the
+- **Lens**: a pair `{ get, set }` focused on one part `A` of a whole `S`.
+- **Getter**: `get(s) → a`: extract the focused part.
+- **Immutable setter**: `set(s, a) → s'`: return a *new* whole with the part replaced (never mutates).
+- **over / modify**: apply a function to the focus: `over(lens, f, s) = set(s, f(get(s)))`.
+- **Composition**: `compose(outer, inner)` yields a lens onto the nested focus, chaining the
   path-copy.
 
 ```
@@ -65,25 +65,25 @@ over(zipLens, up, state)  =  a new state with only the zip transformed
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Composable focus** — build a deep lens from small ones; reuse it for get, set, and modify.
-- **Clean nested updates** — one operation replaces the copy-at-every-level spread pyramid.
-- **First-class** — a lens is a value: store it, pass it, parameterize behavior by which field.
+- **Composable focus**: build a deep lens from small ones; reuse it for get, set, and modify.
+- **Clean nested updates**: one operation replaces the copy-at-every-level spread pyramid.
+- **First-class**: a lens is a value: store it, pass it, parameterize behavior by which field.
 
 ### Disadvantages
-- **Abstraction weight** — lenses are a real concept to learn; overkill for shallow data.
-- **Library-dependent ergonomics** — without a lens library the boilerplate to build them can exceed
+- **Abstraction weight**: lenses are a real concept to learn; overkill for shallow data.
+- **Library-dependent ergonomics**: without a lens library the boilerplate to build them can exceed
   what they save.
-- **Debuggability** — heavily composed optics can be hard to follow and to trace when a value is wrong.
+- **Debuggability**: heavily composed optics can be hard to follow and to trace when a value is wrong.
 
 ## Common Mistakes
 
-- **Using lenses over mutable data** — lenses exist to make *immutable* updates ergonomic; over
+- **Using lenses over mutable data**: lenses exist to make *immutable* updates ergonomic; over
   mutable data they add ceremony for nothing.
-- **A setter that mutates** — the whole contract is that `set` returns a new structure; a setter that
+- **A setter that mutates**: the whole contract is that `set` returns a new structure; a setter that
   mutates `s` breaks immutability and every guarantee built on it.
-- **Reaching for lenses on shallow data** — for one or two levels, a spread or a simple helper is
+- **Reaching for lenses on shallow data**: for one or two levels, a spread or a simple helper is
   clearer than the optics machinery.
-- **Reinventing a buggy lens library** — hand-rolled composition is easy to get subtly wrong; use a
+- **Reinventing a buggy lens library**: hand-rolled composition is easy to get subtly wrong; use a
   vetted library for anything beyond simple cases.
 
 ## Key Takeaways
@@ -102,7 +102,7 @@ over(zipLens, up, state)  =  a new state with only the zip transformed
 **❌ Naive**
 
 ```js
-// Nested immutable update: copy every level from the root down — a spread pyramid.
+// Nested immutable update: copy every level from the root down; a spread pyramid.
 function setZip(state, zip) {
   return {
     ...state,
@@ -129,7 +129,7 @@ const s2 = zipL.set(state, "94016");        // deep immutable set, no pyramid
 const s3 = over(zipL, (z) => z.trim(), state); // deep modify
 ```
 
-**🧠 Tradeoff** — A tiny `lens`/`compose`/`over` kit turns the spread pyramid into a reusable `zipL`
+**🧠 Tradeoff**: A tiny `lens`/`compose`/`over` kit turns the spread pyramid into a reusable `zipL`
 you can `get`, `set`, and `over`. Libraries (Ramda's `lensPath`, Optics-ts, monocle-ts) provide typed,
 richer optics (prisms, traversals). It's genuinely useful for deep, often-updated immutable state,
 but for one or two levels the spread or `immer` is simpler, so reserve lenses for where the depth
@@ -161,7 +161,7 @@ const bumped = R.over(tlsMinVersion, (v) => v ?? "1.2", config); // deep modify
 // the same `tlsMinVersion` lens is reused wherever that field is read or written.
 ```
 
-**🧠 Tradeoff** — Ramda's `lensPath`/`set`/`over` give production-ready optics without hand-rolling
+**🧠 Tradeoff**: Ramda's `lensPath`/`set`/`over` give production-ready optics without hand-rolling
 them: define the deep path once and reuse it for read, write, and modify. It keeps immutable config
 updates honest and DRY. The dependency and the concept are the cost; for a codebase that rarely
 touches deep nesting, a small helper or `structuredClone`-then-edit-a-draft (Immer) may be lighter.
@@ -173,7 +173,7 @@ touches deep nesting, a small helper or `structuredClone`-then-edit-a-draft (Imm
 **❌ Naive**
 
 ```python
-# Immutable deep update by hand — replace at each level.
+# Immutable deep update by hand: replace at each level.
 def set_zip(state, zip):
     return replace(state,
         user=replace(state.user,
@@ -203,7 +203,7 @@ _, set_zip_l = zip_l
 s2 = set_zip_l(state, "94016")   # deep immutable set
 ```
 
-**🧠 Tradeoff** — Built on frozen dataclasses and `replace`, a small `lens`/`compose` gives Python
+**🧠 Tradeoff**: Built on frozen dataclasses and `replace`, a small `lens`/`compose` gives Python
 composable focuses, and the `lenses` library provides a full, ergonomic implementation. It's a
 niche tool in Python (most code reaches for `replace` nesting or a helper) but for deep, immutable
 domain models updated in many places, lenses remove real repetition. For shallow data it's overkill.
@@ -215,7 +215,7 @@ domain models updated in many places, lenses remove real repetition. For shallow
 **❌ Naive**
 
 ```elixir
-# Manual nested update — but Elixir already ships path-based helpers.
+# Manual nested update, but Elixir already ships path-based helpers.
 %{state | user: %{state.user | address: %{state.user.address | zip: "94016"}}}
 ```
 
@@ -233,7 +233,7 @@ get_in(state, zip_path)
 update_in(state, zip_path, &String.trim/1)
 ```
 
-**🧠 Tradeoff** — Elixir builds the lens idea into the standard library: `get_in`/`put_in`/`update_in`
+**🧠 Tradeoff**: Elixir builds the lens idea into the standard library: `get_in`/`put_in`/`update_in`
 plus the `Access` behaviour are composable path optics over immutable data, and an `Access` path is a
 reusable value, a lens by another name. You rarely need a lens *library* because the language covers
 the common case natively. For richer optics (prisms, traversals) libraries exist, but the everyday
@@ -246,7 +246,7 @@ the common case natively. For richer optics (prisms, traversals) libraries exist
 **❌ Naive**
 
 ```go
-// Deep immutable update by copying each level — verbose and easy to get wrong.
+// Deep immutable update by copying each level: verbose and easy to get wrong.
 func SetZip(s State, zip string) State {
     u := s.User          // copy
     a := u.Address       // copy
@@ -276,7 +276,7 @@ func Compose[S, B, A any](o Lens[S, B], i Lens[B, A]) Lens[S, A] {
 // zip := Compose(userL, Compose(addrL, zipL)); s2 := zip.Set(state, "94016")
 ```
 
-**🧠 Tradeoff** — Generics make a typed `Lens[S, A]` and `Compose` possible, but each leaf lens still
+**🧠 Tradeoff**: Generics make a typed `Lens[S, A]` and `Compose` possible, but each leaf lens still
 needs a hand-written getter/setter (Go has no field-access reflection sugar), so the boilerplate is
 heavy. Idiomatic Go usually just copies structs by value at each level (the naive version, written
 carefully) rather than building optics: value semantics make shallow copies cheap, and Go culture
@@ -325,7 +325,7 @@ public sealed record Lens<S, A>(Func<S, A> Get, Func<S, A, S> Set)
 }
 ```
 
-**🧠 Tradeoff** — a lens in C# is just a record of two `Func`s, and `Then` chains the path-copy, so
+**🧠 Tradeoff**: a lens in C# is just a record of two `Func`s, and `Then` chains the path-copy, so
 a deep path becomes one reusable, type-checked value. But be honest about the bar: records already
 give you `with`, so the "naive" nested version is what most C# teams write, and at two levels it's
 perfectly clear. Each leaf lens is hand-written boilerplate (no field-reference sugar), so the
@@ -339,7 +339,7 @@ nested `with` wins.
 **❌ Naive**
 
 ```rust
-// Struct update syntax (`..base`) is Rust's `with` — and it pyramids the same way.
+// Struct update syntax (`..base`) is Rust's `with`, and it pyramids the same way.
 fn set_zip(s: &State, zip: String) -> State {
     State {
         user: User {
@@ -363,7 +363,7 @@ struct User { name: String, address: Address }
 #[derive(Clone)]
 struct State { user: User, plan: String }
 
-// Clone once, then mutate the owned copy — the original can't be touched.
+// Clone once, then mutate the owned copy: the original can't be touched.
 fn set_zip(s: &State, zip: &str) -> State {
     let mut next = s.clone();
     next.user.address.zip = zip.to_string();
@@ -374,7 +374,7 @@ fn set_zip(s: &State, zip: &str) -> State {
 // println!("{} {}", s1.user.address.zip, s2.user.address.zip); // 94103 94016
 ```
 
-**🧠 Tradeoff** — Rust's ownership dissolves most of the lens's job. Clone-then-mutate gives exactly
+**🧠 Tradeoff**: Rust's ownership dissolves most of the lens's job. Clone-then-mutate gives exactly
 the guarantee a lens setter promises (a new value, the original untouched) because mutating an
 owned copy *cannot* reach the caller's `s1`, and the write path reads like the read path. The naive
 pyramid clones each level anyway, so it buys nothing over one `clone`. A real `Lens` type (get/set
@@ -389,7 +389,7 @@ value. Elsewhere, skip the abstraction.
 **❌ Naive**
 
 ```zig
-// Rebuilding every level by hand, spread-style — unnecessary in Zig.
+// Rebuilding every level by hand, spread-style: unnecessary in Zig.
 fn setZip(s: State, zip: []const u8) State {
     return .{
         .user = .{
@@ -427,7 +427,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — Zig's value semantics dissolve the problem lenses solve: `var next = s` copies the
+**🧠 Tradeoff**: Zig's value semantics dissolve the problem lenses solve: `var next = s` copies the
 whole nested struct in one assignment, the write path looks exactly like the read path, and the
 original is untouched because `next` is a genuinely separate value. There is no spread pyramid to
 escape. You *could* build a reusable focus with comptime field-name paths and `@field`, but it would
@@ -442,7 +442,7 @@ while they're treated as read-only, `dupe` them explicitly if not.
 **❌ Naive**
 
 ```java
-// No `with` in Java — a deep update rebuilds every level by hand, listing every field.
+// No `with` in Java: a deep update rebuilds every level by hand, listing every field.
 static State setZip(State s, String zip) {
     return new State(
         new User(s.user().name(),
@@ -487,7 +487,7 @@ record Lens<S, A>(Function<S, A> get, BiFunction<S, A, S> set) {
 }
 ```
 
-**🧠 Tradeoff** — the `Lens` record is small and `then` chains the path-copy into one reusable,
+**🧠 Tradeoff**: the `Lens` record is small and `then` chains the path-copy into one reusable,
 type-checked value. But be honest about what it's built from: Java has no `with` expression, so every
 leaf setter rebuilds its record by listing every field (`(u, a) -> new User(u.name(), a)`), which is
 exactly the boilerplate the lens was supposed to remove, now relocated. That's why Java teams
@@ -498,22 +498,22 @@ record creation (`with`) lands in a future Java, plain rebuilds win even more of
 
 ## Applications
 
-- **Deep immutable state** — updating nested Redux/store state without spread pyramids, via
+- **Deep immutable state**: updating nested Redux/store state without spread pyramids, via
   `lensPath`/optics (frontend).
-- **Config management** — reading and updating deep configuration fields immutably and reusably
+- **Config management**: reading and updating deep configuration fields immutably and reusably
   (backend).
-- **Domain models** — updating nested value objects (an order's shipping address's zip) in DDD
+- **Domain models**: updating nested value objects (an order's shipping address's zip) in DDD
   (backend).
-- **Form state** — focusing and updating nested form fields, with the lens parameterizing which field
+- **Form state**: focusing and updating nested form fields, with the lens parameterizing which field
   (frontend).
-- **Data transformation** — targeting specific paths in nested JSON/records for transformation
+- **Data transformation**: targeting specific paths in nested JSON/records for transformation
   (backend).
 
 ## Related Patterns
 
-- **Immutability** — lenses exist to make *immutable* nested updates ergonomic; they're meaningless
+- **Immutability**: lenses exist to make *immutable* nested updates ergonomic; they're meaningless
   over mutable data.
-- **Function Composition** — a lens is composable by design; composing lenses is composition applied to
+- **Function Composition**: a lens is composable by design; composing lenses is composition applied to
   focuses rather than to plain functions.
-- **Provider / Context** — both are about reaching into a structure; a provider shares a value down a
+- **Provider / Context**: both are about reaching into a structure; a provider shares a value down a
   tree, a lens focuses on a value within a data structure.

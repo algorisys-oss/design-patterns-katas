@@ -44,9 +44,9 @@ Observer inverts this: consumers subscribe, and the store just notifies its list
 
 Key Components:
 
-- **Subject** — holds observers, offers `subscribe`/`unsubscribe`, and `notify`s on change.
-- **Observer** — the interface subscribers implement (`update(data)`), or just a callback.
-- **Concrete Observers** — the things that react (UI, logger, badge).
+- **Subject**: holds observers, offers `subscribe`/`unsubscribe`, and `notify`s on change.
+- **Observer**: the interface subscribers implement (`update(data)`), or just a callback.
+- **Concrete Observers**: the things that react (UI, logger, badge).
 
 ## When to Use
 
@@ -68,10 +68,10 @@ Key Components:
 
 ## Common Mistakes
 
-- **Never unsubscribing** — dead observers pile up and leak; always provide and use unsubscribe.
-- **Doing heavy work synchronously in `update`** — one slow observer stalls the whole notify.
-- **Cycles** — an observer that updates the subject it observes can loop.
-- **Confusing it with Mediator** — Observer is one-way broadcast; Mediator coordinates two-way
+- **Never unsubscribing**: dead observers pile up and leak; always provide and use unsubscribe.
+- **Doing heavy work synchronously in `update`**: one slow observer stalls the whole notify.
+- **Cycles**: an observer that updates the subject it observes can loop.
+- **Confusing it with Mediator**: Observer is one-way broadcast; Mediator coordinates two-way
   interactions among peers.
 
 ## Key Takeaways
@@ -97,7 +97,7 @@ class Store {
   constructor(header, badge) { this.header = header; this.badge = badge; }
   setTotal(total) {
     this.total = total;
-    this.header.render(total);  // coupled — adding a consumer edits this
+    this.header.render(total);  // coupled: adding a consumer edits this
     this.badge.render(total);
   }
 }
@@ -120,10 +120,10 @@ const offHeader = total.subscribe(v => { document.querySelector("#total").textCo
 total.subscribe(v => { document.querySelector("#badge").textContent = v; });
 
 total.notify(42);   // both update
-offHeader();        // header unsubscribes — no leak
+offHeader();        // header unsubscribes, no leak
 ```
 
-**🧠 Tradeoff** — Returning an unsubscribe closure from `subscribe` is the modern browser idiom
+**🧠 Tradeoff**: Returning an unsubscribe closure from `subscribe` is the modern browser idiom
 (the same shape React effects and signal libraries use). The store no longer knows its consumers;
 they opt in. The risk shifts to remembering to call the returned cleanup when a component unmounts.
 
@@ -165,7 +165,7 @@ orders.on("order:placed", (o) => analytics.track("order", o));
 orders.place({ id: 1, total: 42 });      // both listeners fire
 ```
 
-**🧠 Tradeoff** — On the backend you rarely hand-roll a subject: `EventEmitter` gives
+**🧠 Tradeoff**: On the backend you rarely hand-roll a subject: `EventEmitter` gives
 `on`/`off`/`emit` out of the box, and it's the backbone of streams, servers, and sockets in Node.
 The caution is the same lapsed-listener leak (`removeListener`/`off`) plus unbounded listeners:
 Node warns past 10 on one event, a hint you may be leaking subscriptions.
@@ -211,7 +211,7 @@ total.notify(42)   # both fire
 off()              # header unsubscribes
 ```
 
-**🧠 Tradeoff** — Callables make observers just functions; no Observer base class needed.
+**🧠 Tradeoff**: Callables make observers just functions; no Observer base class needed.
 Iterating over a copy (`list(self._subscribers)`) guards against an observer unsubscribing
 mid-notification. For heavier needs, libraries like `blinker` provide named signals with the
 same semantics.
@@ -254,7 +254,7 @@ Store.subscribe(fn v -> IO.puts("badge #{v}") end)
 Store.notify(42)
 ```
 
-**🧠 Tradeoff** — Elixir ships pub/sub primitives: `Registry` for in-process dispatch, and
+**🧠 Tradeoff**: Elixir ships pub/sub primitives: `Registry` for in-process dispatch, and
 `Phoenix.PubSub` for cluster-wide broadcast. Observers are often *processes* subscribed to a
 topic, so a crashing observer doesn't take the subject down; supervision replaces the manual
 unsubscribe discipline you need in the OO versions.
@@ -315,7 +315,7 @@ func (s *Subject) Notify(v int) {
 }
 ```
 
-**🧠 Tradeoff** — Function observers keyed by id give O(1) unsubscribe; copying the slice under
+**🧠 Tradeoff**: Function observers keyed by id give O(1) unsubscribe; copying the slice under
 the lock before calling lets observers subscribe/unsubscribe during a notify without deadlocking.
 Go's more idiomatic broadcast is often *channels* (each observer owns a channel the subject sends
 on), which decouples timing but adds buffering and goroutine-lifecycle decisions.
@@ -332,7 +332,7 @@ public sealed class Store(Header header, Badge badge)
 {
     public void SetTotal(int total)
     {
-        header.Render(total); // coupled — adding a consumer edits this
+        header.Render(total); // coupled: adding a consumer edits this
         badge.Render(total);
     }
 }
@@ -350,7 +350,7 @@ store.TotalChanged += Badge;
 
 store.SetTotal(42);          // both fire
 
-store.TotalChanged -= Badge; // badge unsubscribes — no leak
+store.TotalChanged -= Badge; // badge unsubscribes, no leak
 store.SetTotal(43);          // only the header fires
 
 public sealed class Store
@@ -367,7 +367,7 @@ public sealed class Store
 }
 ```
 
-**🧠 Tradeoff** — You don't build the subject in C#: `event` is the language-native observer.
+**🧠 Tradeoff**: You don't build the subject in C#: `event` is the language-native observer.
 `TotalChanged` is a multicast delegate list: `+=` subscribes, `-=` unsubscribes, and the
 `event` keyword means only `Store` can raise or clear it; outsiders can't `Invoke` your event.
 The lapsed-listener leak survives, though: a subscriber that never `-=`s is kept alive by the
@@ -389,7 +389,7 @@ struct Store {
 
 impl Store {
     fn set_total(&mut self, total: i32) {
-        self.header.render(total); // coupled — adding a consumer edits this
+        self.header.render(total); // coupled: adding a consumer edits this
         self.badge.render(total);
     }
 }
@@ -438,7 +438,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — The `+ 'static` bound is the honest part: a stored closure can't borrow local
+**🧠 Tradeoff**: The `+ 'static` bound is the honest part: a stored closure can't borrow local
 variables by reference, so observers must own their state (`move`) or share it through
 `Rc<RefCell<...>>` / `Arc<Mutex<...>>`. The borrow checker also forbids what other languages
 guard against at runtime: `subscribe` needs `&mut self` while `notify` holds `&self`, so an
@@ -461,7 +461,7 @@ const Store = struct {
 
     pub fn setTotal(self: *Store, total: i32) void {
         self.total = total;
-        renderHeader(total); // coupled — adding a consumer edits this
+        renderHeader(total); // coupled: adding a consumer edits this
         renderBadge(total);
     }
 };
@@ -525,7 +525,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — Bare function pointers carry no state: Zig has no closures, so an observer
+**🧠 Tradeoff**: Bare function pointers carry no state: Zig has no closures, so an observer
 that needs context must use the two-field vtable idiom (`*anyopaque` context + function
 pointer) that `std.mem.Allocator` uses. The fixed table of optional slots costs zero allocation
 and gives O(1) unsubscribe by id: a subject you could ship on an embedded target. Swap it for
@@ -547,7 +547,7 @@ class Store {
     Store(Header header, Badge badge) { this.header = header; this.badge = badge; }
 
     void setTotal(int total) {
-        header.render(total); // coupled — adding a consumer edits this
+        header.render(total); // coupled: adding a consumer edits this
         badge.render(total);
     }
 }
@@ -582,13 +582,13 @@ public class Demo {
         total.subscribe(v -> System.out.println("badge " + v));
 
         total.publish(42);  // both fire
-        offHeader.run();    // header unsubscribes — no leak
+        offHeader.run();    // header unsubscribes, no leak
         total.publish(43);  // only the badge fires
     }
 }
 ```
 
-**🧠 Tradeoff** — Java has shipped three generations of this pattern: `java.util.Observer`
+**🧠 Tradeoff**: Java has shipped three generations of this pattern: `java.util.Observer`
 (JDK 1.0, deprecated in Java 9), `java.beans.PropertyChangeListener` with
 `PropertyChangeSupport` (still the Swing and JavaBeans standard), and today's form above, where
 a lambda *is* the observer, so you never write an interface of your own.
@@ -601,23 +601,23 @@ errors, `java.util.concurrent.Flow` is the JDK's Reactive Streams contract.
 
 Real-world uses of Observer (from the reference article), by tier:
 
-- **Frontend** — DOM event listeners, UI state stores (Redux `subscribe`), reactive signals,
+- **Frontend**: DOM event listeners, UI state stores (Redux `subscribe`), reactive signals,
   live dashboards updating on data change.
-- **Backend** — Node `EventEmitter`, pub/sub messaging, WebSocket broadcast, domain events
+- **Backend**: Node `EventEmitter`, pub/sub messaging, WebSocket broadcast, domain events
   (`order:placed` → email + analytics + inventory).
-- **Both** — MVVM/data-binding, notification systems, cache invalidation on change.
+- **Both**: MVVM/data-binding, notification systems, cache invalidation on change.
 
 **In modern systems:**
 
-- **Workflow engine** — step-completion events fan out to progress trackers, dashboards, and audit
+- **Workflow engine**: step-completion events fan out to progress trackers, dashboards, and audit
   sinks without the step knowing who listens.
-- **Multi-agent** — token and tool-event streams the UI and logger subscribe to as the agent runs.
-- **Low-code** — a field re-renders when the model value it's bound to changes; the binding is the
+- **Multi-agent**: token and tool-event streams the UI and logger subscribe to as the agent runs.
+- **Low-code**: a field re-renders when the model value it's bound to changes; the binding is the
   subscription.
 
 ## Related Patterns
 
-- **Mediator** — Observer broadcasts one-way; Mediator centralizes two-way coordination among
+- **Mediator**: Observer broadcasts one-way; Mediator centralizes two-way coordination among
   peers.
-- **Command** — often the payload delivered to observers (an event as a command object).
-- **State** — a subject's state change is frequently what triggers notification.
+- **Command**: often the payload delivered to observers (an event as a command object).
+- **State**: a subject's state change is frequently what triggers notification.

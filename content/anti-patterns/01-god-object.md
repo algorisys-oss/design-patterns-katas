@@ -28,36 +28,36 @@ constellation of anemic data holders around it.
 
 God Objects rarely start big; they accrete:
 
-- **"I'll just add it here"** — the class already touches everything, so each new feature is easiest to bolt
+- **"I'll just add it here"**: the class already touches everything, so each new feature is easiest to bolt
   onto it, and it grows one method at a time.
-- **Fear of new classes** — creating a focused class feels like overhead, so logic lands in the existing big
+- **Fear of new classes**: creating a focused class feels like overhead, so logic lands in the existing big
   one instead.
-- **Central "manager" thinking** — a `Manager`/`Controller`/`Utils` class becomes the default home for
+- **Central "manager" thinking**: a `Manager`/`Controller`/`Utils` class becomes the default home for
   anything that doesn't obviously belong elsewhere.
-- **No refactoring pressure** — it keeps working, so no one splits it until it's a 3,000-line monster.
+- **No refactoring pressure**: it keeps working, so no one splits it until it's a 3,000-line monster.
 
 ## Why It Hurts
 
-- **Impossible to understand** — no one can hold the whole thing in their head; every change requires
+- **Impossible to understand**: no one can hold the whole thing in their head; every change requires
   reading thousands of lines.
-- **Everything is coupled** — since everything depends on the God Object, a change anywhere risks breaking
+- **Everything is coupled**: since everything depends on the God Object, a change anywhere risks breaking
   anything.
-- **Untestable** — you can't test one responsibility without dragging in all the others (and their
+- **Untestable**: you can't test one responsibility without dragging in all the others (and their
   dependencies).
-- **Merge conflicts & bottleneck** — every feature touches the same file, so teams collide constantly.
-- **Can't reuse anything** — the useful bits are welded to the rest, so nothing can be lifted out.
+- **Merge conflicts & bottleneck**: every feature touches the same file, so teams collide constantly.
+- **Can't reuse anything**: the useful bits are welded to the rest, so nothing can be lifted out.
 
 ## The Refactor
 
 Break it apart by responsibility:
 
-- **Identify the responsibilities** — group the methods/fields by what they're actually about (validation,
+- **Identify the responsibilities**: group the methods/fields by what they're actually about (validation,
   payment, notification, persistence).
-- **Extract a class per responsibility** — move each cohesive group into its own focused class with a clear
+- **Extract a class per responsibility**: move each cohesive group into its own focused class with a clear
   name.
-- **Inject collaborators** — the former God Object (if it remains) becomes a thin coordinator that delegates
+- **Inject collaborators**: the former God Object (if it remains) becomes a thin coordinator that delegates
   to the extracted classes (or disappears entirely).
-- **Move behavior to the data** — anemic objects around the God Object often deserve the behavior that was
+- **Move behavior to the data**: anemic objects around the God Object often deserve the behavior that was
   operating on them.
 
 ```
@@ -125,7 +125,7 @@ class PlaceOrder {                       // thin use case, delegates to focused 
 }
 ```
 
-**🧠 The Fix** — Extracting `OrderValidator`, `Pricing`, `Payment`, and `Orders` makes each independently
+**🧠 The Fix**: Extracting `OrderValidator`, `Pricing`, `Payment`, and `Orders` makes each independently
 testable (assert pricing rules with no Stripe, no DB) and reusable, and `PlaceOrder` becomes a readable
 coordinator. The "extra classes" that felt like overhead are exactly what make the system comprehensible
 and changeable. This is SRP applied.
@@ -167,7 +167,7 @@ class ReportService: ...
 class NewsletterService: ...
 ```
 
-**🧠 The Fix** — Splitting `SystemManager` into `UserService`, `OrderService`, `ReportService`, etc. gives
+**🧠 The Fix**: Splitting `SystemManager` into `UserService`, `OrderService`, `ReportService`, etc. gives
 each a single reason to change and lets you test/deploy/reason about them independently. The `Manager`/
 `System` naming was the tell: a name that can't describe one job is usually a God Object forming. Compose
 the focused services; don't centralize.
@@ -179,7 +179,7 @@ the focused services; don't centralize.
 **❌ The Smell**
 
 ```go
-// One struct holds every dependency and every method — the God struct.
+// One struct holds every dependency and every method: the God struct.
 type App struct {
     db     *sql.DB
     stripe *stripe.Client
@@ -217,7 +217,7 @@ func (uc PlaceOrder) Run(cart Cart, user User) error {
 }
 ```
 
-**🧠 The Fix** — Breaking the God `App` struct into `Payment`, `Orders`, and a `PlaceOrder` use case that
+**🧠 The Fix**: Breaking the God `App` struct into `Payment`, `Orders`, and a `PlaceOrder` use case that
 depends only on what it needs makes dependencies explicit and each piece testable with small fakes. Go's
 small-interface culture pushes this way naturally: a struct that accumulates every dependency is the smell,
 and focused structs composed at `main` are the cure.
@@ -271,7 +271,7 @@ public sealed class Payment(IGateway gw)
     public Task Charge(User user, decimal amount) => gw.Charge(user.Card, amount);
 }
 
-// Primary constructor: the dependency list IS the signature — and it stays short.
+// Primary constructor: the dependency list IS the signature, and it stays short.
 public sealed class PlaceOrder(OrderValidator validator, Pricing pricing,
                                Payment payment, Orders orders, Notifier notifier)
 {
@@ -286,7 +286,7 @@ public sealed class PlaceOrder(OrderValidator validator, Pricing pricing,
 }
 ```
 
-**🧠 The Fix** — Primary constructors make the dependency list impossible to hide: a God class shows up as a
+**🧠 The Fix**: Primary constructors make the dependency list impossible to hide: a God class shows up as a
 constructor taking ten services, and a DI container will wire it without complaint, since the container hides the
 pain, not the problem. After the split, `Pricing` tests with no Stripe and no database, and each class has one
 reason to change. Watch for the tell in C# codebases: a `Manager` or `Service` whose constructor keeps growing.
@@ -351,7 +351,7 @@ impl PlaceOrder {
 }
 ```
 
-**🧠 The Fix** — Rust punishes God structs earlier than most languages: one `&mut self` method borrows the
+**🧠 The Fix**: Rust punishes God structs earlier than most languages: one `&mut self` method borrows the
 *whole* struct, so two responsibilities can't be touched at once and the borrow checker starts fighting you
 long before the file hits 3,000 lines. That pressure is a feature: splitting into `Pricing`, `Payment`, and a
 `PlaceOrder` that owns only what it uses gives you disjoint borrows, small testable pieces, and error flow
@@ -416,7 +416,7 @@ const PlaceOrder = struct {
 };
 ```
 
-**🧠 The Fix** — Zig has no DI framework to quietly assemble a giant struct: every field is filled by hand at
+**🧠 The Fix**: Zig has no DI framework to quietly assemble a giant struct: every field is filled by hand at
 every construction site, so a God struct is visible pain the moment you try to build one in a test. The split
 makes that cheap: `Pricing` needs no state at all, so it becomes a namespaced function you call directly, and
 `PlaceOrder` declares exactly the three dependencies it uses. Plain structs composed in `main` are already the
@@ -477,7 +477,7 @@ record PlaceOrder(Pricing pricing, Payment payment, Orders orders, Notifier noti
 }
 ```
 
-**🧠 The Fix** — Java's DI culture is what lets God classes grow painlessly: field injection (`@Autowired`
+**🧠 The Fix**: Java's DI culture is what lets God classes grow painlessly: field injection (`@Autowired`
 on a private field) hides the dependency list, so `OrderManager` gains a collaborator per feature and
 nothing ever pushes back. Constructor injection restores the tell: a ten-argument constructor is a smell
 you can see in review, and records make the honest form cheap: `PlaceOrder` declares its four dependencies
@@ -486,9 +486,9 @@ and each class has one reason to change.
 
 ## Related Patterns
 
-- **Single Responsibility Principle** — the God Object is its wholesale violation; the refactor *is* applying
+- **Single Responsibility Principle**: the God Object is its wholesale violation; the refactor *is* applying
   SRP, one responsibility per class.
-- **Facade** — a legitimate single entry point that *delegates* to subsystems, versus a God Object that
+- **Facade**: a legitimate single entry point that *delegates* to subsystems, versus a God Object that
   *implements* everything itself; the difference is delegation vs. concentration.
-- **Spaghetti Code** — often a companion: a God Object's internal tangle of everything-calls-everything is
+- **Spaghetti Code**: often a companion: a God Object's internal tangle of everything-calls-everything is
   spaghetti at the method level.

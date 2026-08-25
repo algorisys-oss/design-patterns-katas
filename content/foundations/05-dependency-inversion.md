@@ -59,10 +59,10 @@ class OrderService {
 
 ## Common Mistakes
 
-- **Newing dependencies inside** — construct-and-couple instead of inject.
-- **Interface owned by the detail** — the abstraction should reflect what policy needs, not
+- **Newing dependencies inside**: construct-and-couple instead of inject.
+- **Interface owned by the detail**: the abstraction should reflect what policy needs, not
   mirror the vendor SDK.
-- **Inverting everything** — wrapping trivial, stable dependencies in needless interfaces.
+- **Inverting everything**: wrapping trivial, stable dependencies in needless interfaces.
 
 ## Key Takeaways
 
@@ -103,12 +103,12 @@ class OrderService {
 class PostgresStore { save(order) { /* real insert */ return "saved"; } }
 class InMemoryStore { constructor() { this.rows = []; } save(order) { this.rows.push(order); return "saved"; } }
 
-// Production wires Postgres; tests wire the in-memory fake — same OrderService.
+// Production wires Postgres; tests wire the in-memory fake: same OrderService.
 const service = new OrderService(new PostgresStore());
 const underTest = new OrderService(new InMemoryStore());
 ```
 
-**🧠 Note** — `OrderService` now depends on a `Store` shape (`save`), not on Postgres, so it's
+**🧠 Note**: `OrderService` now depends on a `Store` shape (`save`), not on Postgres, so it's
 tested with `InMemoryStore` and re-pointed at any backend by injection. The dependency arrow
 inverted: the detail conforms to what the service needs, not the other way around.
 
@@ -153,7 +153,7 @@ service = OrderService(PostgresStore())
 under_test = OrderService(InMemoryStore())
 ```
 
-**🧠 Note** — A `Store` `Protocol` defines what `OrderService` needs; any object with `save`
+**🧠 Note**: A `Store` `Protocol` defines what `OrderService` needs; any object with `save`
 qualifies, so injection swaps Postgres for an in-memory fake in tests. Python's constructor
 injection plus structural typing gives DIP with no framework; just pass the dependency in.
 
@@ -165,7 +165,7 @@ injection plus structural typing gives DIP with no framework; just pass the depe
 
 ```elixir
 defmodule OrderService do
-  # Calls a concrete module directly — welded to Postgres, hard to test.
+  # Calls a concrete module directly: welded to Postgres, hard to test.
   def place(order), do: PostgresStore.save(order)
 end
 ```
@@ -193,7 +193,7 @@ end
 OrderService.place(order, InMemoryStore)
 ```
 
-**🧠 Note** — Elixir inverts the dependency by taking the implementing *module* as an argument or
+**🧠 Note**: Elixir inverts the dependency by taking the implementing *module* as an argument or
 reading it from application config (`Application.get_env`). The `Store` behaviour is the
 abstraction both sides depend on; tests inject a fake module. Config-based injection is the
 common production form: swap the store without editing `OrderService`.
@@ -237,7 +237,7 @@ func (s *OrderService) Place(order Order) error { return s.store.Save(order) }
 // PostgresStore and an in-memory fake both implement Store; inject either.
 ```
 
-**🧠 Note** — Idiomatically in Go the *consumer* declares the `Store` interface it needs, and any
+**🧠 Note**: Idiomatically in Go the *consumer* declares the `Store` interface it needs, and any
 type with `Save` satisfies it implicitly, so `OrderService` never imports the Postgres package.
 Injecting the store via the constructor makes it trivially testable with a fake and swappable in
 production. This "accept interfaces, return structs" habit is DIP by default.
@@ -261,7 +261,7 @@ public sealed class OrderService
 **✅ Idiomatic**
 
 ```csharp
-// Production wires Postgres; tests wire the fake — same OrderService.
+// Production wires Postgres; tests wire the fake: same OrderService.
 var service = new OrderService(new PostgresStore());
 var underTest = new OrderService(new InMemoryStore());
 Console.WriteLine(underTest.Place(new Order(1))); // saved
@@ -292,7 +292,7 @@ public sealed class InMemoryStore : IStore
 public sealed record Order(int Id);
 ```
 
-**🧠 Note** — constructor injection is so standard in .NET that ASP.NET Core ships a container
+**🧠 Note**: constructor injection is so standard in .NET that ASP.NET Core ships a container
 for it, but the principle is just this: `OrderService` names an `IStore` it owns, and the
 concrete store arrives from outside. Keep the interface consumer-shaped (`Save(order)`), not a
 mirror of the vendor SDK. And when the dependency is a single method, a `Func<Order, string>`
@@ -350,7 +350,7 @@ impl Store for InMemoryStore {
     }
 }
 
-// Generic over any Store — whoever constructs the service picks the detail.
+// Generic over any Store: whoever constructs the service picks the detail.
 struct OrderService<S: Store> {
     store: S,
 }
@@ -372,7 +372,7 @@ fn main() {
 }
 ```
 
-**🧠 Note** — Rust makes the injection cost explicit. The generic `OrderService<S: Store>` above
+**🧠 Note**: Rust makes the injection cost explicit. The generic `OrderService<S: Store>` above
 monomorphizes: zero dispatch overhead, but the store is fixed per instantiation, exactly right
 when prod uses Postgres and tests use the fake. If the store must change at runtime, or the
 generic parameter starts infecting every type that holds a service, switch the field to
@@ -396,7 +396,7 @@ const PostgresDatabase = struct {
 
 // High-level policy welded to the concrete detail.
 const OrderService = struct {
-    db: PostgresDatabase = .{}, // constructed inside — can't swap, can't fake
+    db: PostgresDatabase = .{}, // constructed inside; can't swap, can't fake
 
     pub fn place(self: OrderService, order: []const u8) void {
         self.db.insert("orders", order);
@@ -428,7 +428,7 @@ const OrderService = struct {
 };
 
 const InMemoryStore = struct {
-    rows: [16][]const u8 = undefined, // fixed buffer — no allocator needed here
+    rows: [16][]const u8 = undefined, // fixed buffer, no allocator needed here
     len: usize = 0,
 
     fn save(ptr: *anyopaque, order: []const u8) []const u8 {
@@ -447,11 +447,11 @@ pub fn main() void {
     var fake = InMemoryStore{};
     const under_test = OrderService{ .store = fake.store() };
     std.debug.print("{s}\n", .{under_test.place("order-1")}); // saved
-    // Production builds a PostgresStore exposing the same store() — the service never changes.
+    // Production builds a PostgresStore exposing the same store(): the service never changes.
 }
 ```
 
-**🧠 Note** — Zig's standard library is built on this exact inversion: everything that allocates
+**🧠 Note**: Zig's standard library is built on this exact inversion: everything that allocates
 depends on `std.mem.Allocator`, a `*anyopaque` context plus function pointers, and the caller
 injects the concrete allocator. The `Store` above is the same idiom at kata size; the erased
 pointer plus `@ptrCast(@alignCast(...))` is the price of runtime swapping without interfaces.
@@ -511,7 +511,7 @@ public class Demo {
 }
 ```
 
-**🧠 Note** — this wiring is what Spring's whole container automates, but DIP needs none of it:
+**🧠 Note**: this wiring is what Spring's whole container automates, but DIP needs none of it:
 constructor injection is just `new` at the edge of the program. Two modern touches. `Store` has
 one method, so it's a functional interface and a test fake is a lambda:
 `new OrderService(order -> "saved")`. And keep the interface consumer-shaped (`save(order)`),
@@ -522,13 +522,13 @@ Reach for a container when the object graph gets deep; the principle is already 
 
 Where DIP shows up in practice:
 
-- **Repositories** — services depend on a `Repository` interface, not a DB driver.
-- **Notifications** — policy depends on a `Notifier`, injected with email/SMS/push.
-- **Clock/time** — inject a time source so tests control "now."
-- **Payment** — a `PaymentGateway` abstraction with vendor implementations injected.
+- **Repositories**: services depend on a `Repository` interface, not a DB driver.
+- **Notifications**: policy depends on a `Notifier`, injected with email/SMS/push.
+- **Clock/time**: inject a time source so tests control "now."
+- **Payment**: a `PaymentGateway` abstraction with vendor implementations injected.
 
 ## Related Principles & Patterns
 
-- **Open/Closed** — you extend behind the abstraction DIP tells you to depend on.
-- **Interface Segregation** — the injected abstractions should be small and consumer-shaped.
-- **Strategy / Adapter** — inject a strategy; adapt a vendor to your abstraction.
+- **Open/Closed**: you extend behind the abstraction DIP tells you to depend on.
+- **Interface Segregation**: the injected abstractions should be small and consumer-shaped.
+- **Strategy / Adapter**: inject a strategy; adapt a vendor to your abstraction.

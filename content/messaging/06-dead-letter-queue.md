@@ -28,25 +28,25 @@ healthy while ensuring nothing is silently lost.
 
 A message that can't be processed puts you in a bad spot with the usual options:
 
-- **Poison message blocks the queue** — a message that fails every time is redelivered endlessly,
+- **Poison message blocks the queue**: a message that fails every time is redelivered endlessly,
   stalling the consumer and starving good messages behind it.
-- **Dropping loses data** — silently discarding a failed message means lost orders, lost events, no
+- **Dropping loses data**: silently discarding a failed message means lost orders, lost events, no
   audit trail, and no way to recover.
-- **Infinite retries waste resources** — retrying a permanently-broken message forever burns CPU and
+- **Infinite retries waste resources**: retrying a permanently-broken message forever burns CPU and
   hammers downstream systems.
-- **Failures are invisible** — without a place for them, failed messages leave no signal that something
+- **Failures are invisible**: without a place for them, failed messages leave no signal that something
   needs attention.
 
 ## Structure
 
 Key Components:
 
-- **Main queue** — the normal channel consumers process from.
-- **Consumer** — processes messages; on repeated/permanent failure, routes the message to the DLQ.
-- **Dead letter queue** — a separate channel holding messages that couldn't be processed, with failure
+- **Main queue**: the normal channel consumers process from.
+- **Consumer**: processes messages; on repeated/permanent failure, routes the message to the DLQ.
+- **Dead letter queue**: a separate channel holding messages that couldn't be processed, with failure
   metadata (error, attempts, timestamp).
-- **Retry policy** — how many attempts before a message is dead-lettered.
-- **Monitoring & replay** — alerting on DLQ depth, plus tooling to inspect and re-submit fixed messages.
+- **Retry policy**: how many attempts before a message is dead-lettered.
+- **Monitoring & replay**: alerting on DLQ depth, plus tooling to inspect and re-submit fixed messages.
 
 ```
 Producer ──► [ Main Queue ] ──► Consumer ──success──► done
@@ -65,21 +65,21 @@ Producer ──► [ Main Queue ] ──► Consumer ──success──► done
 ## Advantages and Disadvantages
 
 ### Advantages
-- **No lost messages** — failures are preserved for inspection and replay, not dropped.
-- **Main flow stays healthy** — poison messages are removed so good messages keep processing.
-- **Visibility & recovery** — DLQ depth is an alertable signal, and messages can be fixed and replayed.
+- **No lost messages**: failures are preserved for inspection and replay, not dropped.
+- **Main flow stays healthy**: poison messages are removed so good messages keep processing.
+- **Visibility & recovery**: DLQ depth is an alertable signal, and messages can be fixed and replayed.
 
 ### Disadvantages
-- **Operational burden** — someone must monitor, triage, and replay the DLQ, or it's just a landfill.
-- **Ordering loss** — dead-lettering a message breaks strict ordering for that stream.
-- **Silent accumulation** — an unwatched DLQ hides a growing problem; it needs alerting to be useful.
+- **Operational burden**: someone must monitor, triage, and replay the DLQ, or it's just a landfill.
+- **Ordering loss**: dead-lettering a message breaks strict ordering for that stream.
+- **Silent accumulation**: an unwatched DLQ hides a growing problem; it needs alerting to be useful.
 
 ## Common Mistakes
 
-- **No DLQ at all** — the default of "drop or retry forever" is the worst of both; give failures a home.
-- **DLQ with no monitoring** — messages pile up unnoticed; alert on DLQ depth and age.
-- **No replay path** — a DLQ you can't re-submit from is a graveyard; build inspection and replay tooling.
-- **Dead-lettering transient failures too eagerly** — sending a message to the DLQ on the first blip
+- **No DLQ at all**: the default of "drop or retry forever" is the worst of both; give failures a home.
+- **DLQ with no monitoring**: messages pile up unnoticed; alert on DLQ depth and age.
+- **No replay path**: a DLQ you can't re-submit from is a graveyard; build inspection and replay tooling.
+- **Dead-lettering transient failures too eagerly**: sending a message to the DLQ on the first blip
   wastes the retry that would have succeeded; retry transient errors first, DLQ on exhaustion.
 
 ## Key Takeaways
@@ -123,7 +123,7 @@ async function consume(msg) {
 }
 ```
 
-**🧠 Tradeoff** — Tracking `attempts`, retrying transient errors, and pushing to a DLQ with failure
+**🧠 Tradeoff**: Tracking `attempts`, retrying transient errors, and pushing to a DLQ with failure
 metadata on exhaustion is the whole pattern: poison messages leave the main flow but are preserved with
 context for triage. The metadata (`error`, `attempts`) is what makes the DLQ actionable. You still owe
 monitoring and a replay tool, or the DLQ just accumulates.
@@ -161,7 +161,7 @@ ch.consume("orders", (msg) => {
 });
 ```
 
-**🧠 Tradeoff** — RabbitMQ (and SQS, and most brokers) provide dead-lettering as infrastructure: a
+**🧠 Tradeoff**: RabbitMQ (and SQS, and most brokers) provide dead-lettering as infrastructure: a
 dead-letter exchange plus a delivery limit auto-routes exhausted/rejected messages to a DLQ, so you
 `nack` without requeue and the broker does the rest. It's more robust than hand-rolled retry counting
 (survives consumer restarts). You still configure alerting on the DLQ and a replay/shovel path.
@@ -196,7 +196,7 @@ def consume(msg):
 # Celery does this declaratively: autoretry_for + max_retries, and a dead-letter routing key.
 ```
 
-**🧠 Tradeoff** — Explicit attempt tracking + DLQ publish works, but Celery and Kombu make it
+**🧠 Tradeoff**: Explicit attempt tracking + DLQ publish works, but Celery and Kombu make it
 declarative: `autoretry_for`/`max_retries` for the retry policy and broker dead-letter routing for the
 terminal queue, so the framework enforces the boundary between transient-retry and permanent-DLQ. Either
 way, the DLQ needs a dashboard/alert and a replay task to matter.
@@ -232,7 +232,7 @@ def handle_failed(messages, _context) do
 end
 ```
 
-**🧠 Tradeoff** — Broadway gives Elixir first-class failed-message handling: `Broadway.Message.failed`
+**🧠 Tradeoff**: Broadway gives Elixir first-class failed-message handling: `Broadway.Message.failed`
 plus `handle_failed/2` is the hook where you decide retry vs. dead-letter and publish to a DLQ with the
 failure reason. The BEAM's "let it crash" pairs with it: a supervised processor restarts, while the DLQ
 captures the message that caused the crash. You still add DLQ monitoring and replay.
@@ -272,7 +272,7 @@ func consume(msg Msg) {
 }
 ```
 
-**🧠 Tradeoff** — Explicit attempt counting, a transient-vs-permanent check, and a `dlq.Publish` on
+**🧠 Tradeoff**: Explicit attempt counting, a transient-vs-permanent check, and a `dlq.Publish` on
 exhaustion give a clear, testable dead-letter path. With managed brokers (SQS, NATS JetStream, Kafka)
 you configure a redelivery limit and DLQ at the infrastructure level instead, and the consumer just
 returns an error. Either way, Go leaves the operational pieces (alerting on DLQ depth and a replay
@@ -318,7 +318,7 @@ public sealed record Msg(string Body, int Attempts = 0);
 public sealed record DeadLetter(string Body, int Attempts, string Error, DateTime FailedAt);
 ```
 
-**🧠 Tradeoff** — exception filters put the retry decision into the catch dispatch itself: the
+**🧠 Tradeoff**: exception filters put the retry decision into the catch dispatch itself: the
 `when` clause retries transient failures with budget left, and the plain `catch` below is the
 terminal DLQ path: the control flow reads exactly like the policy. `with` produces the
 incremented-attempts copy without mutating the original. The channels here are in-process; Azure
@@ -332,7 +332,7 @@ like the RabbitMQ tab, and either way you still owe alerting and replay.
 **❌ Naive**
 
 ```rust
-// On error, requeue forever — the poison message never leaves.
+// On error, requeue forever: the poison message never leaves.
 fn consume(msg: Msg, queue: &mpsc::Sender<Msg>) {
     if process(&msg.body).is_err() {
         queue.send(msg).unwrap(); // redelivered indefinitely
@@ -348,8 +348,8 @@ use std::time::SystemTime;
 
 // Transient vs permanent is a type, not a heuristic.
 enum ProcessError {
-    Transient(String), // network blip, lock timeout — worth retrying
-    Permanent(String), // malformed payload — will never succeed
+    Transient(String), // network blip, lock timeout: worth retrying
+    Permanent(String), // malformed payload: will never succeed
 }
 
 struct Msg { body: String, attempts: u32 }
@@ -375,7 +375,7 @@ fn consume(msg: Msg, retry: &mpsc::Sender<Msg>, dlq: &mpsc::Sender<DeadLetter>) 
 }
 ```
 
-**🧠 Tradeoff** — the real move is the error enum: `Transient` vs `Permanent` is a type, not an
+**🧠 Tradeoff**: the real move is the error enum: `Transient` vs `Permanent` is a type, not an
 `is_transient()` string check, and the exhaustive `match` won't compile until every failure kind has
 a destination: add a variant and the compiler walks you to each unrouted site. The guard plus
 or-pattern reads like the policy: transient with budget → retry; everything else → DLQ. `..msg`
@@ -389,7 +389,7 @@ in-process, so durability, alerting, and replay are still yours.
 **❌ Naive**
 
 ```zig
-// On error, requeue forever — the poison message never leaves the loop.
+// On error, requeue forever: the poison message never leaves the loop.
 fn consume(msg: Msg) !void {
     process(msg.body) catch {
         try main_queue.push(msg); // redelivered indefinitely
@@ -402,7 +402,7 @@ fn consume(msg: Msg) !void {
 ```zig
 const std = @import("std");
 
-// The failure kinds are a closed error set — the switch below must route every one.
+// The failure kinds are a closed error set: the switch below must route every one.
 const ProcessError = error{ Transient, Permanent };
 
 const Msg = struct { body: []const u8, attempts: u32 };
@@ -410,7 +410,7 @@ const DeadLetter = struct { body: []const u8, attempts: u32, err: ProcessError, 
 
 const max_attempts = 5;
 
-// Queue(T) is any explicit FIFO you own — a comptime-generic ring buffer, say.
+// Queue(T) is any explicit FIFO you own: a comptime-generic ring buffer, say.
 fn consume(io: std.Io, msg: Msg, retry: *Queue(Msg), dlq: *Queue(DeadLetter)) !void {
     process(msg.body) catch |err| switch (err) {
         error.Transient => {
@@ -434,7 +434,7 @@ fn deadLetter(io: std.Io, dlq: *Queue(DeadLetter), msg: Msg, err: ProcessError) 
 }
 ```
 
-**🧠 Tradeoff** — Zig's error sets do what Rust's enum did: `error{Transient, Permanent}` is a
+**🧠 Tradeoff**: Zig's error sets do what Rust's enum did: `error{Transient, Permanent}` is a
 closed set, and `catch |err| switch (err)` must handle every member, so an unrouted failure kind is
 a compile error. The `DeadLetter` struct carries the error value itself, not a stringified guess.
 There's no broker to lean on (the queues are structs you wrote) so the operational half of the
@@ -447,7 +447,7 @@ pattern (depth alerts, a replay loop) is also code you must write, which at leas
 **❌ Naive**
 
 ```java
-// On error, requeue forever — the poison message never leaves.
+// On error, requeue forever: the poison message never leaves.
 static void consume(Msg msg, BlockingQueue<Msg> queue) throws InterruptedException {
     try { process(msg.body()); }
     catch (Exception err) { queue.put(msg); } // redelivered indefinitely
@@ -457,11 +457,11 @@ static void consume(Msg msg, BlockingQueue<Msg> queue) throws InterruptedExcepti
 **✅ Idiomatic**
 
 ```java
-// Transient vs permanent is a checked exception type — the catch dispatch IS the routing policy.
+// Transient vs permanent is a checked exception type: the catch dispatch IS the routing policy.
 sealed abstract class ProcessException extends Exception
         permits TransientException, PermanentException {}
-final class TransientException extends ProcessException {}  // network blip — worth retrying
-final class PermanentException extends ProcessException {}  // malformed — will never succeed
+final class TransientException extends ProcessException {}  // network blip: worth retrying
+final class PermanentException extends ProcessException {}  // malformed: will never succeed
 
 record Msg(String body, int attempts) {}
 record DeadLetter(String body, int attempts, String error, Instant failedAt) {}
@@ -484,7 +484,7 @@ static void consume(Msg msg, BlockingQueue<Msg> retry, BlockingQueue<DeadLetter>
 }
 ```
 
-**🧠 Tradeoff** — making transient-vs-permanent a checked exception type puts the policy in
+**🧠 Tradeoff**: making transient-vs-permanent a checked exception type puts the policy in
 `process`'s signature: callers can't compile without handling it, and because the set is `sealed`,
 the switch over the caught exception is exhaustive with no `default`: add a third failure kind and
 every consumer breaks until it routes it, exactly Rust's enum guarantee. The guarded case plus the
@@ -497,29 +497,29 @@ on DLQ depth and a replay path.
 
 ## Applications
 
-- **Message brokers** — SQS redrive policies, RabbitMQ dead-letter exchanges, and Kafka DLQ topics are
+- **Message brokers**: SQS redrive policies, RabbitMQ dead-letter exchanges, and Kafka DLQ topics are
   built-in DLQ support (backend).
-- **Background jobs** — Sidekiq/Celery/Oban move exhausted jobs to a dead/failed set for inspection and
+- **Background jobs**: Sidekiq/Celery/Oban move exhausted jobs to a dead/failed set for inspection and
   retry (backend).
-- **Event pipelines** — malformed or unprocessable events routed aside so the stream keeps flowing
+- **Event pipelines**: malformed or unprocessable events routed aside so the stream keeps flowing
   (backend).
-- **Webhook delivery** — failed webhook deliveries dead-lettered after retries for manual replay
+- **Webhook delivery**: failed webhook deliveries dead-lettered after retries for manual replay
   (backend).
-- **Data ingestion** — records that fail validation captured in a DLQ for correction and re-import
+- **Data ingestion**: records that fail validation captured in a DLQ for correction and re-import
   (backend).
 
 **In modern systems:**
 
-- **Workflow engine** — a step that exhausts its retries lands in a DLQ for inspection instead of
+- **Workflow engine**: a step that exhausts its retries lands in a DLQ for inspection instead of
   killing the whole run.
-- **Multi-agent** — tasks an agent can't complete after N tries are parked for human review rather
+- **Multi-agent**: tasks an agent can't complete after N tries are parked for human review rather
   than looping forever and draining the budget.
 
 ## Related Patterns
 
-- **Retry** — the DLQ is where retries *end*: exhaust transient retries first, dead-letter on permanent
+- **Retry**: the DLQ is where retries *end*: exhaust transient retries first, dead-letter on permanent
   failure or when the retry budget runs out.
-- **Message Channel** — a DLQ is a specialized channel; the pattern is "route failures to their own
+- **Message Channel**: a DLQ is a specialized channel; the pattern is "route failures to their own
   channel instead of the main one."
-- **Circuit Breaker** — complementary resilience: the breaker stops calling a failing dependency, the DLQ
+- **Circuit Breaker**: complementary resilience: the breaker stops calling a failing dependency, the DLQ
   captures the messages that couldn't be processed meanwhile.

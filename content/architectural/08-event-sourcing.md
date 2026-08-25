@@ -27,24 +27,24 @@ by replaying events you already have.
 
 Storing only the latest state, the normal `UPDATE`, quietly destroys information:
 
-- **Lost history** — an `UPDATE` overwrites the old value; *why* and *when* it changed is gone
+- **Lost history**: an `UPDATE` overwrites the old value; *why* and *when* it changed is gone
   unless you bolted on audit logging.
-- **No time travel** — you can't ask "what did this look like last Tuesday?" because only *now* exists.
-- **Audit as an afterthought** — compliance and debugging need the trail, so teams reinvent it with
+- **No time travel**: you can't ask "what did this look like last Tuesday?" because only *now* exists.
+- **Audit as an afterthought**: compliance and debugging need the trail, so teams reinvent it with
   triggers and history tables that drift from the real data.
-- **Rigid read shapes** — a new report needs data you didn't think to keep; with only current state,
+- **Rigid read shapes**: a new report needs data you didn't think to keep; with only current state,
   it's unrecoverable.
 
 ## Structure
 
 Key Components:
 
-- **Event** — an immutable fact about something that happened, in the past tense.
-- **Aggregate** — a consistency boundary that validates a command and emits event(s); its state is
+- **Event**: an immutable fact about something that happened, in the past tense.
+- **Aggregate**: a consistency boundary that validates a command and emits event(s); its state is
   the fold of its events.
-- **Event Store** — the append-only log; the system of record.
-- **Replay** — rebuilding an aggregate's (or projection's) state by folding its events.
-- **Projections** — read models built by consuming the event stream (this is where CQRS meets it).
+- **Event Store**: the append-only log; the system of record.
+- **Replay**: rebuilding an aggregate's (or projection's) state by folding its events.
+- **Projections**: read models built by consuming the event stream (this is where CQRS meets it).
 
 ```
 Command ──► Aggregate ──emits──► Event Store  (append-only log)
@@ -64,25 +64,25 @@ Command ──► Aggregate ──emits──► Event Store  (append-only log)
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Complete history** — every change is preserved as a first-class fact; audit is built in.
-- **Time travel & replay** — reconstruct any past state; build new projections from old events.
-- **Debuggability** — reproduce a bug by replaying the exact events that led to it.
+- **Complete history**: every change is preserved as a first-class fact; audit is built in.
+- **Time travel & replay**: reconstruct any past state; build new projections from old events.
+- **Debuggability**: reproduce a bug by replaying the exact events that led to it.
 
 ### Disadvantages
-- **Complexity** — event design, versioning, snapshots, and replay are substantial machinery.
-- **Eventual consistency** — projections lag the log; reads aren't the write's immediate result.
-- **Schema evolution is hard** — events are immutable forever, so changing their shape means
+- **Complexity**: event design, versioning, snapshots, and replay are substantial machinery.
+- **Eventual consistency**: projections lag the log; reads aren't the write's immediate result.
+- **Schema evolution is hard**: events are immutable forever, so changing their shape means
   versioning and upcasting old events, not migrating rows.
 
 ## Common Mistakes
 
-- **Events as CRUD in disguise** — `UserUpdated { fields... }` throws away intent; model meaningful
+- **Events as CRUD in disguise**: `UserUpdated { fields... }` throws away intent; model meaningful
   domain events (`EmailChanged`, `SubscriptionCancelled`).
-- **No snapshots** — folding thousands of events on every load gets slow; snapshot aggregate state
+- **No snapshots**: folding thousands of events on every load gets slow; snapshot aggregate state
   periodically and replay only the tail.
-- **Mutating or deleting events** — the log is append-only; "fixing" an event breaks the source of
+- **Mutating or deleting events**: the log is append-only; "fixing" an event breaks the source of
   truth. Correct with a new compensating event.
-- **Ignoring event versioning** — schemas evolve; without a versioning/upcasting strategy, old
+- **Ignoring event versioning**: schemas evolve; without a versioning/upcasting strategy, old
   events become unreadable.
 
 ## Key Takeaways
@@ -132,7 +132,7 @@ class Account {
 // persist account.events to the store; reload with new Account(loadedEvents)
 ```
 
-**🧠 Tradeoff** — Recording `Deposited`/`Withdrew` events and folding them to a balance keeps the
+**🧠 Tradeoff**: Recording `Deposited`/`Withdrew` events and folding them to a balance keeps the
 whole history and makes reload a replay. You separate *deciding* (the rule in `withdraw`) from
 *applying* (`#apply`, which never rejects). The cost is that every read of `balance` is derived, and
 you'll eventually need snapshots and event versioning: real work you skip with a plain field.
@@ -165,7 +165,7 @@ async function load(pool, streamId) {
 // a projector tails the events table and upserts read models
 ```
 
-**🧠 Tradeoff** — A single append-only `events` table with a per-stream sequence is a serviceable
+**🧠 Tradeoff**: A single append-only `events` table with a per-stream sequence is a serviceable
 event store, and `reduce(applyEvent, ...)` rebuilds state. It gives you audit and replay on ordinary
 Postgres. You now own optimistic concurrency (the `seq`), projections, and snapshots for hot streams,
 which is why dedicated stores (EventStoreDB) exist for heavier use.
@@ -214,7 +214,7 @@ class Account:
         self.balance += n if kind == "Deposited" else -n
 ```
 
-**🧠 Tradeoff** — A `replay` classmethod plus `_record`/`_apply` gives clean event sourcing in
+**🧠 Tradeoff**: A `replay` classmethod plus `_record`/`_apply` gives clean event sourcing in
 plain Python: decide-then-apply, full history in `events`. It's a natural fit for DDD aggregates and
 testable without a database. The perennial costs apply: snapshots for long streams and a versioning
 plan for the event shapes, since those tuples/dicts are your permanent schema.
@@ -247,7 +247,7 @@ end
 # persist the emitted events to an event store; the Commanded library formalizes this on the BEAM.
 ```
 
-**🧠 Tradeoff** — The functional decide/apply split is a beautiful fit for Elixir: `decide/2`
+**🧠 Tradeoff**: The functional decide/apply split is a beautiful fit for Elixir: `decide/2`
 validates a command and returns events (pure, easily tested), `apply/2` folds them, and `replay/1`
 is `Enum.reduce`. Immutable data and pattern matching make events idiomatic, and Commanded provides
 a full event-sourced/CQRS framework. The write side is elegant; the operational weight (stores,
@@ -302,7 +302,7 @@ func Replay(events []Event) *Account {
 }
 ```
 
-**🧠 Tradeoff** — Go keeps it explicit: a command method validates, calls `apply`, and returns the
+**🧠 Tradeoff**: Go keeps it explicit: a command method validates, calls `apply`, and returns the
 events for the caller to persist; `Replay` folds a slice back into state. No framework hides the
 mechanics, so the event flow is obvious and testable. You build the store, concurrency control, and
 projections yourself: the usual Go bargain of clarity for hand-written plumbing.
@@ -354,7 +354,7 @@ public sealed class Account
 
     private void Record(Event e) { Events.Add(e); Apply(e); } // append + apply
 
-    private void Apply(Event e) => Balance += e switch        // the fold — never rejects
+    private void Apply(Event e) => Balance += e switch        // the fold: never rejects
     {
         Deposited d => d.Amount,
         Withdrew w => -w.Amount,
@@ -370,7 +370,7 @@ public sealed class Account
 }
 ```
 
-**🧠 Tradeoff** — Records are the right event shape in C#: immutable, value-equal, one line each,
+**🧠 Tradeoff**: Records are the right event shape in C#: immutable, value-equal, one line each,
 and the type-pattern `switch` is the fold. The weak spot is that a record hierarchy is open: the
 compiler can't know `Deposited` and `Withdrew` are the only events, so every fold needs a default
 arm, and a newly added event type silently falls into it instead of failing the build (Rust's enum
@@ -430,7 +430,7 @@ impl Account {
         self.events.push(e);
     }
 
-    fn apply(&mut self, e: &Event) { // the fold step — never rejects
+    fn apply(&mut self, e: &Event) { // the fold step; never rejects
         match e {
             Event::Deposited(n) => self.balance += i64::from(*n),
             Event::Withdrew(n) => self.balance -= i64::from(*n),
@@ -458,7 +458,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — The enum is exactly what an event schema wants to be: a closed set, and the
+**🧠 Tradeoff**: The enum is exactly what an event schema wants to be: a closed set, and the
 exhaustive `match` means adding a `TransferredOut` variant breaks every fold that doesn't handle
 it, at compile time. For a permanent, append-only schema, that's the strongest guarantee any
 language here offers. The decide/apply split falls out of the types too: `withdraw` returns
@@ -515,7 +515,7 @@ const Account = struct {
         self.apply(e);
     }
 
-    fn apply(self: *Account, e: Event) void { // the fold step — never rejects
+    fn apply(self: *Account, e: Event) void { // the fold step; never rejects
         switch (e) {
             .deposited => |n| self.balance += n,
             .withdrew => |n| self.balance -= n,
@@ -544,7 +544,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — The tagged union gives Zig the same guarantee as Rust's enum: the event set is
+**🧠 Tradeoff**: The tagged union gives Zig the same guarantee as Rust's enum: the event set is
 closed, and an exhaustive `switch` means a new event variant fails every fold that misses it at
 compile time: the property you most want for a schema that lives forever. The fixed array stands
 in for the log; a real store appends with an explicit allocator and writes bytes you laid out
@@ -596,7 +596,7 @@ class Account {
     private void record(Event e) { events.add(e); apply(e); } // append + apply
 
     private void apply(Event e) {
-        balance += switch (e) { // the fold — exhaustive, no default arm needed
+        balance += switch (e) { // the fold: exhaustive, no default arm needed
             case Deposited d -> d.amount();
             case Withdrew w -> -w.amount();
         };
@@ -623,7 +623,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — The sealed interface is Java catching up to Rust's enum and Zig's tagged union:
+**🧠 Tradeoff**: The sealed interface is Java catching up to Rust's enum and Zig's tagged union:
 the event set is closed, so the pattern-matching `switch` is exhaustive with no default arm, and
 adding a `TransferredOut` event breaks every fold that ignores it, at compile time, the guarantee
 you most want for a schema that lives forever. Contrast the C# tab, where the open record hierarchy
@@ -635,31 +635,31 @@ today's types, not last year's bytes.
 
 ## Applications
 
-- **Financial ledgers** — banking and accounting are naturally event-sourced; the transaction log
+- **Financial ledgers**: banking and accounting are naturally event-sourced; the transaction log
   *is* the truth, and balances are derived (backend).
-- **Audit & compliance** — regulated domains get a tamper-evident history for free as the primary
+- **Audit & compliance**: regulated domains get a tamper-evident history for free as the primary
   model, not an add-on (backend).
-- **Order & fulfillment** — an order's life (placed, paid, shipped, delivered) is a stream of
+- **Order & fulfillment**: an order's life (placed, paid, shipped, delivered) is a stream of
   events driving projections and workflows (backend).
-- **Version control & collaborative editing** — Git and CRDT-based editors store operations/commits
+- **Version control & collaborative editing**: Git and CRDT-based editors store operations/commits
   and fold them into current state (backend & frontend).
-- **Debugging & analytics** — replay production event streams to reproduce bugs or build new
+- **Debugging & analytics**: replay production event streams to reproduce bugs or build new
   metrics from history you already captured (backend).
 
 **In modern systems:**
 
-- **Workflow engine** — a run's history *is* its event log; instance state is a fold over it,
+- **Workflow engine**: a run's history *is* its event log; instance state is a fold over it,
   giving replay, resume, and audit for free.
-- **Multi-agent** — the agent's message and tool-call log is the source of truth; the conversation
+- **Multi-agent**: the agent's message and tool-call log is the source of truth; the conversation
   state is derived from it, so a session can be replayed exactly.
-- **Low-code** — every builder edit stored as an event, so the document is a replay and
+- **Low-code**: every builder edit stored as an event, so the document is a replay and
   time-travel undo is trivial.
 
 ## Related Patterns
 
-- **CQRS** — the natural read side: projections consume the event stream to build query models,
+- **CQRS**: the natural read side: projections consume the event stream to build query models,
   while events are the write side's source of truth.
-- **Publish-Subscribe** — events are typically published so projections and other services react to
+- **Publish-Subscribe**: events are typically published so projections and other services react to
   them.
-- **Unit of Work** — appending an aggregate's new events is itself a small transactional unit; the
+- **Unit of Work**: appending an aggregate's new events is itself a small transactional unit; the
   event store commits them atomically.

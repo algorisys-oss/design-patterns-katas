@@ -28,7 +28,7 @@ or a folder?" and recurse by hand.
 ```
 function totalSize(node) {
   if (node.isFile) return node.size;
-  // else it's a folder — loop, recurse, sum... at every call site
+  // else it's a folder: loop, recurse, sum... at every call site
   return node.children.reduce((s, c) => s + totalSize(c), 0);
 }
 ```
@@ -40,9 +40,9 @@ children internally.
 
 Key Components:
 
-- **Component** — the shared interface for leaves and composites (`size()`).
-- **Leaf** — a single object with no children (`File`).
-- **Composite** — holds children (also Components) and implements the operation by delegating to
+- **Component**: the shared interface for leaves and composites (`size()`).
+- **Leaf**: a single object with no children (`File`).
+- **Composite**: holds children (also Components) and implements the operation by delegating to
   them (`Folder`).
 
 ## When to Use
@@ -65,11 +65,11 @@ Key Components:
 
 ## Common Mistakes
 
-- **Putting child-management methods on the Component** — `add`/`remove` on a leaf either lie or
+- **Putting child-management methods on the Component**: `add`/`remove` on a leaf either lie or
   throw; decide whether they live on Component (uniform but unsafe) or only Composite (safe but
   requires casting).
-- **Forgetting the recursion terminates at leaves** — a cycle in the "tree" loops forever.
-- **Confusing it with Decorator** — Composite aggregates many children; Decorator wraps exactly
+- **Forgetting the recursion terminates at leaves**: a cycle in the "tree" loops forever.
+- **Confusing it with Decorator**: Composite aggregates many children; Decorator wraps exactly
   one and adds behavior.
 
 ## Key Takeaways
@@ -116,10 +116,10 @@ const root = new Folder("root")
   .add(new File("a.txt", 100))
   .add(new Folder("sub").add(new File("b.txt", 50)));
 
-root.totalSize();   // 150 — client never checks types or recurses
+root.totalSize();   // 150: client never checks types or recurses
 ```
 
-**🧠 Tradeoff** — Both types expose `totalSize()`, so the client calls it uniformly and the
+**🧠 Tradeoff**: Both types expose `totalSize()`, so the client calls it uniformly and the
 folder handles recursion. Child-management (`add`) lives only on `Folder`, so a `File` can't
 accidentally hold children: the safe placement, at the cost of needing a `Folder` reference to
 build the tree.
@@ -141,7 +141,7 @@ async function run(node) {
 **✅ Idiomatic (backend)**
 
 ```js
-// A single step and a group of steps share the same run() — clients don't branch.
+// A single step and a group of steps share the same run(): clients don't branch.
 class Step {
   constructor(name, fn) { this.name = name; this.fn = fn; }
   run() { return this.fn(); }                        // leaf
@@ -162,7 +162,7 @@ const deploy = new Pipeline("deploy")
 await deploy.run(); // client calls run() once; nesting handles itself
 ```
 
-**🧠 Tradeoff** — Both `Step` and `Pipeline` expose `run()`, so a pipeline can contain steps or
+**🧠 Tradeoff**: Both `Step` and `Pipeline` expose `run()`, so a pipeline can contain steps or
 other pipelines to any depth and the caller never inspects types. Sequencing lives in `Pipeline`; a
 `ParallelPipeline` using `Promise.all` would slot in the same way; the uniform tree is the point.
 
@@ -207,7 +207,7 @@ root = Folder("root").add(File("a.txt", 100)).add(Folder("sub").add(File("b.txt"
 root.total_size()   # 150
 ```
 
-**🧠 Tradeoff** — An `ABC` pins the `Node` contract so both leaf and composite implement
+**🧠 Tradeoff**: An `ABC` pins the `Node` contract so both leaf and composite implement
 `total_size`. The recursion is a one-line generator sum in `Folder`; the client treats any `Node`
 alike. Keeping `add` on `Folder` only preserves the invariant that files hold nothing.
 
@@ -244,7 +244,7 @@ tree =
 FS.total_size(tree)   # 150
 ```
 
-**🧠 Tradeoff** — Functional languages model Composite as an algebraic data type (a tree of
+**🧠 Tradeoff**: Functional languages model Composite as an algebraic data type (a tree of
 tagged tuples) and one multi-clause function pattern-matches leaf vs branch, recursing on the
 branch. There are no objects sharing an interface; the "uniform treatment" is that a single
 `total_size/1` accepts either shape. This is often clearer than the OO version for pure data.
@@ -300,7 +300,7 @@ func (f *Folder) TotalSize() int {
 }
 ```
 
-**🧠 Tradeoff** — `File` and `*Folder` both satisfy `Node`, so a `[]Node` mixes leaves and
+**🧠 Tradeoff**: `File` and `*Folder` both satisfy `Node`, so a `[]Node` mixes leaves and
 branches and the client calls `TotalSize()` blind to which is which. `Add` lives on `*Folder`
 only, keeping child-management off leaves; Go's implicit interfaces make the uniform treatment
 fall out naturally.
@@ -328,7 +328,7 @@ var root = new Folder("root")
     .Add(new File("a.txt", 100))
     .Add(new Folder("sub").Add(new File("b.txt", 50)));
 
-Console.WriteLine(root.TotalSize()); // 150 — no type checks, no manual recursion
+Console.WriteLine(root.TotalSize()); // 150, no type checks, no manual recursion
 
 // Component: the shared contract.
 public interface INode
@@ -336,13 +336,13 @@ public interface INode
     int TotalSize();
 }
 
-// Leaf — a record: name, size, base case.
+// Leaf: a record: name, size, base case.
 public sealed record File(string Name, int Size) : INode
 {
     public int TotalSize() => Size;
 }
 
-// Composite — child management lives here only.
+// Composite: child management lives here only.
 public sealed class Folder(string name) : INode
 {
     private readonly List<INode> _children = [];
@@ -359,7 +359,7 @@ public sealed class Folder(string name) : INode
 }
 ```
 
-**🧠 Tradeoff** — `INode` plus LINQ's `Sum` keeps the recursion a one-expression method, and
+**🧠 Tradeoff**: `INode` plus LINQ's `Sum` keeps the recursion a one-expression method, and
 the leaf is a positional record. `Add` stays on `Folder`, so a `File` can't hold children:
 the same safe placement as the JS version, now enforced by the compiler rather than by
 convention.
@@ -385,7 +385,7 @@ fn total_size(folder: &FolderNode) -> u64 {
 **✅ Idiomatic**
 
 ```rust
-// A closed node set is an enum — the tree owns its children.
+// A closed node set is an enum: the tree owns its children.
 enum Node {
     File { name: String, size: u64 },
     Folder { name: String, children: Vec<Node> },
@@ -415,7 +415,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — the enum is the honest Rust form here: the node set is closed, `match` is
+**🧠 Tradeoff**: the enum is the honest Rust form here: the node set is closed, `match` is
 exhaustive, and `Vec<Node>` gives the recursion its indirection (a direct `Node` field would
 need `Box<Node>`). The trait-object alternative (a `Node` trait with `Vec<Box<dyn Node>>`
 children) buys an open set (new node kinds without touching this file) at the cost of a heap
@@ -428,7 +428,7 @@ allocation and dynamic dispatch per node. Reach for `dyn` only when the set must
 **❌ Naive**
 
 ```zig
-// Two node kinds with no shared shape — every walk is hand-rolled per kind.
+// Two node kinds with no shared shape: every walk is hand-rolled per kind.
 const File = struct { name: []const u8, size: u64 };
 const Folder = struct { name: []const u8, files: []const File, folders: []const Folder };
 
@@ -482,7 +482,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — a tagged union with an exhaustive `switch` is idiomatic Zig for a closed
+**🧠 Tradeoff**: a tagged union with an exhaustive `switch` is idiomatic Zig for a closed
 node set: zero indirection, and the compiler flags any unhandled kind. What Zig adds is
 honesty about memory: a tree owns heap-allocated child slices, so building one takes an
 explicit allocator and freeing is your job (`defer`, or an arena for whole-tree cleanup).
@@ -515,12 +515,12 @@ interface Node {
     int totalSize();
 }
 
-// Leaf — a record: name, size, base case.
+// Leaf: a record: name, size, base case.
 record File(String name, int size) implements Node {
     public int totalSize() { return size; }
 }
 
-// Composite — child management lives here only.
+// Composite: child management lives here only.
 class Folder implements Node {
     private final String name;
     private final List<Node> children = new ArrayList<>();
@@ -543,12 +543,12 @@ public class Demo {
             .add(new File("a.txt", 100))
             .add(new Folder("sub").add(new File("b.txt", 50)));
 
-        System.out.println(root.totalSize()); // 150 — no type checks, no manual recursion
+        System.out.println(root.totalSize()); // 150, no type checks, no manual recursion
     }
 }
 ```
 
-**🧠 Tradeoff** — Swing carried this pattern for decades: `Container` is a `Component` that
+**🧠 Tradeoff**: Swing carried this pattern for decades: `Container` is a `Component` that
 holds components, so panels nest in panels. The modern trim is visible above: the leaf is a
 record and the recursion is a stream `sum()`. When the node set is closed, sealed types offer
 an alternative shape: `sealed interface Node permits File, Folder` plus a pattern-matching
@@ -560,23 +560,23 @@ want new *operations* to be cheap instead of new node kinds.
 
 Real-world uses of Composite (from the reference article):
 
-- **File systems** — files and folders with recursive size/search.
-- **UI trees** — a panel containing buttons and nested panels; render/layout recurses.
-- **Org charts** — employees and managers, headcount rolls up.
-- **Graphics / scene graphs** — groups of shapes transformed together.
-- **Expression / AST trees** — evaluate nested expressions uniformly.
+- **File systems**: files and folders with recursive size/search.
+- **UI trees**: a panel containing buttons and nested panels; render/layout recurses.
+- **Org charts**: employees and managers, headcount rolls up.
+- **Graphics / scene graphs**: groups of shapes transformed together.
+- **Expression / AST trees**: evaluate nested expressions uniformly.
 
 **In modern systems:**
 
-- **Low-code** — the JSON schema itself: a `container` holds fields and other containers, rendered
+- **Low-code**: the JSON schema itself: a `container` holds fields and other containers, rendered
   by one recursive walk that treats a leaf field and a group alike.
-- **Workflow engine** — a sub-workflow is a step, so a group of steps drops in anywhere a single
+- **Workflow engine**: a sub-workflow is a step, so a group of steps drops in anywhere a single
   step is expected.
-- **Multi-agent** — a team is an agent: a supervisor wrapping workers exposes the same `run`
+- **Multi-agent**: a team is an agent: a supervisor wrapping workers exposes the same `run`
   interface as a lone agent, so you can nest teams within teams.
 
 ## Related Patterns
 
-- **Decorator** — wraps a single component to add behavior; Composite aggregates many.
-- **Iterator** — traverses a composite's elements.
-- **Visitor** — adds operations over a composite tree without changing the node classes.
+- **Decorator**: wraps a single component to add behavior; Composite aggregates many.
+- **Iterator**: traverses a composite's elements.
+- **Visitor**: adds operations over a composite tree without changing the node classes.

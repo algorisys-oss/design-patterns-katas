@@ -29,24 +29,24 @@ fails) with a safe, reversible, incremental migration where the system keeps run
 The instinct with a creaky legacy system is to rewrite it wholesale. That's the pattern's cautionary
 tale:
 
-- **Big-bang rewrites fail** — a multi-year rewrite that must reach feature parity before *any*
+- **Big-bang rewrites fail**: a multi-year rewrite that must reach feature parity before *any*
   cutover routinely overruns, and often never ships.
-- **No value until the end** — the business gets nothing from the new system until the whole thing
+- **No value until the end**: the business gets nothing from the new system until the whole thing
   is done, so risk and cost accumulate with no payback.
-- **Frozen requirements** — the old system keeps changing while you rewrite, so you're chasing a
+- **Frozen requirements**: the old system keeps changing while you rewrite, so you're chasing a
   moving target.
-- **All-or-nothing cutover** — flipping everything at once is terrifying and hard to roll back if it
+- **All-or-nothing cutover**: flipping everything at once is terrifying and hard to roll back if it
   goes wrong.
 
 ## Structure
 
 Key Components:
 
-- **Facade / Router** — a proxy in front of both systems that decides where each request goes.
-- **Legacy System** — the existing system; still serves everything not yet migrated.
-- **New System** — the replacement; grows one feature/route at a time.
-- **Routing rules** — per-route (or per-request) config sending migrated traffic to the new system.
-- **Data strategy** — how the two systems share or sync data during the overlap.
+- **Facade / Router**: a proxy in front of both systems that decides where each request goes.
+- **Legacy System**: the existing system; still serves everything not yet migrated.
+- **New System**: the replacement; grows one feature/route at a time.
+- **Routing rules**: per-route (or per-request) config sending migrated traffic to the new system.
+- **Data strategy**: how the two systems share or sync data during the overlap.
 
 ```
                      ┌── migrated routes ──► New System
@@ -65,26 +65,26 @@ Client ──► Facade ───┤
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Incremental & low-risk** — small steps, each verifiable and reversible; the system stays live.
-- **Continuous value** — migrated features ship and pay off before the whole migration is done.
-- **Easy rollback** — a bad migration is undone by routing that feature back to the legacy system.
+- **Incremental & low-risk**: small steps, each verifiable and reversible; the system stays live.
+- **Continuous value**: migrated features ship and pay off before the whole migration is done.
+- **Easy rollback**: a bad migration is undone by routing that feature back to the legacy system.
 
 ### Disadvantages
-- **Two systems at once** — you run, deploy, and monitor both for the (often long) overlap.
-- **Data-sharing complexity** — old and new must read/write consistent data during the transition —
+- **Two systems at once**: you run, deploy, and monitor both for the (often long) overlap.
+- **Data-sharing complexity**: old and new must read/write consistent data during the transition,
   usually the hardest part.
-- **The tail never ends** — teams migrate the easy 80% and leave the gnarly 20% forever, so the
+- **The tail never ends**: teams migrate the easy 80% and leave the gnarly 20% forever, so the
   legacy system lingers.
 
 ## Common Mistakes
 
-- **No plan to finish** — migrating the easy features and stopping leaves *two* systems permanently;
+- **No plan to finish**: migrating the easy features and stopping leaves *two* systems permanently;
   commit to decommissioning the legacy one.
-- **Ignoring shared data** — routing is the easy half; if both systems touch the same data, you need
+- **Ignoring shared data**: routing is the easy half; if both systems touch the same data, you need
   a sync/ownership strategy or you'll get inconsistency.
-- **Migrating too big a slice** — carving off a huge chunk at once reintroduces big-bang risk; keep
+- **Migrating too big a slice**: carving off a huge chunk at once reintroduces big-bang risk; keep
   each step small.
-- **Facade with no fallback** — if the new system fails, the facade should be able to route back to
+- **Facade with no fallback**: if the new system fails, the facade should be able to route back to
   legacy; without it, a migration bug is an outage.
 
 ## Key Takeaways
@@ -104,7 +104,7 @@ Client ──► Facade ───┤
 
 ```js
 // A frozen rewrite: build the whole new app, then flip everything at once.
-// (No code — the anti-pattern is the plan: parity-then-cutover, big bang.)
+// (No code: the anti-pattern is the plan: parity-then-cutover, big bang.)
 ```
 
 **✅ Idiomatic**
@@ -119,10 +119,10 @@ function facade(req, res) {
   }
   return legacyProxy(req, res);          // everything else still legacy
 }
-// flip a feature by adding its route to `migrated` — reversible by removing it.
+// flip a feature by adding its route to `migrated`: reversible by removing it.
 ```
 
-**🧠 Tradeoff** — A route set the facade consults is the whole idea in miniature: migrating a
+**🧠 Tradeoff**: A route set the facade consults is the whole idea in miniature: migrating a
 feature is adding a route, rolling back is removing it. The routing logic is trivial; what this
 snippet hides is the real work: making `/checkout` in the new system read and write the *same*
 data the legacy system uses during the overlap.
@@ -134,7 +134,7 @@ data the legacy system uses during the overlap.
 **❌ Naive**
 
 ```js
-// Point clients directly at whichever backend — no seam to migrate incrementally.
+// Point clients directly at whichever backend, no seam to migrate incrementally.
 app.use(createProxyMiddleware({ target: "http://legacy:8080" })); // all-or-nothing
 ```
 
@@ -155,7 +155,7 @@ app.use((req, res, next) => {
 });
 ```
 
-**🧠 Tradeoff** — A proxy layer (`http-proxy-middleware`, or an nginx/Envoy gateway) routing by
+**🧠 Tradeoff**: A proxy layer (`http-proxy-middleware`, or an nginx/Envoy gateway) routing by
 path prefix is the canonical Node facade: config-driven, so migrating a feature is a config change
 and rollback is instant. Adding a circuit breaker to the `toNew` route gives an automatic fallback
 to legacy if the new service misbehaves, turning a risky cutover into a safe one.
@@ -184,7 +184,7 @@ def facade(environ, start_response):
 # `facade` is the WSGI entry point; move features by extending MIGRATED_PREFIXES.
 ```
 
-**🧠 Tradeoff** — Because WSGI/ASGI apps are just callables, a dispatching facade that picks the new
+**🧠 Tradeoff**: Because WSGI/ASGI apps are just callables, a dispatching facade that picks the new
 or legacy app by path is clean and framework-agnostic; you can even run a new FastAPI service beside
 a legacy Django app behind it. The routing is a few lines; the migration's substance is data
 ownership and keeping both apps consistent, which no dispatcher solves for you.
@@ -218,7 +218,7 @@ defmodule Facade do
 end
 ```
 
-**🧠 Tradeoff** — A `Plug` is the idiomatic seam in Elixir: it sits at the top of the pipeline and
+**🧠 Tradeoff**: A `Plug` is the idiomatic seam in Elixir: it sits at the top of the pipeline and
 routes each request to the new router or a reverse proxy to legacy, so features migrate by editing a
 list. Phoenix's composability makes running new and old side by side natural. The BEAM doesn't make
 the shared-data problem any easier, though; that's still the migration's crux.
@@ -249,10 +249,10 @@ func facade(newBackend, legacy *httputil.ReverseProxy, migrated []string) http.H
         legacy.ServeHTTP(w, r) // everything else
     }
 }
-// migrated := []string{"/api/checkout", "/api/cart"} — grow this to move features.
+// migrated := []string{"/api/checkout", "/api/cart"}; grow this to move features.
 ```
 
-**🧠 Tradeoff** — Go's `httputil.ReverseProxy` makes the facade a small, standard-library handler:
+**🧠 Tradeoff**: Go's `httputil.ReverseProxy` makes the facade a small, standard-library handler:
 match a prefix, forward to the new or legacy proxy. It's explicit and fast, and you can wrap the new
 backend with a timeout/circuit breaker for automatic fallback. The migration list can come from
 config or a feature-flag service so flipping a route needs no redeploy.
@@ -264,7 +264,7 @@ config or a feature-flag service so flipping a route needs no redeploy.
 **❌ Naive**
 
 ```csharp
-// Every request goes straight to legacy — no seam to migrate one feature at a time.
+// Every request goes straight to legacy, no seam to migrate one feature at a time.
 Console.WriteLine(Legacy.Handle("/checkout")); // legacy: handled /checkout
 Console.WriteLine(Legacy.Handle("/cart"));     // migrating anything = big-bang rewrite
 
@@ -318,7 +318,7 @@ public sealed class Facade(IBackend newSystem, IBackend legacy)
 }
 ```
 
-**🧠 Tradeoff** — In production .NET the facade is YARP (Microsoft's reverse proxy) or ASP.NET
+**🧠 Tradeoff**: In production .NET the facade is YARP (Microsoft's reverse proxy) or ASP.NET
 Core middleware matching path prefixes; this in-process version keeps the mechanism visible:
 migrating is `Migrate`, rollback is `Rollback`, and nothing else changes. `IBackend` is a
 one-method contract, so a `Func<string, string>` per backend would do; the interface earns its
@@ -332,7 +332,7 @@ during the overlap is still yours to solve.
 **❌ Naive**
 
 ```rust
-// All traffic hits the legacy system directly — no seam to migrate through.
+// All traffic hits the legacy system directly, no seam to migrate through.
 fn legacy(path: &str) -> String {
     format!("legacy: handled {path}")
 }
@@ -399,7 +399,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — `Facade<N, L>` is generic, so both backends monomorphize: zero dispatch cost,
+**🧠 Tradeoff**: `Facade<N, L>` is generic, so both backends monomorphize: zero dispatch cost,
 fixed at compile time: the right default when a facade fronts exactly two known systems. Reach
 for `Box<dyn Backend>` only if the backend set is chosen at runtime from config. Be honest about
 scale, though: a real strangler facade is a reverse proxy (nginx, Envoy) in front of two deployed
@@ -415,7 +415,7 @@ infrastructure, and the shared-data problem is untouched by either.
 ```zig
 const std = @import("std");
 
-// Every request goes straight to the legacy code — no seam to migrate through.
+// Every request goes straight to the legacy code, no seam to migrate through.
 fn handle(path: []const u8) void {
     std.debug.print("legacy: handled {s}\n", .{path});
 }
@@ -474,7 +474,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — Function pointers cover stateless backends; the moment a backend carries state
+**🧠 Tradeoff**: Function pointers cover stateless backends; the moment a backend carries state
 (a connection pool, say), Zig's answer is the two-field vtable idiom (`*anyopaque` context plus
 function pointer) that `std.mem.Allocator` uses. The fixed `[8][]const u8` table dodges the
 allocator for a demo; a real routing table would take one and grow. And keep perspective: the
@@ -488,7 +488,7 @@ the seam, and the routing was never the hard part: the shared data is.
 **❌ Naive**
 
 ```java
-// Every request goes straight to legacy — no seam to migrate one feature at a time.
+// Every request goes straight to legacy, no seam to migrate one feature at a time.
 class Legacy {
     static String handle(String path) {
         return "legacy: handled " + path;
@@ -509,7 +509,7 @@ public class Demo {
 import java.util.HashSet;
 import java.util.Set;
 
-// The backend contract — one method, so it's a functional interface.
+// The backend contract: one method, so it's a functional interface.
 interface Backend {
     String handle(String path);
 }
@@ -559,7 +559,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — In production Java the facade is an API gateway: Spring Cloud Gateway route
+**🧠 Tradeoff**: In production Java the facade is an API gateway: Spring Cloud Gateway route
 predicates (or nginx/Envoy) in front of the two deployed systems, where migrating a feature is a
 route-config change and rollback needs no redeploy. This in-process version keeps the mechanism
 visible: one contract, two implementations, a routing set that *is* the migration state. `Backend`
@@ -569,22 +569,22 @@ checks. Either way, routing is the easy half; the shared data during the overlap
 
 ## Applications
 
-- **Monolith to microservices** — the standard way to decompose a monolith: extract one service,
+- **Monolith to microservices**: the standard way to decompose a monolith: extract one service,
   route its endpoints to it, repeat (backend).
-- **Legacy platform replacement** — mainframe or old-stack systems modernized endpoint-by-endpoint
+- **Legacy platform replacement**: mainframe or old-stack systems modernized endpoint-by-endpoint
   behind an API gateway (backend).
-- **Frontend migrations** — moving pages from a legacy SPA/server-rendered app to a new framework
+- **Frontend migrations**: moving pages from a legacy SPA/server-rendered app to a new framework
   route-by-route behind a proxy (frontend).
-- **API versioning & re-platforming** — routing some paths to a rewritten backend while the rest
+- **API versioning & re-platforming**: routing some paths to a rewritten backend while the rest
   stay on the old one (backend).
-- **Cloud migration** — shifting features from on-prem to cloud incrementally behind a routing layer
+- **Cloud migration**: shifting features from on-prem to cloud incrementally behind a routing layer
   (backend).
 
 ## Related Patterns
 
-- **Hexagonal (Ports & Adapters)** — a clean-ported new system makes it easy to run beside legacy and
+- **Hexagonal (Ports & Adapters)**: a clean-ported new system makes it easy to run beside legacy and
   share data through adapters during the migration.
-- **Circuit Breaker** — wrapping the new backend so the facade falls back to legacy if the new
+- **Circuit Breaker**: wrapping the new backend so the facade falls back to legacy if the new
   service fails turns each migration step into a safe one.
-- **Facade / Proxy** — the routing layer is literally a facade/proxy over the two systems, presenting
+- **Facade / Proxy**: the routing layer is literally a facade/proxy over the two systems, presenting
   one interface to clients throughout.

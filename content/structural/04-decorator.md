@@ -41,9 +41,9 @@ the features you want.
 
 Key Components:
 
-- **Component** — the interface both real objects and decorators share (`read()`).
-- **Concrete Component** — the base object being decorated.
-- **Decorator** — holds a Component, forwards to it, and adds behavior before/after.
+- **Component**: the interface both real objects and decorators share (`read()`).
+- **Concrete Component**: the base object being decorated.
+- **Decorator**: holds a Component, forwards to it, and adds behavior before/after.
 
 ## When to Use
 
@@ -66,11 +66,11 @@ Key Components:
 
 ## Common Mistakes
 
-- **Breaking the interface** — a decorator must present the same interface as what it wraps, or
+- **Breaking the interface**: a decorator must present the same interface as what it wraps, or
   callers can't treat them uniformly.
-- **Forgetting to forward** — a decorator that doesn't delegate to the wrapped object drops
+- **Forgetting to forward**: a decorator that doesn't delegate to the wrapped object drops
   behavior.
-- **Confusing it with Proxy** — Decorator *adds* behavior; Proxy *controls access* (same shape,
+- **Confusing it with Proxy**: Decorator *adds* behavior; Proxy *controls access* (same shape,
   different intent).
 
 ## Key Takeaways
@@ -134,7 +134,7 @@ const source = new LoggingSource(new CachingSource(new DataSource()));
 source.read("a");
 ```
 
-**🧠 Tradeoff** — Each decorator is a single-responsibility wrapper sharing `read(key)`, so
+**🧠 Tradeoff**: Each decorator is a single-responsibility wrapper sharing `read(key)`, so
 features compose at runtime and new ones don't touch existing classes. The price is a chain of
 objects and order sensitivity: here logging sees every call, caching short-circuits repeats.
 
@@ -160,7 +160,7 @@ class HttpClient {
 **✅ Idiomatic (backend)**
 
 ```js
-// Base client, then one wrapper per concern — all sharing request(opts).
+// Base client, then one wrapper per concern: all sharing request(opts).
 class HttpClient { request(opts) { return fetch(opts.url, opts); } }
 
 class WithAuth {
@@ -187,7 +187,7 @@ const client = new WithRetry(new WithAuth(new HttpClient(), token));
 client.request({ url: "/orders", method: "GET" });
 ```
 
-**🧠 Tradeoff** — Each wrapper adds one concern and shares `request(opts)`, so features compose at
+**🧠 Tradeoff**: Each wrapper adds one concern and shares `request(opts)`, so features compose at
 runtime and order is meaningful: here retry wraps auth, so every retry re-sends the token. This is
 the object cousin of Express middleware; when the concerns are purely functional, a middleware chain
 (Chain of Responsibility) is the lighter expression of the same idea.
@@ -240,7 +240,7 @@ class CachingSource:
 source = LoggingSource(CachingSource(DataSource()))
 ```
 
-**🧠 Tradeoff** — This is the object-decorator form. Python also has *function* decorators
+**🧠 Tradeoff**: This is the object-decorator form. Python also has *function* decorators
 (`@lru_cache`, `@retry`), the same wrap-and-forward idea applied to callables with `@` syntax.
 Use function decorators for cross-cutting concerns on functions; use object decorators when the
 thing you're layering is a stateful component.
@@ -255,7 +255,7 @@ thing you're layering is a stateful component.
 defmodule DataSource do
   def read(key, opts) do
     if opts[:logging], do: IO.puts("read #{key}")
-    # caching in a stateless function needs external state — awkward with flags
+    # caching in a stateless function needs external state: awkward with flags
     "value:#{key}"
   end
 end
@@ -264,7 +264,7 @@ end
 **✅ Idiomatic**
 
 ```elixir
-# Decoration is function composition — each wrapper takes and returns a reader fn.
+# Decoration is function composition: each wrapper takes and returns a reader fn.
 defmodule Source do
   def base, do: fn key -> "value:#{key}" end
 
@@ -292,7 +292,7 @@ read = Source.base() |> Source.with_caching() |> Source.with_logging()
 read.("a")
 ```
 
-**🧠 Tradeoff** — In Elixir a decorator is a higher-order function wrapping another function, and
+**🧠 Tradeoff**: In Elixir a decorator is a higher-order function wrapping another function, and
 the pipe composes them: no wrapper objects at all. Stateful decoration (caching) needs a process
 to hold the state, since functions are pure; that's the one place the functional form costs more
 than an object field.
@@ -363,7 +363,7 @@ func (c *caching) Read(key string) string {
 // source := Logging(Caching(base{}))
 ```
 
-**🧠 Tradeoff** — Each decorator satisfies `Source` and holds an inner `Source`, so they nest
+**🧠 Tradeoff**: Each decorator satisfies `Source` and holds an inner `Source`, so they nest
 freely via the constructor functions. Go's implicit interfaces make this clean; for single-method
 components you can also decorate with a `func` type (the common middleware pattern in `net/http`).
 
@@ -408,7 +408,7 @@ public sealed class DataSource : ISource
     public string Read(string key) => $"value:{key}";
 }
 
-// One decorator per concern — each wraps an ISource and shares its shape.
+// One decorator per concern: each wraps an ISource and shares its shape.
 public sealed class LoggingSource(ISource inner) : ISource
 {
     public string Read(string key)
@@ -427,7 +427,7 @@ public sealed class CachingSource(ISource inner) : ISource
 }
 ```
 
-**🧠 Tradeoff** — each wrapper implements `ISource`, holds its inner source via a primary
+**🧠 Tradeoff**: each wrapper implements `ISource`, holds its inner source via a primary
 constructor, and adds one concern; order still matters (logging sees every call, caching
 short-circuits repeats). The BCL ships this exact shape as `DelegatingHandler` chains in
 `HttpClient`. For a single-method contract you could stack `Func<string, string>` wrappers
@@ -513,7 +513,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — `Box<dyn Source>` lets decorators nest to any depth chosen at runtime, one
+**🧠 Tradeoff**: `Box<dyn Source>` lets decorators nest to any depth chosen at runtime, one
 heap allocation per layer; a closed wrapper set could use an enum instead. Note the signature:
 `read` takes `&mut self` because caching genuinely mutates; Rust pushes the hidden state into
 the contract, where Go tucks it behind a pointer receiver. If callers need `&self`, wrap the
@@ -625,7 +625,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — runtime-stackable decorators need runtime dispatch, and Zig's honest form
+**🧠 Tradeoff**: runtime-stackable decorators need runtime dispatch, and Zig's honest form
 is the two-field vtable (`*anyopaque` context + function pointer), the same shape as
 `std.mem.Allocator`. The allocator is explicit because building and caching values allocates;
 the arena turns cleanup into one `defer`. If the wrapper set is closed, a tagged union with a
@@ -673,7 +673,7 @@ class DataSource implements Source {
     public String read(String key) { return "value:" + key; }
 }
 
-// One decorator per concern — each wraps a Source and shares its shape.
+// One decorator per concern: each wraps a Source and shares its shape.
 class LoggingSource implements Source {
     private final Source inner;
 
@@ -706,7 +706,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — `java.io` IS this pattern: `new BufferedInputStream(new
+**🧠 Tradeoff**: `java.io` IS this pattern: `new BufferedInputStream(new
 GZIPInputStream(new FileInputStream(f)))` is a decorator stack, and it has shipped in the
 standard library since 1.0, so Java programmers use Decorator daily without naming it. The form
 above is the same idea for our source: one concern per wrapper, order chosen at composition
@@ -718,25 +718,25 @@ the outermost object trusting it to cascade.
 
 Real-world uses of Decorator (from the reference article):
 
-- **HTTP middleware** — logging, auth, compression wrapping a handler.
-- **I/O streams** — buffering/encryption/compression layered on a base stream.
+- **HTTP middleware**: logging, auth, compression wrapping a handler.
+- **I/O streams**: buffering/encryption/compression layered on a base stream.
 - **Caching / retry / rate-limit** wrappers around a service call.
-- **UI components** — borders, scroll, shadow added by wrapping.
-- **Feature toggles & i18n** — wrap a renderer to add behavior conditionally.
+- **UI components**: borders, scroll, shadow added by wrapping.
+- **Feature toggles & i18n**: wrap a renderer to add behavior conditionally.
 
 **In modern systems:**
 
-- **Multi-agent** — wrap a raw model call with retry, caching, guardrail, and logging layers, each
+- **Multi-agent**: wrap a raw model call with retry, caching, guardrail, and logging layers, each
   added independently and removable without touching the core call.
-- **Workflow engine** — a step wrapped with timing, tracing, and idempotency without editing the
+- **Workflow engine**: a step wrapped with timing, tracing, and idempotency without editing the
   step's own logic.
-- **Low-code** — a field decorated by permission and formatting layers declared in its JSON.
+- **Low-code**: a field decorated by permission and formatting layers declared in its JSON.
 
 ## Related Patterns
 
-- **Proxy** — same wrapping shape; Proxy controls access, Decorator adds behavior.
-- **Adapter** — changes the interface; Decorator keeps it.
-- **Composite** — decorators are often a degenerate composite (one child); both rely on a shared
+- **Proxy**: same wrapping shape; Proxy controls access, Decorator adds behavior.
+- **Adapter**: changes the interface; Decorator keeps it.
+- **Composite**: decorators are often a degenerate composite (one child); both rely on a shared
   component interface.
-- **Chain of Responsibility** — also a chain of wrappers, but each may stop the request; a
+- **Chain of Responsibility**: also a chain of wrappers, but each may stop the request; a
   decorator always forwards.

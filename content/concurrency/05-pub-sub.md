@@ -29,9 +29,9 @@ Wire components together directly and the connections multiply. A module that mu
 others holds five references and calls five methods; add a sixth listener and you edit the
 publisher:
 
-- **Tight coupling** — the sender depends on the concrete receivers, compile-time and forever.
-- **Combinatorial wiring** — N senders each knowing M receivers is N×M connections to maintain.
-- **Rigid lifecycles** — a receiver can't appear or disappear at runtime without the sender
+- **Tight coupling**: the sender depends on the concrete receivers, compile-time and forever.
+- **Combinatorial wiring**: N senders each knowing M receivers is N×M connections to maintain.
+- **Rigid lifecycles**: a receiver can't appear or disappear at runtime without the sender
   managing it.
 
 This is the same coupling the Observer pattern removes for one subject, but pub/sub generalizes
@@ -41,10 +41,10 @@ it: many publishers, many topics, and a broker that can live in another process 
 
 Key Components:
 
-- **Publisher** — sends a message to a topic; knows nothing about who (if anyone) receives it.
-- **Broker / Topic** — routes each published message to the current subscribers of its topic.
-- **Subscriber** — registers a handler for a topic; receives every message published there.
-- **Message** — the payload, usually with the topic/subject attached.
+- **Publisher**: sends a message to a topic; knows nothing about who (if anyone) receives it.
+- **Broker / Topic**: routes each published message to the current subscribers of its topic.
+- **Subscriber**: registers a handler for a topic; receives every message published there.
+- **Message**: the payload, usually with the topic/subject attached.
 
 ```
 Publisher ──publish("orders", m)──►  [ Broker ]  ──► Subscriber A
@@ -62,26 +62,26 @@ Publisher ──publish("orders", m)──►  [ Broker ]  ──► Subscriber 
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Loose coupling** — publishers and subscribers share only a topic name.
-- **Dynamic membership** — subscribers join and leave at runtime; publishers are none the wiser.
-- **Fan-out & scale** — one message reaches many consumers; the broker can span processes/nodes.
+- **Loose coupling**: publishers and subscribers share only a topic name.
+- **Dynamic membership**: subscribers join and leave at runtime; publishers are none the wiser.
+- **Fan-out & scale**: one message reaches many consumers; the broker can span processes/nodes.
 
 ### Disadvantages
-- **Indirection** — flow is harder to trace; "who handles this event?" has no static answer.
-- **Delivery guarantees vary** — in-memory buses drop messages on crash; durability/ordering
+- **Indirection**: flow is harder to trace; "who handles this event?" has no static answer.
+- **Delivery guarantees vary**: in-memory buses drop messages on crash; durability/ordering
   cost real infrastructure.
-- **No backpressure by default** — a slow subscriber either blocks the broker or drops messages
+- **No backpressure by default**: a slow subscriber either blocks the broker or drops messages
   unless you design for it.
 
 ## Common Mistakes
 
-- **Leaking subscriptions** — subscribers that never unsubscribe pin memory and keep receiving;
+- **Leaking subscriptions**: subscribers that never unsubscribe pin memory and keep receiving;
   always provide (and call) an unsubscribe.
-- **Assuming delivery** — treating an in-memory bus like a durable queue; if delivery must
+- **Assuming delivery**: treating an in-memory bus like a durable queue; if delivery must
   survive crashes, you need a real broker with persistence.
-- **Doing heavy work in the handler** — a slow subscriber stalls synchronous brokers; hand off to
+- **Doing heavy work in the handler**: a slow subscriber stalls synchronous brokers; hand off to
   a queue/worker and return fast.
-- **Over-broadcasting** — one firehose topic forces every subscriber to filter; model topics at
+- **Over-broadcasting**: one firehose topic forces every subscriber to filter; model topics at
   the right granularity.
 
 ## Key Takeaways
@@ -133,7 +133,7 @@ function createBus() {
 // bus.publish("order.placed", order);
 ```
 
-**🧠 Tradeoff** — A `Map` of topic → handler set is a complete in-process event bus in a dozen
+**🧠 Tradeoff**: A `Map` of topic → handler set is a complete in-process event bus in a dozen
 lines, and returning an unsubscribe keeps lifecycles honest. It's synchronous and in-memory, so a
 throwing or slow subscriber affects the publish call, and nothing survives a reload. That's the
 right tool for decoupling UI modules; cross-tab or cross-service needs a real broker.
@@ -145,7 +145,7 @@ right tool for decoupling UI modules; cross-tab or cross-service needs a real br
 **❌ Naive**
 
 ```js
-// Direct calls again — plus no way for other processes to react.
+// Direct calls again: plus no way for other processes to react.
 function publishOrder(order) {
   emailWorker.handle(order);
   analyticsWorker.handle(order);
@@ -167,7 +167,7 @@ bus.emit("order.placed", order); // fans out to all listeners
 // so processes decouple the same way in-process listeners do.
 ```
 
-**🧠 Tradeoff** — `EventEmitter` is Node's built-in bus and the backbone of streams, sockets, and
+**🧠 Tradeoff**: `EventEmitter` is Node's built-in bus and the backbone of streams, sockets, and
 much of the platform: zero-dependency decoupling in-process. Its limits are the in-memory ones:
 same-process, synchronous emit, no durability. Crossing processes or machines swaps the emitter
 for a broker (Redis, NATS, Kafka) while keeping the exact publish/subscribe shape.
@@ -207,7 +207,7 @@ class Bus:
 # bus.publish("order.placed", order)
 ```
 
-**🧠 Tradeoff** — A `defaultdict(list)` broker is the whole pattern, and iterating a *copy* of the
+**🧠 Tradeoff**: A `defaultdict(list)` broker is the whole pattern, and iterating a *copy* of the
 handlers keeps it safe when a subscriber unsubscribes mid-dispatch. It's synchronous and
 in-process; the `blinker` library adds weak references (auto-cleanup) and `asyncio` handlers, and
 Celery/Redis take it cross-process. Start simple, graduate when you cross a boundary.
@@ -241,7 +241,7 @@ end)
 #   Phoenix.PubSub.broadcast(MyApp.PubSub, "order.placed", {:order, order})
 ```
 
-**🧠 Tradeoff** — The BEAM ships pub/sub primitives: `Registry` for local topic dispatch,
+**🧠 Tradeoff**: The BEAM ships pub/sub primitives: `Registry` for local topic dispatch,
 `Phoenix.PubSub` for cluster-wide broadcast that survives process restarts (subscribers register
 by key, not pid). You get distribution and fault tolerance without extra infrastructure, and pub/sub
 across a cluster is a library call. The trade is buying into OTP's process/registry model, which
@@ -284,7 +284,7 @@ func (b *Broker[T]) Run() {
             for ch := range subs {
                 select {
                 case ch <- msg: // deliver
-                default: // subscriber full — drop rather than block everyone
+                default: // subscriber full; drop rather than block everyone
                 }
             }
         }
@@ -292,7 +292,7 @@ func (b *Broker[T]) Run() {
 }
 ```
 
-**🧠 Tradeoff** — A broker goroutine that owns the subscriber map (actor-style, no mutex) plus
+**🧠 Tradeoff**: A broker goroutine that owns the subscriber map (actor-style, no mutex) plus
 per-subscriber buffered channels gives clean fan-out, and the `default` case makes the slow-
 subscriber policy explicit: drop rather than block the whole bus. It's more code than
 `EventEmitter`, but every decision (buffering, drop-vs-block, unsubscribe/close) is visible and
@@ -320,7 +320,7 @@ public sealed class OrderService(EmailService email, AnalyticsService analytics)
 
 ```csharp
 // Each subscriber gets its own bounded Channel, so one slow subscriber can't
-// stall the bus — DropWrite makes the policy explicit.
+// stall the bus: DropWrite makes the policy explicit.
 using System.Threading.Channels;
 
 var bus = new Bus<string>();
@@ -362,7 +362,7 @@ public sealed class Bus<T>
 }
 ```
 
-**🧠 Tradeoff** — One bounded channel per subscriber makes the slow-subscriber policy a
+**🧠 Tradeoff**: One bounded channel per subscriber makes the slow-subscriber policy a
 constructor argument: `DropWrite` mirrors the Go tab's `default:` drop; `Wait` would push back
 on publishers instead. Snapshotting the list under the lock keeps publish safe against
 concurrent subscribes: the Python tab's copy trick. For a single hard-coded topic, a plain C#
@@ -407,7 +407,7 @@ enum Cmd {
 }
 
 // The broker is itself an actor: one thread owns the topic map, and
-// subscribing or publishing is a message to it — no Mutex anywhere.
+// subscribing or publishing is a message to it, no Mutex anywhere.
 fn spawn_broker() -> mpsc::Sender<Cmd> {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
@@ -442,7 +442,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — The broker is the previous kata put to work: one thread owns the topic map,
+**🧠 Tradeoff**: The broker is the previous kata put to work: one thread owns the topic map,
 so subscribe and publish can't race by construction and there's no `Mutex` to hold wrong.
 `sync_channel` + `try_send` makes every subscriber mailbox bounded and the drop policy visible
 in one line. A dropped receiver surfaces as a send error, and a `retain` on the `Vec` is where
@@ -469,7 +469,7 @@ fn orderPlaced(order: []const u8) void {
 ```zig
 const std = @import("std");
 
-// Zig has no closures — a subscriber is the std.mem.Allocator idiom:
+// Zig has no closures: a subscriber is the std.mem.Allocator idiom:
 // a context pointer plus a function pointer.
 const Subscriber = struct {
     topic: []const u8,
@@ -479,7 +479,7 @@ const Subscriber = struct {
 
 const Bus = struct {
     mu: std.Io.Mutex = .init,
-    subs: [8]?Subscriber = @splat(null), // fixed slots — capacity is explicit
+    subs: [8]?Subscriber = @splat(null), // fixed slots; capacity is explicit
 
     fn subscribe(self: *Bus, io: std.Io, sub: Subscriber) !void {
         try self.mu.lock(io);
@@ -515,7 +515,7 @@ const Mailer = struct {
 };
 
 pub fn main(init: std.process.Init) !void {
-    const io = init.io; // the bus lock needs the Io capability — threaded in like an allocator
+    const io = init.io; // the bus lock needs the Io capability: threaded in like an allocator
     var bus = Bus{};
     var mailer = Mailer{};
     try bus.subscribe(io, .{ .topic = "order.placed", .ctx = &mailer, .onMsg = Mailer.onMsg });
@@ -523,7 +523,7 @@ pub fn main(init: std.process.Init) !void {
 }
 ```
 
-**🧠 Tradeoff** — Without closures, a subscriber is the `*anyopaque` context + function pointer
+**🧠 Tradeoff**: Without closures, a subscriber is the `*anyopaque` context + function pointer
 pair: exactly what a closure compiles down to elsewhere, spelled by hand. Fixed slots make
 capacity a visible decision. The honest catch: handlers run *under the lock*, so one slow
 subscriber stalls every publish: the exact hazard this kata warns about, which the Go tab
@@ -593,7 +593,7 @@ class Demo {
 }
 ```
 
-**🧠 Tradeoff** — the concurrency is all in class choice: `computeIfAbsent` on a
+**🧠 Tradeoff**: the concurrency is all in class choice: `computeIfAbsent` on a
 `ConcurrentHashMap` makes subscribe atomic, and `CopyOnWriteArrayList` is built for exactly
 this read-mostly listener list: publishers iterate a stable snapshot while subscribers
 come and go (the same copy trick the Python tab does by hand). `offer` versus `put` is the
@@ -605,30 +605,30 @@ Kafka, NATS, or Redis behind this same publish/subscribe shape.
 
 ## Applications
 
-- **Live UI updates** — the browser pushes DOM events onto listeners; app frameworks broadcast
+- **Live UI updates**: the browser pushes DOM events onto listeners; app frameworks broadcast
   store changes to subscribed components (frontend).
-- **Microservice events** — services publish domain events ("OrderPlaced") to Kafka/NATS;
+- **Microservice events**: services publish domain events ("OrderPlaced") to Kafka/NATS;
   interested services subscribe without the publisher knowing them (backend).
-- **Realtime features** — chat, notifications, and live dashboards fan a message out to every
+- **Realtime features**: chat, notifications, and live dashboards fan a message out to every
   connected client over a pub/sub channel (backend & frontend).
-- **Cache invalidation** — one node publishes "key changed"; all nodes subscribe and evict
+- **Cache invalidation**: one node publishes "key changed"; all nodes subscribe and evict
   (backend).
-- **Logging & telemetry** — components emit events onto a bus; collectors subscribe to ship them
+- **Logging & telemetry**: components emit events onto a bus; collectors subscribe to ship them
   onward (backend).
 
 **In modern systems:**
 
-- **Multi-agent** — a shared event bus (a blackboard) agents publish findings to and subscribe to
+- **Multi-agent**: a shared event bus (a blackboard) agents publish findings to and subscribe to
   each other's, coordinating without direct coupling.
-- **Workflow engine** — steps emit domain events other workflows subscribe to, decoupling the
+- **Workflow engine**: steps emit domain events other workflows subscribe to, decoupling the
   producer from everything that reacts.
-- **Low-code** — form fields publish change events on a bus that cross-field rules subscribe to.
+- **Low-code**: form fields publish change events on a bus that cross-field rules subscribe to.
 
 ## Related Patterns
 
-- **Observer** — pub/sub is Observer with a broker in the middle: many publishers/topics and
+- **Observer**: pub/sub is Observer with a broker in the middle: many publishers/topics and
   delivery that can cross processes, instead of a subject holding its observers directly.
-- **Producer-Consumer** — a queue delivers each message to *one* consumer; pub/sub delivers each
+- **Producer-Consumer**: a queue delivers each message to *one* consumer; pub/sub delivers each
   message to *every* subscriber.
-- **Actor** — actors frequently coordinate over pub/sub topics rather than by holding each
+- **Actor**: actors frequently coordinate over pub/sub topics rather than by holding each
   other's addresses.

@@ -27,23 +27,23 @@ service down. A timeout converts an unbounded wait into a bounded, handleable fa
 
 Waiting without a limit is a resource leak in slow motion:
 
-- **Hung calls hold resources** — a request stuck waiting on a slow dependency keeps its thread,
+- **Hung calls hold resources**: a request stuck waiting on a slow dependency keeps its thread,
   socket, and memory tied up until... never.
-- **Pool exhaustion** — enough blocked calls and the connection/thread pool is empty, so *new*
+- **Pool exhaustion**: enough blocked calls and the connection/thread pool is empty, so *new*
   requests can't even start: a total outage caused by one slow dependency.
-- **Unbounded tail latency** — without a deadline, the slowest response defines the worst case, and
+- **Unbounded tail latency**: without a deadline, the slowest response defines the worst case, and
   there's no worst case.
-- **No propagated deadline** — a chain of services each waiting "as long as it takes" means the
+- **No propagated deadline**: a chain of services each waiting "as long as it takes" means the
   user's browser gave up long ago while servers keep working.
 
 ## Structure
 
 Key Components:
 
-- **Deadline / duration** — the maximum time to wait, per operation or propagated across a call chain.
-- **The operation** — the call being bounded.
-- **The timer** — races the operation; whichever finishes first wins.
-- **Cancellation** — on timeout, signal the operation to stop so it doesn't keep consuming resources.
+- **Deadline / duration**: the maximum time to wait, per operation or propagated across a call chain.
+- **The operation**: the call being bounded.
+- **The timer**: races the operation; whichever finishes first wins.
+- **Cancellation**: on timeout, signal the operation to stop so it doesn't keep consuming resources.
 
 ```
              ┌── operation completes ──► result
@@ -61,26 +61,26 @@ call ──race──┤
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Bounded latency & resources** — the worst case is the timeout, and blocked resources release.
-- **Prevents cascading exhaustion** — one slow dependency can't drain your pools.
-- **Makes failure handleable** — turns an infinite hang into an error you can retry or fall back from.
+- **Bounded latency & resources**: the worst case is the timeout, and blocked resources release.
+- **Prevents cascading exhaustion**: one slow dependency can't drain your pools.
+- **Makes failure handleable**: turns an infinite hang into an error you can retry or fall back from.
 
 ### Disadvantages
-- **Tuning tension** — too short cuts off slow-but-valid responses; too long barely protects.
-- **Wasted work & duplicates** — the abandoned operation may still complete server-side, so
+- **Tuning tension**: too short cuts off slow-but-valid responses; too long barely protects.
+- **Wasted work & duplicates**: the abandoned operation may still complete server-side, so
   non-idempotent work can double if you then retry.
-- **Needs real cancellation** — a timeout that returns but leaves the work running still leaks the
+- **Needs real cancellation**: a timeout that returns but leaves the work running still leaks the
   resource; the operation must actually stop.
 
 ## Common Mistakes
 
-- **No timeout at all** — the most common production incident: a default-infinite client timeout
+- **No timeout at all**: the most common production incident: a default-infinite client timeout
   means one slow dependency hangs everything.
-- **Returning without cancelling** — timing out the *waiter* but not the *work* leaves the
+- **Returning without cancelling**: timing out the *waiter* but not the *work* leaves the
   connection/goroutine running; propagate cancellation.
-- **Not propagating the deadline** — each hop using its own fresh timeout means total time is the
+- **Not propagating the deadline**: each hop using its own fresh timeout means total time is the
   sum; pass one deadline down the chain so it shrinks as time is spent.
-- **Timeout shorter than the dependency's realistic latency** — guarantees failures under normal
+- **Timeout shorter than the dependency's realistic latency**: guarantees failures under normal
   load; base it on the dependency's P99, not a guess.
 
 ## Key Takeaways
@@ -122,7 +122,7 @@ async function getQuote(ms = 3000) {
 }
 ```
 
-**🧠 Tradeoff** — `AbortController` is the right tool: it both bounds the wait *and* actually
+**🧠 Tradeoff**: `AbortController` is the right tool: it both bounds the wait *and* actually
 cancels the fetch, so no socket is left hanging. The `finally` cleanup avoids a leaked timer. The
 subtlety JS shares with everyone: aborting the client doesn't guarantee the server stopped, so a
 subsequent retry needs idempotency.
@@ -158,7 +158,7 @@ app.get("/data", async (req, res, next) => {
 });
 ```
 
-**🧠 Tradeoff** — `AbortSignal.timeout(ms)` is the modern Node idiom — a self-cancelling deadline
+**🧠 Tradeoff**: `AbortSignal.timeout(ms)` is the modern Node idiom, a self-cancelling deadline
 with no manual timer. Mapping the `TimeoutError` to a `504` gives the client a clear, fast failure
 instead of a hang. To propagate a deadline across hops, thread the remaining budget into each
 downstream `AbortSignal` so the total stays bounded.
@@ -170,7 +170,7 @@ downstream `AbortSignal` so the total stays bounded.
 **❌ Naive**
 
 ```python
-# No timeout means requests waits forever on a stalled server — a classic outage.
+# No timeout means requests waits forever on a stalled server: a classic outage.
 def get_quote():
     return requests.get("https://quotes.example.com").json()  # missing timeout=
 ```
@@ -189,7 +189,7 @@ async def get_quote_async(session):
             return await resp.json()
 ```
 
-**🧠 Tradeoff** — `requests`' `timeout=` and `asyncio.timeout()` are the idioms; the async version
+**🧠 Tradeoff**: `requests`' `timeout=` and `asyncio.timeout()` are the idioms; the async version
 *cancels* the coroutine on the deadline, releasing the connection. The perennial Python footgun is
 omitting `timeout=`: the default is no timeout, so a single stalled call can pin a worker
 indefinitely. Make it a lint rule.
@@ -217,7 +217,7 @@ case Task.yield(task, 3_000) || Task.shutdown(task, :brutal_kill) do
 end
 ```
 
-**🧠 Tradeoff** — Elixir bakes timeouts into its concurrency primitives: `Task.await/yield`,
+**🧠 Tradeoff**: Elixir bakes timeouts into its concurrency primitives: `Task.await/yield`,
 `GenServer.call/3`, and `receive ... after` all take deadlines. The `yield || shutdown` idiom is
 important: it both stops waiting *and* kills the task, so the work truly stops (process isolation
 makes that clean). The lesson mirrors the others: never pass `:infinity` to something that talks to
@@ -230,7 +230,7 @@ the outside world.
 **❌ Naive**
 
 ```go
-// http.Get uses the default client with no timeout — it can block indefinitely.
+// http.Get uses the default client with no timeout, it can block indefinitely.
 resp, err := http.Get("https://quotes.example.com") // no deadline
 ```
 
@@ -252,7 +252,7 @@ func getQuote(ctx context.Context) (Quote, error) {
 }
 ```
 
-**🧠 Tradeoff** — `context.Context` is Go's deadline mechanism, and it's the standout here: one
+**🧠 Tradeoff**: `context.Context` is Go's deadline mechanism, and it's the standout here: one
 `ctx` carries the timeout *and* cancellation through every function that accepts it, so a downstream
 call automatically inherits (and shrinks within) the deadline. `defer cancel()` frees resources
 promptly. It's more threading of `ctx` through signatures than other languages, but propagation is
@@ -265,7 +265,7 @@ first-class rather than bolted on.
 **❌ Naive**
 
 ```csharp
-// The default HttpClient timeout is 100 seconds — near-unbounded for a request path.
+// The default HttpClient timeout is 100 seconds: near-unbounded for a request path.
 using var http = new HttpClient();
 var quote = await http.GetStringAsync("https://quotes.example.com"); // no real deadline
 ```
@@ -287,12 +287,12 @@ catch (OperationCanceledException)
 static async Task<string> GetQuote(CancellationToken ct)
 {
     using var http = new HttpClient();
-    // Pass the token all the way down — the request is cancelled, not just the wait.
+    // Pass the token all the way down: the request is cancelled, not just the wait.
     return await http.GetStringAsync("https://quotes.example.com", ct);
 }
 ```
 
-**🧠 Tradeoff** — `CancellationTokenSource(TimeSpan)` is C#'s answer to Go's `context`: the token
+**🧠 Tradeoff**: `CancellationTokenSource(TimeSpan)` is C#'s answer to Go's `context`: the token
 carries deadline and cancellation together, and every layer that accepts it (`HttpClient`,
 `Task.Delay`, database drivers) actually stops the work, not just the wait. For APIs that don't
 take a token, `task.WaitAsync(timeout)` bounds the wait but abandons the work, so prefer threading
@@ -326,7 +326,7 @@ fn with_timeout<T: Send + 'static>(
 ) -> Result<T, mpsc::RecvTimeoutError> {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
-        let _ = tx.send(f()); // if we timed out, the receiver is gone — send just fails
+        let _ = tx.send(f()); // if we timed out, the receiver is gone: send just fails
     });
     rx.recv_timeout(limit) // Err(Timeout) once the deadline passes
 }
@@ -339,7 +339,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — `recv_timeout` bounds the *wait*, not the *work*: std can't kill a thread, so the
+**🧠 Tradeoff**: `recv_timeout` bounds the *wait*, not the *work*: std can't kill a thread, so the
 abandoned fetch runs to completion and its `send` lands harmlessly in a closed channel. Real
 cancellation has to live where the blocking happens (`TcpStream::set_read_timeout` pushes the
 deadline into the socket itself) or in an async runtime, where `tokio::time::timeout` cancels by
@@ -380,7 +380,7 @@ const Slot = struct {
         const orphaned = self.abandoned;
         self.cond.signal(io);
         self.mutex.unlock(io);
-        if (orphaned) allocator.destroy(self); // nobody is waiting — free ourselves
+        if (orphaned) allocator.destroy(self); // nobody is waiting: free ourselves
     }
 };
 
@@ -388,13 +388,13 @@ fn getQuote(io: std.Io, allocator: std.mem.Allocator, limit: std.Io.Duration) !f
     const slot = try allocator.create(Slot);
     slot.* = .{};
     const worker = try std.Thread.spawn(.{}, Slot.run, .{ slot, allocator, io });
-    worker.detach(); // no join — the deadline decides who cleans up
+    worker.detach(); // no join: the deadline decides who cleans up
 
     slot.mutex.lockUncancelable(io); // bailing here would leave the slot with no owner
     const deadline: std.Io.Timeout = .{ .duration = .{ .raw = limit, .clock = .awake } };
     while (!slot.done) {
         slot.cond.waitTimeout(io, &slot.mutex, deadline) catch |err| {
-            // Deadline hit (or the wait was canceled). std can't kill the thread —
+            // Deadline hit (or the wait was canceled). std can't kill the thread: 
             // the fetch keeps running, so ownership of the slot passes to the worker.
             slot.abandoned = true;
             slot.mutex.unlock(io);
@@ -403,14 +403,14 @@ fn getQuote(io: std.Io, allocator: std.mem.Allocator, limit: std.Io.Duration) !f
     }
     const quote = slot.quote;
     slot.mutex.unlock(io);
-    allocator.destroy(slot); // result seen — the slot is ours to free
+    allocator.destroy(slot); // result seen: the slot is ours to free
     return quote;
 }
 
 // const quote = try getQuote(io, allocator, .fromSeconds(3));
 ```
 
-**🧠 Tradeoff** — Zig makes the ugly truth of timeouts explicit: you can stop *waiting*, but you
+**🧠 Tradeoff**: Zig makes the ugly truth of timeouts explicit: you can stop *waiting*, but you
 can't stop the *thread*, so a timeout is really an ownership handoff: the `abandoned` flag decides
 whether the waiter or the orphaned worker frees the slot. Runtimes in other languages run this same
 machinery; Zig just refuses to hide it, allocator and all. In 0.17 the wait itself is a capability
@@ -426,7 +426,7 @@ itself returns an error.
 **❌ Naive**
 
 ```java
-// No request timeout — send blocks for as long as the server (or network) likes.
+// No request timeout: send blocks for as long as the server (or network) likes.
 String getQuote() throws Exception {
     var req = HttpRequest.newBuilder(URI.create("https://quotes.example.com")).build();
     return http.send(req, HttpResponse.BodyHandlers.ofString()).body(); // no deadline
@@ -447,7 +447,7 @@ class Quotes {
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(2)).build();
 
-    // Best: push the deadline into the client — it cancels the request, not just the wait.
+    // Best: push the deadline into the client, it cancels the request, not just the wait.
     String getQuote() throws Exception {
         var req = HttpRequest.newBuilder(URI.create("https://quotes.example.com"))
                 .timeout(Duration.ofSeconds(3)) // HttpTimeoutException on expiry
@@ -469,14 +469,14 @@ class Quotes {
         try {
             return f.get(3, TimeUnit.SECONDS); // waits at most 3s
         } catch (TimeoutException e) {
-            f.cancel(true); // delivers an interrupt — the work stops only if it's interruptible
+            f.cancel(true); // delivers an interrupt: the work stops only if it's interruptible
             throw e;
         }
     }
 }
 ```
 
-**🧠 Tradeoff** — `request.timeout` is the honest one: the HTTP client abandons the exchange and
+**🧠 Tradeoff**: `request.timeout` is the honest one: the HTTP client abandons the exchange and
 frees the connection, so the work stops with the wait. `Future.get(timeout)` and `orTimeout` bound
 only the *wait*: the task keeps running until `cancel(true)`'s interrupt lands, and interrupts
 only land in code that blocks interruptibly (`java.net.http` does; a raw `InputStream.read` mostly
@@ -488,28 +488,28 @@ emerging answer.
 
 ## Applications
 
-- **HTTP clients & servers** — connect/read/write timeouts on every call, plus server-side request
+- **HTTP clients & servers**: connect/read/write timeouts on every call, plus server-side request
   deadlines (backend & frontend).
-- **Database queries** — statement timeouts so a runaway query can't hold a connection forever
+- **Database queries**: statement timeouts so a runaway query can't hold a connection forever
   (backend).
-- **RPC frameworks** — gRPC deadlines propagate across service hops so the whole chain honors the
+- **RPC frameworks**: gRPC deadlines propagate across service hops so the whole chain honors the
   caller's budget (backend).
-- **Locks & coordination** — bounded lock acquisition so a stuck holder can't deadlock waiters
+- **Locks & coordination**: bounded lock acquisition so a stuck holder can't deadlock waiters
   (backend).
-- **UI operations** — bounding a fetch so the interface can show a timeout state instead of an
+- **UI operations**: bounding a fetch so the interface can show a timeout state instead of an
   endless spinner (frontend).
 
 **In modern systems:**
 
-- **Multi-agent** — bound a model or tool call so a hung dependency can't freeze the whole agent
+- **Multi-agent**: bound a model or tool call so a hung dependency can't freeze the whole agent
   loop, which otherwise waits forever with no signal.
-- **Workflow engine** — a per-step deadline that fails the step (and triggers compensation)
+- **Workflow engine**: a per-step deadline that fails the step (and triggers compensation)
   instead of hanging the instance indefinitely.
 
 ## Related Patterns
 
-- **Retry** — a timeout produces the bounded failure that a retry can then re-attempt; together they
+- **Retry**: a timeout produces the bounded failure that a retry can then re-attempt; together they
   turn a hang into "try again, briefly."
-- **Circuit Breaker** — timeouts are how the breaker *counts* slow calls as failures so it can trip.
-- **Bulkhead** — timeouts release resources quickly; bulkheads cap how many can be held at once —
+- **Circuit Breaker**: timeouts are how the breaker *counts* slow calls as failures so it can trip.
+- **Bulkhead**: timeouts release resources quickly; bulkheads cap how many can be held at once, and
   both keep a slow dependency from exhausting the caller.

@@ -25,11 +25,11 @@ near the chunk that actually holds the answer.
 
 The raw query is often a poor search key:
 
-- **Context-dependent** — "what about the enterprise plan?" means nothing on its own; the referent
+- **Context-dependent**: "what about the enterprise plan?" means nothing on its own; the referent
   is three turns back. Embed it and you retrieve noise.
-- **Terse or keyword-y** — "refund window" is much shorter than the paragraph that answers it, so
+- **Terse or keyword-y**: "refund window" is much shorter than the paragraph that answers it, so
   the vectors barely align.
-- **Multi-part** — "compare the free and pro tiers on storage and support" is really four
+- **Multi-part**: "compare the free and pro tiers on storage and support" is really four
   retrievals fused into one; a single search can't serve them all.
 
 The retriever isn't the problem; the *query* is. Rewrite it into something the index can match.
@@ -38,11 +38,11 @@ The retriever isn't the problem; the *query* is. Rewrite it into something the i
 
 Key Components / Participants:
 
-- **Rewriter** — an LLM (or rules) that turns the raw query into one or more search queries.
-- **Strategies** — *contextualize* (resolve pronouns using history), *multi-query* (generate N
+- **Rewriter**: an LLM (or rules) that turns the raw query into one or more search queries.
+- **Strategies**: *contextualize* (resolve pronouns using history), *multi-query* (generate N
   paraphrases), *decompose* (split a multi-part question), *HyDE* (generate a hypothetical answer
   and search with *its* embedding).
-- **Retriever** — runs each rewritten query; results are fused (see [[hybrid-search]]).
+- **Retriever**: runs each rewritten query; results are fused (see [[hybrid-search]]).
 
 ```
 raw query ─┐
@@ -74,13 +74,13 @@ history ───┴──▶ rewriter (LLM) ──▶ [q1, q2, q3]  ──▶ r
 
 ## Common Mistakes
 
-- **Rewriting when you don't need to** — a clear, standalone query needs no rewrite; the extra call
+- **Rewriting when you don't need to**: a clear, standalone query needs no rewrite; the extra call
   is pure latency. Gate it.
-- **Losing the user's intent** — an over-eager rewrite "corrects" the question into a different one.
+- **Losing the user's intent**: an over-eager rewrite "corrects" the question into a different one.
   Keep rewrites faithful; prefer expansion over replacement.
-- **Not fusing multi-query results** — running three queries and concatenating triples the noise;
+- **Not fusing multi-query results**: running three queries and concatenating triples the noise;
   fuse by rank and dedupe.
-- **HyDE on factual lookups** — a hallucinated hypothetical answer can pull retrieval toward the
+- **HyDE on factual lookups**: a hallucinated hypothetical answer can pull retrieval toward the
   hallucination. Use it for exploratory queries, not exact-fact ones.
 
 ## Key Takeaways
@@ -101,7 +101,7 @@ into multiple queries, then fuses.
 **❌ Naive**
 
 ```js
-// Searches the raw question — pronouns and terseness wreck retrieval.
+// Searches the raw question: pronouns and terseness wreck retrieval.
 async function retrieve(query) {
   return search(query); // "what about pricing?" → noise
 }
@@ -125,7 +125,7 @@ async function retrieve(query, history) {
 }
 ```
 
-**🧠 Tradeoff** — One model call expands the query into standalone, searchable variants; `Promise.all`
+**🧠 Tradeoff**: One model call expands the query into standalone, searchable variants; `Promise.all`
 runs the retrievals concurrently and `fuse` (RRF) merges them. The recall gain is real, but you've
 added a model call on the hot path and multiplied retrieval work, so gate the rewrite for queries that
 are already clear, and cap the query count.
@@ -156,7 +156,7 @@ def retrieve(query: str, history: str) -> list[str]:
     return fuse(lists)[:5]
 ```
 
-**🧠 Tradeoff** — The rewriter returns a list, so *contextualize*, *multi-query*, and *decompose* are
+**🧠 Tradeoff**: The rewriter returns a list, so *contextualize*, *multi-query*, and *decompose* are
 all the same shape: one prompt, N queries out. Swap the prompt (or add a HyDE variant) without
 touching `retrieve`. For factual lookups, gate the rewrite behind a cheap "is this query already
 standalone?" check to avoid steering retrieval off the user's intent.
@@ -199,7 +199,7 @@ defmodule Rewrite do
 end
 ```
 
-**🧠 Tradeoff** — The rewrite is one piped model call producing a list of queries, and
+**🧠 Tradeoff**: The rewrite is one piped model call producing a list of queries, and
 `Task.async_stream` retrieves them concurrently before `fuse` merges: the same fan-out shape as the
 hybrid-search kata, reused. Pattern matching on `{:ok, list}` keeps the happy path clean; add an
 `{:error, _}` clause when a retrieval can fail and you want to drop it rather than crash the stream.
@@ -244,7 +244,7 @@ func Retrieve(query, history string) []string {
 }
 ```
 
-**🧠 Tradeoff** — Each rewritten query retrieves in its own goroutine, writing into a pre-sized slot
+**🧠 Tradeoff**: Each rewritten query retrieves in its own goroutine, writing into a pre-sized slot
 so there's no shared-map contention, then `RRF` fuses. Passing `i, q` into the closure avoids the
 classic loop-variable capture bug. The rewrite call is sequential and on the critical path, which is the
 place to add gating so trivially-clear queries skip it.
@@ -253,21 +253,21 @@ place to add gating so trivially-clear queries skip it.
 
 Real-world uses of Query Rewriting:
 
-- **Conversational RAG** — resolve "it", "that plan", "the second one" into standalone queries.
-- **Search UX** — expand short keyword queries into richer semantic ones behind the scenes.
-- **Compound questions** — decompose "compare X and Y on A and B" into separate retrievals.
-- **HyDE for exploratory search** — generate a hypothetical answer and retrieve with its embedding.
-- **Cross-lingual retrieval** — rewrite the query into the corpus's language before searching.
+- **Conversational RAG**: resolve "it", "that plan", "the second one" into standalone queries.
+- **Search UX**: expand short keyword queries into richer semantic ones behind the scenes.
+- **Compound questions**: decompose "compare X and Y on A and B" into separate retrievals.
+- **HyDE for exploratory search**: generate a hypothetical answer and retrieve with its embedding.
+- **Cross-lingual retrieval**: rewrite the query into the corpus's language before searching.
 
 **In modern systems:**
 
-- **Low-code** — a chat-over-your-docs widget that quietly makes follow-up questions searchable.
-- **Workflow engine** — a normalization step that turns free-text input into structured search keys.
-- **Multi-agent** — an agent that reformulates a task into precise sub-queries before delegating retrieval.
+- **Low-code**: a chat-over-your-docs widget that quietly makes follow-up questions searchable.
+- **Workflow engine**: a normalization step that turns free-text input into structured search keys.
+- **Multi-agent**: an agent that reformulates a task into precise sub-queries before delegating retrieval.
 
 ## Related Patterns
 
-- **Retrieval-Augmented Generation** — query rewriting is the front door; it feeds the retriever.
-- **Hybrid Search & Reranking** — rewriting boosts recall going in; reranking boosts precision coming out.
-- **Prompt Chaining** — rewrite → retrieve → answer is a chain; the rewrite is the first link.
-- **Strategy** — contextualize / multi-query / decompose / HyDE are interchangeable rewrite strategies.
+- **Retrieval-Augmented Generation**: query rewriting is the front door; it feeds the retriever.
+- **Hybrid Search & Reranking**: rewriting boosts recall going in; reranking boosts precision coming out.
+- **Prompt Chaining**: rewrite → retrieve → answer is a chain; the rewrite is the first link.
+- **Strategy**: contextualize / multi-query / decompose / HyDE are interchangeable rewrite strategies.

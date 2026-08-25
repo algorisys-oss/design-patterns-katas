@@ -35,9 +35,9 @@ class Rectangle {
   setHeight(h) { this.h = h; }   // width and height independent
 }
 class Square extends Rectangle {
-  setWidth(w) { this.w = this.h = w; }   // changes BOTH — breaks the base's contract
+  setWidth(w) { this.w = this.h = w; }   // changes BOTH: breaks the base's contract
 }
-// code that sets width=5, height=4, expects area 20 — a Square gives 16
+// code that sets width=5, height=4, expects area 20: a Square gives 16
 ```
 
 `Square` "is-a" `Rectangle` in geometry, but not in *behavior*, so it fails substitution.
@@ -60,10 +60,10 @@ class Square extends Rectangle {
 
 ## Common Mistakes
 
-- **Overriding to throw `NotSupported`** — the subtype can't do what the base promised.
-- **Tightening input rules** — the base accepts any int, the subtype rejects negatives; callers
+- **Overriding to throw `NotSupported`**: the subtype can't do what the base promised.
+- **Tightening input rules**: the base accepts any int, the subtype rejects negatives; callers
   break.
-- **Changing invariants** — the Square/Rectangle bind of two independent fields.
+- **Changing invariants**: the Square/Rectangle bind of two independent fields.
 
 ## Key Takeaways
 
@@ -105,10 +105,10 @@ class Penguin extends Bird {}   // honestly not a FlyingBird
 
 // migrate only accepts what can actually fly:
 function migrate(flyers) { return flyers.map(f => f.fly()); }
-migrate([new Sparrow()]);       // fine — Penguin was never eligible
+migrate([new Sparrow()]);       // fine: Penguin was never eligible
 ```
 
-**🧠 Note** — The fix is to model the *ability* (`FlyingBird`), so a `Penguin` is never handed to
+**🧠 Note**: The fix is to model the *ability* (`FlyingBird`), so a `Penguin` is never handed to
 code that expects flight. Nothing overrides a method into a lie. When behavior doesn't fit the
 hierarchy, change the hierarchy (or use a capability interface) rather than throwing.
 
@@ -151,7 +151,7 @@ def migrate(flyers: list[Flyer]) -> list[str]:
     return [f.fly() for f in flyers]
 ```
 
-**🧠 Note** — A `Flyer` `Protocol` types the *capability*; `Sparrow` matches it structurally,
+**🧠 Note**: A `Flyer` `Protocol` types the *capability*; `Sparrow` matches it structurally,
 `Penguin` doesn't, and the type checker keeps a `Penguin` out of `migrate`. Behavioral typing
 lets ability, not ancestry, decide substitutability. That's very much the Pythonic answer to LSP.
 
@@ -191,14 +191,14 @@ defimpl Flyer, for: Sparrow do
 end
 
 defmodule Penguin do
-  defstruct []   # no Flyer impl — cannot be passed where flight is required
+  defstruct []   # no Flyer impl: cannot be passed where flight is required
 end
 
 # migrate/1 works on anything implementing Flyer; a Penguin can't reach it.
 def migrate(flyers), do: Enum.map(flyers, &Flyer.fly/1)
 ```
 
-**🧠 Note** — Elixir has no inheritance, so LSP shows up in *behaviour/protocol* contracts. By
+**🧠 Note**: Elixir has no inheritance, so LSP shows up in *behaviour/protocol* contracts. By
 giving flight its own protocol and implementing it only for types that truly fly, a `Penguin`
 is never substitutable where a `Flyer` is expected; the contract is honest by construction.
 
@@ -228,7 +228,7 @@ type Sparrow struct{}
 
 func (Sparrow) Fly() string { return "flying" }
 
-type Penguin struct{} // no Fly method — not a Flyer
+type Penguin struct{} // no Fly method, not a Flyer
 
 // Migrate accepts only Flyers; a Penguin won't compile in here.
 func Migrate(flyers []Flyer) []string {
@@ -240,7 +240,7 @@ func Migrate(flyers []Flyer) []string {
 }
 ```
 
-**🧠 Note** — Go's implicit interfaces make LSP almost automatic: a type is a `Flyer` only if it
+**🧠 Note**: Go's implicit interfaces make LSP almost automatic: a type is a `Flyer` only if it
 actually has `Fly()`. Not giving `Penguin` a `Fly` method means the compiler refuses to
 substitute it where a `Flyer` is required; the honest relationship is enforced at build time.
 
@@ -269,7 +269,7 @@ public sealed class Penguin : Bird
 
 ```csharp
 Console.WriteLine(string.Join(", ", Migrate([new Sparrow()]))); // flying
-// Migrate([new Penguin()]) won't compile — Penguin is not an IFlyer.
+// Migrate([new Penguin()]) won't compile: Penguin is not an IFlyer.
 
 static IEnumerable<string> Migrate(IEnumerable<IFlyer> flyers) =>
     flyers.Select(f => f.Fly());
@@ -292,7 +292,7 @@ public sealed class Sparrow : Bird, IFlyer
 public sealed class Penguin : Bird { } // honestly not an IFlyer
 ```
 
-**🧠 Note** — The capability moves out of the base class into `IFlyer`, so `Migrate` states
+**🧠 Note**: The capability moves out of the base class into `IFlyer`, so `Migrate` states
 its real requirement in its signature and the compiler keeps a `Penguin` out. This trap ships
 in the BCL itself (read-only collections that throw `NotSupportedException` from `Add`), so
 C# developers meet the violation early. `sealed` on the leaves also stops the next subtype
@@ -325,7 +325,7 @@ fn migrate(birds: &[Box<dyn Bird>]) -> Vec<String> {
 **✅ Idiomatic**
 
 ```rust
-// Rust has no inheritance — a trait IS the contract, so give flight its own.
+// Rust has no inheritance: a trait IS the contract, so give flight its own.
 trait Flyer {
     fn fly(&self) -> String;
 }
@@ -337,7 +337,7 @@ impl Flyer for Sparrow {
     }
 }
 
-struct Penguin; // no Flyer impl — the compiler refuses to substitute it
+struct Penguin; // no Flyer impl: the compiler refuses to substitute it
 
 fn migrate(flyers: &[&dyn Flyer]) -> Vec<String> {
     flyers.iter().map(|f| f.fly()).collect()
@@ -349,7 +349,7 @@ fn main() {
 }
 ```
 
-**🧠 Note** — Rust sidesteps the classic LSP traps by having no inheritance to misuse:
+**🧠 Note**: Rust sidesteps the classic LSP traps by having no inheritance to misuse:
 there's no base class to override, only traits a type explicitly opts into. What remains of
 LSP is the *behavioral* half: an `impl` must still honor the trait's documented contract.
 The compiler can't check that: an `Ord` impl that violates total order still compiles and
@@ -369,7 +369,7 @@ const Sparrow = struct {
 };
 
 const Penguin = struct {
-    // Has the right shape, so generic code accepts it — and dies at runtime.
+    // Has the right shape, so generic code accepts it, and dies at runtime.
     pub fn fly(_: Penguin) []const u8 {
         @panic("penguins can't fly");
     }
@@ -397,7 +397,7 @@ const Penguin = struct {
     pub fn eat(_: Penguin) []const u8 {
         return "eating";
     }
-    // no fly() — Penguin never claims the capability
+    // no fly(): Penguin never claims the capability
 };
 
 fn migrate(flyer: anytype) []const u8 {
@@ -410,7 +410,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Note** — Zig has no subtype relationship at all; whether a type substitutes is decided
+**🧠 Note**: Zig has no subtype relationship at all; whether a type substitutes is decided
 at each `anytype` call site, at compile time, by whether it has the members the code uses.
 So the only way to violate LSP is to write a `fly` that lies, and the fix is to not write it.
 The limit is the same as Rust's: comptime checks shape, not behavior. A `fly` returning the
@@ -424,7 +424,7 @@ tests.
 **❌ Naive**
 
 ```java
-// The textbook violation — and it was born here. Square "is-a" Rectangle
+// The textbook violation, and it was born here. Square "is-a" Rectangle
 // in geometry, but its setters break the base's contract.
 class Rectangle {
     protected int width, height;
@@ -446,7 +446,7 @@ public class Demo {
     }
     public static void main(String[] args) {
         System.out.println(stretch(new Rectangle())); // 20
-        System.out.println(stretch(new Square()));    // 16 — the subtype lied
+        System.out.println(stretch(new Square()));    // 16: the subtype lied
     }
 }
 ```
@@ -470,15 +470,15 @@ record Square(int side) implements Shape {
 
 public class Demo {
     public static void main(String[] args) {
-        // "Resizing" is constructing a new value — no setter to subvert:
+        // "Resizing" is constructing a new value, no setter to subvert:
         Shape r = new Rectangle(5, 4);
         System.out.println(r.area());             // 20
-        System.out.println(new Square(4).area()); // 16 — and nobody was promised 20
+        System.out.println(new Square(4).area()); // 16, and nobody was promised 20
     }
 }
 ```
 
-**🧠 Note** — Java is where the classic violations live. Square/Rectangle only breaks under
+**🧠 Note**: Java is where the classic violations live. Square/Rectangle only breaks under
 *mutation* (the base promised independent setters), so records dissolve it: an immutable value
 has no setter to override into a lie, and the shared contract shrinks to what both shapes truly
 honor. The JDK ships the other classic: `List.of(...)` and `Collections.unmodifiableList` return
@@ -490,13 +490,13 @@ contract, shrink the contract or drop the inheritance. Never override to throw.
 
 Where LSP shows up in practice:
 
-- **Collection/stream types** — a read-only view that overrides `add()` to throw violates it.
-- **Payment methods** — a "gift card" that can't refund breaks a `Refundable` contract.
-- **Storage backends** — a backend that silently drops writes isn't substitutable.
-- **Shape/geometry hierarchies** — the Square/Rectangle classic.
+- **Collection/stream types**: a read-only view that overrides `add()` to throw violates it.
+- **Payment methods**: a "gift card" that can't refund breaks a `Refundable` contract.
+- **Storage backends**: a backend that silently drops writes isn't substitutable.
+- **Shape/geometry hierarchies**: the Square/Rectangle classic.
 
 ## Related Principles & Patterns
 
-- **Open/Closed** — only works if the subtypes you extend with are substitutable.
-- **Interface Segregation** — smaller interfaces make honest substitution easier.
-- **Strategy** — capability-as-object sidesteps inheritance traps entirely.
+- **Open/Closed**: only works if the subtypes you extend with are substitutable.
+- **Interface Segregation**: smaller interfaces make honest substitution easier.
+- **Strategy**: capability-as-object sidesteps inheritance traps entirely.

@@ -27,23 +27,23 @@ the messy async, state, and wiring lives in one clearly-labeled container.
 
 When a component does everything (fetches, holds state, *and* renders) it gets tangled:
 
-- **Not reusable** — the render markup is welded to one specific data source and API call, so you
+- **Not reusable**: the render markup is welded to one specific data source and API call, so you
   can't reuse the look with different data.
-- **Hard to test** — verifying the layout requires mocking network calls and state, because the
+- **Hard to test**: verifying the layout requires mocking network calls and state, because the
   view can't run without them.
-- **Hard to preview** — you can't drop it into a style guide or Storybook without a live backend.
-- **Mixed concerns** — a designer tweaking markup wades through `useEffect`/fetch logic; a
+- **Hard to preview**: you can't drop it into a style guide or Storybook without a live backend.
+- **Mixed concerns**: a designer tweaking markup wades through `useEffect`/fetch logic; a
   developer fixing data flow wades through JSX.
 
 ## Structure
 
 Key Components:
 
-- **Container (smart)** — fetches data, owns state, handles events; renders a presentational
+- **Container (smart)**: fetches data, owns state, handles events; renders a presentational
   component and passes data + callbacks down. Little or no markup of its own.
-- **Presentational (dumb)** — receives data and callbacks as props/inputs and renders; holds no app
+- **Presentational (dumb)**: receives data and callbacks as props/inputs and renders; holds no app
   state, does no fetching. Pure function of its inputs.
-- **Data source** — the API/store the container talks to.
+- **Data source**: the API/store the container talks to.
 
 ```
 [ Store / API ] ──data──► Container ──props + callbacks──► Presentational ──► DOM
@@ -60,25 +60,25 @@ Key Components:
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Reusable views** — presentational components work anywhere, driven by any data.
-- **Testable & previewable** — render with plain props; no network or state needed.
-- **Clear split** — data/logic concerns and rendering concerns each have a home.
+- **Reusable views**: presentational components work anywhere, driven by any data.
+- **Testable & previewable**: render with plain props; no network or state needed.
+- **Clear split**: data/logic concerns and rendering concerns each have a home.
 
 ### Disadvantages
-- **More components** — every feature is now (at least) two files; overkill for trivial UI.
-- **Prop drilling** — passing data through the container to deep children can get verbose (see Provider).
-- **The line blurs** — modern hooks/composables let you extract logic without a separate container,
+- **More components**: every feature is now (at least) two files; overkill for trivial UI.
+- **Prop drilling**: passing data through the container to deep children can get verbose (see Provider).
+- **The line blurs**: modern hooks/composables let you extract logic without a separate container,
   so the strict split is less necessary than it once was.
 
 ## Common Mistakes
 
-- **Logic creeping into the presentational component** — a "dumb" component that fetches or holds
+- **Logic creeping into the presentational component**: a "dumb" component that fetches or holds
   app state loses its reusability and testability; keep it a pure function of props.
-- **Splitting trivial components** — wrapping a two-line component in a container adds files for no
+- **Splitting trivial components**: wrapping a two-line component in a container adds files for no
   benefit; split when the mix actually hurts.
-- **Container rendering real markup** — a container that also lays out DOM re-tangles the concerns;
+- **Container rendering real markup**: a container that also lays out DOM re-tangles the concerns;
   it should mostly delegate to a presentational child.
-- **Cargo-culting the pattern** — with hooks/composables you can often extract the logic *without* a
+- **Cargo-culting the pattern**: with hooks/composables you can often extract the logic *without* a
   second component; don't split reflexively.
 
 ## Key Takeaways
@@ -95,7 +95,7 @@ Key Components:
 **❌ Naive**
 
 ```jsx
-// One component fetches, holds state, and renders — untestable without a network.
+// One component fetches, holds state, and renders: untestable without a network.
 function UserList() {
   const [users, setUsers] = useState([]);
   useEffect(() => { fetch("/api/users").then((r) => r.json()).then(setUsers); }, []);
@@ -106,7 +106,7 @@ function UserList() {
 **✅ Idiomatic**
 
 ```jsx
-// Presentational: pure function of props — reusable, previewable, testable.
+// Presentational: pure function of props; reusable, previewable, testable.
 function UserList({ users }) {
   return <ul>{users.map((u) => <li key={u.id}>{u.name}</li>)}</ul>;
 }
@@ -119,7 +119,7 @@ function UserListContainer() {
 }
 ```
 
-**🧠 Tradeoff** — `UserList` is now a pure function you can render in a test or style guide with a
+**🧠 Tradeoff**: `UserList` is now a pure function you can render in a test or style guide with a
 fixed array and no network. The container isolates the async mess. The nuance is that a **custom
 hook** (`useUsers()`) achieves the same separation without a second component, which is why modern
 React often prefers extracting logic to hooks over the strict container split.
@@ -129,7 +129,7 @@ React often prefers extracting logic to hooks over the strict container split.
 **❌ Naive**
 
 ```js
-// A route handler builds HTML inline from a query — data and markup fused.
+// A route handler builds HTML inline from a query: data and markup fused.
 app.get("/users", async (_req, res) => {
   const users = await db.query("SELECT id, name FROM users");
   res.send("<ul>" + users.map((u) => `<li>${u.name}</li>`).join("") + "</ul>");
@@ -149,7 +149,7 @@ export async function usersPage(req, res) {
 //   <ul><% users.forEach(u => { %><li><%= u.name %></li><% }) %></ul>
 ```
 
-**🧠 Tradeoff** — On the server the split is handler-as-container and template-as-presentational:
+**🧠 Tradeoff**: On the server the split is handler-as-container and template-as-presentational:
 the template renders whatever `users` it's given, so it's reusable across routes and testable by
 passing a fixed array. It's the same MVC seam applied at the component level: the template never
 knows the data came from SQL.
@@ -174,11 +174,11 @@ def user_list(request):                      # container
     users = User.objects.values("id", "name")
     return render(request, "users/list.html", {"users": users})
 
-# users/list.html  (presentational — a pure function of `users`)
+# users/list.html  (presentational: a pure function of `users`)
 #   <ul>{% for u in users %}<li>{{ u.name }}</li>{% endfor %}</ul>
 ```
 
-**🧠 Tradeoff** — Django's view/template split *is* container/presentational: the view gathers
+**🧠 Tradeoff**: Django's view/template split *is* container/presentational: the view gathers
 data, the template renders it and can be reused with any `users` context (or previewed with a stub
 context). Component frameworks like Reflex push the same idea into Python components (a data
 component wrapping a render component); the principle of pure render with data elsewhere carries over.
@@ -188,7 +188,7 @@ component wrapping a render component); the principle of pure render with data e
 **❌ Naive**
 
 ```elixir
-# A LiveView that fetches AND renders complex markup inline — one tangled blob.
+# A LiveView that fetches AND renders complex markup inline: one tangled blob.
 def render(assigns) do
   ~H"""
   <ul>
@@ -209,7 +209,7 @@ defmodule UserListLive do                      # container
   def render(assigns), do: ~H"<.user_list users={@users} />"  # delegate rendering
 end
 
-# a stateless function component — pure function of assigns, reusable anywhere
+# a stateless function component: pure function of assigns, reusable anywhere
 def user_list(assigns) do
   ~H"""
   <ul>
@@ -219,7 +219,7 @@ def user_list(assigns) do
 end
 ```
 
-**🧠 Tradeoff** — Phoenix draws the line as **LiveView (stateful container)** vs. **function/Live
+**🧠 Tradeoff**: Phoenix draws the line as **LiveView (stateful container)** vs. **function/Live
 components (presentational)**: the LiveView owns `mount`, assigns, and events; the function
 component is a pure `assigns -> HEEx` render reusable across pages and testable with
 `render_component/2`. It's the pattern with framework blessing, and the split keeps the stateful and
@@ -253,7 +253,7 @@ func users(w http.ResponseWriter, r *http.Request) { // container
 }
 ```
 
-**🧠 Tradeoff** — The handler fetches (container) and `html/template` (or a `templ` component)
+**🧠 Tradeoff**: The handler fetches (container) and `html/template` (or a `templ` component)
 renders (presentational): the template is a pure function of the slice it's handed, reusable and
 testable with a fixed `[]User`. `templ` makes this even more component-like with typed, composable
 render functions. Go keeps it explicit (no hooks blurring the line) so the container/presentational
@@ -261,22 +261,22 @@ split stays crisp.
 
 ## Applications
 
-- **Component libraries** — presentational components (buttons, lists, cards) ship without data; apps
+- **Component libraries**: presentational components (buttons, lists, cards) ship without data; apps
   wrap them in containers (frontend).
-- **Style guides & Storybook** — presentational components render from fixed props, enabling visual
+- **Style guides & Storybook**: presentational components render from fixed props, enabling visual
   catalogs and snapshot tests (frontend).
-- **Server-rendered apps** — the controller/handler + template split is this pattern at the request
+- **Server-rendered apps**: the controller/handler + template split is this pattern at the request
   level (backend).
-- **Design/dev collaboration** — designers own presentational markup, developers own containers,
+- **Design/dev collaboration**: designers own presentational markup, developers own containers,
   meeting at the props contract (frontend).
-- **A/B testing & theming** — swap presentational components behind the same container to change look
+- **A/B testing & theming**: swap presentational components behind the same container to change look
   without touching data flow (frontend).
 
 ## Related Patterns
 
-- **Provider / Context** — the usual answer to the prop-drilling that containers can cause: provide
+- **Provider / Context**: the usual answer to the prop-drilling that containers can cause: provide
   shared data down the tree instead of threading it through every level.
-- **Unidirectional Data Flow** — containers typically get their state from a store; the pattern is
+- **Unidirectional Data Flow**: containers typically get their state from a store; the pattern is
   how state reaches the presentational leaves.
-- **Model-View-Controller** — container/presentational is MVC's view tier split into "gets data" and
+- **Model-View-Controller**: container/presentational is MVC's view tier split into "gets data" and
   "renders," one level finer.

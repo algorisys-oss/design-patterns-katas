@@ -27,24 +27,24 @@ instead of amplifying the outage.
 
 When a downstream service degrades, naive callers make it worse:
 
-- **Piling on a sick service** — every request still tries the failing dependency, so it never
+- **Piling on a sick service**: every request still tries the failing dependency, so it never
   gets breathing room to recover, and retries hammer it harder.
-- **Resource exhaustion** — calls to a *slow* service hold threads and connections until they time
+- **Resource exhaustion**: calls to a *slow* service hold threads and connections until they time
   out; enough of them and the caller runs out of capacity and falls over too.
-- **Cascading failure** — one struggling service drags down everything that calls it, which drags
+- **Cascading failure**: one struggling service drags down everything that calls it, which drags
   down everything that calls *them*, an outage that spreads.
-- **Wasted latency** — you wait for the full timeout on every call to something you already know
+- **Wasted latency**: you wait for the full timeout on every call to something you already know
   is broken.
 
 ## Structure
 
 Key Components:
 
-- **Circuit Breaker** — wraps the call and holds state: **Closed** (calls flow, failures counted),
+- **Circuit Breaker**: wraps the call and holds state: **Closed** (calls flow, failures counted),
   **Open** (calls fail fast), **Half-Open** (one trial call allowed to test recovery).
-- **Failure threshold** — how many failures (or what error rate) trips the breaker Open.
-- **Reset timeout** — how long to stay Open before allowing a trial call (Half-Open).
-- **Fallback** (optional) — what to return while Open (cached value, default, error).
+- **Failure threshold**: how many failures (or what error rate) trips the breaker Open.
+- **Reset timeout**: how long to stay Open before allowing a trial call (Half-Open).
+- **Fallback** (optional): what to return while Open (cached value, default, error).
 
 ```
         failures ≥ threshold          reset timeout elapsed
@@ -64,24 +64,24 @@ Closed ───────────────────────► 
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Fail fast** — no waiting on a dependency you know is down; latency stays bounded.
-- **Protects the caller** — stops a slow dependency from exhausting threads/connections.
-- **Gives the dependency room** — backing off lets a struggling service recover.
+- **Fail fast**: no waiting on a dependency you know is down; latency stays bounded.
+- **Protects the caller**: stops a slow dependency from exhausting threads/connections.
+- **Gives the dependency room**: backing off lets a struggling service recover.
 
 ### Disadvantages
-- **Tuning is hard** — thresholds and timeouts too tight trip on blips; too loose don't protect.
-- **False trips** — a transient spike can open the breaker and reject healthy traffic.
-- **Added state** — per-dependency breaker state to hold, share (across instances?), and observe.
+- **Tuning is hard**: thresholds and timeouts too tight trip on blips; too loose don't protect.
+- **False trips**: a transient spike can open the breaker and reject healthy traffic.
+- **Added state**: per-dependency breaker state to hold, share (across instances?), and observe.
 
 ## Common Mistakes
 
-- **No timeout under it** — a breaker counts *failures*, but a call that hangs forever never
+- **No timeout under it**: a breaker counts *failures*, but a call that hangs forever never
   "fails"; always pair it with a timeout so slow counts as failed.
-- **One breaker for everything** — a single breaker across unrelated dependencies trips on one and
+- **One breaker for everything**: a single breaker across unrelated dependencies trips on one and
   blocks the others; scope a breaker per dependency (see Bulkhead).
-- **Retrying through an open breaker** — stacking retries on top defeats fail-fast; retry *inside*
+- **Retrying through an open breaker**: stacking retries on top defeats fail-fast; retry *inside*
   the breaker's closed state, not against an open one.
-- **Silent trips** — an open breaker rejecting traffic with no metric or log hides the outage; emit
+- **Silent trips**: an open breaker rejecting traffic with no metric or log hides the outage; emit
   state changes.
 
 ## Key Takeaways
@@ -137,7 +137,7 @@ function circuitBreaker(fn, { threshold = 5, cooldownMs = 10_000 } = {}) {
 // const getRate = circuitBreaker(() => fetch(...).then((r) => r.json()));
 ```
 
-**🧠 Tradeoff** — A closure holding `failures`/`state` is a complete breaker in a few lines, and
+**🧠 Tradeoff**: A closure holding `failures`/`state` is a complete breaker in a few lines, and
 wrapping any async function protects the caller from a down dependency. In the browser it's
 per-tab and in-memory, which is fine for client-side calls. It counts thrown errors, so it only
 works if the wrapped call actually rejects on failure, so pair it with a fetch timeout.
@@ -173,7 +173,7 @@ breaker.fallback(() => ({ price: null, stale: true })); // what to serve while o
 app.get("/price", (_req, res) => breaker.fire().then((p) => res.json(p)));
 ```
 
-**🧠 Tradeoff** — `opossum` gives production-grade breakers (error-rate thresholds, a built-in
+**🧠 Tradeoff**: `opossum` gives production-grade breakers (error-rate thresholds, a built-in
 timeout, fallbacks, and metrics events) so you don't hand-roll the state machine. The dependency
 and its configuration are the cost, plus the reminder that in a clustered app each instance has its
 own breaker unless you share state.
@@ -219,7 +219,7 @@ class CircuitBreaker:
 # (or use the `pybreaker` library for a mature implementation)
 ```
 
-**🧠 Tradeoff** — A small class with the same three-state logic is easy to write and test; the
+**🧠 Tradeoff**: A small class with the same three-state logic is easy to write and test; the
 mature `pybreaker` library adds thread-safety, listeners, and storage backends for sharing state.
 Either way, `requests`' own `timeout=` is essential: without it a hung call never becomes a
 "failure" and the breaker never trips.
@@ -256,7 +256,7 @@ end
 # :fuse.install(:fx_api, {{:standard, 5, 10_000}, {:reset, 30_000}})
 ```
 
-**🧠 Tradeoff** — On the BEAM a breaker is just process state, and `:fuse` provides a robust one
+**🧠 Tradeoff**: On the BEAM a breaker is just process state, and `:fuse` provides a robust one
 (`ask`/`melt`, tolerance windows, auto-reset). It fits OTP: the breaker is a supervised process,
 and "let it crash" plus a breaker gives layered resilience. The API is lower-level than
 `opossum`/`pybreaker`, so you wire the melt-on-failure explicitly.
@@ -299,7 +299,7 @@ func getRate(ctx context.Context) (Rate, error) {
 }
 ```
 
-**🧠 Tradeoff** — `gobreaker` implements the state machine and `Execute` returns
+**🧠 Tradeoff**: `gobreaker` implements the state machine and `Execute` returns
 `ErrOpenState` immediately when tripped: clean, idiomatic, and paired with a `context` timeout so
 slow calls count as failures. Go's explicitness shows: you configure `ReadyToTrip` and thread
 `ctx` yourself, but the breaker's behavior is entirely visible and testable.
@@ -343,7 +343,7 @@ sealed class CircuitBreaker(int threshold, TimeSpan cooldown)
         {
             if (DateTime.UtcNow - _openedAt < cooldown)
                 throw new InvalidOperationException("circuit open"); // fail fast
-            _state = State.HalfOpen; // cooldown over — allow one trial call
+            _state = State.HalfOpen; // cooldown over: allow one trial call
         }
         try
         {
@@ -361,7 +361,7 @@ sealed class CircuitBreaker(int threshold, TimeSpan cooldown)
 }
 ```
 
-**🧠 Tradeoff** — The enum plus two guarded transitions is the entire machine, and the generic
+**🧠 Tradeoff**: The enum plus two guarded transitions is the entire machine, and the generic
 `Call` wraps any `Func<Task<T>>`. As written it isn't thread-safe (two concurrent calls can both
 slip through half-open), which is one reason production C# reaches for Polly: its circuit-breaker
 strategy adds the locking, error-rate thresholds, and metrics, and composes with retry and timeout
@@ -386,7 +386,7 @@ fn get_rate() -> Result<f64, String> {
 ```rust
 use std::time::{Duration, Instant};
 
-// The three states are a closed set — an enum with exhaustive matches, not a trait.
+// The three states are a closed set: an enum with exhaustive matches, not a trait.
 #[derive(Clone, Copy)]
 enum State {
     Closed { failures: u32 },
@@ -410,7 +410,7 @@ impl CircuitBreaker {
             State::Open { since } if since.elapsed() < self.cooldown => {
                 return Err("circuit open".into()); // fail fast
             }
-            State::Open { .. } => self.state = State::HalfOpen, // cooldown over — one trial
+            State::Open { .. } => self.state = State::HalfOpen, // cooldown over; one trial
             State::Closed { .. } | State::HalfOpen => {}
         }
         match f() {
@@ -435,7 +435,7 @@ impl CircuitBreaker {
 // let rate = breaker.call(fetch_fx_rate)?;
 ```
 
-**🧠 Tradeoff** — The enum is doing more than naming states: each variant carries only the data
+**🧠 Tradeoff**: The enum is doing more than naming states: each variant carries only the data
 valid in it (a failure count exists only in `Closed`, a trip time only in `Open`), so impossible
 combinations don't compile, and the exhaustive `match` means a new state can't be half-handled.
 That's why enum + match, not a trait object, is the natural Rust form here: the state set is
@@ -478,7 +478,7 @@ const CircuitBreaker = struct {
                 const waited = o.since.durationTo(.now(io, .awake));
                 if (waited.toMilliseconds() < self.cooldown_ms)
                     return error.CircuitOpen; // fail fast
-                self.state = .half_open; // cooldown over — allow one trial call
+                self.state = .half_open; // cooldown over: allow one trial call
             },
             .closed, .half_open => {},
         }
@@ -506,7 +506,7 @@ const CircuitBreaker = struct {
 // const rate = try breaker.call(io, fetchRate);
 ```
 
-**🧠 Tradeoff** — Same shape as the Rust version: a tagged union with exhaustive `switch`es, so the
+**🧠 Tradeoff**: Same shape as the Rust version: a tagged union with exhaustive `switch`es, so the
 compiler flags any transition you forget. The clock comes in through `io`: 0.17 moved time behind
 the `std.Io` capability, so who controls time is as explicit as who controls memory: hand `call` a
 fake `Io` and the cooldown is testable without waiting. `anyerror` keeps `call` generic over
@@ -537,7 +537,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.Callable;
 
-// The three states are a closed set — an enum, switched on in two places.
+// The three states are a closed set: an enum, switched on in two places.
 enum State { CLOSED, OPEN, HALF_OPEN }
 
 class CircuitBreaker {
@@ -556,7 +556,7 @@ class CircuitBreaker {
         if (state == State.OPEN) {
             if (Duration.between(openedAt, Instant.now()).compareTo(cooldown) < 0)
                 throw new IllegalStateException("circuit open"); // fail fast
-            state = State.HALF_OPEN; // cooldown over — allow one trial call
+            state = State.HALF_OPEN; // cooldown over: allow one trial call
         }
         try {
             T result = fn.call();
@@ -578,7 +578,7 @@ class CircuitBreaker {
 // double rate = breaker.call(() -> getRate());
 ```
 
-**🧠 Tradeoff** — The enum plus two guarded transitions is the whole machine, and `Callable<T>` is
+**🧠 Tradeoff**: The enum plus two guarded transitions is the whole machine, and `Callable<T>` is
 already a functional interface, so any call wraps in a lambda. If you want each state to carry only
 its own data (a failure count that exists only in CLOSED, a trip time only in OPEN), a sealed
 interface with record states and a pattern-matching `switch` gives you the Rust shape; the enum
@@ -590,29 +590,29 @@ underneath either way, so a hung call counts as a failure.
 
 ## Applications
 
-- **Microservice calls** — every synchronous service-to-service call is a candidate; breakers stop
+- **Microservice calls**: every synchronous service-to-service call is a candidate; breakers stop
   one bad service cascading (backend).
-- **Third-party APIs** — payment, geocoding, and email providers wrapped so an outage there fails
+- **Third-party APIs**: payment, geocoding, and email providers wrapped so an outage there fails
   fast locally with a fallback (backend).
-- **Service meshes** — Istio/Linkerd and libraries (Resilience4j, Polly, Hystrix's heirs) provide
+- **Service meshes**: Istio/Linkerd and libraries (Resilience4j, Polly, Hystrix's heirs) provide
   breakers as infrastructure (backend).
-- **Database & cache clients** — trip when the datastore is unreachable to avoid connection-pool
+- **Database & cache clients**: trip when the datastore is unreachable to avoid connection-pool
   exhaustion (backend).
-- **Frontend API clients** — a breaker on a flaky endpoint lets the UI show cached/degraded state
+- **Frontend API clients**: a breaker on a flaky endpoint lets the UI show cached/degraded state
   instead of spinning (frontend).
 
 **In modern systems:**
 
-- **Multi-agent** — trip the breaker on a flaky model or tool so the orchestrator fails fast to a
+- **Multi-agent**: trip the breaker on a flaky model or tool so the orchestrator fails fast to a
   fallback instead of hammering it and burning the budget.
-- **Workflow engine** — a step calling a downstream service opens the breaker after repeated
+- **Workflow engine**: a step calling a downstream service opens the breaker after repeated
   failures rather than stalling every run behind it.
 
 ## Related Patterns
 
-- **Retry** — retry handles *transient* blips; the breaker handles *sustained* failure. Put retries
+- **Retry**: retry handles *transient* blips; the breaker handles *sustained* failure. Put retries
   inside the closed state, and let the breaker stop them once failure persists.
-- **Timeout** — the essential partner: a timeout turns a hung call into a countable failure so the
+- **Timeout**: the essential partner: a timeout turns a hung call into a countable failure so the
   breaker can trip.
-- **Bulkhead** — isolates resources per dependency so one failure can't exhaust everything; breakers
+- **Bulkhead**: isolates resources per dependency so one failure can't exhaust everything; breakers
   and bulkheads are usually deployed together.

@@ -42,9 +42,9 @@ types register in one place.
 
 Key Components:
 
-- **Product** — the interface the created objects share (`get`/`set`).
-- **Concrete Products** — the actual types (`InMemoryCache`, `DiskCache`).
-- **Factory** — the single function/method that maps a request to a concrete product.
+- **Product**: the interface the created objects share (`get`/`set`).
+- **Concrete Products**: the actual types (`InMemoryCache`, `DiskCache`).
+- **Factory**: the single function/method that maps a request to a concrete product.
 
 ## When to Use
 
@@ -67,11 +67,11 @@ Key Components:
 
 ## Common Mistakes
 
-- **Leaving the switch everywhere** — if the `switch` is copied across the codebase, you
+- **Leaving the switch everywhere**: if the `switch` is copied across the codebase, you
   haven't centralized anything; move it into one factory.
-- **A factory that returns concrete types** — return the shared interface, or callers stay
+- **A factory that returns concrete types**: return the shared interface, or callers stay
   coupled to specifics.
-- **Building a giant switch that breaks OCP** — prefer a registry/map so new types add an
+- **Building a giant switch that breaks OCP**: prefer a registry/map so new types add an
   entry, not a new `case`.
 
 ## Key Takeaways
@@ -96,7 +96,7 @@ A factory that builds a cache backend by name.
 function makeCache(kind) {
   if (kind === "memory") return new InMemoryCache();
   else if (kind === "disk") return new DiskCache();
-  // adding "redis" means editing this — and every other copy of it
+  // adding "redis" means editing this, and every other copy of it
   throw new Error(`Unknown cache: ${kind}`);
 }
 ```
@@ -124,7 +124,7 @@ registry.redis = class RedisCache { get(k) {} set(k, v) {} };
 const cache = createCache("redis");
 ```
 
-**🧠 Tradeoff** — A registry object turns "add a case" into "add a key", so the factory itself
+**🧠 Tradeoff**: A registry object turns "add a case" into "add a key", so the factory itself
 never changes as products grow. The cost is a lookup that can fail at runtime rather than a
 `switch` the compiler could (in a typed language) check for exhaustiveness.
 
@@ -139,7 +139,7 @@ never changes as products grow. The cost is a lookup that can fail at runtime ra
 function notify(channel, user, msg) {
   if (channel === "email") return sendEmail(user.email, msg);
   else if (channel === "sms") return sendSms(user.phone, msg);
-  // adding "push" means editing this — and every other copy
+  // adding "push" means editing this, and every other copy
   throw new Error(`Unknown channel: ${channel}`);
 }
 ```
@@ -164,7 +164,7 @@ channels.push = (user, msg) => sendPush(user.deviceToken, msg);
 notifier("push")(user, "your order shipped");
 ```
 
-**🧠 Tradeoff** — Keying senders in an object turns "add a channel" into "add an entry", and the
+**🧠 Tradeoff**: Keying senders in an object turns "add a channel" into "add an entry", and the
 registry can be populated from config or plugins, even lazily with a dynamic `import()` for a
 driver you only load when it's selected. The price is the registry's: an unknown key fails at
 runtime, not at compile time.
@@ -212,7 +212,7 @@ def register(name: str, cls: type) -> None:
     _registry[name] = cls
 ```
 
-**🧠 Tradeoff** — In Python classes are values, so the registry holds the classes themselves and
+**🧠 Tradeoff**: In Python classes are values, so the registry holds the classes themselves and
 `create_cache` stays a one-liner. A decorator (`@register("redis")`) can make backends
 self-register at import. The GoF class hierarchy of creators is rarely needed here.
 
@@ -260,7 +260,7 @@ defmodule CacheFactory do
 end
 ```
 
-**🧠 Tradeoff** — Elixir's "product" is a module implementing a behaviour, and the factory maps
+**🧠 Tradeoff**: Elixir's "product" is a module implementing a behaviour, and the factory maps
 an atom to that module. Because modules are compile-time constants, the registry is a module
 attribute: fast and fixed. For runtime-extensible registries, hold the map in a process or
 application config instead of a `@registry` attribute.
@@ -315,7 +315,7 @@ func init() {
 }
 ```
 
-**🧠 Tradeoff** — A `map[string]func() Cache` lets each backend self-register in `init()`, so
+**🧠 Tradeoff**: A `map[string]func() Cache` lets each backend self-register in `init()`, so
 adding one is a new file, not an edit to `Create`. You trade the compiler's exhaustiveness
 check on a `switch` for runtime lookup, but gain open extensibility across packages.
 
@@ -331,7 +331,7 @@ static ICache MakeCache(string kind) => kind switch
 {
     "memory" => new InMemoryCache(),
     "disk" => new DiskCache(),
-    // adding "redis" means editing this — and every other copy of it
+    // adding "redis" means editing this, and every other copy of it
     _ => throw new ArgumentException($"Unknown cache: {kind}"),
 };
 ```
@@ -339,7 +339,7 @@ static ICache MakeCache(string kind) => kind switch
 **✅ Idiomatic**
 
 ```csharp
-// Register a backend without touching Create — even from another assembly.
+// Register a backend without touching Create: even from another assembly.
 CacheFactory.Register("memory", () => new InMemoryCache());
 CacheFactory.Register("disk", () => new DiskCache());
 
@@ -380,7 +380,7 @@ public static class CacheFactory
 }
 ```
 
-**🧠 Tradeoff** — the registry holds `Func<ICache>` delegates, so there's no GoF hierarchy of
+**🧠 Tradeoff**: the registry holds `Func<ICache>` delegates, so there's no GoF hierarchy of
 creator classes; a constructor reference is enough. As everywhere, the registry trades the
 `switch` expression's compile-time exhaustiveness for runtime lookup and open registration.
 And be honest about where this lands in real .NET: the factory often dissolves into the DI
@@ -399,7 +399,7 @@ fn make_cache(kind: &str) -> Box<dyn Cache> {
     match kind {
         "memory" => Box::new(InMemoryCache::new()),
         "disk" => Box::new(DiskCache),
-        // adding "redis" means editing this — and every other copy of it
+        // adding "redis" means editing this, and every other copy of it
         other => panic!("unknown cache: {other}"),
     }
 }
@@ -458,7 +458,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — when the set of backends is closed, idiomatic Rust skips all of this: an
+**🧠 Tradeoff**: when the set of backends is closed, idiomatic Rust skips all of this: an
 `enum CacheKind` plus one exhaustive `match` gives you a factory the compiler checks: add a
 variant and it lists every match to update. The string-keyed registry above buys *open*
 registration (backends from config or other crates) at the price of runtime failure, so
@@ -530,7 +530,7 @@ const Cache = union(Kind) {
         };
     }
 
-    // `inline else` dispatches to each variant's methods — no vtable.
+    // `inline else` dispatches to each variant's methods, no vtable.
     fn set(self: *Cache, key: []const u8, value: []const u8) void {
         switch (self.*) {
             inline else => |*c| c.set(key, value),
@@ -550,7 +550,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — the tagged union is the honest Zig form for a closed set, and it inverts the
+**🧠 Tradeoff**: the tagged union is the honest Zig form for a closed set, and it inverts the
 kata's moral: instead of a registry that keeps `create` closed to edits, adding a backend makes
 the compiler flag every non-exhaustive `switch`. The Open/Closed loss *is* the safety win, and
 `.redis` can't be a typo the way `"redis"` can. Dispatch through `inline else` is a compile-time
@@ -571,7 +571,7 @@ static Cache makeCache(String kind) {
     return switch (kind) {
         case "memory" -> new InMemoryCache();
         case "disk" -> new DiskCache();
-        // adding "redis" means editing this — and every other copy of it
+        // adding "redis" means editing this, and every other copy of it
         default -> throw new IllegalArgumentException("Unknown cache: " + kind);
     };
 }
@@ -626,7 +626,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — nobody writes the GoF hierarchy of Creator subclasses in modern Java:
+**🧠 Tradeoff**: nobody writes the GoF hierarchy of Creator subclasses in modern Java:
 `Supplier<Cache>` is the whole factory-method contract, and a constructor reference
 (`InMemoryCache::new`) is a whole concrete creator. The registry buys open registration,
 so backends can add themselves from anywhere, or be discovered via `ServiceLoader`, at the
@@ -640,24 +640,24 @@ this registry, maintained for you.
 
 Real-world uses of Factory Method (from the reference article):
 
-- **Cache backends** — memory / disk / Redis chosen by config.
-- **Delivery/partner selection** — pick a regional provider by location.
-- **Document/exporter creation** — build the right serializer for a format.
-- **Database drivers** — construct the driver named in a connection string.
-- **UI element creation** — build the platform-appropriate widget.
+- **Cache backends**: memory / disk / Redis chosen by config.
+- **Delivery/partner selection**: pick a regional provider by location.
+- **Document/exporter creation**: build the right serializer for a format.
+- **Database drivers**: construct the driver named in a connection string.
+- **UI element creation**: build the platform-appropriate widget.
 
 **In modern systems:**
 
-- **Low-code** — the `"type"` discriminator in each JSON node dispatched to the matching widget
+- **Low-code**: the `"type"` discriminator in each JSON node dispatched to the matching widget
   constructor. This is the engine's core dispatch: data names the type, the factory builds it.
-- **Workflow engine** — a step's `"kind"` field selects which step class to instantiate.
-- **Multi-agent** — a `"role"` field constructs the right agent (researcher, coder, reviewer) from
+- **Workflow engine**: a step's `"kind"` field selects which step class to instantiate.
+- **Multi-agent**: a `"role"` field constructs the right agent (researcher, coder, reviewer) from
   one registry.
 
 ## Related Patterns
 
-- **Abstract Factory** — makes *families* of related products; Factory Method makes one product
+- **Abstract Factory**: makes *families* of related products; Factory Method makes one product
   type. Abstract Factory is often built from several factory methods.
-- **Strategy** — Factory Method chooses which object to *create*; Strategy chooses which
+- **Strategy**: Factory Method chooses which object to *create*; Strategy chooses which
   algorithm to *run*. They pair well: a factory constructs the strategy.
-- **Singleton** — factories are frequently singletons.
+- **Singleton**: factories are frequently singletons.

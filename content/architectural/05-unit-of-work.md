@@ -27,22 +27,22 @@ would leave.
 
 Save each change the moment it happens and a multi-step operation has no atomicity:
 
-- **Partial writes** — "transfer money" debits one account, then the process crashes before
+- **Partial writes**: "transfer money" debits one account, then the process crashes before
   crediting the other; the money vanishes.
-- **No rollback** — once you've hit the database three times, undoing the first two on the fourth's
+- **No rollback**: once you've hit the database three times, undoing the first two on the fourth's
   failure is manual and error-prone.
-- **Chatty I/O** — writing each object separately is many round-trips when one batched commit would do.
-- **Scattered transaction handling** — every service opens and manages its own transaction, so the
+- **Chatty I/O**: writing each object separately is many round-trips when one batched commit would do.
+- **Scattered transaction handling**: every service opens and manages its own transaction, so the
   boundary is inconsistent and easy to get wrong.
 
 ## Structure
 
 Key Components:
 
-- **Unit of Work** — tracks new, dirty (modified), and removed objects; exposes `commit`/`rollback`.
-- **Registration** — objects (usually via repositories) register their changes with the unit.
-- **Commit** — opens one transaction, flushes all tracked changes in order, commits or rolls back.
-- **Client** — a service runs its whole operation against the unit, then commits once at the end.
+- **Unit of Work**: tracks new, dirty (modified), and removed objects; exposes `commit`/`rollback`.
+- **Registration**: objects (usually via repositories) register their changes with the unit.
+- **Commit**: opens one transaction, flushes all tracked changes in order, commits or rolls back.
+- **Client**: a service runs its whole operation against the unit, then commits once at the end.
 
 ```
 Service ──uses──► UnitOfWork  { new, dirty, removed }
@@ -62,27 +62,27 @@ Service ──uses──► UnitOfWork  { new, dirty, removed }
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Atomicity** — the whole operation commits or rolls back as one; no half-applied state.
-- **Fewer round-trips** — changes accumulate and flush in one batched commit.
-- **One transaction boundary** — a single, consistent place that owns commit/rollback.
+- **Atomicity**: the whole operation commits or rolls back as one; no half-applied state.
+- **Fewer round-trips**: changes accumulate and flush in one batched commit.
+- **One transaction boundary**: a single, consistent place that owns commit/rollback.
 
 ### Disadvantages
-- **Complexity** — change tracking, ordering (respecting foreign keys), and identity management
+- **Complexity**: change tracking, ordering (respecting foreign keys), and identity management
   are real work.
-- **Memory & scope** — holding a large set of changes in one unit is heavy; long-lived units risk
+- **Memory & scope**: holding a large set of changes in one unit is heavy; long-lived units risk
   stale data and lock contention.
-- **Often built-in already** — most ORMs ship a unit of work (the "session"), so rolling your own
+- **Often built-in already**: most ORMs ship a unit of work (the "session"), so rolling your own
   can duplicate the framework.
 
 ## Common Mistakes
 
-- **Committing per change anyway** — registering changes but flushing each immediately defeats the
+- **Committing per change anyway**: registering changes but flushing each immediately defeats the
   atomicity you built the unit for.
-- **Ignoring flush order** — writing a child before its parent violates foreign keys; the unit must
+- **Ignoring flush order**: writing a child before its parent violates foreign keys; the unit must
   order inserts/updates/deletes correctly.
-- **Long-lived units** — keeping one unit open across a whole request (or user session) holds locks
+- **Long-lived units**: keeping one unit open across a whole request (or user session) holds locks
   and accumulates stale state; scope it to one operation.
-- **Swallowing rollback** — catching the commit failure without rolling back leaves a dangling
+- **Swallowing rollback**: catching the commit failure without rolling back leaves a dangling
   transaction and inconsistent state.
 
 ## Key Takeaways
@@ -134,7 +134,7 @@ class UnitOfWork {
 // await uow.commit();  // both or neither
 ```
 
-**🧠 Tradeoff** — Deferring writes into a unit and flushing them inside one `begin/commit/rollback`
+**🧠 Tradeoff**: Deferring writes into a unit and flushing them inside one `begin/commit/rollback`
 makes the transfer atomic with a small helper. In JS you're leaning on the driver's transaction
 API; the unit adds the *tracking* and a single boundary. For one two-statement operation a raw
 transaction is enough; the unit earns its keep when many repositories contribute changes.
@@ -179,7 +179,7 @@ async function withUnitOfWork(pool, work) {
 // });
 ```
 
-**🧠 Tradeoff** — Binding every write in an operation to one checked-out client and wrapping it in
+**🧠 Tradeoff**: Binding every write in an operation to one checked-out client and wrapping it in
 `BEGIN/COMMIT/ROLLBACK` is the idiomatic Node unit of work: the callback scopes it and `finally`
 guarantees the client returns to the pool. It's explicit rather than tracked (you pass `tx`
 around), which is simpler to reason about but less automatic than an ORM session.
@@ -191,7 +191,7 @@ around), which is simpler to reason about but less automatic than an ORM session
 **❌ Naive**
 
 ```python
-# Committing after each save — no atomic boundary across the operation.
+# Committing after each save, no atomic boundary across the operation.
 def register(user, profile):
     db.add(user); db.commit()      # user persisted
     db.add(profile); db.commit()   # if this fails, a user exists with no profile
@@ -220,7 +220,7 @@ def unit_of_work(Session):
 #     uow.add(profile)     # both committed together, or neither
 ```
 
-**🧠 Tradeoff** — SQLAlchemy's `Session` already tracks new/dirty/deleted objects and flushes them
+**🧠 Tradeoff**: SQLAlchemy's `Session` already tracks new/dirty/deleted objects and flushes them
 in dependency order on `commit`. It's a textbook unit of work, so you mostly *wrap* it in a
 context manager for a clean boundary rather than build tracking yourself. The lesson: when the ORM
 gives you a session, use it; hand-rolling change tracking duplicates a solved problem.
@@ -253,7 +253,7 @@ end)
 |> Repo.transaction()   # all steps commit together, or the whole thing rolls back
 ```
 
-**🧠 Tradeoff** — `Ecto.Multi` is the functional take on unit of work: you *build up* a data
+**🧠 Tradeoff**: `Ecto.Multi` is the functional take on unit of work: you *build up* a data
 structure of named operations and hand it to `Repo.transaction/1`, which runs them atomically and
 returns `{:ok, results}` or `{:error, failed_step, changes_so_far}`. Because it's a value, the unit
 is composable and inspectable before it runs: very Elixir. The cost is learning Multi's API for
@@ -301,7 +301,7 @@ func withTx(db *sql.DB, work func(*sql.Tx) error) (err error) {
 // withTx(db, func(tx *sql.Tx) error { /* insert order + items via tx */ })
 ```
 
-**🧠 Tradeoff** — Go's `*sql.Tx` is the unit of work; the `withTx` helper (with a `defer` that
+**🧠 Tradeoff**: Go's `*sql.Tx` is the unit of work; the `withTx` helper (with a `defer` that
 rolls back on error or panic and commits otherwise) gives one clean boundary. It's explicit (you
 thread `tx` through every write), which is verbose but leaves the transaction scope unmistakable.
 Change *tracking* (auto-detecting dirty objects) isn't idiomatic Go; you register writes directly.
@@ -356,7 +356,7 @@ public sealed class UnitOfWork(DbConnection conn)
 // await uow.CommitAsync();  // both or neither
 ```
 
-**🧠 Tradeoff** — The hand-rolled unit is a list of deferred `Func<DbTransaction, Task>` writes
+**🧠 Tradeoff**: The hand-rolled unit is a list of deferred `Func<DbTransaction, Task>` writes
 flushed inside one transaction, useful when you're on raw ADO.NET or Dapper. But in .NET this
 pattern usually comes for free: EF Core's `DbContext` *is* a unit of work. It tracks added, dirty,
 and removed entities and `SaveChangesAsync` flushes them all in one transaction. Reach for that
@@ -404,7 +404,7 @@ impl UnitOfWork {
     fn commit(self, db: &mut Db) -> Result<(), String> {
         let mut working = db.clone();
         for op in &self.ops {
-            op(&mut working)?; // any failure discards the copy — rollback
+            op(&mut working)?; // any failure discards the copy: rollback
         }
         *db = working; // all changes land together
         Ok(())
@@ -435,7 +435,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — The copy *is* the transaction: ops run against a clone, and only complete success
+**🧠 Tradeoff**: The copy *is* the transaction: ops run against a clone, and only complete success
 swaps it in, so rollback is just dropping the working copy: fine in memory, while a real database
 uses the driver's transaction (sqlx and diesel both expose one). Ownership adds a nice guarantee:
 `commit(self)` consumes the unit, so a committed unit can't be reused; the type system enforces the
@@ -465,7 +465,7 @@ const std = @import("std");
 
 const Account = struct { name: []const u8, balance: i64 };
 
-// The closed set of writes a unit can stage — a tagged union, not a closure.
+// The closed set of writes a unit can stage: a tagged union, not a closure.
 const Op = union(enum) {
     debit: struct { account: []const u8, amount: i64 },
     credit: struct { account: []const u8, amount: i64 },
@@ -486,7 +486,7 @@ const UnitOfWork = struct {
         self.len += 1;
     }
 
-    // Two phases: validate every op first, then apply — all or nothing.
+    // Two phases: validate every op first, then apply; all or nothing.
     fn commit(self: *UnitOfWork, db: []Account) !void {
         for (self.ops[0..self.len]) |op| {
             switch (op) {
@@ -494,7 +494,7 @@ const UnitOfWork = struct {
                     if ((try find(db, d.account)).balance < d.amount) return error.Insufficient;
                 },
                 .credit => |c| {
-                    _ = try find(db, c.account); // nothing applied yet — safe to bail
+                    _ = try find(db, c.account); // nothing applied yet: safe to bail
                 },
             }
         }
@@ -523,7 +523,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — Zig has no closures, so the unit can't defer arbitrary lambdas the way JS or C#
+**🧠 Tradeoff**: Zig has no closures, so the unit can't defer arbitrary lambdas the way JS or C#
 do; instead the stageable writes are a tagged union, switched exhaustively. That's restrictive but
 honest: everything a unit can do is enumerated in one place, and the compiler flags any op a phase
 forgets. The two-phase commit (validate everything, then apply) buys atomicity without cloning
@@ -557,7 +557,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-// A deferred write is any lambda matching this single method — a functional interface.
+// A deferred write is any lambda matching this single method: a functional interface.
 interface Op {
     void apply(Map<String, Long> db);
 }
@@ -570,7 +570,7 @@ class UnitOfWork {
     // Ops run against a working copy; only full success replaces the real state.
     void commit(Map<String, Long> db) {
         var working = new TreeMap<>(db);
-        for (var op : ops) op.apply(working); // any failure discards the copy — rollback
+        for (var op : ops) op.apply(working); // any failure discards the copy; rollback
         db.clear();
         db.putAll(working); // all changes land together
     }
@@ -588,12 +588,12 @@ public class Demo {
         uow.register(w -> w.merge("bob", 70L, Long::sum));
 
         uow.commit(db);
-        System.out.println(db); // {alice=30, bob=120} — both or neither
+        System.out.println(db); // {alice=30, bob=120}: both or neither
     }
 }
 ```
 
-**🧠 Tradeoff** — In Java this pattern ships in the box: JPA's `EntityManager` (Hibernate's
+**🧠 Tradeoff**: In Java this pattern ships in the box: JPA's `EntityManager` (Hibernate's
 `Session`) *is* a unit of work. The persistence context tracks every managed entity, detects dirty
 state on its own, and flushes inserts, updates, and deletes in dependency order inside one
 transaction on commit: exactly the machinery this kata hand-rolls. So reach for that first; the
@@ -603,22 +603,22 @@ in-memory version above is for when JPA isn't there, and on plain JDBC the bound
 
 ## Applications
 
-- **Money & inventory** — transfers, orders, and stock adjustments that must apply every change or
+- **Money & inventory**: transfers, orders, and stock adjustments that must apply every change or
   none (backend).
-- **ORM sessions** — Hibernate, SQLAlchemy, Entity Framework, and Ecto implement unit of work as
+- **ORM sessions**: Hibernate, SQLAlchemy, Entity Framework, and Ecto implement unit of work as
   their session/context/Multi (backend).
-- **Multi-aggregate operations** — a DDD command touching several aggregates commits them together
+- **Multi-aggregate operations**: a DDD command touching several aggregates commits them together
   behind one unit (backend).
-- **Batch imports** — accumulating many inserts and flushing in one transaction for speed and
+- **Batch imports**: accumulating many inserts and flushing in one transaction for speed and
   all-or-nothing semantics (backend).
-- **Saga step boundaries** — each local step of a distributed saga is itself a unit of work; the
+- **Saga step boundaries**: each local step of a distributed saga is itself a unit of work; the
   saga coordinates across them (backend).
 
 ## Related Patterns
 
-- **Repository** — repositories register their creates/updates/deletes with the unit of work, which
+- **Repository**: repositories register their creates/updates/deletes with the unit of work, which
   owns the transaction spanning them.
-- **Saga** — where a single transaction can't span services, a saga strings together per-service
+- **Saga**: where a single transaction can't span services, a saga strings together per-service
   units of work with compensating actions.
-- **Layered / Hexagonal** — the unit of work lives at the application-service boundary, where a use
+- **Layered / Hexagonal**: the unit of work lives at the application-service boundary, where a use
   case's transaction naturally begins and ends.

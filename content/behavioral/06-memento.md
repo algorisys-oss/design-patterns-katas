@@ -37,9 +37,9 @@ Memento has the editor produce and consume its own snapshot, keeping its interna
 
 Key Components:
 
-- **Originator** — the object whose state is saved; creates a memento and restores from one.
-- **Memento** — the opaque snapshot; only the originator understands its contents.
-- **Caretaker** — keeps mementos (the history/undo stack) but never inspects them.
+- **Originator**: the object whose state is saved; creates a memento and restores from one.
+- **Memento**: the opaque snapshot; only the originator understands its contents.
+- **Caretaker**: keeps mementos (the history/undo stack) but never inspects them.
 
 ## When to Use
 
@@ -61,10 +61,10 @@ Key Components:
 
 ## Common Mistakes
 
-- **Leaking internals through the memento** — if the caretaker can read/modify it, encapsulation
+- **Leaking internals through the memento**: if the caretaker can read/modify it, encapsulation
   is broken.
-- **Unbounded history** — snapshots pile up; cap the stack or use diffs.
-- **Shallow snapshots** — capturing references instead of copies, so later mutation corrupts the
+- **Unbounded history**: snapshots pile up; cap the stack or use diffs.
+- **Shallow snapshots**: capturing references instead of copies, so later mutation corrupts the
   snapshot (see Prototype's deep-copy lesson).
 
 ## Key Takeaways
@@ -89,7 +89,7 @@ const editor = { content: "", cursor: 0 };
 const history = [];
 history.push({ ...editor });      // caretaker knows the internal shape
 editor.content = "hello";
-Object.assign(editor, history.pop());  // and rewrites it — tightly coupled
+Object.assign(editor, history.pop());  // and rewrites it: tightly coupled
 ```
 
 **✅ Idiomatic (frontend)**
@@ -116,7 +116,7 @@ editor.type("hello");
 history.undo(editor);        // back to ""
 ```
 
-**🧠 Tradeoff** — `save`/`restore` keep the editor's private fields private; `History` only holds
+**🧠 Tradeoff**: `save`/`restore` keep the editor's private fields private; `History` only holds
 snapshots it can't interpret. This is the undo backbone of editors and canvases. The memento here
 is a plain object copy, fine for small state, but snapshotting a large document on every keypress
 needs incremental diffs instead.
@@ -130,7 +130,7 @@ needs incremental diffs instead.
 ```js
 // Rolling back a config change by hand-copying fields around.
 let config = { retries: 3, timeout: 30 };
-const backup = config;              // same reference — not a real snapshot
+const backup = config;              // same reference, not a real snapshot
 config.retries = 5;
 config = backup;                    // "restore" changed nothing; backup was mutated too
 ```
@@ -154,7 +154,7 @@ try { applyMigration(); }
 catch { settings.restore(checkpoint); }   // roll back on failure
 ```
 
-**🧠 Tradeoff** — On the backend, Memento is transactional rollback: snapshot before a risky
+**🧠 Tradeoff**: On the backend, Memento is transactional rollback: snapshot before a risky
 operation, restore on failure. `structuredClone` gives a deep, independent snapshot (the naive
 version's bug was aliasing, not copying). For large or persistent state, snapshot to durable
 storage or use append-only event logs rather than in-memory copies.
@@ -168,7 +168,7 @@ storage or use append-only event logs rather than in-memory copies.
 ```python
 editor = {"content": "", "cursor": 0}
 history = []
-history.append(editor)        # same dict reference — not a snapshot
+history.append(editor)        # same dict reference, not a snapshot
 editor["content"] = "hello"
 editor = history.pop()        # "restore" is aliased to the mutated dict
 ```
@@ -204,7 +204,7 @@ class History:
             e.restore(self._stack.pop())
 ```
 
-**🧠 Tradeoff** — A `frozen=True` dataclass makes the memento immutable, so a stored snapshot can't
+**🧠 Tradeoff**: A `frozen=True` dataclass makes the memento immutable, so a stored snapshot can't
 be mutated out from under the history. `copy.deepcopy` is the alternative for arbitrary nested
 state. The originator owns `save`/`restore`; the history just stacks opaque `Memento` values.
 
@@ -215,7 +215,7 @@ state. The originator owns `save`/`restore`; the history just stacks opaque `Mem
 **❌ Naive**
 
 ```elixir
-# Trying to "restore" by rebinding — but the real state lives in a process
+# Trying to "restore" by rebinding, but the real state lives in a process
 # whose internals you'd otherwise reach into.
 state = %{content: "", cursor: 0}
 history = [state]
@@ -245,7 +245,7 @@ editor = %Editor{} |> Editor.type("hello")
 stack = History.backup([], editor)
 ```
 
-**🧠 Tradeoff** — In Elixir every value is already an immutable snapshot, so "capturing state" is
+**🧠 Tradeoff**: In Elixir every value is already an immutable snapshot, so "capturing state" is
 just keeping the old struct: no copying, no aliasing bug, and encapsulation holds because the
 caretaker only stores opaque terms. Undo is a list of past values. For a live stateful process,
 the `GenServer` holds the history in its own state and hands back a prior value on `:undo`.
@@ -263,7 +263,7 @@ type Editor struct {
 }
 
 var editor = Editor{}
-history := []*Editor{&editor}   // storing a pointer — later edits mutate the "snapshot"
+history := []*Editor{&editor}   // storing a pointer; later edits mutate the "snapshot"
 editor.Content = "hello"
 editor = *history[len(history)-1] // no-op: the pointed-to value already changed
 ```
@@ -273,7 +273,7 @@ editor = *history[len(history)-1] // no-op: the pointed-to value already changed
 ```go
 package editor
 
-// Memento is a value copy — independent of the originator.
+// Memento is a value copy: independent of the originator.
 type Memento struct {
 	content string
 	cursor  int
@@ -299,7 +299,7 @@ func (h *History) Undo(e *Editor) {
 }
 ```
 
-**🧠 Tradeoff** — Returning a `Memento` *value* (not a pointer) gives an independent snapshot for
+**🧠 Tradeoff**: Returning a `Memento` *value* (not a pointer) gives an independent snapshot for
 free; the naive bug was storing a pointer that aliased the live editor. The unexported memento
 fields keep the state opaque to the `History` caretaker. Watch copy cost if the state includes
 slices/maps, which need explicit deep copies.
@@ -311,10 +311,10 @@ slices/maps, which need explicit deep copies.
 **❌ Naive**
 
 ```csharp
-// Storing a reference, not a copy — the "snapshot" aliases the live editor.
+// Storing a reference, not a copy: the "snapshot" aliases the live editor.
 var editor = new EditorState();
 var history = new Stack<EditorState>();
-history.Push(editor);            // same object — not a snapshot
+history.Push(editor);            // same object, not a snapshot
 editor.Content = "hello";
 editor = history.Pop();          // "restore" changed nothing; the backup mutated too
 Console.WriteLine(editor.Content); // hello
@@ -374,7 +374,7 @@ public sealed class History
 }
 ```
 
-**🧠 Tradeoff** — A `record` gives an immutable snapshot in one line, so the naive aliasing bug
+**🧠 Tradeoff**: A `record` gives an immutable snapshot in one line, so the naive aliasing bug
 can't happen: nothing can mutate a stored `Memento` out from under the history. One honest
 caveat: records expose their properties, so `History` *could* peek at `Content`. C# can't make
 the memento readable by the editor but opaque to everyone else, short of nesting it as a private
@@ -388,7 +388,7 @@ snapshot.
 **❌ Naive**
 
 ```rust
-// The history reaches into the editor's public fields — every snapshot
+// The history reaches into the editor's public fields: every snapshot
 // site knows the editor's internals.
 pub struct Editor {
     pub content: String,
@@ -412,7 +412,7 @@ fn main() {
 **✅ Idiomatic**
 
 ```rust
-// editor.rs — Memento's fields are private outside this module,
+// editor.rs: Memento's fields are private outside this module,
 // so the caretaker can store snapshots but never read them.
 pub struct Memento {
     content: String,
@@ -470,7 +470,7 @@ impl History {
 }
 ```
 
-**🧠 Tradeoff** — The pointer-aliasing bug from the Go naive version is a *compile error* in
+**🧠 Tradeoff**: The pointer-aliasing bug from the Go naive version is a *compile error* in
 Rust: you can't hold a live `&mut Editor` and a stored reference to its insides at the same
 time, so the only naive sin left is broken encapsulation. Privacy is per-module: `Memento`'s
 fields are invisible outside the editor's module, so the caretaker truly can't look. And
@@ -493,11 +493,11 @@ const Editor = struct {
 
 pub fn main() void {
     var editor = Editor{};
-    const history = [_]*Editor{&editor}; // a pointer — not a snapshot
+    const history = [_]*Editor{&editor}; // a pointer, not a snapshot
     editor.buf[0] = 'h';
     editor.len = 1;
     editor = history[0].*; // no-op: the pointed-to value already changed
-    std.debug.print("{d}\n", .{editor.len}); // 1 — the "restore" restored nothing
+    std.debug.print("{d}\n", .{editor.len}); // 1: the "restore" restored nothing
 }
 ```
 
@@ -568,7 +568,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — Because arrays are values, `save` copying the struct copies the whole buffer —
+**🧠 Tradeoff**: Because arrays are values, `save` copying the struct copies the whole buffer,
 a real snapshot with zero allocation, and the naive pointer-aliasing bug can't touch it. The
 fixed `[64]u8` is the price: a real editor holds a heap slice, and then `save` must
 `allocator.dupe` the contents and `History` owns memory it has to free when snapshots are popped
@@ -585,7 +585,7 @@ convention and file scope, not enforcement.
 ```java
 import java.util.ArrayDeque;
 
-// Storing a reference, not a copy — the "snapshot" aliases the live editor.
+// Storing a reference, not a copy: the "snapshot" aliases the live editor.
 class EditorState {
     String content = "";
     int cursor;
@@ -595,7 +595,7 @@ public class Demo {
     public static void main(String[] args) {
         var editor = new EditorState();
         var history = new ArrayDeque<EditorState>();
-        history.push(editor);               // same object — not a snapshot
+        history.push(editor);               // same object, not a snapshot
         editor.content = "hello";
         editor = history.pop();             // "restore" changed nothing; the backup mutated too
         System.out.println(editor.content); // hello
@@ -657,7 +657,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — A `record` makes the snapshot immutable in one line, so the naive aliasing bug
+**🧠 Tradeoff**: A `record` makes the snapshot immutable in one line, so the naive aliasing bug
 can't happen: nothing mutates a stored `Memento` behind the history's back. The accessors are
 public, though: `History` *could* read `content()`. The GoF-strict Java fix is a marker
 interface with the real record nested privately inside `Editor`, which casts it back in
@@ -669,23 +669,23 @@ mutable `List` field would need `List.copyOf` in `save`.
 
 Real-world uses of Memento (from the reference article), by tier:
 
-- **Frontend** — editor/canvas undo-redo, form draft snapshots, game save points, wizard step
+- **Frontend**: editor/canvas undo-redo, form draft snapshots, game save points, wizard step
   back, browser history entries.
-- **Backend** — transactional rollback, config/version checkpoints, database savepoints,
+- **Backend**: transactional rollback, config/version checkpoints, database savepoints,
   event-sourced state restoration.
-- **Both** — time-travel debugging, optimistic-update rollback on error.
+- **Both**: time-travel debugging, optimistic-update rollback on error.
 
 **In modern systems:**
 
-- **Workflow engine** — a checkpoint captured before each step so a crashed run resumes from the
+- **Workflow engine**: a checkpoint captured before each step so a crashed run resumes from the
   last good state instead of restarting from the top.
-- **Multi-agent** — a conversation/context snapshot the orchestrator can roll back to when a branch
+- **Multi-agent**: a conversation/context snapshot the orchestrator can roll back to when a branch
   dead-ends, and try a different approach from there.
-- **Low-code** — undo in the visual builder: each edit pushes a snapshot of the JSON document.
+- **Low-code**: undo in the visual builder: each edit pushes a snapshot of the JSON document.
 
 ## Related Patterns
 
-- **Command** — pairs with Memento: a command captures a memento to implement undo.
-- **Prototype** — both copy state; Memento stores it for later restore, Prototype clones to spawn
+- **Command**: pairs with Memento: a command captures a memento to implement undo.
+- **Prototype**: both copy state; Memento stores it for later restore, Prototype clones to spawn
   new objects.
-- **State** — a memento can capture and restore which state a machine was in.
+- **State**: a memento can capture and restore which state a machine was in.

@@ -56,9 +56,9 @@ Every new shape modifies `area`, risking the cases that already worked.
 
 ## Common Mistakes
 
-- **Abstracting speculatively** — building plugin points for variation that never comes.
-- **Leaving the switch** — adding an interface but still branching on a type tag elsewhere.
-- **Closing the wrong axis** — making shapes pluggable when it's the *operations* that vary
+- **Abstracting speculatively**: building plugin points for variation that never comes.
+- **Leaving the switch**: adding an interface but still branching on a type tag elsewhere.
+- **Closing the wrong axis**: making shapes pluggable when it's the *operations* that vary
   (that's a Visitor problem).
 
 ## Key Takeaways
@@ -99,7 +99,7 @@ function totalArea(shapes) { return shapes.reduce((sum, s) => sum + s.area(), 0)
 class Triangle { constructor(b, h) { this.b = b; this.h = h; } area() { return 0.5 * this.b * this.h; } }
 ```
 
-**🧠 Note** — `totalArea` depends on the `area()` abstraction, so a Triangle plugs in without
+**🧠 Note**: `totalArea` depends on the `area()` abstraction, so a Triangle plugs in without
 touching it. The `switch` is gone. The judgment: this pays off because shapes clearly vary; if
 only ever two existed and never grew, the branch would be simpler.
 
@@ -140,7 +140,7 @@ def total_area(shapes: list[Shape]) -> float:
 # Add Triangle without editing total_area.
 ```
 
-**🧠 Note** — A `Shape` `Protocol` fixes the extension point; new shapes just implement `area`.
+**🧠 Note**: A `Shape` `Protocol` fixes the extension point; new shapes just implement `area`.
 `functools.singledispatch` is another Pythonic OCP tool: register a new type's handler without
 editing the generic function.
 
@@ -154,7 +154,7 @@ editing the generic function.
 defmodule Geometry do
   def area(%{type: :circle, r: r}), do: 3.14159 * r * r
   def area(%{type: :square, side: s}), do: s * s
-  # add a clause here for every new shape — editing this module each time
+  # add a clause here for every new shape: editing this module each time
 end
 ```
 
@@ -185,7 +185,7 @@ end
 # A Triangle module + defimpl adds support with zero edits to existing code.
 ```
 
-**🧠 Note** — Elixir *protocols* are the language's OCP mechanism: `defimpl Shape, for: Triangle`
+**🧠 Note**: Elixir *protocols* are the language's OCP mechanism: `defimpl Shape, for: Triangle`
 extends `Shape.area/1` to a new type in a new file, without reopening the protocol or existing
 implementations. This is cleaner than adding `area/1` clauses to one module.
 
@@ -231,10 +231,10 @@ func TotalArea(shapes []Shape) float64 {
 	}
 	return sum
 }
-// A Triangle type with an Area() method plugs in — TotalArea is untouched.
+// A Triangle type with an Area() method plugs in: TotalArea is untouched.
 ```
 
-**🧠 Note** — `TotalArea` depends on the `Shape` interface; any type with `Area()` satisfies it,
+**🧠 Note**: `TotalArea` depends on the `Shape` interface; any type with `Area()` satisfies it,
 so new shapes extend the system without editing existing code. Go's implicit interfaces make the
 extension point cheap: no shape needs to declare it implements `Shape`.
 
@@ -282,7 +282,7 @@ public sealed record Triangle(double B, double H) : IShape
 }
 ```
 
-**🧠 Note** — Records with primary constructors make each shape a two-liner, and LINQ's `Sum`
+**🧠 Note**: Records with primary constructors make each shape a two-liner, and LINQ's `Sum`
 is the whole `TotalArea`. C# could also close the set with a sealed hierarchy plus a pattern-match
 `switch`, but that puts the central switch back; pick the interface when new shapes should
 arrive as new files, the switch when the set genuinely won't grow.
@@ -299,7 +299,7 @@ enum Shape {
     Square { side: f64 },
 }
 
-// Adding a Triangle reopens this match — and every other match on Shape.
+// Adding a Triangle reopens this match, and every other match on Shape.
 fn area(shape: &Shape) -> f64 {
     match shape {
         Shape::Circle { r } => std::f64::consts::PI * r * r,
@@ -344,10 +344,10 @@ fn main() {
     ];
     println!("{}", total_area(&shapes)); // 21.566370614359172
 }
-// A Triangle with `impl Shape` plugs in — total_area is untouched.
+// A Triangle with `impl Shape` plugs in: total_area is untouched.
 ```
 
-**🧠 Note** — Be fair to the "naive" version: in Rust an enum with an exhaustive `match` is
+**🧠 Note**: Be fair to the "naive" version: in Rust an enum with an exhaustive `match` is
 often the *right* call for a closed set, because adding a variant makes the compiler walk you
 to every match that needs updating: modification, but safe modification. Reach for the trait
 (and pay the `Box<dyn>` heap allocation and dynamic dispatch) when shapes must come from code
@@ -367,7 +367,7 @@ const Shape = union(enum) {
     square: struct { side: f64 },
 };
 
-// Adding a triangle reopens this switch — and every other switch on Shape.
+// Adding a triangle reopens this switch, and every other switch on Shape.
 fn area(shape: Shape) f64 {
     return switch (shape) {
         .circle => |c| std.math.pi * c.r * c.r,
@@ -381,7 +381,7 @@ fn area(shape: Shape) f64 {
 ```zig
 const std = @import("std");
 
-// Zig has no interfaces — the open contract is the two-field vtable
+// Zig has no interfaces: the open contract is the two-field vtable
 // idiom (context pointer + function pointer), like std.mem.Allocator.
 const Shape = struct {
     ctx: *const anyopaque,
@@ -428,10 +428,10 @@ pub fn main() void {
     const shapes = [_]Shape{ circle.shape(), square.shape() };
     std.debug.print("{d}\n", .{totalArea(&shapes)}); // 21.566370614359172
 }
-// A Triangle that hands out a Shape plugs in — totalArea is untouched.
+// A Triangle that hands out a Shape plugs in: totalArea is untouched.
 ```
 
-**🧠 Note** — Same honesty as Rust: the tagged union + exhaustive `switch` *is* idiomatic Zig
+**🧠 Note**: Same honesty as Rust: the tagged union + exhaustive `switch` *is* idiomatic Zig
 for a closed set: zero indirection, and the compiler flags every unhandled case. The vtable
 buys openness at the cost of a pointer indirection and the `@ptrCast` boilerplate, so reach
 for it only when new shapes must arrive without touching the switch. When the set is known at
@@ -456,7 +456,7 @@ class Geometry {
             case Square s -> s.side() * s.side();
         };
     }
-    // adding a Triangle reopens this switch — and every other switch on Shape
+    // adding a Triangle reopens this switch, and every other switch on Shape
 }
 ```
 
@@ -487,7 +487,7 @@ public class Demo {
 // New shape = new record implementing Shape; the stream never changes.
 ```
 
-**🧠 Note** — same honesty Rust asks for: the "naive" version is a legitimate modern-Java form.
+**🧠 Note**: same honesty Rust asks for: the "naive" version is a legitimate modern-Java form.
 `sealed` declares the set closed, and the pattern-matching `switch` is exhaustive with no
 `default`. Add `Triangle` to `permits` and the compiler walks you to every switch that must
 now handle it. That's modification, but safe, compiler-guided modification. Choose the open
@@ -498,13 +498,13 @@ when the set genuinely won't grow and it's the *operations* that vary.
 
 Where OCP shows up in practice:
 
-- **Payment/notification providers** — add a provider without editing the dispatcher.
-- **Plugin architectures** — drop-in modules discovered at runtime.
-- **Serializers/exporters** — new format = new implementation.
-- **Validation rules** — add a rule object rather than another `if`.
+- **Payment/notification providers**: add a provider without editing the dispatcher.
+- **Plugin architectures**: drop-in modules discovered at runtime.
+- **Serializers/exporters**: new format = new implementation.
+- **Validation rules**: add a rule object rather than another `if`.
 
 ## Related Principles & Patterns
 
-- **Strategy / Factory Method** — the usual vehicles for OCP: swap or construct implementations.
-- **Dependency Inversion** — depend on the abstraction OCP extends behind.
-- **Visitor** — when it's the operations, not the types, that must stay open.
+- **Strategy / Factory Method**: the usual vehicles for OCP: swap or construct implementations.
+- **Dependency Inversion**: depend on the abstraction OCP extends behind.
+- **Visitor**: when it's the operations, not the types, that must stay open.

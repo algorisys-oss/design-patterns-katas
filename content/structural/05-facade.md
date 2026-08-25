@@ -39,9 +39,9 @@ A facade hides that orchestration behind one call.
 
 Key Components:
 
-- **Facade** — the single entry point that coordinates the subsystems.
-- **Subsystems** — the complex parts (inventory, payment, shipping) that do the real work.
-- **Client** — talks only to the facade.
+- **Facade**: the single entry point that coordinates the subsystems.
+- **Subsystems**: the complex parts (inventory, payment, shipping) that do the real work.
+- **Client**: talks only to the facade.
 
 ## When to Use
 
@@ -63,10 +63,10 @@ Key Components:
 
 ## Common Mistakes
 
-- **Putting business logic in the facade** — it should *coordinate*, not become the whole app.
-- **Hiding too much** — a facade so thick that power users can't reach the subsystem when they
+- **Putting business logic in the facade**: it should *coordinate*, not become the whole app.
+- **Hiding too much**: a facade so thick that power users can't reach the subsystem when they
   legitimately need to.
-- **Confusing it with Adapter** — Facade simplifies many parts behind a new interface; Adapter
+- **Confusing it with Adapter**: Facade simplifies many parts behind a new interface; Adapter
   converts one object to a specific expected interface.
 
 ## Key Takeaways
@@ -117,7 +117,7 @@ const orders = new OrderFacade(inventory, payment, shipping, mailer);
 orders.checkout(order);   // callers know only this
 ```
 
-**🧠 Tradeoff** — The facade centralizes the orchestration and the subsystem dependencies, so
+**🧠 Tradeoff**: The facade centralizes the orchestration and the subsystem dependencies, so
 callers depend on `checkout()` alone. It doesn't lock the subsystems away (advanced code can
 still use them directly), which keeps the facade a convenience, not a cage.
 
@@ -159,7 +159,7 @@ const accounts = new AccountService(users, workspaces, mailer, analytics);
 app.post("/signup", async (req, res) => res.json(await accounts.signup(req.body)));
 ```
 
-**🧠 Tradeoff** — The controller now depends on `signup()` alone; the facade owns the service wiring
+**🧠 Tradeoff**: The controller now depends on `signup()` alone; the facade owns the service wiring
 and the order of operations, which is where it belongs and where it can be tested. The facade
 doesn't seal the services off (a background job can still call `mailer` directly), so it stays a
 convenience, not a wall.
@@ -200,7 +200,7 @@ orders = OrderFacade(inventory, payment, shipping, mailer)
 orders.checkout(order)
 ```
 
-**🧠 Tradeoff** — A plain class holding its subsystems is the whole pattern; injecting them (over
+**🧠 Tradeoff**: A plain class holding its subsystems is the whole pattern; injecting them (over
 importing globals) keeps the facade testable. Python often expresses a lightweight facade as a
 single module-level function too; reach for a class when the coordinator carries dependencies.
 
@@ -223,7 +223,7 @@ end
 **✅ Idiomatic**
 
 ```elixir
-# A context module IS a facade — Phoenix contexts are exactly this pattern.
+# A context module IS a facade: Phoenix contexts are exactly this pattern.
 defmodule Orders do
   alias MyApp.{Inventory, Payment, Shipping, Mailer}
 
@@ -240,7 +240,7 @@ end
 Orders.checkout(order)
 ```
 
-**🧠 Tradeoff** — Elixir/Phoenix names this pattern outright: a *context* module is a facade over
+**🧠 Tradeoff**: Elixir/Phoenix names this pattern outright: a *context* module is a facade over
 a group of related functions and schemas. The `with` chain adds honest error handling to the
 orchestration: any failing step short-circuits with its error tuple, which the flag-free naive
 version lacked.
@@ -291,7 +291,7 @@ func (f Facade) Checkout(order Order) (Result, error) {
 }
 ```
 
-**🧠 Tradeoff** — A struct holding the subsystem interfaces is the facade; taking interfaces (not
+**🧠 Tradeoff**: A struct holding the subsystem interfaces is the facade; taking interfaces (not
 concrete types) keeps it testable with fakes. Go's explicit error returns make the facade the
 right place to handle failures once, instead of every caller repeating the checks.
 
@@ -320,7 +320,7 @@ right place to handle failures once, instead of every caller repeating the check
 var orders = new OrderFacade(inventory, payment, shipping, mailer);
 orders.Checkout(order);
 
-// Primary constructor — the facade takes its four subsystems up front.
+// Primary constructor: the facade takes its four subsystems up front.
 public sealed class OrderFacade(
     IInventory inventory, IPayment payment, IShipping shipping, IMailer mailer)
 {
@@ -336,7 +336,7 @@ public sealed class OrderFacade(
 }
 ```
 
-**🧠 Tradeoff** — This is the shape ASP.NET calls an application service: constructor
+**🧠 Tradeoff**: This is the shape ASP.NET calls an application service: constructor
 injection hands the facade its subsystems, and the DI container wires it once at startup.
 Taking interfaces (not concrete classes) keeps it fake-able in tests. Keep it thin: the
 moment `Checkout` starts making business decisions it stops being a facade and starts
@@ -390,7 +390,7 @@ impl OrderFacade {
 // orders.checkout(&order)?;   // callers know only this
 ```
 
-**🧠 Tradeoff** — A struct that owns its subsystems is the whole pattern, and the `?`
+**🧠 Tradeoff**: A struct that owns its subsystems is the whole pattern, and the `?`
 chain is the orchestration: any failing step returns early with its error, much like
 Elixir's `with`. Concrete field types are the simplest form. When tests need fakes, make
 the facade generic over its subsystems (`OrderFacade<I: Inventory, ...>`, monomorphized)
@@ -443,7 +443,7 @@ const OrderFacade = struct {
 // const result = try orders.checkout(order);   // callers know only this
 ```
 
-**🧠 Tradeoff** — Facade is a pattern Zig does with no machinery at all: a struct of
+**🧠 Tradeoff**: Facade is a pattern Zig does with no machinery at all: a struct of
 structs and one method. `try` short-circuits each failing step, so error handling lives
 in one place and callers see an honest `!Result` signature. If tests need to swap a
 subsystem, make the facade generic over the subsystem types with comptime parameters
@@ -469,7 +469,7 @@ static Result placeOrder(Order order) {
 **✅ Idiomatic**
 
 ```java
-// The result is a plain data carrier — a record.
+// The result is a plain data carrier: a record.
 record Result(Receipt receipt, Shipment shipment) {}
 
 // The facade takes its subsystems up front and exposes one method.
@@ -504,7 +504,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — this is the shape Spring calls a service: constructor injection hands the
+**🧠 Tradeoff**: this is the shape Spring calls a service: constructor injection hands the
 facade its subsystems, wired once at startup, and taking interfaces keeps it mockable in
 tests. The constructor boilerplate is the visible cost: a `record OrderFacade(Inventory
 inventory, ...)` erases it when the facade holds nothing but final fields. Same warning as
@@ -515,25 +515,25 @@ facade and starts being the whole app.
 
 Real-world uses of Facade (from the reference article):
 
-- **Checkout / order flow** — inventory + payment + shipping behind one call.
-- **SDK front doors** — a simple client hiding auth, retries, pagination.
-- **Compiler pipeline** — one `compile()` over lexer, parser, codegen.
-- **Media / hardware subsystems** — `computer.start()` over CPU, memory, disk.
-- **Phoenix contexts / service layers** — a domain API over schemas and services.
+- **Checkout / order flow**: inventory + payment + shipping behind one call.
+- **SDK front doors**: a simple client hiding auth, retries, pagination.
+- **Compiler pipeline**: one `compile()` over lexer, parser, codegen.
+- **Media / hardware subsystems**: `computer.start()` over CPU, memory, disk.
+- **Phoenix contexts / service layers**: a domain API over schemas and services.
 
 **In modern systems:**
 
-- **Multi-agent** — one `agent.run(task)` over a tangle of model, memory, tools, and planner
+- **Multi-agent**: one `agent.run(task)` over a tangle of model, memory, tools, and planner
   subsystems; callers never see the wiring.
-- **Workflow engine** — a single `startWorkflow(def, input)` hiding the scheduler, store, and
+- **Workflow engine**: a single `startWorkflow(def, input)` hiding the scheduler, store, and
   executor behind it.
-- **Low-code** — `render(schema)` as the one entry point over the parser, node factory, and
+- **Low-code**: `render(schema)` as the one entry point over the parser, node factory, and
   renderer.
 
 ## Related Patterns
 
-- **Adapter** — converts one interface to another; Facade defines a new, simpler interface over
+- **Adapter**: converts one interface to another; Facade defines a new, simpler interface over
   many objects.
-- **Mediator** — also centralizes interaction, but between peer objects that keep talking;
+- **Mediator**: also centralizes interaction, but between peer objects that keep talking;
   Facade is a one-way front door.
-- **Singleton** — a facade is often exposed as a single shared instance.
+- **Singleton**: a facade is often exposed as a single shared instance.

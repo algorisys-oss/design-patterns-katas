@@ -28,24 +28,24 @@ into infrastructure, with automatic dependency tracking.
 
 Manually keeping derived data and the UI in sync with source state is error-prone:
 
-- **Forgotten updates** — you change `firstName` but forget to recompute `fullName` or re-render the
+- **Forgotten updates**: you change `firstName` but forget to recompute `fullName` or re-render the
   header, so the UI shows stale data.
-- **Manual subscription bookkeeping** — wiring "when this changes, update that" by hand for every
+- **Manual subscription bookkeeping**: wiring "when this changes, update that" by hand for every
   dependency is tedious and easy to get wrong.
-- **Over-updating** — to be safe, you re-render everything on every change, wasting work.
-- **Tangled invalidation** — as derived values depend on other derived values, the "what needs
+- **Over-updating**: to be safe, you re-render everything on every change, wasting work.
+- **Tangled invalidation**: as derived values depend on other derived values, the "what needs
   updating when X changes?" graph becomes impossible to maintain by hand.
 
 ## Structure
 
 Key Components:
 
-- **Signal / Observable (source)** — a container holding a value; reading it tracks a dependency,
+- **Signal / Observable (source)**: a container holding a value; reading it tracks a dependency,
   writing it notifies dependents.
-- **Derived / Computed** — a value defined by a function of signals; recomputes automatically (and
+- **Derived / Computed**: a value defined by a function of signals; recomputes automatically (and
   usually lazily/memoized) when its inputs change.
-- **Effect / View** — a side effect (rendering, logging) that re-runs when the signals it reads change.
-- **Dependency tracking** — the runtime records which computations read which signals, so it knows
+- **Effect / View**: a side effect (rendering, logging) that re-runs when the signals it reads change.
+- **Dependency tracking**: the runtime records which computations read which signals, so it knows
   exactly what to update.
 
 ```
@@ -63,26 +63,26 @@ Key Components:
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Automatic consistency** — derived values and views never go stale; the system updates them.
-- **Declarative** — say what a value *is* in terms of others, not how to keep it updated.
-- **Fine-grained efficiency** — only computations that actually read a changed signal re-run.
+- **Automatic consistency**: derived values and views never go stale; the system updates them.
+- **Declarative**: say what a value *is* in terms of others, not how to keep it updated.
+- **Fine-grained efficiency**: only computations that actually read a changed signal re-run.
 
 ### Disadvantages
-- **Hidden control flow** — updates happen "magically," which can be hard to trace and debug.
-- **Subtle traps** — effects that both read and write signals can loop; stale closures and timing
+- **Hidden control flow**: updates happen "magically," which can be hard to trace and debug.
+- **Subtle traps**: effects that both read and write signals can loop; stale closures and timing
   bugs appear.
-- **Memory & lifecycle** — subscriptions/effects must be disposed, or they leak and keep stale
+- **Memory & lifecycle**: subscriptions/effects must be disposed, or they leak and keep stale
   values alive.
 
 ## Common Mistakes
 
-- **Effects that write the signals they read** — creating a feedback loop (or an infinite update
+- **Effects that write the signals they read**: creating a feedback loop (or an infinite update
   cycle); derive instead of imperatively syncing.
-- **Not disposing effects/subscriptions** — reactive graphs leak if effects outlive their component;
+- **Not disposing effects/subscriptions**: reactive graphs leak if effects outlive their component;
   clean up on unmount.
-- **Deriving with side effects** — a computed value that also mutates state or does I/O breaks the
+- **Deriving with side effects**: a computed value that also mutates state or does I/O breaks the
   "pure function of inputs" contract; keep derivations pure.
-- **Fighting the batching** — assuming each write re-renders synchronously; reactive systems batch,
+- **Fighting the batching**: assuming each write re-renders synchronously; reactive systems batch,
   so reading right after writing may see the old value.
 
 ## Key Takeaways
@@ -122,10 +122,10 @@ effect(() => {
   document.querySelector("#total").textContent = total.value; // re-runs when total changes
 });
 
-qty.value = 5; // total recomputes, the effect re-renders — no manual wiring
+qty.value = 5; // total recomputes, the effect re-renders, no manual wiring
 ```
 
-**🧠 Tradeoff** — Signals make `total` and the DOM update themselves: change `qty` and everything
+**🧠 Tradeoff**: Signals make `total` and the DOM update themselves: change `qty` and everything
 downstream follows, because reads inside `computed`/`effect` are tracked automatically. This is the
 model behind SolidJS, Vue, Preact Signals, and Angular signals. The cost is that updates become
 implicit control flow (great until an effect loops or a stale closure bites) so keep derivations
@@ -162,7 +162,7 @@ average.subscribe((avg) => io.emit("avg", avg)); // auto-updates on every new re
 // readings.next(21.5);
 ```
 
-**🧠 Tradeoff** — RxJS models values-over-time as observable streams: `average` is *declared* as a
+**🧠 Tradeoff**: RxJS models values-over-time as observable streams: `average` is *declared* as a
 transformation of `readings`, and subscribers update whenever it emits, with no manual recompute-and-emit
 in every writer. It shines for event/async streams (sockets, sensors, UI events). The cost is RxJS's
 learning curve and the ease of leaking subscriptions, so unsubscribe when done.
@@ -202,7 +202,7 @@ price.subscribe(render); qty.subscribe(render)
 qty.value = 5     # render re-runs automatically
 ```
 
-**🧠 Tradeoff** — Python has no built-in signals, but the observer-with-notification core is a small
+**🧠 Tradeoff**: Python has no built-in signals, but the observer-with-notification core is a small
 class, and libraries provide the real thing: RxPY for streams, `param` for reactive parameters, and
 Reflex/Flet for reactive UI state. The sketch shows explicit subscription (no auto-tracking); mature
 libs add dependency tracking. Reactivity is less pervasive in Python UIs than JS, but the pattern
@@ -229,7 +229,7 @@ def handle_event("set_qty", %{"qty" => q}, socket) do
   {:noreply, assign(socket, qty: String.to_integer(q))}   # just set the source
 end
 
-# derived value computed in render (or a helper) — recomputed when assigns change:
+# derived value computed in render (or a helper): recomputed when assigns change:
 def render(assigns) do
   ~H"""
   <p>Total: <%= @price * @qty %></p>   <!-- derived from assigns, always current -->
@@ -237,7 +237,7 @@ def render(assigns) do
 end
 ```
 
-**🧠 Tradeoff** — LiveView is reactive at the render layer: change an assign and the template
+**🧠 Tradeoff**: LiveView is reactive at the render layer: change an assign and the template
 re-renders, recomputing derived values (and it diffs to send only what changed over the wire). You
 set the *source* (`qty`) and derive in the template, rather than hand-syncing a `total` assign.
 Phoenix's change tracking makes this efficient. It's coarser-grained than JS signals (per-assign, not
@@ -277,7 +277,7 @@ func average(readings <-chan float64) <-chan float64 {
 // for avg := range average(readings) { render(avg) }  // consumers react to each new value
 ```
 
-**🧠 Tradeoff** — Go has no signal library in the standard idiom, but channels model reactive streams
+**🧠 Tradeoff**: Go has no signal library in the standard idiom, but channels model reactive streams
 naturally: `average` transforms an input channel into a derived output channel, and consumers `range`
 over it, reacting to each value. It's explicit dataflow rather than transparent dependency tracking:
 you wire the graph with channels and goroutines. For UI-style fine-grained reactivity Go is a poor
@@ -285,22 +285,22 @@ fit; for streaming/derived pipelines, channels are the idiomatic reactive primit
 
 ## Applications
 
-- **Modern UI frameworks** — SolidJS signals, Vue reactivity, Svelte runes, Angular signals, and
+- **Modern UI frameworks**: SolidJS signals, Vue reactivity, Svelte runes, Angular signals, and
   Preact Signals all drive rendering reactively (frontend).
-- **Spreadsheets** — the canonical reactive system: a cell's formula recomputes when its inputs
+- **Spreadsheets**: the canonical reactive system: a cell's formula recomputes when its inputs
   change (frontend).
-- **Live dashboards** — metrics and charts derived from streaming inputs update as data arrives
+- **Live dashboards**: metrics and charts derived from streaming inputs update as data arrives
   (frontend & backend).
-- **Form state** — validity, derived fields, and enabled/disabled state computed reactively from
+- **Form state**: validity, derived fields, and enabled/disabled state computed reactively from
   inputs (frontend).
-- **Event/stream processing** — RxJS/RxPY pipelines transforming sockets, sensors, and user events
+- **Event/stream processing**: RxJS/RxPY pipelines transforming sockets, sensors, and user events
   into derived streams (frontend & backend).
 
 ## Related Patterns
 
-- **Observer** — reactive state *is* Observer with automatic dependency tracking: signals are subjects,
+- **Observer**: reactive state *is* Observer with automatic dependency tracking: signals are subjects,
   effects are observers, wired implicitly instead of by hand.
-- **Unidirectional Data Flow** — an alternative state model; reactivity favors fine-grained derived
+- **Unidirectional Data Flow**: an alternative state model; reactivity favors fine-grained derived
   values, unidirectional flow favors explicit actions and reducers.
-- **Provider / Context** — reactive stores/signals are typically shared with the component tree through
+- **Provider / Context**: reactive stores/signals are typically shared with the component tree through
   a provider.

@@ -38,9 +38,9 @@ An iterator hides the shape behind a `next()`/`hasNext()` (or a language's built
 
 Key Components:
 
-- **Iterator** — knows how to produce the next element and whether more remain.
-- **Iterable/Aggregate** — the collection that can produce an iterator.
-- **Client** — walks the iterator, ignorant of the underlying structure.
+- **Iterator**: knows how to produce the next element and whether more remain.
+- **Iterable/Aggregate**: the collection that can produce an iterator.
+- **Client**: walks the iterator, ignorant of the underlying structure.
 
 ## When to Use
 
@@ -62,9 +62,9 @@ Key Components:
 
 ## Common Mistakes
 
-- **Exposing the structure anyway** — an iterator that hands back internal nodes leaks the shape.
-- **Eager when you meant lazy** — building the whole sequence up front defeats streaming.
-- **Mutating during iteration** — add/remove mid-loop and behavior is undefined in most languages.
+- **Exposing the structure anyway**: an iterator that hands back internal nodes leaks the shape.
+- **Eager when you meant lazy**: building the whole sequence up front defeats streaming.
+- **Mutating during iteration**: add/remove mid-loop and behavior is undefined in most languages.
 
 ## Key Takeaways
 
@@ -104,11 +104,11 @@ class NumberRange {
 }
 
 const range = new NumberRange(0, 3);
-for (const n of range) console.log(n);   // 0 1 2 — uniform for..of
+for (const n of range) console.log(n);   // 0 1 2: uniform for..of
 const doubled = [...range].map(x => x * 2);
 ```
 
-**🧠 Tradeoff** — Implementing `Symbol.iterator` as a generator makes the object work with
+**🧠 Tradeoff**: Implementing `Symbol.iterator` as a generator makes the object work with
 `for..of`, spread, and destructuring: the whole language's iteration machinery, for free, and
 lazily. Rolling your own `next()`/`hasNext()` API instead would fight the language; the built-in
 protocol is almost always the right call.
@@ -130,7 +130,7 @@ async function getUsers(db) {
 **✅ Idiomatic (backend)**
 
 ```js
-// An async iterator streams rows lazily — one page at a time.
+// An async iterator streams rows lazily: one page at a time.
 async function* users(db, pageSize = 100) {
   let offset = 0;
   while (true) {
@@ -147,7 +147,7 @@ for await (const user of users(db)) {
 }
 ```
 
-**🧠 Tradeoff** — Async generators (`for await...of`) are the backend Iterator: they stream from
+**🧠 Tradeoff**: Async generators (`for await...of`) are the backend Iterator: they stream from
 databases, files, and network without loading everything into memory, the same protocol behind
 Node streams and cursors. The tradeoff is holding a resource (a DB cursor/connection) open across
 the iteration, so you must close it in a `finally` if the consumer breaks early.
@@ -187,7 +187,7 @@ for n in NumberRange(0, 3):
 doubled = [x * 2 for x in NumberRange(0, 3)]
 ```
 
-**🧠 Tradeoff** — A generator `__iter__` makes the object a first-class iterable: `for`, `list()`,
+**🧠 Tradeoff**: A generator `__iter__` makes the object a first-class iterable: `for`, `list()`,
 comprehensions, `sum()` all just work, lazily. Python's iterator protocol is so central that a
 plain generator function is often the whole pattern; you rarely write an explicit iterator class.
 
@@ -220,11 +220,11 @@ defmodule NumberRange do
 end
 
 NumberRange.stream(0, 3)
-|> Stream.map(&(&1 * 2))              # still lazy — nothing computed yet
-|> Enum.to_list()                    # [0, 2, 4] — runs on demand here
+|> Stream.map(&(&1 * 2))              # still lazy, nothing computed yet
+|> Enum.to_list()                    # [0, 2, 4]: runs on demand here
 ```
 
-**🧠 Tradeoff** — Elixir's `Enumerable`/`Stream` *is* the Iterator pattern: `Stream` builds lazy
+**🧠 Tradeoff**: Elixir's `Enumerable`/`Stream` *is* the Iterator pattern: `Stream` builds lazy
 pipelines that produce values only when an `Enum` function pulls them. `Stream.unfold` expresses a
 custom sequence without a backing list, so it works over infinite or generated data. You implement
 the `Enumerable` protocol for a custom collection to plug into the whole `Enum`/`Stream` toolbox.
@@ -236,7 +236,7 @@ the `Enumerable` protocol for a custom collection to plug into the whole `Enum`/
 **❌ Naive**
 
 ```go
-// Expose the slice and index it — caller is tied to the representation.
+// Expose the slice and index it: caller is tied to the representation.
 type NumberRange struct{ Items []int }
 
 func NewRange(start, end int) NumberRange {
@@ -266,10 +266,10 @@ func Numbers(start, end int) iter.Seq[int] {
 	}
 }
 
-// for n := range rng.Numbers(0, 3) { fmt.Println(n) }  // 0 1 2 — lazy, no slice
+// for n := range rng.Numbers(0, 3) { fmt.Println(n) }  // 0 1 2; lazy, no slice
 ```
 
-**🧠 Tradeoff** — Go 1.23's `iter.Seq` (range-over-func) is the modern Iterator: a function that
+**🧠 Tradeoff**: Go 1.23's `iter.Seq` (range-over-func) is the modern Iterator: a function that
 yields values, consumed with `for range`, lazily and with early-break support via `yield`'s bool.
 Before 1.23, the idioms were a `Next() (T, bool)` method or a channel; the new form integrates with
 the language loop the way the other languages' protocols do.
@@ -300,7 +300,7 @@ public sealed class NumberRange
 ```csharp
 using System.Collections;
 
-// yield return implements the iterator protocol — lazy, no backing list.
+// yield return implements the iterator protocol: lazy, no backing list.
 foreach (var n in new NumberRange(0, 3)) Console.WriteLine(n); // 0 1 2
 
 var doubled = new NumberRange(0, 3).Select(x => x * 2).ToList(); // LINQ plugs straight in
@@ -315,7 +315,7 @@ public sealed class NumberRange(int start, int end) : IEnumerable<int>
 }
 ```
 
-**🧠 Tradeoff** — `IEnumerable<T>`/`IEnumerator<T>` *is* the GoF Iterator shipped in the box,
+**🧠 Tradeoff**: `IEnumerable<T>`/`IEnumerator<T>` *is* the GoF Iterator shipped in the box,
 and `yield return` writes the `MoveNext` state machine you'd otherwise hand-roll, while `foreach`
 and all of LINQ are its clients. So in C# the pattern means implementing the protocol, never
 inventing a `HasNext`/`Next` API of your own. For streamed sources (the Node.js tab's case),
@@ -329,7 +329,7 @@ close-the-cursor caveat.
 **❌ Naive**
 
 ```rust
-// Expose the backing Vec and index it — caller tied to the representation; eager.
+// Expose the backing Vec and index it: caller tied to the representation; eager.
 struct NumberRange { items: Vec<i32> }
 
 impl NumberRange {
@@ -374,14 +374,14 @@ impl Iterator for NumberRange {
 
 fn main() {
     for n in NumberRange::new(0, 3) {
-        println!("{n}"); // 0 1 2 — a plain for loop
+        println!("{n}"); // 0 1 2: a plain for loop
     }
     let doubled: Vec<i32> = NumberRange::new(0, 3).map(|x| x * 2).collect();
     println!("{doubled:?}"); // [0, 2, 4]
 }
 ```
 
-**🧠 Tradeoff** — implement one method, `next() -> Option<Item>`, and the trait's dozens of
+**🧠 Tradeoff**: implement one method, `next() -> Option<Item>`, and the trait's dozens of
 provided adapters (`map`, `filter`, `take`, `collect`) come along free, all lazy, and
 monomorphized down to loop-speed code. Honesty check: for numbers you'd just write `0..3`,
 which is already an `Iterator`; you implement the trait for your own structures: tree walks,
@@ -424,7 +424,7 @@ pub fn main() void {
 ```zig
 const std = @import("std");
 
-// The std convention: a struct with next() returning ?T — null means done.
+// The std convention: a struct with next() returning ?T; null means done.
 const NumberRange = struct {
     current: i64,
     end: i64,
@@ -448,7 +448,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — the optional-returning `next()` is a convention, not a language feature, but
+**🧠 Tradeoff**: the optional-returning `next()` is a convention, not a language feature, but
 it's the one std uses everywhere (`std.fs.Dir.iterate`, hash-map iterators, the string
 tokenizers), so `while (it.next()) |n|` reads as native Zig. The `?i64` collapses
 `hasNext`/`next` into one call, and the iteration is lazy with no allocation. What you don't
@@ -512,13 +512,13 @@ class NumberRange implements Iterable<Integer> {
 public class Demo {
     public static void main(String[] args) {
         for (var n : new NumberRange(0, 3)) {
-            System.out.println(n); // 0 1 2 — uniform for-each
+            System.out.println(n); // 0 1 2: uniform for-each
         }
     }
 }
 ```
 
-**🧠 Tradeoff** — Iterator is the GoF pattern Java shipped as a core library type:
+**🧠 Tradeoff**: Iterator is the GoF pattern Java shipped as a core library type:
 `java.util.Iterator` *is* the `hasNext`/`next` interface from the book, and the for-each loop
 is compiler sugar that calls `iterator()` on anything `Iterable`, so in Java the pattern
 means implementing the protocol, never inventing a cursor API of your own. Honesty check: for
@@ -533,14 +533,14 @@ hides for you.
 
 Real-world uses of Iterator (from the reference article), by tier:
 
-- **Frontend** — paginated results, virtualized lists, tree/DOM traversal, generator-driven
+- **Frontend**: paginated results, virtualized lists, tree/DOM traversal, generator-driven
   animation sequences.
-- **Backend** — streaming database cursors, directory traversal, reading large files line by line,
+- **Backend**: streaming database cursors, directory traversal, reading large files line by line,
   paging external APIs without buffering.
-- **Both** — lazy pipelines over infinite or generated sequences.
+- **Both**: lazy pipelines over infinite or generated sequences.
 
 ## Related Patterns
 
-- **Composite** — Iterator traverses a composite tree uniformly.
-- **Strategy** — different traversal orders are strategies plugged into iteration.
-- **Observer** — both decouple, but Iterator pulls elements while Observer pushes events.
+- **Composite**: Iterator traverses a composite tree uniformly.
+- **Strategy**: different traversal orders are strategies plugged into iteration.
+- **Observer**: both decouple, but Iterator pulls elements while Observer pushes events.

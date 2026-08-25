@@ -39,10 +39,10 @@ A builder names each part and produces the finished request in one `build()`.
 
 Key Components:
 
-- **Product** — the complex object being assembled (`HttpRequest`).
-- **Builder** — collects the parts through named steps, often returning itself to chain.
-- **build()** — validates and produces the finished, immutable product.
-- **(Director)** — optional; encapsulates a common build recipe.
+- **Product**: the complex object being assembled (`HttpRequest`).
+- **Builder**: collects the parts through named steps, often returning itself to chain.
+- **build()**: validates and produces the finished, immutable product.
+- **(Director)**: optional; encapsulates a common build recipe.
 
 ## When to Use
 
@@ -65,11 +65,11 @@ Key Components:
 
 ## Common Mistakes
 
-- **Using it for simple objects** — two or three fields don't need a builder; a constructor or
+- **Using it for simple objects**: two or three fields don't need a builder; a constructor or
   literal is clearer.
-- **A builder that returns an invalid product** — validate in `build()`, not scattered across
+- **A builder that returns an invalid product**: validate in `build()`, not scattered across
   setters.
-- **Leaking the mutable builder as the result** — return the finished product, not the builder,
+- **Leaking the mutable builder as the result**: return the finished product, not the builder,
   so callers can't mutate it after build.
 
 ## Key Takeaways
@@ -90,7 +90,7 @@ Building an `HttpRequest` with several optional parts.
 **❌ Naive**
 
 ```js
-// Telescoping constructor — positional, unreadable, null-padded.
+// Telescoping constructor: positional, unreadable, null-padded.
 class HttpRequest {
   constructor(url, method, headers, body, timeout, retries) {
     this.url = url; this.method = method; this.headers = headers;
@@ -128,7 +128,7 @@ const request = new HttpRequestBuilder()
   .build();
 ```
 
-**🧠 Tradeoff** — Returning `this` from each step gives the fluent chain; `build()` centralizes
+**🧠 Tradeoff**: Returning `this` from each step gives the fluent chain; `build()` centralizes
 validation and freezes the result so it can't be mutated afterward. The cost is a second class
 and a mutable staging object; for a two-field object this ceremony isn't worth it.
 
@@ -139,7 +139,7 @@ and a mutable staging object; for a two-field object this ceremony isn't worth i
 **❌ Naive**
 
 ```js
-// Concatenating SQL by hand — unreadable, and one step from an injection hole.
+// Concatenating SQL by hand: unreadable, and one step from an injection hole.
 function findUsers(filters) {
   let sql = "SELECT * FROM users";
   if (filters.country) sql += ` WHERE country = '${filters.country}'`; // 🚨 interpolated value
@@ -151,7 +151,7 @@ function findUsers(filters) {
 **✅ Idiomatic (backend)**
 
 ```js
-// A fluent builder assembles a parameterized query — values never touch the string.
+// A fluent builder assembles a parameterized query: values never touch the string.
 class QueryBuilder {
   #table; #wheres = []; #params = []; #limit;
   from(t) { this.#table = t; return this; }
@@ -173,7 +173,7 @@ const query = new QueryBuilder().from("users").where("country", "US").limit(10).
 // { text: "SELECT * FROM users WHERE country = $1 LIMIT 10", values: ["US"] }
 ```
 
-**🧠 Tradeoff** — The builder keeps values in a params array and emits only placeholders, so the
+**🧠 Tradeoff**: The builder keeps values in a params array and emits only placeholders, so the
 query is safe by construction and reads in the order you think about it. This is the shape of Knex
 and most query builders. The cost is the builder class; for a fixed one-line query a plain
 parameterized string is simpler.
@@ -220,7 +220,7 @@ request = HttpRequest(
 )
 ```
 
-**🧠 Tradeoff** — Keyword arguments with defaults give you named, optional construction for free,
+**🧠 Tradeoff**: Keyword arguments with defaults give you named, optional construction for free,
 and `frozen=True` makes the result immutable, so idiomatic Python rarely needs a separate
 builder class. Reach for a real builder only when construction is multi-step, stateful, or
 conditional (assembling a query across method calls), not merely "many optional fields."
@@ -232,7 +232,7 @@ conditional (assembling a query across method calls), not merely "many optional 
 **❌ Naive**
 
 ```elixir
-# A positional new/6 — unreadable and rigid.
+# A positional new/6: unreadable and rigid.
 defmodule HttpRequest do
   def new(url, method, headers, body, timeout, retries) do
     %{url: url, method: method, headers: headers,
@@ -249,7 +249,7 @@ defmodule HttpRequest do
 
   def new(url), do: %HttpRequest{url: url}
 
-  # Each step returns an updated struct — pipe them together.
+  # Each step returns an updated struct: pipe them together.
   def method(req, m), do: %{req | method: m}
   def header(req, k, v), do: %{req | headers: Map.put(req.headers, k, v)}
   def body(req, b), do: %{req | body: b}
@@ -266,7 +266,7 @@ request =
   |> HttpRequest.build()
 ```
 
-**🧠 Tradeoff** — The pipe operator *is* the fluent builder: each step takes a struct and returns
+**🧠 Tradeoff**: The pipe operator *is* the fluent builder: each step takes a struct and returns
 a new one (data is immutable, so there's no mutable staging object at all). `build/1` pattern-
 matches to validate. For simple cases you'd just write a struct literal or `struct!/2`; the step
 functions earn their place when construction is conditional or spread across a pipeline.
@@ -318,7 +318,7 @@ func (b *Builder) Build() (Request, error) {
 }
 ```
 
-**🧠 Tradeoff** — The fluent builder works in Go, but the more common idiom is *functional
+**🧠 Tradeoff**: The fluent builder works in Go, but the more common idiom is *functional
 options* (`New(url, WithMethod("POST"), WithTimeout(30))`): variadic `func(*Request)` values
 that keep the constructor open to new options without growing its signature. Use the builder
 when steps are ordered or validated together; use options for "many optional settings."
@@ -330,7 +330,7 @@ when steps are ordered or validated together; use options for "many optional set
 **❌ Naive**
 
 ```csharp
-// Telescoping construction — positional, null-padded, unreadable.
+// Telescoping construction: positional, null-padded, unreadable.
 var request = new HttpRequest("https://api", "POST", null, "{}", 30, 3);
 // which int is the timeout? which is retries? the call site won't say
 
@@ -349,7 +349,7 @@ var request = new HttpRequestBuilder("https://api")
 
 Console.WriteLine($"{request.Method} {request.Url}"); // POST https://api
 
-// The product is an immutable record — nothing to mutate after Build().
+// The product is an immutable record, nothing to mutate after Build().
 public sealed record HttpRequest(string Url, string Method,
     IReadOnlyDictionary<string, string> Headers, string? Body, int Timeout);
 
@@ -373,7 +373,7 @@ public sealed class HttpRequestBuilder(string url)
 }
 ```
 
-**🧠 Tradeoff** — like Python, C# covers "many optional fields" without a builder: object
+**🧠 Tradeoff**: like Python, C# covers "many optional fields" without a builder: object
 initializers with `required` and `init` members give named, compiler-checked construction
 (`new HttpRequest { Url = "..." }` won't compile without `Url`). So the fluent class above earns
 its place only when construction is staged, conditional, or validated as a whole, which is
@@ -431,7 +431,7 @@ impl HttpRequestBuilder {
         }
     }
 
-    // Each step takes and returns the builder by value — chains without cloning.
+    // Each step takes and returns the builder by value: chains without cloning.
     fn method(mut self, m: &str) -> Self { self.method = m.into(); self }
     fn header(mut self, k: &str, v: &str) -> Self {
         self.headers.insert(k.into(), v.into());
@@ -462,7 +462,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — Rust has no default or named arguments, so the builder is genuinely
+**🧠 Tradeoff**: Rust has no default or named arguments, so the builder is genuinely
 load-bearing here; it's all over std (`Command`, `OpenOptions`, `thread::Builder`). The
 consuming style (`mut self` in, `Self` out) chains without borrows and makes a used-up builder
 unusable again, which the borrow checker enforces for free; switch to `&mut self` steps when you
@@ -476,7 +476,7 @@ request" a path the caller must handle, not a runtime surprise.
 **❌ Naive**
 
 ```zig
-// A positional init — the call site is number soup.
+// A positional init: the call site is number soup.
 fn newRequest(url: []const u8, method: []const u8, body: ?[]const u8,
     timeout_s: u32, retries: u32) HttpRequest {
     return .{ .url = url, .method = method, .body = body,
@@ -495,7 +495,7 @@ const std = @import("std");
 const Header = struct { name: []const u8, value: []const u8 };
 
 const HttpRequest = struct {
-    url: []const u8, // no default — omitting it is a compile error
+    url: []const u8, // no default; omitting it is a compile error
     method: []const u8 = "GET",
     headers: []const Header = &.{},
     body: ?[]const u8 = null,
@@ -517,7 +517,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — Zig's struct literal already does most of the builder's job: fields are named,
+**🧠 Tradeoff**: Zig's struct literal already does most of the builder's job: fields are named,
 defaults fill the gaps, and a field without a default (like `url`) *must* appear or the program
 doesn't compile: stronger than the JS builder's runtime throw, and it costs nothing. So don't
 write a builder class here; that would be cargo-culting. A real builder struct earns its place
@@ -532,7 +532,7 @@ the paths that can fail.
 **❌ Naive**
 
 ```java
-// Telescoping constructor — positional, null-padded, unreadable.
+// Telescoping constructor: positional, null-padded, unreadable.
 var request = new HttpRequest("https://api", "POST", null, "{}", 30, 3);
 // which int is the timeout? which is retries? the call site won't say
 ```
@@ -543,7 +543,7 @@ var request = new HttpRequest("https://api", "POST", null, "{}", 30, 3);
 import java.util.HashMap;
 import java.util.Map;
 
-// The product is a record — immutable, equality and accessors for free.
+// The product is a record: immutable, equality and accessors for free.
 record HttpRequest(String url, String method, Map<String, String> headers,
                    String body, int timeout) {
 
@@ -583,7 +583,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — Java has no named or default arguments, so the fluent builder is genuinely
+**🧠 Tradeoff**: Java has no named or default arguments, so the fluent builder is genuinely
 load-bearing: this is Effective Java's Item 2, and the JDK itself ships it
 (`HttpRequest.newBuilder()`, `Stream.builder()`). Records changed the product's half of the
 deal, not the builder's: `HttpRequest` gets immutability and equality for free, but its
@@ -596,24 +596,24 @@ and nobody wants to type it.
 
 Real-world uses of Builder (from the reference article):
 
-- **HTTP request / query builders** — assemble URL, headers, body, params fluently.
-- **UI construction** — a modal or form built up part by part.
-- **SQL query builders** — `select().where().orderBy().build()`.
-- **Configuration objects** — many optional settings with sane defaults.
-- **Test data builders** — construct valid fixtures with a few overrides.
+- **HTTP request / query builders**: assemble URL, headers, body, params fluently.
+- **UI construction**: a modal or form built up part by part.
+- **SQL query builders**: `select().where().orderBy().build()`.
+- **Configuration objects**: many optional settings with sane defaults.
+- **Test data builders**: construct valid fixtures with a few overrides.
 
 **In modern systems:**
 
-- **Low-code** — assemble a form or page step by step from its JSON schema, validating each
+- **Low-code**: assemble a form or page step by step from its JSON schema, validating each
   section as it attaches.
-- **Multi-agent** — build a model request: system prompt + tools + memory + params composed before
+- **Multi-agent**: build a model request: system prompt + tools + memory + params composed before
   the call, with defaults filled in.
-- **Workflow engine** — a fluent DSL that builds a workflow graph (`.step().then().branch()`).
+- **Workflow engine**: a fluent DSL that builds a workflow graph (`.step().then().branch()`).
 
 ## Related Patterns
 
-- **Abstract Factory** — returns families of products immediately; Builder assembles one complex
+- **Abstract Factory**: returns families of products immediately; Builder assembles one complex
   product over several steps.
-- **Factory Method** — a single-call creator; Builder is multi-step and stateful.
-- **Fluent Interface** — the chaining style Builder often uses, but a builder is about staged
+- **Factory Method**: a single-call creator; Builder is multi-step and stateful.
+- **Fluent Interface**: the chaining style Builder often uses, but a builder is about staged
   construction, not just chaining.

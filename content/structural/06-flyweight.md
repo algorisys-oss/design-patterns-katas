@@ -38,9 +38,9 @@ Flyweight keeps one shared "Arial 12 'a'" glyph and passes only the position per
 
 Key Components:
 
-- **Flyweight** — the shared object holding intrinsic (immutable, shareable) state.
-- **Flyweight Factory** — returns a cached flyweight for a given intrinsic key, creating it once.
-- **Extrinsic state** — passed in by the client at call time (position, color), never stored on
+- **Flyweight**: the shared object holding intrinsic (immutable, shareable) state.
+- **Flyweight Factory**: returns a cached flyweight for a given intrinsic key, creating it once.
+- **Extrinsic state**: passed in by the client at call time (position, color), never stored on
   the flyweight.
 
 ## When to Use
@@ -62,10 +62,10 @@ Key Components:
 
 ## Common Mistakes
 
-- **Storing extrinsic state on the flyweight** — it must stay shared and immutable; per-instance
+- **Storing extrinsic state on the flyweight**: it must stay shared and immutable; per-instance
   data belongs to the caller.
-- **Mutating a shared flyweight** — corrupts every object using it.
-- **Applying it without a memory problem** — the complexity only pays off at scale.
+- **Mutating a shared flyweight**: corrupts every object using it.
+- **Applying it without a memory problem**: the complexity only pays off at scale.
 
 ## Key Takeaways
 
@@ -84,7 +84,7 @@ A glyph factory sharing tree/character objects across many positions.
 **❌ Naive**
 
 ```js
-// Every tree stores its full type data — duplicated a million times.
+// Every tree stores its full type data: duplicated a million times.
 class Tree {
   constructor(x, y, name, color, texture) {
     this.x = x; this.y = y;
@@ -118,7 +118,7 @@ for (let i = 0; i < 1_000_000; i++) {
 }
 ```
 
-**🧠 Tradeoff** — One `TreeType` per (name,color) is shared by a million trees, so the heavy
+**🧠 Tradeoff**: One `TreeType` per (name,color) is shared by a million trees, so the heavy
 texture exists once instead of a million times; each tree keeps only its `x,y` and a reference.
 The flyweight must stay immutable: mutating the shared `TreeType` would change every tree at
 once.
@@ -130,7 +130,7 @@ once.
 **❌ Naive**
 
 ```js
-// Compiling the validator on every request — CPU and memory burned re-creating the same thing.
+// Compiling the validator on every request: CPU and memory burned re-creating the same thing.
 function validate(schema, payload) {
   const validator = ajv.compile(schema); // expensive, identical each call
   return validator(payload);
@@ -153,7 +153,7 @@ function validate(schema, payload) {
 }
 ```
 
-**🧠 Tradeoff** — One compiled validator per schema is shared across every request that uses it, so
+**🧠 Tradeoff**: One compiled validator per schema is shared across every request that uses it, so
 the expensive compile happens once instead of per call; the same trick backs prepared-statement
 caches and compiled-regex reuse. The shared object must stay immutable, and watch the cache key: an
 unbounded map keyed by dynamic schemas is a memory leak, so bound it or key by a stable id.
@@ -192,7 +192,7 @@ def tree_type(name: str, color: str) -> TreeType:
 forest = [(i, 0, tree_type("Oak", "green")) for i in range(1_000_000)]
 ```
 
-**🧠 Tradeoff** — `lru_cache` *is* the flyweight factory — it returns the same `TreeType` for
+**🧠 Tradeoff**: `lru_cache` *is* the flyweight factory; it returns the same `TreeType` for
 equal arguments, memoizing construction. `__slots__` trims per-object memory further. The trees
 become lightweight tuples of position plus a shared reference; profile to confirm the sharing
 actually helps before adding the machinery.
@@ -233,7 +233,7 @@ end
 forest = for i <- 1..1_000_000, do: {i, 0, TreeTypes.get("Oak", "green")}
 ```
 
-**🧠 Tradeoff** — Immutable data means a shared term is *already* stored once and referenced, so
+**🧠 Tradeoff**: Immutable data means a shared term is *already* stored once and referenced, so
 the sharing bug (mutation) can't happen. An ETS table acts as the interning factory across
 processes. The BEAM's structural sharing does a lot of Flyweight's job for free; you add the
 explicit factory mainly to avoid rebuilding identical intrinsic terms.
@@ -288,7 +288,7 @@ type Tree struct {
 }
 ```
 
-**🧠 Tradeoff** — A `map[string]*TreeType` caches one shared value per key; every `Tree` holds a
+**🧠 Tradeoff**: A `map[string]*TreeType` caches one shared value per key; every `Tree` holds a
 `*TreeType` pointer, so the texture bytes exist once. Sharing a pointer means the `TreeType` must
 be treated as immutable. Guard the cache with a mutex if trees are created concurrently.
 
@@ -319,7 +319,7 @@ for (var i = 0; i < 1_000_000; i++)
 
 Console.WriteLine(forest[0].Type.Draw(forest[0].X, forest[0].Y)); // Oak at 0,0
 
-// Records are immutable by default — safe to share.
+// Records are immutable by default: safe to share.
 public sealed record TreeType(string Name, string Color, byte[] Texture)
 {
     public string Draw(int x, int y) => $"{Name} at {x},{y}"; // extrinsic x,y passed in
@@ -337,7 +337,7 @@ public static class TreeTypes
 }
 ```
 
-**🧠 Tradeoff** — `GetOrAdd` makes the factory thread-safe in one line, and a `record`
+**🧠 Tradeoff**: `GetOrAdd` makes the factory thread-safe in one line, and a `record`
 makes the flyweight immutable by default: `with` expressions copy instead of mutating,
 so the shared-state bug is hard to even write. The runtime plays the same trick itself:
 `string.Intern` is a flyweight factory for strings. Bound the cache if the key space is
@@ -390,7 +390,7 @@ impl TreeType {
     }
 }
 
-// The factory interns one &'static TreeType per (name, color) — leaked once, shared forever.
+// The factory interns one &'static TreeType per (name, color): leaked once, shared forever.
 fn tree_type(name: &str, color: &str) -> &'static TreeType {
     static CACHE: OnceLock<Mutex<HashMap<String, &'static TreeType>>> = OnceLock::new();
     let mut cache = CACHE.get_or_init(|| Mutex::new(HashMap::new())).lock().unwrap();
@@ -406,7 +406,7 @@ fn tree_type(name: &str, color: &str) -> &'static TreeType {
 struct Tree {
     x: u32,
     y: u32,
-    kind: &'static TreeType, // just a pointer — the texture exists once
+    kind: &'static TreeType, // just a pointer; the texture exists once
 }
 
 fn main() {
@@ -417,7 +417,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — `Box::leak` is the honest form for flyweights that live as long as the
+**🧠 Tradeoff**: `Box::leak` is the honest form for flyweights that live as long as the
 process: every tree holds a plain `&'static TreeType`, with no reference counting and no
 lifetime plumbing. And where other languages ask for discipline, Rust enforces the rule:
 a shared `&T` cannot be mutated, so "corrupt every oak at once" doesn't compile. If the
@@ -488,7 +488,7 @@ const TreeTypes = struct {
         const key = try std.fmt.allocPrint(self.allocator, "{s}:{s}", .{ name, color });
         const entry = try self.cache.getOrPut(key);
         if (entry.found_existing) {
-            self.allocator.free(key); // already interned — drop the duplicate key
+            self.allocator.free(key); // already interned: drop the duplicate key
         } else {
             const t = try self.allocator.create(TreeType);
             t.* = .{ .name = name, .color = color, .texture = try loadTexture(self.allocator, name) };
@@ -510,7 +510,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — The explicit allocator is the point: Flyweight is a memory pattern, and
+**🧠 Tradeoff**: The explicit allocator is the point: Flyweight is a memory pattern, and
 Zig makes you look at every allocation it saves. Sharing is `*const TreeType`, read-only
 at the type level. The subtle part is ownership of the interned keys: a cache hit must
 free its duplicate key, bookkeeping that GC languages hide. Back the factory with a
@@ -543,7 +543,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-// The flyweight — a record, immutable by construction, safe to share.
+// The flyweight: a record, immutable by construction, safe to share.
 record TreeType(String name, String color, byte[] texture) {
     String draw(int x, int y) { return "%s at %d,%d".formatted(name, x, y); } // extrinsic x,y passed in
 }
@@ -567,12 +567,12 @@ public class Demo {
             forest.add(new Tree(i, 0, TreeTypes.get("Oak", "green")));
 
         System.out.println(forest.get(0).type().draw(0, 0)); // Oak at 0,0
-        System.out.println(forest.get(0).type() == forest.get(1).type()); // true — shared
+        System.out.println(forest.get(0).type() == forest.get(1).type()); // true: shared
     }
 }
 ```
 
-**🧠 Tradeoff** — the JDK runs this pattern under your feet: `Integer.valueOf` returns
+**🧠 Tradeoff**: the JDK runs this pattern under your feet: `Integer.valueOf` returns
 cached instances for -128..127, and `String.intern()` is a flyweight factory for strings;
 that's why `Integer.valueOf(100) == Integer.valueOf(100)` is true and `new Integer(100)`
 was deprecated into removal. Here, `computeIfAbsent` on a `ConcurrentHashMap` is the whole
@@ -585,23 +585,23 @@ open-ended.
 
 Real-world uses of Flyweight (from the reference article):
 
-- **Text editors** — one glyph object per (char, font) across a document.
-- **Games** — shared sprite/texture/mesh across thousands of entities (trees, bullets, NPCs).
-- **String interning** — one canonical instance per distinct string.
-- **Connection/thread pooling** — reuse a small set of expensive objects.
-- **Icon / image caches** — one decoded image shared across many UI nodes.
+- **Text editors**: one glyph object per (char, font) across a document.
+- **Games**: shared sprite/texture/mesh across thousands of entities (trees, bullets, NPCs).
+- **String interning**: one canonical instance per distinct string.
+- **Connection/thread pooling**: reuse a small set of expensive objects.
+- **Icon / image caches**: one decoded image shared across many UI nodes.
 
 **In modern systems:**
 
-- **Low-code** — one shared widget definition per `type` reused across thousands of rendered
+- **Low-code**: one shared widget definition per `type` reused across thousands of rendered
   instances; only per-instance state (value, position) differs.
-- **Multi-agent** — a tool schema or system prompt shared by reference across many agent instances
+- **Multi-agent**: a tool schema or system prompt shared by reference across many agent instances
   instead of copied into each.
-- **Workflow engine** — step definitions interned once and referenced by every running instance,
+- **Workflow engine**: step definitions interned once and referenced by every running instance,
   not re-parsed per run.
 
 ## Related Patterns
 
-- **Factory Method / Singleton** — the flyweight factory caches and returns shared instances.
-- **Prototype** — both deal with many objects, but Prototype copies while Flyweight shares.
-- **Composite** — flyweights are often the shared leaves of a large composite tree.
+- **Factory Method / Singleton**: the flyweight factory caches and returns shared instances.
+- **Prototype**: both deal with many objects, but Prototype copies while Flyweight shares.
+- **Composite**: flyweights are often the shared leaves of a large composite tree.

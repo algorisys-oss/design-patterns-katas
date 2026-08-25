@@ -47,10 +47,10 @@ schedule you don't control.
 
 Key Components / Participants:
 
-- **Schema** — the contract: fields, types, enums, required-ness.
-- **Constraint mechanism** — the API feature that forces the output to match: a response format
+- **Schema**: the contract: fields, types, enums, required-ness.
+- **Constraint mechanism**: the API feature that forces the output to match: a response format
   (`output_config.format`) or a strict tool/function schema.
-- **Validator** — parses and checks the response against the schema, returning a typed value or a
+- **Validator**: parses and checks the response against the schema, returning a typed value or a
   clear error.
 
 ```
@@ -85,13 +85,13 @@ schema ──▶ request (output_config.format = json_schema)
 
 ## Common Mistakes
 
-- **Asking for JSON in prose instead of using the schema feature** — "respond in JSON" is a hope;
+- **Asking for JSON in prose instead of using the schema feature**: "respond in JSON" is a hope;
   `output_config.format` is a guarantee. Use the API mechanism.
-- **Skipping validation** — even with a schema, a refusal or `max_tokens` truncation can return
+- **Skipping validation**: even with a schema, a refusal or `max_tokens` truncation can return
   something unparseable. Validate and handle the error (see [[option-result]]).
-- **A too-loose schema** — `additionalProperties: true` or missing `required` lets the model omit
+- **A too-loose schema**: `additionalProperties: true` or missing `required` lets the model omit
   fields silently; tighten it.
-- **Cramming reasoning into the schema** — if you need the model to think, give it a `reasoning`
+- **Cramming reasoning into the schema**: if you need the model to think, give it a `reasoning`
   field *before* the answer field, or reason in a prior step; don't expect good answers from a bare
   enum with no room to work.
 
@@ -145,7 +145,7 @@ async function extract(text) {
 }
 ```
 
-**🧠 Tradeoff** — `output_config.format` makes the response *guaranteed* schema-valid, so `JSON.parse`
+**🧠 Tradeoff**: `output_config.format` makes the response *guaranteed* schema-valid, so `JSON.parse`
 is safe and `validate` is a belt-and-suspenders check for the refusal/truncation edge. The schema
 lives as data, so the same `extract` handles any shape; you're using the model as a typed function.
 The cost is that your schema must fit the provider's supported JSON-Schema subset.
@@ -180,7 +180,7 @@ def extract(text: str) -> Customer:
     return res.parsed_output              # a typed Customer, not a dict
 ```
 
-**🧠 Tradeoff** — A Pydantic model *is* the schema and the validator: `messages.parse` derives the
+**🧠 Tradeoff**: A Pydantic model *is* the schema and the validator: `messages.parse` derives the
 JSON-Schema, constrains the model, and returns a validated `Customer`. `Literal` pins the enum. This
 is the tightest expression of the pattern (one class, no manual parsing) at the cost of coupling to
 the SDK's parse helper (drop to `output_config.format` + `model_validate_json` if you need the raw path).
@@ -219,7 +219,7 @@ defmodule Extract do
 end
 ```
 
-**🧠 Tradeoff** — Elixir has no first-party structured-output SDK, so `call_structured/2` posts the
+**🧠 Tradeoff**: Elixir has no first-party structured-output SDK, so `call_structured/2` posts the
 schema as `output_config.format` over HTTP. The `with` chain threads the fallible steps (request,
 decode, validate) and short-circuits to the first `{:error, _}`, which is exactly the
 [[option-result]] shape for "any of these can fail." Callers pattern-match `{:ok, data}` and handle
@@ -269,7 +269,7 @@ func Extract(text string) (Customer, error) {
 }
 ```
 
-**🧠 Tradeoff** — The struct plus tags is the target shape; the schema map is what constrains the
+**🧠 Tradeoff**: The struct plus tags is the target shape; the schema map is what constrains the
 model over HTTP (no Go SDK for structured outputs). Go's explicit `(Customer, error)` return makes
 the failure path unmissable: the caller can't ignore a decode or validation error. The duplication
 between struct tags and the schema map is the price of no code-gen; a helper that derives one from the
@@ -279,21 +279,21 @@ other removes it.
 
 Real-world uses of Structured Output:
 
-- **Extraction** — pull fields from emails, resumes, invoices, forms into records.
-- **Classification** — route a ticket to a queue with a constrained `category` enum.
-- **Tool arguments** — a strict schema *is* how tool/function calling passes typed inputs (see [[tool-use]]).
-- **Grounded answers with citations** — RAG output as `{ answer, sources[] }` instead of prose.
-- **Config/DSL generation** — emit valid JSON config a downstream system can consume directly.
+- **Extraction**: pull fields from emails, resumes, invoices, forms into records.
+- **Classification**: route a ticket to a queue with a constrained `category` enum.
+- **Tool arguments**: a strict schema *is* how tool/function calling passes typed inputs (see [[tool-use]]).
+- **Grounded answers with citations**: RAG output as `{ answer, sources[] }` instead of prose.
+- **Config/DSL generation**: emit valid JSON config a downstream system can consume directly.
 
 **In modern systems:**
 
-- **Low-code** — generate a form or page's JSON schema from a plain-English description, then validate it.
-- **Workflow engine** — a step returns `{status, next, payload}` the orchestrator branches on.
-- **Multi-agent** — every agent-to-agent hand-off is structured output; free text between agents rots.
+- **Low-code**: generate a form or page's JSON schema from a plain-English description, then validate it.
+- **Workflow engine**: a step returns `{status, next, payload}` the orchestrator branches on.
+- **Multi-agent**: every agent-to-agent hand-off is structured output; free text between agents rots.
 
 ## Related Patterns
 
-- **Option / Result** — the honest return type when a schema request can fail (refusal, truncation).
-- **Guardrails** — schema validation is one guardrail; content and policy checks are others.
-- **Prompt Chaining** — structured output is what makes one step's result safely consumable by the next.
-- **Adapter** — a schema adapts free-form model output to the typed interface your code expects.
+- **Option / Result**: the honest return type when a schema request can fail (refusal, truncation).
+- **Guardrails**: schema validation is one guardrail; content and policy checks are others.
+- **Prompt Chaining**: structured output is what makes one step's result safely consumable by the next.
+- **Adapter**: a schema adapts free-form model output to the typed interface your code expects.

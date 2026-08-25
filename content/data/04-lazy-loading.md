@@ -28,22 +28,22 @@ object until it's needed.
 
 Eagerly loading everything an object *might* reference is wasteful:
 
-- **Over-fetching** — loading an order's customer, items, history, and shipments when the caller only
+- **Over-fetching**: loading an order's customer, items, history, and shipments when the caller only
   wanted the order total pulls (and holds) data that's never used.
-- **Expensive up-front cost** — a deep object graph means many joins/queries and a lot of memory on every
+- **Expensive up-front cost**: a deep object graph means many joins/queries and a lot of memory on every
   load, even for callers who need a sliver.
-- **Slow initial response** — the user waits for data they may not view.
-- **Tight coupling to needs** — loading logic must guess what every caller wants, so it either over-fetches
+- **Slow initial response**: the user waits for data they may not view.
+- **Tight coupling to needs**: loading logic must guess what every caller wants, so it either over-fetches
   or under-serves.
 
 ## Structure
 
 Key Components:
 
-- **Placeholder / Virtual Proxy** — stands in for the not-yet-loaded object, exposing the same interface.
-- **Trigger** — the first access (a property read, a method call) that causes the real load.
-- **Loader** — the logic that fetches the real data when triggered.
-- **Loaded flag / memoization** — after loading, the value is cached so later accesses don't reload.
+- **Placeholder / Virtual Proxy**: stands in for the not-yet-loaded object, exposing the same interface.
+- **Trigger**: the first access (a property read, a method call) that causes the real load.
+- **Loader**: the logic that fetches the real data when triggered.
+- **Loaded flag / memoization**: after loading, the value is cached so later accesses don't reload.
 
 ```
 Order { customer: Proxy } ──access .customer──► [ Lazy Proxy ] ──first time──► load Customer
@@ -61,26 +61,26 @@ Order { customer: Proxy } ──access .customer──► [ Lazy Proxy ] ──f
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Cheaper initial load** — fetch only what's asked for; related data waits.
-- **Less memory & I/O** — unused associations are never loaded.
-- **Faster first response** — the user doesn't wait for data they may not view.
+- **Cheaper initial load**: fetch only what's asked for; related data waits.
+- **Less memory & I/O**: unused associations are never loaded.
+- **Faster first response**: the user doesn't wait for data they may not view.
 
 ### Disadvantages
-- **N+1 query problem** — lazy-loading a collection's items in a loop fires one query per item, the classic
+- **N+1 query problem**: lazy-loading a collection's items in a loop fires one query per item, the classic
   performance trap.
-- **Hidden cost & surprise queries** — a property access silently triggers I/O, which can happen at
+- **Hidden cost & surprise queries**: a property access silently triggers I/O, which can happen at
   awkward times (after the session closed, mid-render).
-- **Complexity** — proxies, load state, and triggering logic add machinery and subtle bugs.
+- **Complexity**: proxies, load state, and triggering logic add machinery and subtle bugs.
 
 ## Common Mistakes
 
-- **N+1 queries** — iterating a collection and touching a lazy association per element fires N queries;
+- **N+1 queries**: iterating a collection and touching a lazy association per element fires N queries;
   eager-load (a join/`IN` query) when you know you'll need them all.
-- **Lazy-loading after the session closes** — accessing a lazy field once the DB session/transaction has
+- **Lazy-loading after the session closes**: accessing a lazy field once the DB session/transaction has
   ended throws (a very common ORM error); load it while the session is open.
-- **Lazy by default everywhere** — making everything lazy causes surprise queries scattered through the
+- **Lazy by default everywhere**: making everything lazy causes surprise queries scattered through the
   code; choose eager vs. lazy per access pattern.
-- **No memoization** — reloading on every access instead of caching the first load multiplies the cost.
+- **No memoization**: reloading on every access instead of caching the first load multiplies the cost.
 
 ## Key Takeaways
 
@@ -126,7 +126,7 @@ function makeOrder(row) {
 // await order.customer;          // NOW the customer is loaded, once
 ```
 
-**🧠 Tradeoff** — A lazy getter that memoizes the fetch (`??=`) loads the customer only if accessed, and
+**🧠 Tradeoff**: A lazy getter that memoizes the fetch (`??=`) loads the customer only if accessed, and
 only once. It keeps `getOrder` cheap for callers who want the total. The hazards are JS-agnostic:
 iterating many orders and touching `.customer` each is N+1 (batch instead), and the "access does I/O"
 surprise means the getter returns a promise you must await. A `Proxy` can make it fully transparent at
@@ -159,7 +159,7 @@ await Promise.all(posts.map(async (p) => { p.author = await userLoader.load(p.au
 // each load() is lazy per post, but DataLoader batches them into a single query
 ```
 
-**🧠 Tradeoff** — DataLoader keeps loading lazy and per-item (each post asks for its author) while
+**🧠 Tradeoff**: DataLoader keeps loading lazy and per-item (each post asks for its author) while
 *batching* those asks into one query per tick: the standard fix for the N+1 trap lazy loading creates,
 and the backbone of GraphQL resolvers. You get lazy's on-demand benefit without its query storm. The cost
 is the extra loader abstraction and remembering to route lazy loads through it.
@@ -189,7 +189,7 @@ orders = (
     .all()
 )
 for o in orders:
-    print(o.customer.name)  # already loaded — no per-order query
+    print(o.customer.name)  # already loaded, no per-order query
 
 # a hand-rolled lazy attribute (descriptor) memoizes on first access:
 class lazy_property:
@@ -198,7 +198,7 @@ class lazy_property:
         val = self.fn(obj); setattr(obj, self.fn.__name__, val); return val  # cache
 ```
 
-**🧠 Tradeoff** — SQLAlchemy relationships are lazy by default, which is exactly the N+1 footgun in a
+**🧠 Tradeoff**: SQLAlchemy relationships are lazy by default, which is exactly the N+1 footgun in a
 loop; `selectinload`/`joinedload` switch to eager batching when you know you'll use the relation. The
 `lazy_property` descriptor shows the memoize-on-first-access mechanism for non-ORM cases. The lesson is to
 pick lazy vs. eager per access pattern rather than accept the default blindly.
@@ -212,7 +212,7 @@ pick lazy vs. eager per access pattern rather than accept the default blindly.
 ```elixir
 # Accessing an unloaded association raises; looping and preloading per item is N+1.
 order = Repo.get(Order, id)
-order.customer.name   # ** (Ecto.Association.NotLoaded) — Ecto never lazy-loads implicitly
+order.customer.name   # ** (Ecto.Association.NotLoaded): Ecto never lazy-loads implicitly
 ```
 
 **✅ Idiomatic**
@@ -231,7 +231,7 @@ order = Repo.get(Order, id)
 customer = Repo.preload(order, :customer).customer  # explicit, at the point of need
 ```
 
-**🧠 Tradeoff** — Ecto deliberately has **no implicit lazy loading**: an unloaded association is a
+**🧠 Tradeoff**: Ecto deliberately has **no implicit lazy loading**: an unloaded association is a
 `NotLoaded` struct that raises if used, forcing you to `Repo.preload` explicitly. This trades convenience
 for predictability: you can never accidentally trigger a query by touching a field, and N+1 becomes a
 conscious choice rather than a hidden default. "Lazy" in Elixir means *you* decide when to preload, which
@@ -270,7 +270,7 @@ func (o *Order) Customer() (*Customer, error) {
 // order.Customer() triggers the query only when called, safely under concurrency.
 ```
 
-**🧠 Tradeoff** — A `Customer()` accessor guarded by `sync.Once` is Go's idiomatic lazy field: the query
+**🧠 Tradeoff**: A `Customer()` accessor guarded by `sync.Once` is Go's idiomatic lazy field: the query
 fires on first call, is memoized, and is safe if multiple goroutines call it. It's explicit (a method, not
 a field), which suits Go: no hidden I/O behind a struct field. GORM offers association lazy/eager loading;
 plain Go prefers this visible on-demand pattern, and you batch (an `IN` query) yourself to avoid N+1 when
@@ -296,7 +296,7 @@ order.Items = repo.Items(id);
 var order = new Order(1, customerId: 42, new Repo());
 Console.WriteLine($"order {order.Id} loaded"); // no customer query yet
 Console.WriteLine(order.Customer.Name);        // SELECT fires NOW, once
-Console.WriteLine(order.Customer.Name);        // memoized — no second query
+Console.WriteLine(order.Customer.Name);        // memoized, no second query
 
 public sealed record Customer(int Id, string Name);
 
@@ -312,14 +312,14 @@ public sealed class Repo
 public sealed class Order(int id, int customerId, Repo repo)
 {
     private readonly Lazy<Customer> _customer =
-        new(() => repo.Customer(customerId));    // deferred — not run here
+        new(() => repo.Customer(customerId));    // deferred, not run here
 
     public int Id { get; } = id;
     public Customer Customer => _customer.Value; // first read triggers the load
 }
 ```
 
-**🧠 Tradeoff** — `Lazy<T>` packages the whole mechanism (deferred loader, memoization, thread safety
+**🧠 Tradeoff**: `Lazy<T>` packages the whole mechanism (deferred loader, memoization, thread safety
 via `ExecutionAndPublication` by default) into one field: Go's `sync.Once` accessor as a library type. The
 catch is that `.Value` hides I/O behind a property read, the classic lazy surprise, and `Lazy<T>` is
 synchronous: an async load wants `Lazy<Task<Customer>>` awaited at the access site. EF Core's
@@ -371,11 +371,11 @@ fn main() {
     let order = Order { id: 1, customer_id: 42, repo: Repo, customer: OnceCell::new() };
     println!("order {} loaded", order.id); // no customer query yet
     println!("{}", order.customer().name); // SELECT fires NOW, once
-    println!("{}", order.customer().name); // memoized — no second query
+    println!("{}", order.customer().name); // memoized, no second query
 }
 ```
 
-**🧠 Tradeoff** — `OnceCell` gives lazy-with-memoization through `&self`: interior mutability lets
+**🧠 Tradeoff**: `OnceCell` gives lazy-with-memoization through `&self`: interior mutability lets
 `customer()` fill the cell on first call and hand back a plain `&Customer` whose lifetime the borrow
 checker ties to the order: no lock, no `mut` in the signature. `LazyCell` is the same idea with the
 initializer baked in at construction; across threads, swap in `OnceLock`/`LazyLock`. Rust has no ORM that
@@ -427,11 +427,11 @@ pub fn main() void {
     var order = Order{ .id = 1, .customer_id = 42, .repo = .{} };
     std.debug.print("order {d} loaded\n", .{order.id});     // no customer query yet
     _ = order.getCustomer();                                // SELECT fires NOW, once
-    std.debug.print("{s}\n", .{order.getCustomer().name});  // memoized — no second query
+    std.debug.print("{s}\n", .{order.getCustomer().name});  // memoized, no second query
 }
 ```
 
-**🧠 Tradeoff** — an optional field plus an init-on-first-use accessor is the whole pattern with nothing
+**🧠 Tradeoff**: an optional field plus an init-on-first-use accessor is the whole pattern with nothing
 hidden: `?Customer` is the load state, the `if` is the trigger, the assignment is the memoization. Note
 the signature: Zig has no interior mutability, so lazy loading needs `*Order`, and a `const` order simply
 can't do it. That visibility is very Zig: a field read can never do I/O; only a method taking a mutable
@@ -466,7 +466,7 @@ class Repo {
     }
 }
 
-// A lazy field is mutable state, so Order is a class — a record couldn't hold it.
+// A lazy field is mutable state, so Order is a class: a record couldn't hold it.
 class Order {
     final int id;
     private final Supplier<Customer> loader;
@@ -474,7 +474,7 @@ class Order {
 
     Order(int id, int customerId, Repo repo) {
         this.id = id;
-        this.loader = () -> repo.customer(customerId); // deferred — not run here
+        this.loader = () -> repo.customer(customerId); // deferred, not run here
     }
 
     Customer customer() {
@@ -488,12 +488,12 @@ public class Demo {
         var order = new Order(1, 42, new Repo());
         System.out.println("order " + order.id + " loaded"); // no customer query yet
         System.out.println(order.customer().name());         // SELECT fires NOW, once
-        System.out.println(order.customer().name());         // memoized — no second query
+        System.out.println(order.customer().name());         // memoized, no second query
     }
 }
 ```
 
-**🧠 Tradeoff** — the JDK has no `Lazy<T>`, so the idiom is what you see: a `Supplier` holding the
+**🧠 Tradeoff**: the JDK has no `Lazy<T>`, so the idiom is what you see: a `Supplier` holding the
 deferred load and a null-checked accessor that memoizes, which is exactly what Hibernate generates
 behind every lazy `@ManyToOne` getter. Java is where this lesson's scars come from:
 `LazyInitializationException` *is* the load-after-session-close mistake, and lazy collections
@@ -504,20 +504,20 @@ library.
 
 ## Applications
 
-- **ORM associations** — lazy vs. eager loading of relationships is a core ORM feature (Hibernate,
+- **ORM associations**: lazy vs. eager loading of relationships is a core ORM feature (Hibernate,
   SQLAlchemy, Ecto preload) (backend).
-- **GraphQL resolvers** — fields resolve (load) on demand, with DataLoader batching to avoid N+1
+- **GraphQL resolvers**: fields resolve (load) on demand, with DataLoader batching to avoid N+1
   (backend).
-- **Large object graphs** — loading a document/aggregate's parts only as navigated (backend).
-- **Infinite scroll / pagination** — loading more rows only as the user scrolls (frontend).
-- **Expensive computed properties** — deferring a costly derivation until first read, then memoizing
+- **Large object graphs**: loading a document/aggregate's parts only as navigated (backend).
+- **Infinite scroll / pagination**: loading more rows only as the user scrolls (frontend).
+- **Expensive computed properties**: deferring a costly derivation until first read, then memoizing
   (backend & frontend).
 
 ## Related Patterns
 
-- **Proxy (Virtual Proxy)** — the mechanism: a placeholder object that loads the real one on first access;
+- **Proxy (Virtual Proxy)**: the mechanism: a placeholder object that loads the real one on first access;
   lazy loading is a virtual proxy applied to persistence.
-- **Cache-Aside** — both defer/avoid work until needed; cache-aside caches across requests, lazy loading
+- **Cache-Aside**: both defer/avoid work until needed; cache-aside caches across requests, lazy loading
   defers within an object's lifetime.
-- **Identity Map** — pairs with lazy loading so a lazily-loaded related object resolves to the one shared
+- **Identity Map**: pairs with lazy loading so a lazily-loaded related object resolves to the one shared
   instance in the session.

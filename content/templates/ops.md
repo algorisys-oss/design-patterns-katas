@@ -26,7 +26,7 @@ The operational pain: downtime, risky big-bang releases, config drift.
 
 Key Components / Participants:
 
-- **Component** — ...
+- **Component**: ...
 
 ```
 optional ASCII sketch (replaced by the rendered SVG if a structure.ysl exists)
@@ -46,7 +46,7 @@ optional ASCII sketch (replaced by the rendered SVG if a structure.ysl exists)
 
 ## Common Mistakes
 
-- **Mistake** — why it bites.
+- **Mistake**: why it bites.
 
 ## Key Takeaways
 
@@ -87,4 +87,4 @@ canonical snippet per tool.
 
 ## Related Patterns
 
-- **Neighbour** — how it differs.
+- **Neighbour**: how it differs.

@@ -36,8 +36,8 @@ A mediator owns the rule; each control just reports "I changed" to the mediator.
 
 Key Components:
 
-- **Mediator** — the hub that coordinates; holds references to the colleagues.
-- **Colleagues** — the objects that interact; they know the mediator, not each other.
+- **Mediator**: the hub that coordinates; holds references to the colleagues.
+- **Colleagues**: the objects that interact; they know the mediator, not each other.
 - Colleagues notify the mediator of events; the mediator decides the reactions.
 
 ## When to Use
@@ -59,10 +59,10 @@ Key Components:
 
 ## Common Mistakes
 
-- **God mediator** — it absorbs so much logic it becomes unmaintainable; split it if it bloats.
-- **Colleagues still referencing each other** — defeats the purpose; route everything through the
+- **God mediator**: it absorbs so much logic it becomes unmaintainable; split it if it bloats.
+- **Colleagues still referencing each other**: defeats the purpose; route everything through the
   mediator.
-- **Confusing it with Observer** — Observer is one-way broadcast; Mediator is two-way coordination
+- **Confusing it with Observer**: Observer is one-way broadcast; Mediator is two-way coordination
   among peers with rules.
 
 ## Key Takeaways
@@ -82,7 +82,7 @@ Controls in a dialog coordinated by a mediator.
 **❌ Naive**
 
 ```js
-// Each control wires directly to the others — a tangle.
+// Each control wires directly to the others: a tangle.
 const field = { value: "" }, checkbox = { checked: false }, submit = { enabled: false };
 field.onInput = () => { submit.enabled = checkbox.checked && field.value.length > 0; };
 checkbox.onChange = () => { submit.enabled = checkbox.checked && field.value.length > 0; };
@@ -108,7 +108,7 @@ dialog.changed("agree", true);
 dialog.canSubmit;   // true
 ```
 
-**🧠 Tradeoff** — The enable rule lives once, in the mediator; controls don't know about each
+**🧠 Tradeoff**: The enable rule lives once, in the mediator; controls don't know about each
 other, so adding a control means teaching only the mediator. The risk is the mediator accreting
 every rule; if a dialog grows huge, split the mediator or move to a state machine.
 
@@ -119,12 +119,12 @@ every rule; if a dialog grows huge, split the mediator or move to a state machin
 **❌ Naive**
 
 ```js
-// Services calling each other directly — a mesh that's hard to change.
+// Services calling each other directly: a mesh that's hard to change.
 class OrderService {
   place(order) {
     inventory.reserve(order);   // order knows inventory
     payment.charge(order);      // and payment
-    shipping.schedule(order);   // and shipping — a web of direct calls
+    shipping.schedule(order);   // and shipping: a web of direct calls
   }
 }
 ```
@@ -148,7 +148,7 @@ bus.on("order:placed", (o) => shipping.schedule(o));
 function placeOrder(order) { bus.emit("order:placed", order); }
 ```
 
-**🧠 Tradeoff** — On the backend a mediator is often an event bus or message broker: services
+**🧠 Tradeoff**: On the backend a mediator is often an event bus or message broker: services
 coordinate through it instead of importing each other, which keeps a microservice/module mesh
 decoupled. The line between Mediator and Observer blurs here; the distinction is that a mediator
 also owns *coordination rules*, not just fan-out. The cost is indirection: the flow is no longer
@@ -196,7 +196,7 @@ Control("field", m).change("hi")
 Control("agree", m).change(True)
 ```
 
-**🧠 Tradeoff** — Colleagues hold a reference to the mediator and report changes; the rule lives
+**🧠 Tradeoff**: Colleagues hold a reference to the mediator and report changes; the rule lives
 once. Straightforward in Python: the pattern is about the reference topology (star, not mesh),
 not any special language feature. Keep the mediator focused so it doesn't become a catch-all.
 
@@ -207,7 +207,7 @@ not any special language feature. Keep the mediator focused so it doesn't become
 **❌ Naive**
 
 ```elixir
-# Each process messages the others directly — an interconnected mesh.
+# Each process messages the others directly: an interconnected mesh.
 defmodule Player do
   def move(other_players, move) do
     Enum.each(other_players, fn p -> send(p, {:opponent_moved, move}) end)
@@ -242,7 +242,7 @@ defmodule Lobby do
 end
 ```
 
-**🧠 Tradeoff** — A `GenServer` is a natural mediator: colleague processes send it messages and it
+**🧠 Tradeoff**: A `GenServer` is a natural mediator: colleague processes send it messages and it
 coordinates, so processes never hold each other's pids directly. This is exactly how chat lobbies
 and game rooms are built on the BEAM. The mediator process can become a bottleneck under high
 throughput; then you shard it or use `Phoenix.PubSub` for pure fan-out.
@@ -254,7 +254,7 @@ throughput; then you shard it or use `Phoenix.PubSub` for pure fan-out.
 **❌ Naive**
 
 ```go
-// Each component holds pointers to the others — a mesh.
+// Each component holds pointers to the others: a mesh.
 type Field struct{ submit *Submit; checkbox *Checkbox; value string }
 
 func (f *Field) OnInput(v string) {
@@ -297,7 +297,7 @@ type Control struct {
 func (c Control) Change(value any) { c.m.Changed(c.name, value) }
 ```
 
-**🧠 Tradeoff** — Controls depend on the `Mediator` interface, not on each other, so the topology
+**🧠 Tradeoff**: Controls depend on the `Mediator` interface, not on each other, so the topology
 is a star and the rule lives in `Changed`. Go's interface keeps the colleagues testable with a
 fake mediator. As always, guard against the mediator becoming a god object as rules multiply.
 
@@ -308,7 +308,7 @@ fake mediator. As always, guard against the mediator becoming a god object as ru
 **❌ Naive**
 
 ```csharp
-// Each control wires directly to the others — a mesh.
+// Each control wires directly to the others: a mesh.
 public sealed class Field(Checkbox checkbox, Submit submit)
 {
     public string Value = "";
@@ -318,7 +318,7 @@ public sealed class Field(Checkbox checkbox, Submit submit)
         Value = v;
         submit.Enabled = checkbox.Checked && v.Length > 0; // Field knows Submit AND Checkbox
     }
-    // Checkbox repeats the same rule — adding a control touches every handler
+    // Checkbox repeats the same rule: adding a control touches every handler
 }
 ```
 
@@ -358,14 +358,14 @@ public sealed class DialogMediator : IMediator
     }
 }
 
-// Primary constructor — a colleague knows its name and the hub, nothing else.
+// Primary constructor: a colleague knows its name and the hub, nothing else.
 public sealed class Control(string name, IMediator mediator)
 {
     public void Change(object value) => mediator.Changed(name, value);
 }
 ```
 
-**🧠 Tradeoff** — The `IMediator` interface keeps controls testable with a fake hub, and
+**🧠 Tradeoff**: The `IMediator` interface keeps controls testable with a fake hub, and
 `Control`'s primary constructor makes the one dependency explicit. This shape is so common in
 .NET that it became a library: MediatR routes request objects to handlers in exactly this star
 topology. The warning is the same as everywhere: the mediator is one `switch` arm away from
@@ -381,7 +381,7 @@ becoming a god object, so split it when the rules multiply.
 use std::cell::RefCell;
 use std::rc::Rc;
 
-// Each control needs handles on the others — in Rust the mesh forces
+// Each control needs handles on the others: in Rust the mesh forces
 // Rc<RefCell<...>> everywhere, and the rule is still duplicated.
 struct Submit { enabled: bool }
 struct Field { value: String }
@@ -435,7 +435,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — Rust pushes you toward Mediator whether you asked or not: the naive mesh needs
+**🧠 Tradeoff**: Rust pushes you toward Mediator whether you asked or not: the naive mesh needs
 `Rc<RefCell<...>>` because the borrow checker won't allow a web of mutable references, while the
 star has one owner and no interior mutability at all. The `Change` enum replaces the
 stringly-typed `who`: a new control kind is a new variant, and every `match` that misses it
@@ -450,7 +450,7 @@ when they live on other threads.
 **❌ Naive**
 
 ```zig
-// Each control points at the others — a mesh, with the rule duplicated.
+// Each control points at the others: a mesh, with the rule duplicated.
 const Submit = struct { enabled: bool = false };
 const Field = struct { value: []const u8 = "" };
 
@@ -512,7 +512,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — Zig has no borrow checker, so the naive mesh compiles fine — the star is a
+**🧠 Tradeoff**: Zig has no borrow checker, so the naive mesh compiles fine, so the star is a
 design choice you make, not one the compiler forces. Plain pointers wire each control to the hub
 with zero overhead, and the tagged union plus exhaustive `switch` means a new control kind can't
 be silently ignored. One thing to watch: the mediator stores the `[]const u8` slice it's handed
@@ -526,7 +526,7 @@ when it won't.
 **❌ Naive**
 
 ```java
-// Each control wires directly to the others — a mesh.
+// Each control wires directly to the others: a mesh.
 class Field {
     String value = "";
     Checkbox checkbox;
@@ -536,7 +536,7 @@ class Field {
         value = v;
         submit.enabled = checkbox.checked && !v.isEmpty(); // Field knows Submit AND Checkbox
     }
-    // Checkbox repeats the same rule — adding a control touches every handler
+    // Checkbox repeats the same rule: adding a control touches every handler
 }
 
 class Checkbox { boolean checked; }
@@ -585,7 +585,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — The classic Java form takes a `Mediator` interface and a stringly-typed
+**🧠 Tradeoff**: The classic Java form takes a `Mediator` interface and a stringly-typed
 `changed(String who, Object value)`; sealed records replace that pair with types. A new control
 kind is a new record, and the pattern-matching `switch` must stay exhaustive, so the compiler
 points at every rule that hasn't handled it, where the string version failed silently. The
@@ -596,25 +596,25 @@ is still one `case` away from becoming a god object. Split it when the rules mul
 
 Real-world uses of Mediator (from the reference article), by tier:
 
-- **Frontend** — form/dialog control coordination, component communication buses, UI framework
+- **Frontend**: form/dialog control coordination, component communication buses, UI framework
   event hubs.
-- **Backend** — chat rooms, game lobbies, air-traffic-style coordination, event bus / message
+- **Backend**: chat rooms, game lobbies, air-traffic-style coordination, event bus / message
   broker between services, workflow orchestration.
-- **Both** — decoupling components that would otherwise form a mesh.
+- **Both**: decoupling components that would otherwise form a mesh.
 
 **In modern systems:**
 
-- **Multi-agent** — a supervisor agent is the mediator: workers never talk N-to-N, they report to
+- **Multi-agent**: a supervisor agent is the mediator: workers never talk N-to-N, they report to
   the hub and it decides who runs next, keeping coordination in one auditable place.
-- **Workflow engine** — the orchestrator mediates the steps; a step reports completion and the
+- **Workflow engine**: the orchestrator mediates the steps; a step reports completion and the
   orchestrator, not the step, chooses the successor.
-- **Low-code** — a form mediator wires cross-field logic (show B when A changes) declared in the
+- **Low-code**: a form mediator wires cross-field logic (show B when A changes) declared in the
   JSON schema rather than hard-coded between fields.
 
 ## Related Patterns
 
-- **Observer** — Mediator often uses Observer internally, but adds coordination rules; Observer
+- **Observer**: Mediator often uses Observer internally, but adds coordination rules; Observer
   alone is one-way broadcast.
-- **Facade** — a facade is a one-way simplifying front door; a mediator coordinates two-way peer
+- **Facade**: a facade is a one-way simplifying front door; a mediator coordinates two-way peer
   interaction.
-- **Command** — colleagues can send commands through the mediator.
+- **Command**: colleagues can send commands through the mediator.

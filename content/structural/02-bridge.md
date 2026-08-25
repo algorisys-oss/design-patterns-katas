@@ -39,10 +39,10 @@ renderers × 1, composed at runtime.
 
 Key Components:
 
-- **Abstraction** — the high-level type the client uses (`Shape`), holding an implementor.
-- **Refined Abstraction** — variants of the abstraction (`Circle`, `Square`).
-- **Implementor** — the interface for the other dimension (`Renderer`).
-- **Concrete Implementors** — `SvgRenderer`, `CanvasRenderer`.
+- **Abstraction**: the high-level type the client uses (`Shape`), holding an implementor.
+- **Refined Abstraction**: variants of the abstraction (`Circle`, `Square`).
+- **Implementor**: the interface for the other dimension (`Renderer`).
+- **Concrete Implementors**: `SvgRenderer`, `CanvasRenderer`.
 
 ## When to Use
 
@@ -64,8 +64,8 @@ Key Components:
 
 ## Common Mistakes
 
-- **Using it when there's only one axis of change** — that's just Strategy or a plain interface.
-- **Confusing it with Adapter** — Bridge is designed up front to separate two dimensions;
+- **Using it when there's only one axis of change**: that's just Strategy or a plain interface.
+- **Confusing it with Adapter**: Bridge is designed up front to separate two dimensions;
   Adapter reconciles two existing interfaces after the fact.
 - **Leaking implementor details** through the abstraction, re-coupling the two sides.
 
@@ -87,7 +87,7 @@ Shapes (abstraction) that render via a `Renderer` (implementation).
 **❌ Naive**
 
 ```js
-// A class per (shape × backend) — multiplies with every new option.
+// A class per (shape × backend): multiplies with every new option.
 class SvgCircle { draw() { return "<circle/>"; } }
 class CanvasCircle { draw() { return "canvas.arc()"; } }
 class SvgSquare { draw() { return "<rect/>"; } }
@@ -116,7 +116,7 @@ new Circle(new SvgRenderer()).draw();     // <circle/>
 new Square(new CanvasRenderer()).draw();  // canvas.rect()
 ```
 
-**🧠 Tradeoff** — Shapes and renderers now vary independently: adding a Triangle is one class,
+**🧠 Tradeoff**: Shapes and renderers now vary independently: adding a Triangle is one class,
 adding WebGL is one renderer, no combinatorial blowup. The cost is the up-front split, worth it
 only when both axes really change; for a single axis this is just needless indirection.
 
@@ -127,7 +127,7 @@ only when both axes really change; for a single axis this is just needless indir
 **❌ Naive**
 
 ```js
-// A class per (message type × transport) — the grid grows with every addition.
+// A class per (message type × transport): the grid grows with every addition.
 class AlertEmail { send() { /* format alert, send email */ } }
 class AlertSms { send() { /* format alert, send sms */ } }
 class ReminderEmail { send() { /* ... */ } }
@@ -156,7 +156,7 @@ new Alert(new SmsTransport()).send(user.phone, "server down");
 new Reminder(new EmailTransport()).send(user.email, "invoice due");
 ```
 
-**🧠 Tradeoff** — Message types and transports now vary independently: a new message type is one
+**🧠 Tradeoff**: Message types and transports now vary independently: a new message type is one
 class, a new transport (Slack, push) is one class, with no combinatorial explosion. The split earns
 its keep only because both axes really grow here; for a single transport it would be needless
 indirection.
@@ -207,7 +207,7 @@ Circle(SvgRenderer()).draw()      # <circle/>
 Square(CanvasRenderer()).draw()   # canvas.rect()
 ```
 
-**🧠 Tradeoff** — The `Renderer` `Protocol` is the bridge; a shape composes one and delegates.
+**🧠 Tradeoff**: The `Renderer` `Protocol` is the bridge; a shape composes one and delegates.
 Structurally identical to the JS version; Python's contribution is the type-checked implementor
 contract without forcing an inheritance relationship between renderers.
 
@@ -255,7 +255,7 @@ end
 Shape.draw(%Shape{kind: :circle, renderer: SvgRenderer})
 ```
 
-**🧠 Tradeoff** — The renderer behaviour is the implementor axis (a module), and a `Shape` struct
+**🧠 Tradeoff**: The renderer behaviour is the implementor axis (a module), and a `Shape` struct
 holds which renderer to use; `draw/1` pattern-matches the shape kind and delegates. Both axes
 extend independently (a new renderer module or a new `draw/1` clause) without a class matrix.
 
@@ -292,7 +292,7 @@ type CanvasRenderer struct{}
 func (CanvasRenderer) Circle() string { return "canvas.arc()" }
 func (CanvasRenderer) Square() string { return "canvas.rect()" }
 
-// Abstraction axis — each shape embeds a Renderer.
+// Abstraction axis: each shape embeds a Renderer.
 type Circle struct{ R Renderer }
 func (c Circle) Draw() string { return c.R.Circle() }
 
@@ -302,7 +302,7 @@ func (s Square) Draw() string { return s.R.Square() }
 // Circle{R: SvgRenderer{}}.Draw()  →  <circle/>
 ```
 
-**🧠 Tradeoff** — A shape struct holds a `Renderer` interface value and delegates; the two axes
+**🧠 Tradeoff**: A shape struct holds a `Renderer` interface value and delegates; the two axes
 compose without inheritance (Go has none anyway). Because interfaces are implicit, adding a
 renderer or a shape is fully independent: the canonical "composition over a subclass matrix."
 
@@ -313,7 +313,7 @@ renderer or a shape is fully independent: the canonical "composition over a subc
 **❌ Naive**
 
 ```csharp
-// A class per (shape × backend) — the grid grows with every addition.
+// A class per (shape × backend): the grid grows with every addition.
 public sealed class SvgCircle { public string Draw() => "<circle/>"; }
 public sealed class CanvasCircle { public string Draw() => "canvas.arc()"; }
 public sealed class SvgSquare { public string Draw() => "<rect/>"; }
@@ -346,7 +346,7 @@ public sealed class CanvasRenderer : IRenderer
     public string Square() => "canvas.rect()";
 }
 
-// Abstraction axis — each shape holds a renderer and delegates the "how".
+// Abstraction axis: each shape holds a renderer and delegates the "how".
 public sealed class Circle(IRenderer renderer)
 {
     public string Draw() => renderer.Circle();
@@ -358,7 +358,7 @@ public sealed class Square(IRenderer renderer)
 }
 ```
 
-**🧠 Tradeoff** — same split as the JS version, but `IRenderer` is compile-time checked and
+**🧠 Tradeoff**: same split as the JS version, but `IRenderer` is compile-time checked and
 primary constructors make each shape a three-line class. The warning carries over unchanged:
 the bridge pays only when both axes really grow. With a single renderer, `Circle(IRenderer)`
 is indirection with nothing to show for it.
@@ -370,7 +370,7 @@ is indirection with nothing to show for it.
 **❌ Naive**
 
 ```rust
-// A struct per (shape × backend) — multiplies with every new option.
+// A struct per (shape × backend): multiplies with every new option.
 struct SvgCircle;
 impl SvgCircle {
     fn draw(&self) -> String { "<circle/>".into() }
@@ -403,7 +403,7 @@ impl Renderer for CanvasRenderer {
     fn square(&self) -> String { "canvas.rect()".into() }
 }
 
-// Abstraction axis — each shape owns its renderer.
+// Abstraction axis: each shape owns its renderer.
 struct Circle<R: Renderer> {
     renderer: R,
 }
@@ -424,7 +424,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — `Circle<R: Renderer>` monomorphizes the bridge: `Circle<SvgRenderer>` and
+**🧠 Tradeoff**: `Circle<R: Renderer>` monomorphizes the bridge: `Circle<SvgRenderer>` and
 `Circle<CanvasRenderer>` are distinct, fully inlined types. That's free at runtime but binds
 the backend at compile time; a scene mixing backends in one `Vec` needs `Box<dyn Renderer>`
 fields instead, paying dynamic dispatch for the flexibility. Rust makes you name when the
@@ -437,7 +437,7 @@ axis binds; Go and JS decide it for you.
 **❌ Naive**
 
 ```zig
-// A struct per (shape × backend) — the grid grows with every addition.
+// A struct per (shape × backend): the grid grows with every addition.
 const SvgCircle = struct {
     fn draw(_: SvgCircle) []const u8 { return "<circle/>"; }
 };
@@ -463,7 +463,7 @@ const CanvasRenderer = struct {
     fn square(_: CanvasRenderer) []const u8 { return "canvas.rect()"; }
 };
 
-// Abstraction axis — a shape is generic over its renderer (comptime bridge).
+// Abstraction axis: a shape is generic over its renderer (comptime bridge).
 fn Circle(comptime R: type) type {
     return struct {
         renderer: R,
@@ -485,7 +485,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — the comptime-generic shape is a static bridge: the compiler checks each
+**🧠 Tradeoff**: the comptime-generic shape is a static bridge: the compiler checks each
 renderer has `circle`/`square` at instantiation and inlines every call. Choosing a backend at
 runtime needs the vtable idiom (`*anyopaque` context + function pointers) instead. And when
 the renderer set is closed and small, a tagged union plus `switch` inside each shape is
@@ -498,7 +498,7 @@ plainer Zig. Take the bridge only when the backend axis genuinely keeps growing.
 **❌ Naive**
 
 ```java
-// A class per (shape × backend) — the grid grows with every addition.
+// A class per (shape × backend): the grid grows with every addition.
 class SvgCircle { String draw() { return "<circle/>"; } }
 class CanvasCircle { String draw() { return "canvas.arc()"; } }
 class SvgSquare { String draw() { return "<rect/>"; } }
@@ -524,7 +524,7 @@ class CanvasRenderer implements Renderer {
     public String square() { return "canvas.rect()"; }
 }
 
-// Abstraction axis — each shape holds a renderer and delegates the "how".
+// Abstraction axis: each shape holds a renderer and delegates the "how".
 abstract class Shape {
     protected final Renderer renderer;
 
@@ -552,7 +552,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — this is the GoF diagram verbatim, and Java holds it comfortably: an abstract
+**🧠 Tradeoff**: this is the GoF diagram verbatim, and Java holds it comfortably: an abstract
 `Shape` owns a `Renderer` and the two hierarchies grow apart. AWT's peer classes were exactly
 this bridge: one widget API over per-platform implementors. Modern Java can trim the ceremony
 (a `record Circle(Renderer r)` per shape drops the abstract base), but the shape of the pattern
@@ -563,23 +563,23 @@ indirection with nothing to show for it.
 
 Real-world uses of Bridge (from the reference article):
 
-- **Rendering** — shapes/UI over multiple graphics backends (SVG, Canvas, WebGL).
-- **Devices & remotes** — a remote abstraction over TV/radio implementations.
-- **Persistence** — a repository abstraction over SQL/NoSQL drivers.
-- **Notifications** — message types over delivery channels.
-- **Cross-platform toolkits** — one widget API over native platform implementations.
+- **Rendering**: shapes/UI over multiple graphics backends (SVG, Canvas, WebGL).
+- **Devices & remotes**: a remote abstraction over TV/radio implementations.
+- **Persistence**: a repository abstraction over SQL/NoSQL drivers.
+- **Notifications**: message types over delivery channels.
+- **Cross-platform toolkits**: one widget API over native platform implementations.
 
 **In modern systems:**
 
-- **Low-code** — the component abstraction sits apart from its renderer, so one JSON schema drives
+- **Low-code**: the component abstraction sits apart from its renderer, so one JSON schema drives
   web, native, or PDF output by swapping the implementor.
-- **Multi-agent** — the agent logic decoupled from the model backend (hosted, local, mock) behind
+- **Multi-agent**: the agent logic decoupled from the model backend (hosted, local, mock) behind
   an implementor interface, so you test the reasoning against a fake.
-- **Workflow engine** — the workflow model decoupled from the execution backend (in-process,
+- **Workflow engine**: the workflow model decoupled from the execution backend (in-process,
   queue, serverless).
 
 ## Related Patterns
 
-- **Abstract Factory** — can create matched abstraction+implementor pairs for a Bridge.
-- **Adapter** — reconciles interfaces after the fact; Bridge is planned decoupling up front.
-- **Strategy** — one-axis behavior swap; Bridge decouples two whole hierarchies.
+- **Abstract Factory**: can create matched abstraction+implementor pairs for a Bridge.
+- **Adapter**: reconciles interfaces after the fact; Bridge is planned decoupling up front.
+- **Strategy**: one-axis behavior swap; Bridge decouples two whole hierarchies.

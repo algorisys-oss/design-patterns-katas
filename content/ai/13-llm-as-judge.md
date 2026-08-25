@@ -26,11 +26,11 @@ open-ended generation at a scale humans can't, and it powers evals, [[reflection
 
 Most LLM output can't be checked with `==`:
 
-- **No ground truth** — "summarize this article" has a thousand good answers and no single correct
+- **No ground truth**: "summarize this article" has a thousand good answers and no single correct
   one. String comparison and BLEU/ROUGE scores barely correlate with quality.
-- **Humans don't scale** — you can hand-grade fifty outputs, not fifty thousand, and not on every
+- **Humans don't scale**: you can hand-grade fifty outputs, not fifty thousand, and not on every
   deploy.
-- **The criteria are semantic** — faithfulness, relevance, tone, safety are judgments about meaning,
+- **The criteria are semantic**: faithfulness, relevance, tone, safety are judgments about meaning,
   exactly what a model is good at and a regex is not.
 
 A model, given a clear rubric, can render these judgments consistently and cheaply, turning
@@ -40,10 +40,10 @@ A model, given a clear rubric, can render these judgments consistently and cheap
 
 Key Components / Participants:
 
-- **Rubric** — explicit, gradeable criteria (not "is it good" but "does it cite a source for every
+- **Rubric**: explicit, gradeable criteria (not "is it good" but "does it cite a source for every
   claim").
-- **Judge** — a model call that applies the rubric to a candidate and returns a *structured* verdict.
-- **Mode** — *pointwise* (score one output), *pairwise* (pick the better of two), or *reference-based*
+- **Judge**: a model call that applies the rubric to a candidate and returns a *structured* verdict.
+- **Mode**: *pointwise* (score one output), *pairwise* (pick the better of two), or *reference-based*
   (compare against a gold answer).
 
 ```
@@ -77,15 +77,15 @@ reference ─┘        │
 
 ## Common Mistakes
 
-- **Vague rubrics** — "rate the quality 1-10" gives noise. Decompose into concrete, independently
+- **Vague rubrics**: "rate the quality 1-10" gives noise. Decompose into concrete, independently
   gradeable criteria and ask for evidence per criterion.
-- **Ignoring position bias in pairwise** — the judge favors whichever candidate comes first. Swap the
+- **Ignoring position bias in pairwise**: the judge favors whichever candidate comes first. Swap the
   order and average, or randomize.
-- **No reasoning before the score** — ask the judge to reason *then* score; a bare number is less
+- **No reasoning before the score**: ask the judge to reason *then* score; a bare number is less
   reliable and unauditable.
-- **Trusting the judge blindly** — validate it against a set of human-labeled examples before you
+- **Trusting the judge blindly**: validate it against a set of human-labeled examples before you
   trust its scores; recalibrate when the model changes.
-- **Judge same-model-as-generator for high stakes** — self-preference bias inflates scores; use a
+- **Judge same-model-as-generator for high stakes**: self-preference bias inflates scores; use a
   different or stronger judge when it matters.
 
 ## Key Takeaways
@@ -105,7 +105,7 @@ substring-matches an expected answer; the idiomatic version asks a model to grad
 **❌ Naive**
 
 ```js
-// Substring match — fails on any valid paraphrase.
+// Substring match: fails on any valid paraphrase.
 function evaluate(output, expected) {
   return output.includes(expected) ? "pass" : "fail";
 }
@@ -134,7 +134,7 @@ async function compare(a, b, rubric) {
 }
 ```
 
-**🧠 Tradeoff** — The judge returns structured `{ reasoning, score, pass }` — reasoning before the score,
+**🧠 Tradeoff**: The judge returns structured `{ reasoning, score, pass }`, with reasoning before the score,
 so the verdict is auditable and more reliable. `compare` runs the pairwise judgment both ways to cancel
 position bias, the single most common judge failure. The cost is a model call per evaluation plus the
 need to calibrate the rubric against human labels before you trust the numbers.
@@ -169,7 +169,7 @@ def compare(a: str, b: str, rubric: str) -> str:     # pairwise, bias-controlled
     return "a" if ab.winner == "first" and ba.winner == "second" else "tie"
 ```
 
-**🧠 Tradeoff** — A Pydantic `Verdict` types the judge's output; reasoning-then-score is baked into the
+**🧠 Tradeoff**: A Pydantic `Verdict` types the judge's output; reasoning-then-score is baked into the
 schema order. Running the pairwise comparison twice with swapped inputs is the standard defense against
 position bias. Passing a *stronger* model to `judge` for high-stakes evaluation is a one-line change;
 the seam is the injected model, same as [[reflection]]'s critic.
@@ -203,7 +203,7 @@ defmodule Judge do
       "Evaluate against the rubric. Reason first, then score 1-5 and pass/fail.\n\nRubric:\n#{rubric}\n\nCandidate:\n#{candidate}")
   end
 
-  # Pairwise with order swapped to cancel position bias — the two calls run concurrently.
+  # Pairwise with order swapped to cancel position bias: the two calls run concurrently.
   def compare(a, b, rubric) do
     [{a, b}, {b, a}]
     |> Task.async_stream(fn {x, y} -> judge_pair(x, y, rubric) end)
@@ -213,7 +213,7 @@ defmodule Judge do
 end
 ```
 
-**🧠 Tradeoff** — The judge is a structured HTTP call; `compare` uses `Task.async_stream` to run both
+**🧠 Tradeoff**: The judge is a structured HTTP call; `compare` uses `Task.async_stream` to run both
 orderings concurrently before deciding, so the bias control comes with the concurrency for free. Keeping
 the rubric as a module attribute makes it the single, reviewable source of the evaluation criteria. A
 stronger judge model is a config swap.
@@ -261,7 +261,7 @@ func Compare(a, b, rubric string) string {
 }
 ```
 
-**🧠 Tradeoff** — A typed `Verdict` and an `(Verdict, error)` return make the judgment machine-usable and
+**🧠 Tradeoff**: A typed `Verdict` and an `(Verdict, error)` return make the judgment machine-usable and
 its failure explicit. `Compare` fans the two orderings out to goroutines to control position bias. The
 whole pattern hinges on rubric quality, not code, the same reason evals need calibration against human
 labels before the scores mean anything.
@@ -270,21 +270,21 @@ labels before the scores mean anything.
 
 Real-world uses of LLM-as-Judge:
 
-- **Prompt & model evals** — regression-test prompts and compare model versions at scale.
-- **RAG evaluation** — score answer faithfulness and retrieval relevance without gold answers.
-- **Reflection critic** — the judge is the evaluator in a generate-critique-revise loop.
-- **Output guardrail** — gate a response on a safety/quality verdict before it ships.
-- **Ranking** — pick the best of N generations, or rank search results by relevance.
+- **Prompt & model evals**: regression-test prompts and compare model versions at scale.
+- **RAG evaluation**: score answer faithfulness and retrieval relevance without gold answers.
+- **Reflection critic**: the judge is the evaluator in a generate-critique-revise loop.
+- **Output guardrail**: gate a response on a safety/quality verdict before it ships.
+- **Ranking**: pick the best of N generations, or rank search results by relevance.
 
 **In modern systems:**
 
-- **Multi-agent** — a reviewer agent grades a worker's output before it's accepted downstream.
-- **Workflow engine** — a quality-gate step that passes or fails an artifact against a rubric.
-- **Low-code** — an automated "does this meet the bar" check on generated content before publish.
+- **Multi-agent**: a reviewer agent grades a worker's output before it's accepted downstream.
+- **Workflow engine**: a quality-gate step that passes or fails an artifact against a rubric.
+- **Low-code**: an automated "does this meet the bar" check on generated content before publish.
 
 ## Related Patterns
 
-- **Reflection** — the judge is the critic in a self-improvement loop.
-- **Guardrails** — a judge verdict is one guardrail among schema, content, and policy checks.
-- **Strategy** — pointwise / pairwise / reference-based are interchangeable judging strategies.
-- **Structured Output** — the judge must return a machine-usable verdict, not prose.
+- **Reflection**: the judge is the critic in a self-improvement loop.
+- **Guardrails**: a judge verdict is one guardrail among schema, content, and policy checks.
+- **Strategy**: pointwise / pairwise / reference-based are interchangeable judging strategies.
+- **Structured Output**: the judge must return a machine-usable verdict, not prose.

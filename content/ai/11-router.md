@@ -25,10 +25,10 @@ forcing every one through the same expensive, do-everything path.
 
 One path for everything is wrong in both directions:
 
-- **One giant prompt** — a single prompt that tries to answer product questions, do math, write
+- **One giant prompt**: a single prompt that tries to answer product questions, do math, write
   code, and handle small talk does each worse than a focused prompt would, and its instructions
   fight each other.
-- **One expensive model** — routing every request, including "hi" and "thanks", to the strongest
+- **One expensive model**: routing every request, including "hi" and "thanks", to the strongest
   model wastes money and latency on trivia.
 
 The requests aren't the same, so the handling shouldn't be. Classify first, then dispatch to the
@@ -38,10 +38,10 @@ right route.
 
 Key Components / Participants:
 
-- **Router** — classifies the request into one of a known set of routes (by a fast model, embeddings,
+- **Router**: classifies the request into one of a known set of routes (by a fast model, embeddings,
   or rules).
-- **Routes** — the handlers, each specialized: a prompt, a model tier, a tool, a sub-agent.
-- **Dispatch** — sends the request to the chosen route; often a default/fallback route for the
+- **Routes**: the handlers, each specialized: a prompt, a model tier, a tool, a sub-agent.
+- **Dispatch**: sends the request to the chosen route; often a default/fallback route for the
   unmatched.
 
 ```
@@ -77,15 +77,15 @@ request ──▶ router (classify) ──▶ route key
 
 ## Common Mistakes
 
-- **Routing with the expensive model** — the classifier should be cheap and fast; using the strong
+- **Routing with the expensive model**: the classifier should be cheap and fast; using the strong
   model to route defeats the cost win. Use a small model, embeddings, or rules.
-- **No default route** — an unrecognized request must go *somewhere* sane; a missing fallback drops
+- **No default route**: an unrecognized request must go *somewhere* sane; a missing fallback drops
   it or crashes.
-- **Overlapping route definitions** — if "billing" and "account" blur, the router flips between them.
+- **Overlapping route definitions**: if "billing" and "account" blur, the router flips between them.
   Keep categories distinct.
-- **Ignoring misroute cost** — some misroutes are cheap (wrong prompt), others expensive (wrong
+- **Ignoring misroute cost**: some misroutes are cheap (wrong prompt), others expensive (wrong
   agent that takes destructive action). Weigh the blast radius.
-- **Static routes for a drifting request mix** — periodically review what's landing in the default;
+- **Static routes for a drifting request mix**: periodically review what's landing in the default;
   it's where new categories reveal themselves.
 
 ## Key Takeaways
@@ -105,7 +105,7 @@ one path for all; the idiomatic version classifies cheaply and dispatches, with 
 **❌ Naive**
 
 ```js
-// Everything through one strong-model prompt — costly and unfocused.
+// Everything through one strong-model prompt: costly and unfocused.
 async function handle(request) {
   return callStrongModel(`Answer anything:\n${request}`);
 }
@@ -131,7 +131,7 @@ async function handle(request) {
 }
 ```
 
-**🧠 Tradeoff** — Routes as a name→handler map make dispatch a table lookup, and classification runs on
+**🧠 Tradeoff**: Routes as a name→handler map make dispatch a table lookup, and classification runs on
 the *cheap* model so routing is nearly free. The `routes[route] ? ... : "small_talk"` guard guarantees a
 default. Adding a category is one map entry, so the router is open for extension. The risk is
 misclassification; keep the categories distinct and monitor the default bucket.
@@ -164,7 +164,7 @@ def handle(request: str) -> str:
     return ROUTES[classify(request)](request)
 ```
 
-**🧠 Tradeoff** — A dict of handlers is the dispatch table; `classify` uses the cheap model and falls back
+**🧠 Tradeoff**: A dict of handlers is the dispatch table; `classify` uses the cheap model and falls back
 to a default when the label is unknown. This is [[content-based-router]] with an LLM classifier: same
 shape as routing a message by a field, except the "field" is inferred. To route on similarity instead of
 a model call, replace `classify` with a nearest-centroid embedding lookup; the dispatch is unchanged.
@@ -201,7 +201,7 @@ defmodule Router do
 end
 ```
 
-**🧠 Tradeoff** — A map of route keys to function values, with `Map.get/3`'s third argument giving the
+**🧠 Tradeoff**: A map of route keys to function values, with `Map.get/3`'s third argument giving the
 default route for free, a clean expression of "dispatch, with a fallback." Classification is a piped
 cheap-model call. If routing rules grow branchy (priority, tenant, fallback chains), a
 [[chain-of-responsibility]] of handlers each deciding "is this mine?" scales better than one classifier.
@@ -239,7 +239,7 @@ func Handle(request string) string {
 }
 ```
 
-**🧠 Tradeoff** — A `map[string]func(string) string` is the dispatch table; the `_, ok` check enforces the
+**🧠 Tradeoff**: A `map[string]func(string) string` is the dispatch table; the `_, ok` check enforces the
 default so an unknown label can't panic on a nil handler. Classification stays on the cheap model. It's
 plain and testable: swap `classify` for an embedding-based router without touching dispatch. The whole
 pattern is "one entry, many focused exits, cheap decision in the middle."
@@ -248,21 +248,21 @@ pattern is "one entry, many focused exits, cheap decision in the middle."
 
 Real-world uses of the Router:
 
-- **Support triage** — route billing / technical / sales / account to specialized handlers.
-- **Model tiering** — send easy requests to a cheap model, hard ones to a strong one (see [[model-cascade]]).
-- **Multi-domain assistants** — dispatch to the right knowledge base or tool per topic.
-- **Guardrail routing** — send flagged inputs to a stricter path or a refusal.
-- **Language/locale routing** — pick the right prompt or model per detected language.
+- **Support triage**: route billing / technical / sales / account to specialized handlers.
+- **Model tiering**: send easy requests to a cheap model, hard ones to a strong one (see [[model-cascade]]).
+- **Multi-domain assistants**: dispatch to the right knowledge base or tool per topic.
+- **Guardrail routing**: send flagged inputs to a stricter path or a refusal.
+- **Language/locale routing**: pick the right prompt or model per detected language.
 
 **In modern systems:**
 
-- **Multi-agent** — a supervisor's router dispatches each request to the specialist agent for that intent.
-- **Workflow engine** — a branch step that inspects content and routes the instance to the next node.
-- **Low-code** — route a record to the form or handler named by a discriminator, inferred by the model.
+- **Multi-agent**: a supervisor's router dispatches each request to the specialist agent for that intent.
+- **Workflow engine**: a branch step that inspects content and routes the instance to the next node.
+- **Low-code**: route a record to the form or handler named by a discriminator, inferred by the model.
 
 ## Related Patterns
 
-- **Content-Based Router** — the messaging pattern this is; the Router is its LLM-classifier form.
-- **Strategy** — each route is an interchangeable strategy selected by the classification.
-- **Chain of Responsibility** — an alternative to a classifier: each handler decides if the request is its own.
-- **Model Cascade** — routing by difficulty to escalate cheap→strong models on demand.
+- **Content-Based Router**: the messaging pattern this is; the Router is its LLM-classifier form.
+- **Strategy**: each route is an interchangeable strategy selected by the classification.
+- **Chain of Responsibility**: an alternative to a classifier: each handler decides if the request is its own.
+- **Model Cascade**: routing by difficulty to escalate cheap→strong models on demand.

@@ -27,23 +27,23 @@ It also bundles what a consumer needs into one payload, avoiding many fine-grain
 
 Exposing domain/database objects directly across boundaries couples the outside world to your internals:
 
-- **Leaking internals** — serializing a domain entity (or ORM row) exposes internal fields, computed
+- **Leaking internals**: serializing a domain entity (or ORM row) exposes internal fields, computed
   properties, and structure the consumer shouldn't depend on, and can leak sensitive data (password
   hashes, internal ids).
-- **Coupling the API to the schema** — clients now depend on your table/object shape, so a refactor breaks
+- **Coupling the API to the schema**: clients now depend on your table/object shape, so a refactor breaks
   them.
-- **Over/under-fetching** — the domain object has too much (waste, security) or the wrong shape (client
+- **Over/under-fetching**: the domain object has too much (waste, security) or the wrong shape (client
   must stitch several).
-- **Chatty interfaces** — without a bundled DTO, a client makes many calls to assemble what it needs.
+- **Chatty interfaces**: without a bundled DTO, a client makes many calls to assemble what it needs.
 
 ## Structure
 
 Key Components:
 
-- **DTO** — a plain data holder (fields only, no behavior) shaped for a specific transfer/consumer.
-- **Assembler / Mapper** — builds the DTO from domain objects (and parses incoming DTOs back to domain).
-- **Boundary** — the process/network/layer edge the DTO crosses.
-- **Serialization** — the DTO is designed to serialize cleanly (JSON, protobuf, etc.).
+- **DTO**: a plain data holder (fields only, no behavior) shaped for a specific transfer/consumer.
+- **Assembler / Mapper**: builds the DTO from domain objects (and parses incoming DTOs back to domain).
+- **Boundary**: the process/network/layer edge the DTO crosses.
+- **Serialization**: the DTO is designed to serialize cleanly (JSON, protobuf, etc.).
 
 ```
 Service ──assembles──► UserDTO { id, name, email }   (no behavior, tailored fields)
@@ -62,24 +62,24 @@ Service ──assembles──► UserDTO { id, name, email }   (no behavior, tai
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Decoupling** — the wire/API shape is independent of the domain model; each evolves separately.
-- **Controlled exposure** — you choose exactly which fields cross, protecting internals and secrets.
-- **Tailored & efficient** — the payload matches the consumer's needs, reducing over-fetch and round-trips.
+- **Decoupling**: the wire/API shape is independent of the domain model; each evolves separately.
+- **Controlled exposure**: you choose exactly which fields cross, protecting internals and secrets.
+- **Tailored & efficient**: the payload matches the consumer's needs, reducing over-fetch and round-trips.
 
 ### Disadvantages
-- **Boilerplate** — extra classes and mapping code between domain and DTO in both directions.
-- **Duplication** — DTOs often mirror domain fields, and both change together, feeling redundant.
-- **Mapping drift** — the assembler can fall out of sync with the domain if not maintained.
+- **Boilerplate**: extra classes and mapping code between domain and DTO in both directions.
+- **Duplication**: DTOs often mirror domain fields, and both change together, feeling redundant.
+- **Mapping drift**: the assembler can fall out of sync with the domain if not maintained.
 
 ## Common Mistakes
 
-- **Putting behavior on the DTO** — a DTO with logic stops being a transfer object and recouples the
+- **Putting behavior on the DTO**: a DTO with logic stops being a transfer object and recouples the
   boundary to behavior; keep it fields-only.
-- **Exposing the domain object as the DTO** — "just serialize the entity" leaks internals and couples
+- **Exposing the domain object as the DTO**: "just serialize the entity" leaks internals and couples
   clients to the schema; assemble a dedicated DTO.
-- **One DTO for every use** — reusing a fat DTO across read, write, and list endpoints exposes wrong fields
+- **One DTO for every use**: reusing a fat DTO across read, write, and list endpoints exposes wrong fields
   each time; shape DTOs per use case (request vs. response, summary vs. detail).
-- **Skipping validation on inbound DTOs** — trusting incoming DTOs without validating/parsing them into
+- **Skipping validation on inbound DTOs**: trusting incoming DTOs without validating/parsing them into
   the domain lets bad data in (mass-assignment risks).
 
 ## Key Takeaways
@@ -98,7 +98,7 @@ Service ──assembles──► UserDTO { id, name, email }   (no behavior, tai
 **❌ Naive**
 
 ```js
-// Serialize the domain/ORM object directly — leaks internals and couples the client to the schema.
+// Serialize the domain/ORM object directly: leaks internals and couples the client to the schema.
 app.get("/users/:id", async (req, res) => {
   const user = await User.find(req.params.id);
   res.json(user); // exposes passwordHash, internalFlags, DB column names...
@@ -123,7 +123,7 @@ app.get("/users/:id", async (req, res) => {
 });
 ```
 
-**🧠 Tradeoff** — A `toUserDTO` assembler gives you a stable, minimal, safe payload — the client depends on
+**🧠 Tradeoff**: A `toUserDTO` assembler gives you a stable, minimal, safe payload; the client depends on
 the DTO shape, not your `User` internals, and secrets can't leak. The cost is the mapping function and the
 feeling of duplication when DTO fields mirror domain fields. That "duplication" is the point: the two shapes
 are allowed to diverge, and the DTO shields the API from domain refactors.
@@ -159,7 +159,7 @@ app.post("/users", async (req, res) => {
 });
 ```
 
-**🧠 Tradeoff** — Separate request and response DTOs (with validation on the inbound side) keep the API
+**🧠 Tradeoff**: Separate request and response DTOs (with validation on the inbound side) keep the API
 contract explicit and safe: `parseCreateUser` prevents mass-assignment and bad data, `toUserResponse`
 controls exposure. Libraries (zod, class-transformer, DTO decorators in NestJS) formalize this. The extra
 shapes are boilerplate; they're also your API's stable contract and a security boundary.
@@ -197,7 +197,7 @@ def get_user(request, id):
 # Pydantic/DRF serializers are the mature route (validation + serialization in one).
 ```
 
-**🧠 Tradeoff** — A frozen dataclass DTO plus an assembler gives Python a clean, typed boundary object, and
+**🧠 Tradeoff**: A frozen dataclass DTO plus an assembler gives Python a clean, typed boundary object, and
 Pydantic models / DRF serializers are the batteries-included version that also validate inbound data. It's
 the standard way to keep API schemas independent of Django/ORM models. The mapping is boilerplate, but it's
 what lets the API surface stay stable while the domain evolves, and keeps internal fields off the wire.
@@ -222,7 +222,7 @@ end
 defmodule MyAppWeb.UserJSON do
   def show(%{user: user}), do: %{data: data(user)}
 
-  # the DTO shape — plain map, tailored fields, no internals
+  # the DTO shape: plain map, tailored fields, no internals
   defp data(user) do
     %{id: user.id, name: user.name, email: user.email, member_since: user.inserted_at.year}
   end
@@ -234,7 +234,7 @@ def show(conn, %{"id" => id}) do
 end
 ```
 
-**🧠 Tradeoff** — Phoenix's JSON views are DTO assemblers: the `data/1` function defines exactly the payload
+**🧠 Tradeoff**: Phoenix's JSON views are DTO assemblers: the `data/1` function defines exactly the payload
 shape as a plain map, decoupled from the Ecto schema, so internals never render and the API contract is
 explicit. It fits the functional style: data-shaping functions, no behavior on the payload. The cost is
 writing the view/DTO per representation; the gain is API stability independent of your schemas and no
@@ -278,7 +278,7 @@ type CreateUserRequest struct {
 json.NewEncoder(w).Encode(toUserResponse(user))
 ```
 
-**🧠 Tradeoff** — Separate `UserResponse`/`CreateUserRequest` structs are idiomatic Go for API boundaries:
+**🧠 Tradeoff**: Separate `UserResponse`/`CreateUserRequest` structs are idiomatic Go for API boundaries:
 the domain struct stays internal, and dedicated DTOs control JSON exposure field-by-field (no accidental
 `PasswordHash` leak). It's explicit and type-safe, matching Go's preference for visible boundaries over
 reflection tricks on one shared struct. The extra structs and mapping are the cost; the clean, stable API
@@ -291,9 +291,9 @@ contract is the payoff.
 **❌ Naive**
 
 ```csharp
-// Serialize the domain object directly — every field goes over the wire.
+// Serialize the domain object directly: every field goes over the wire.
 var user = repo.User(id);
-var json = JsonSerializer.Serialize(user); // "PasswordHash":"x9..." — leaks!
+var json = JsonSerializer.Serialize(user); // "PasswordHash":"x9..."; leaks!
 ```
 
 **✅ Idiomatic**
@@ -303,9 +303,9 @@ using System.Text.Json;
 
 var user = new User(1, "Ada", "ada@example.com", PasswordHash: "x9...");
 Console.WriteLine(JsonSerializer.Serialize(UserResponse.From(user)));
-// {"Id":1,"Name":"Ada","Email":"ada@example.com"} — no hash in sight
+// {"Id":1,"Name":"Ada","Email":"ada@example.com"}, no hash in sight
 
-// Domain model — internal, free to change.
+// Domain model: internal, free to change.
 public sealed record User(int Id, string Name, string Email, string PasswordHash);
 
 // The DTO is a record: immutable, value-equal, declared in one line.
@@ -314,11 +314,11 @@ public sealed record UserResponse(int Id, string Name, string Email)
     public static UserResponse From(User u) => new(u.Id, u.Name, u.Email); // assembler
 }
 
-// Inbound request DTO — a separate shape, bound and validated before the domain sees it.
+// Inbound request DTO: a separate shape, bound and validated before the domain sees it.
 public sealed record CreateUserRequest(string Name, string Email);
 ```
 
-**🧠 Tradeoff** — records *are* C#'s DTO story: one line declares an immutable, value-equal shape, `with`
+**🧠 Tradeoff**: records *are* C#'s DTO story: one line declares an immutable, value-equal shape, `with`
 builds variants, and `System.Text.Json` serializes exactly the declared fields, so the boilerplate objection
 mostly evaporates. ASP.NET Core binds and validates request records for you, so the request/response split
 costs almost nothing. What remains is the mapping, and `From` is worth keeping explicit: mappers like
@@ -332,7 +332,7 @@ control.
 **❌ Naive**
 
 ```rust
-// Hand the domain struct itself to the boundary — every field goes with it.
+// Hand the domain struct itself to the boundary: every field goes with it.
 #[derive(Debug)]
 struct User { id: u32, name: String, email: String, password_hash: String }
 
@@ -344,7 +344,7 @@ fn show(user: &User) -> String {
 **✅ Idiomatic**
 
 ```rust
-// Domain model — internal, free to change.
+// Domain model: internal, free to change.
 struct User { id: u32, name: String, email: String, password_hash: String }
 
 // The DTO: a plain struct holding exactly what crosses the boundary.
@@ -358,7 +358,7 @@ impl From<&User> for UserResponse {
     }
 }
 
-// Inbound request DTO — a separate shape, validated into the domain.
+// Inbound request DTO: a separate shape, validated into the domain.
 struct CreateUserRequest { name: String, email: String }
 
 fn main() {
@@ -373,7 +373,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — a dedicated struct plus `impl From<&User>` is the idiomatic assembler; in real services
+**🧠 Tradeoff**: a dedicated struct plus `impl From<&User>` is the idiomatic assembler; in real services
 you'd add serde's `#[derive(Serialize, Deserialize)]` and the struct's fields *become* the wire contract
 (the katas stay dependency-free, but the shape is identical). Ownership makes the transfer cost explicit:
 the DTO clones the strings it carries, because data crossing a boundary genuinely is a copy. The type
@@ -387,7 +387,7 @@ so mass-assigning `password_hash` isn't even expressible.
 **❌ Naive**
 
 ```zig
-// Print/serialize the domain struct itself — every field goes with it.
+// Print/serialize the domain struct itself: every field goes with it.
 const user = User{ .id = 1, .name = "Ada", .email = "ada@example.com", .password_hash = "x9..." };
 std.debug.print("{any}\n", .{user}); // password_hash rides along to the client
 ```
@@ -397,7 +397,7 @@ std.debug.print("{any}\n", .{user}); // password_hash rides along to the client
 ```zig
 const std = @import("std");
 
-// Domain model — internal, free to change.
+// Domain model: internal, free to change.
 const User = struct {
     id: u32,
     name: []const u8,
@@ -416,18 +416,18 @@ const UserResponse = struct {
     }
 };
 
-// Inbound request DTO — a separate shape, checked before it touches the domain.
+// Inbound request DTO: a separate shape, checked before it touches the domain.
 const CreateUserRequest = struct { name: []const u8, email: []const u8 };
 
 pub fn main() void {
     const user = User{ .id = 1, .name = "Ada", .email = "ada@example.com", .password_hash = "x9..." };
     const dto = UserResponse.from(user);
     std.debug.print("id={d} name={s} email={s}\n", .{ dto.id, dto.name, dto.email });
-    // id=1 name=Ada email=ada@example.com — no password_hash in sight
+    // id=1 name=Ada email=ada@example.com, no password_hash in sight
 }
 ```
 
-**🧠 Tradeoff** — Zig structs are already plain data holders, so a DTO is just a second struct and a
+**🧠 Tradeoff**: Zig structs are already plain data holders, so a DTO is just a second struct and a
 `from` function: the pattern costs almost nothing, and the field list is the entire contract (`std.json`
 serializes exactly the declared fields, so a dedicated DTO struct is precisely how you control exposure).
 The Zig-specific wrinkle is lifetimes: the DTO's slices borrow the domain's strings, so it must not
@@ -441,14 +441,14 @@ other side. Nothing is hidden; nothing is free.
 **❌ Naive**
 
 ```java
-// Hand the domain object itself to the boundary — every field rides along.
+// Hand the domain object itself to the boundary: every field rides along.
 record User(int id, String name, String email, String passwordHash) {}
 
 public class Demo {
     public static void main(String[] args) {
         var user = new User(1, "Ada", "ada@example.com", "x9...");
         System.out.println(user); // User[id=1, name=Ada, email=ada@example.com, passwordHash=x9...]
-        // Jackson does the same: every component becomes a JSON field — the hash leaks.
+        // Jackson does the same: every component becomes a JSON field; the hash leaks.
     }
 }
 ```
@@ -456,17 +456,17 @@ public class Demo {
 **✅ Idiomatic**
 
 ```java
-// Domain model — internal, free to change.
+// Domain model: internal, free to change.
 record User(int id, String name, String email, String passwordHash) {}
 
-// The DTO is a record: immutable, value-equal, one line — the components ARE the contract.
+// The DTO is a record: immutable, value-equal, one line; the components ARE the contract.
 record UserResponse(int id, String name, String email) {
     static UserResponse from(User u) {
-        return new UserResponse(u.id(), u.name(), u.email()); // assembler — no internals
+        return new UserResponse(u.id(), u.name(), u.email()); // assembler, no internals
     }
 }
 
-// Inbound request DTO — the compact constructor validates, so an invalid one can't exist.
+// Inbound request DTO: the compact constructor validates, so an invalid one can't exist.
 record CreateUserRequest(String name, String email) {
     CreateUserRequest {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name");
@@ -479,12 +479,12 @@ public class Demo {
         var user = new User(1, "Ada", "ada@example.com", "x9...");
         var dto = UserResponse.from(user);
         System.out.println(dto); // UserResponse[id=1, name=Ada, email=ada@example.com]
-        // Jackson serializes exactly the record's components — no passwordHash in sight.
+        // Jackson serializes exactly the record's components, no passwordHash in sight.
     }
 }
 ```
 
-**🧠 Tradeoff** — the DTO pattern was named in Java (Fowler, the J2EE catalogs), and its
+**🧠 Tradeoff**: the DTO pattern was named in Java (Fowler, the J2EE catalogs), and its
 "boilerplate" disadvantage was earned here too: a pre-records DTO was forty lines of getters,
 `equals`, and `hashCode`. Records close that chapter: one line declares an immutable, value-equal
 shape, Jackson reads the components directly, and the compact constructor makes the inbound DTO
@@ -495,21 +495,21 @@ runtime-reflection mappers do.
 
 ## Applications
 
-- **REST/GraphQL APIs** — request/response DTOs (serializers, schemas) shape the contract independent of the
+- **REST/GraphQL APIs**: request/response DTOs (serializers, schemas) shape the contract independent of the
   domain (backend).
-- **Service-to-service calls** — message/RPC payloads (protobuf, Avro) are DTOs crossing service boundaries
+- **Service-to-service calls**: message/RPC payloads (protobuf, Avro) are DTOs crossing service boundaries
   (backend).
-- **Layer boundaries** — passing view models to the presentation layer instead of domain entities (backend
+- **Layer boundaries**: passing view models to the presentation layer instead of domain entities (backend
   & frontend).
-- **Frontend view models** — mapping API responses into UI-shaped objects the components consume (frontend).
-- **Aggregated payloads** — a Backend-for-Frontend assembling one DTO from several services to reduce
+- **Frontend view models**: mapping API responses into UI-shaped objects the components consume (frontend).
+- **Aggregated payloads**: a Backend-for-Frontend assembling one DTO from several services to reduce
   round-trips (backend).
 
 ## Related Patterns
 
-- **Data Mapper** — both translate between shapes; the mapper maps domain↔database, the DTO maps
+- **Data Mapper**: both translate between shapes; the mapper maps domain↔database, the DTO maps
   domain↔boundary/wire.
-- **Container / Presentational** — a frontend DTO/view model is what a container hands its presentational
+- **Container / Presentational**: a frontend DTO/view model is what a container hands its presentational
   components: data shaped for display.
-- **Layered / Hexagonal** — DTOs are what cross the layer/adapter boundaries, keeping the domain model from
+- **Layered / Hexagonal**: DTOs are what cross the layer/adapter boundaries, keeping the domain model from
   leaking outward.

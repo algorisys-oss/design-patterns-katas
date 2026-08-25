@@ -25,9 +25,9 @@ question ends up in the top few you send to the model.
 
 A single retriever leaves answers on the table:
 
-- **Vector-only** — misses exact identifiers, error codes, part numbers, and rare terms. Ask for
+- **Vector-only**: misses exact identifiers, error codes, part numbers, and rare terms. Ask for
   "error E-4021" and cosine similarity happily returns passages about *errors in general*.
-- **Keyword-only (BM25)** — misses synonyms and paraphrase. Ask "how do I get my money back" and a
+- **Keyword-only (BM25)**: misses synonyms and paraphrase. Ask "how do I get my money back" and a
   chunk titled "Refund policy" scores zero because the words don't overlap.
 
 Even when you retrieve the right chunk, it may sit at rank 8 while three near-misses rank above it.
@@ -38,11 +38,11 @@ order that first-stage retrieval got roughly right.
 
 Key Components / Participants:
 
-- **Sparse retriever** — keyword/BM25 search; exact-term recall.
-- **Dense retriever** — embedding similarity; semantic recall.
-- **Fusion** — merges the two ranked lists into one (Reciprocal Rank Fusion is the common,
+- **Sparse retriever**: keyword/BM25 search; exact-term recall.
+- **Dense retriever**: embedding similarity; semantic recall.
+- **Fusion**: merges the two ranked lists into one (Reciprocal Rank Fusion is the common,
   score-free way).
-- **Reranker** — a second-stage, higher-precision scorer (a cross-encoder or an LLM) that reorders
+- **Reranker**: a second-stage, higher-precision scorer (a cross-encoder or an LLM) that reorders
   the merged candidates.
 
 ```
@@ -74,13 +74,13 @@ query ──┬──▶ sparse (BM25) ──┐
 
 ## Common Mistakes
 
-- **Reranking everything** — a cross-encoder over 10,000 chunks is unusable. First-stage retrieval
+- **Reranking everything**: a cross-encoder over 10,000 chunks is unusable. First-stage retrieval
   narrows to ~50; the reranker refines those.
-- **Naively averaging scores** — BM25 and cosine live on different scales; averaging is
+- **Naively averaging scores**: BM25 and cosine live on different scales; averaging is
   meaningless. Fuse by rank (RRF), or normalize deliberately.
-- **Skipping fusion, concatenating instead** — dumping both lists back to back double-counts
+- **Skipping fusion, concatenating instead**: dumping both lists back to back double-counts
   overlaps and loses the signal that a chunk ranked high in *both*.
-- **Ignoring latency budget** — two retrievers plus a rerank can blow an interactive latency target;
+- **Ignoring latency budget**: two retrievers plus a rerank can blow an interactive latency target;
   measure it.
 
 ## Key Takeaways
@@ -103,7 +103,7 @@ version fuses two with RRF and reranks the top candidates.
 ```js
 // One retriever, whatever it misses is simply gone.
 async function search(query, k = 5) {
-  return dense(query, k); // semantic only — misses exact terms
+  return dense(query, k); // semantic only: misses exact terms
 }
 ```
 
@@ -128,7 +128,7 @@ async function search(query, k = 5) {
 }
 ```
 
-**🧠 Tradeoff** — `Promise.all` runs the two retrievers concurrently, RRF fuses by rank so BM25 and
+**🧠 Tradeoff**: `Promise.all` runs the two retrievers concurrently, RRF fuses by rank so BM25 and
 cosine never have to share a scale, and the rerank only touches 25 candidates. The win is
 recall *and* precision; the cost is a two-index setup and a rerank call on the hot path, so budget
 its latency.
@@ -159,7 +159,7 @@ def search(query: str, k: int = 5) -> list[str]:
     return rerank(query, fused)[:k]
 ```
 
-**🧠 Tradeoff** — RRF is a few lines over a `defaultdict`; the retrievers and reranker are injected
+**🧠 Tradeoff**: RRF is a few lines over a `defaultdict`; the retrievers and reranker are injected
 functions, so swapping BM25 for Elasticsearch or the reranker for a Cohere/cross-encoder model is a
 call-site change, not a rewrite. Run the two retrievers with `asyncio.gather` when they're I/O-bound
 to reclaim the latency the extra stage costs.
@@ -199,7 +199,7 @@ defmodule Hybrid do
 end
 ```
 
-**🧠 Tradeoff** — `Task.async_stream` fires both retrievers concurrently, then the results flow
+**🧠 Tradeoff**: `Task.async_stream` fires both retrievers concurrently, then the results flow
 through a pure `rrf` pipeline into the rerank. Fusion as a group-by-and-sum reads cleanly in
 Elixir's pipeline style. The cost, as always here, is that the real retrievers (a BM25 index, a
 vector store) live outside the process; this shows the orchestration, which is the pattern.
@@ -248,7 +248,7 @@ func Search(query string, k int) []string {
 }
 ```
 
-**🧠 Tradeoff** — A `WaitGroup` runs the two retrievers as goroutines and joins before fusing — the
+**🧠 Tradeoff**: A `WaitGroup` runs the two retrievers as goroutines and joins before fusing, the
 idiomatic Go fan-out/fan-in for the concurrent retrieval. RRF over a map is straightforward. The
 sort captures `scores` in the closure, which is fine here; for very large candidate sets a slice of
 structs avoids repeated map lookups.
@@ -257,21 +257,21 @@ structs avoids repeated map lookups.
 
 Real-world uses of Hybrid Search & Reranking:
 
-- **Enterprise & product search** — queries mix product names/SKUs with natural language.
-- **Support Q&A** — user phrasing ("get my money back") vs. doc terms ("refund"), bridged by hybrid.
-- **Code search** — exact symbol names (sparse) plus "where do we handle retries" (dense).
-- **Legal/medical retrieval** — precise terminology where missing an exact term is unacceptable.
-- **RAG quality upgrades** — the usual first fix when a pure-vector RAG returns near-misses.
+- **Enterprise & product search**: queries mix product names/SKUs with natural language.
+- **Support Q&A**: user phrasing ("get my money back") vs. doc terms ("refund"), bridged by hybrid.
+- **Code search**: exact symbol names (sparse) plus "where do we handle retries" (dense).
+- **Legal/medical retrieval**: precise terminology where missing an exact term is unacceptable.
+- **RAG quality upgrades**: the usual first fix when a pure-vector RAG returns near-misses.
 
 **In modern systems:**
 
-- **Low-code** — a search widget whose relevance "just works" across jargon and plain language.
-- **Workflow engine** — a retrieval step that fuses multiple sources before enriching the payload.
-- **Multi-agent** — a research agent that fans out sparse and dense queries, then reranks for its peers.
+- **Low-code**: a search widget whose relevance "just works" across jargon and plain language.
+- **Workflow engine**: a retrieval step that fuses multiple sources before enriching the payload.
+- **Multi-agent**: a research agent that fans out sparse and dense queries, then reranks for its peers.
 
 ## Related Patterns
 
-- **Retrieval-Augmented Generation** — hybrid search is the high-quality retriever RAG plugs in.
-- **Chunking & Embedding** — good chunks are what both retrievers search over.
-- **Query Rewriting** — reshape the query before hybrid search for another recall boost.
-- **Strategy** — each retriever and the reranker are interchangeable strategies behind one search call.
+- **Retrieval-Augmented Generation**: hybrid search is the high-quality retriever RAG plugs in.
+- **Chunking & Embedding**: good chunks are what both retrievers search over.
+- **Query Rewriting**: reshape the query before hybrid search for another recall boost.
+- **Strategy**: each retriever and the reranker are interchangeable strategies behind one search call.

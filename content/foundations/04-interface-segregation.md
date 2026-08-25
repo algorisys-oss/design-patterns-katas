@@ -81,10 +81,10 @@ Specific signatures are stable: you extend the surface with new members instead 
 existing ones, which is exactly what keeps published APIs and shared libraries compatible.
 
 ```
-// ❌ breaking — every existing caller of charge(amount) must now change
+// ❌ breaking: every existing caller of charge(amount) must now change
 charge(amount, currency)
 
-// ✅ additive — old callers keep working; new capability is a new, specific method
+// ✅ additive: old callers keep working; new capability is a new, specific method
 charge(amount)                     // unchanged, still valid
 chargeInCurrency(amount, currency) // new
 // or accept an options object so new fields are optional:
@@ -97,10 +97,10 @@ stable than one wide one that keeps growing parameters.
 
 ## Common Mistakes
 
-- **The fat "manager" interface** — one interface every implementer must fully satisfy.
-- **Stub-and-throw methods** — a sign the interface bundles unrelated roles.
-- **Splitting without a client** — inventing role interfaces no caller actually needs.
-- **Evolving a fat interface in place** — adding methods to (or changing signatures on) a
+- **The fat "manager" interface**: one interface every implementer must fully satisfy.
+- **Stub-and-throw methods**: a sign the interface bundles unrelated roles.
+- **Splitting without a client**: inventing role interfaces no caller actually needs.
+- **Evolving a fat interface in place**: adding methods to (or changing signatures on) a
   widely-implemented interface is a breaking change; grow the API with new specific
   methods/interfaces and version incompatible changes instead of reshaping the contract.
 
@@ -124,7 +124,7 @@ Splitting a fat `Machine` into `Printer`, `Scanner`, `Fax`.
 **❌ Naive**
 
 ```js
-// Fat contract — every device must "implement" all three (JS via duck typing).
+// Fat contract: every device must "implement" all three (JS via duck typing).
 class SimplePrinter {
   print(doc) { return `printing ${doc}`; }
   scan(doc) { throw new Error("no scanner"); }  // forced, useless
@@ -150,7 +150,7 @@ function printAll(printer, docs) { return docs.map(d => printer.print(d)); }
 printAll(new SimplePrinter(), ["a"]);  // no scan/fax stubs in sight
 ```
 
-**🧠 Note** — JS has no formal interfaces, so ISP is about which *methods a client requires*.
+**🧠 Note**: JS has no formal interfaces, so ISP is about which *methods a client requires*.
 `printAll` needs only `print`, so a `SimplePrinter` suffices; nothing forces it to fake a
 scanner. The role boundary lives in what the function asks for, not in a declared interface.
 
@@ -200,7 +200,7 @@ def print_all(printer: Printer, docs: list[str]) -> list[str]:
     return [printer.print(d) for d in docs]
 ```
 
-**🧠 Note** — Small `Protocol`s per role are the Pythonic ISP: `print_all` asks for `Printer`,
+**🧠 Note**: Small `Protocol`s per role are the Pythonic ISP: `print_all` asks for `Printer`,
 so `SimplePrinter` fits without pretending to scan. A device that does more just satisfies more
 protocols: composition of roles, not one fat ABC with throwing stubs.
 
@@ -257,7 +257,7 @@ defmodule AllInOne do
 end
 ```
 
-**🧠 Note** — Elixir behaviours segregate cleanly: define one per role and a module lists exactly
+**🧠 Note**: Elixir behaviours segregate cleanly: define one per role and a module lists exactly
 the behaviours it implements. `AllInOne` adopts both `Printer` and `Scanner`; `SimplePrinter`
 only `Printer`, so no module is forced to stub a callback it can't honor.
 
@@ -287,7 +287,7 @@ func (SimplePrinter) Fax(string) string       { panic("no fax") }
 ```go
 package office
 
-// Tiny, role-focused interfaces — the Go way.
+// Tiny, role-focused interfaces: the Go way.
 type Printer interface{ Print(doc string) string }
 type Scanner interface{ Scan(doc string) string }
 
@@ -310,7 +310,7 @@ func PrintAll(p Printer, docs []string) []string {
 }
 ```
 
-**🧠 Note** — ISP is idiomatic Go: interfaces are small (often one method — `io.Reader`,
+**🧠 Note**: ISP is idiomatic Go: interfaces are small (often one method, `io.Reader`,
 `io.Writer`), and `PrintAll` accepts the narrowest interface it needs. `SimplePrinter` satisfies
 `Printer` and nothing forces a `Scan`. Larger capabilities compose by embedding small interfaces.
 
@@ -340,7 +340,7 @@ public sealed class SimplePrinter : IMachine
 **✅ Idiomatic**
 
 ```csharp
-// The client asks for the role it needs — no stubs anywhere.
+// The client asks for the role it needs, no stubs anywhere.
 Console.WriteLine(PrintAll(new SimplePrinter(), ["a"])[0]); // printing a
 
 static List<string> PrintAll(IPrinter printer, List<string> docs) =>
@@ -363,7 +363,7 @@ public sealed class AllInOne : IPrinter, IScanner
 }
 ```
 
-**🧠 Note** — a C# class can implement any number of interfaces, so ISP costs nothing: declare
+**🧠 Note**: a C# class can implement any number of interfaces, so ISP costs nothing: declare
 one interface per role and let each device pick its set. `PrintAll` takes `IPrinter`, checked at
 compile time; through that parameter a caller can't even see `Scan`. The classic .NET smell is
 the `ISomethingManager` with a dozen members; split it by who calls what, not by what the
@@ -400,7 +400,7 @@ impl Machine for SimplePrinter {
 **✅ Idiomatic**
 
 ```rust
-// One small trait per role — the same Go-style segregation, made explicit.
+// One small trait per role: the same Go-style segregation, made explicit.
 trait Printer {
     fn print(&self, doc: &str) -> String;
 }
@@ -437,7 +437,7 @@ fn main() {
 }
 ```
 
-**🧠 Note** — small traits are how Rust's std already works: `Read`, `Write`, and `Display` are
+**🧠 Note**: small traits are how Rust's std already works: `Read`, `Write`, and `Display` are
 each one role, and you bound on exactly what you call. Unlike Go's implicit satisfaction, an
 `impl` block states which roles a type plays, so the compiler rejects a `SimplePrinter` handed
 where a `Scanner` is needed. Where a client genuinely needs two roles, ask for the pair at that
@@ -453,7 +453,7 @@ inherits.
 ```zig
 const std = @import("std");
 
-// Zig has no interfaces — a fat vtable is the closest thing, and it forces stubs.
+// Zig has no interfaces: a fat vtable is the closest thing, and it forces stubs.
 const Machine = struct {
     printFn: *const fn (doc: []const u8) void,
     scanFn: *const fn (doc: []const u8) void,
@@ -480,7 +480,7 @@ const simple_printer = Machine{ .printFn = printerPrint, .scanFn = noScanner, .f
 ```zig
 const std = @import("std");
 
-// The "interface" is whatever methods the client actually calls — checked at compile time.
+// The "interface" is whatever methods the client actually calls: checked at compile time.
 fn printAll(printer: anytype, docs: []const []const u8) void {
     for (docs) |doc| printer.print(doc);
 }
@@ -502,11 +502,11 @@ const AllInOne = struct {
 
 pub fn main() void {
     printAll(SimplePrinter{}, &.{ "a", "b" }); // printing a / printing b
-    printAll(AllInOne{}, &.{"c"});             // printing c — extra roles unused
+    printAll(AllInOne{}, &.{"c"});             // printing c: extra roles unused
 }
 ```
 
-**🧠 Note** — with `anytype`, `printAll` compiles against exactly the methods it calls, so the
+**🧠 Note**: with `anytype`, `printAll` compiles against exactly the methods it calls, so the
 role boundary is the call site itself: segregation for free, though the contract is implicit
 and a missing `print` only surfaces as a compile error where the function is instantiated. When
 dispatch must be runtime, keep each vtable role-sized the way `std.mem.Allocator` does one job,
@@ -559,12 +559,12 @@ public class Demo {
 
     public static void main(String[] args) {
         System.out.println(printAll(new SimplePrinter(), List.of("a"))); // [printing a]
-        System.out.println(printAll(new AllInOne(), List.of("b")));      // [printing b] — extra roles unused
+        System.out.println(printAll(new AllInOne(), List.of("b")));      // [printing b]: extra roles unused
     }
 }
 ```
 
-**🧠 Note** — a role interface with one method is a functional interface, so a test double is a
+**🧠 Note**: a role interface with one method is a functional interface, so a test double is a
 lambda: `printAll(doc -> "fake " + doc, docs)`. No mocking library needed. Java also shows what
 it costs to grow a wide interface anyway: default methods exist because `Collection` had to gain
 `stream()` without breaking every implementer in the world: additive evolution bolted onto the
@@ -575,16 +575,16 @@ adding new interfaces, not by patching old ones.
 
 Where ISP shows up in practice:
 
-- **`io.Reader`/`io.Writer`** — the canonical small-interface design.
-- **Device drivers** — printer/scanner/fax as separate capabilities.
-- **Repositories** — a read-only `Reader` vs a read-write `Store` for callers that only read.
-- **Service clients** — narrow interfaces per consumer, not one god client.
-- **Public & library APIs** — additive changes (new methods, optional params, versioned
+- **`io.Reader`/`io.Writer`**: the canonical small-interface design.
+- **Device drivers**: printer/scanner/fax as separate capabilities.
+- **Repositories**: a read-only `Reader` vs a read-write `Store` for callers that only read.
+- **Service clients**: narrow interfaces per consumer, not one god client.
+- **Public & library APIs**: additive changes (new methods, optional params, versioned
   interfaces like `v1`/`v2`) keep existing clients working; ISP keeps each versioned surface
   small, so a breaking change touches one role instead of everyone.
 
 ## Related Principles & Patterns
 
-- **Single Responsibility** — ISP is SRP for interfaces.
-- **Liskov Substitution** — small interfaces are easier to substitute honestly.
-- **Dependency Inversion** — clients depend on the narrow abstraction they actually need.
+- **Single Responsibility**: ISP is SRP for interfaces.
+- **Liskov Substitution**: small interfaces are easier to substitute honestly.
+- **Dependency Inversion**: clients depend on the narrow abstraction they actually need.

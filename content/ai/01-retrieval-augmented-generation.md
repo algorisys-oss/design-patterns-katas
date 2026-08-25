@@ -29,9 +29,9 @@ it grounds the answer in sources you can cite, cutting hallucination.
 A bare model call has two failure modes, and stuffing everything into the prompt trades one for
 the other:
 
-- **Answer from memory** — the model invents a plausible-sounding answer about your product
+- **Answer from memory**: the model invents a plausible-sounding answer about your product
   because it has no access to your docs. Confident, wrong, unsourceable.
-- **Stuff every document** — you paste the whole knowledge base into the prompt. Now it's
+- **Stuff every document**: you paste the whole knowledge base into the prompt. Now it's
   accurate but you blow the context window, pay for tokens you don't need, and the model's
   attention is diluted across thousands of irrelevant lines.
 
@@ -41,12 +41,12 @@ RAG is the middle path: fetch *only* the relevant few, then generate.
 
 Key Components / Participants:
 
-- **Retriever** — takes the query, returns the top-k relevant chunks. Usually an embedding
+- **Retriever**: takes the query, returns the top-k relevant chunks. Usually an embedding
   similarity search over a vector store, but the interface is all that matters.
-- **Vector store** — holds document chunks and their embeddings; answers nearest-neighbour
+- **Vector store**: holds document chunks and their embeddings; answers nearest-neighbour
   queries.
-- **Prompt builder** — assembles the retrieved context and the question into one grounded prompt.
-- **Generator** — the model call that answers *from the provided context*.
+- **Prompt builder**: assembles the retrieved context and the question into one grounded prompt.
+- **Generator**: the model call that answers *from the provided context*.
 
 ```
 question ──▶ embed ──▶ retriever ──▶ top-k chunks
@@ -82,14 +82,14 @@ question ──▶ embed ──▶ retriever ──▶ top-k chunks
 
 ## Common Mistakes
 
-- **Retrieving too much or too little** — top-1 misses context; top-50 buries the answer and
+- **Retrieving too much or too little**: top-1 misses context; top-50 buries the answer and
   costs tokens. Tune k, and rerank (see [[hybrid-search]]).
-- **Not instructing the model to stay grounded** — without "answer using only the context, say
+- **Not instructing the model to stay grounded**: without "answer using only the context, say
   'I don't know' if it's not there," the model quietly falls back to memory and you're back to
   hallucinating.
-- **Bad chunking** — chunks too large dilute similarity; too small lose context. This is its own
+- **Bad chunking**: chunks too large dilute similarity; too small lose context. This is its own
   pattern ([[chunking-embedding]]).
-- **Ignoring the "not found" case** — when retrieval returns nothing relevant, the honest answer
+- **Ignoring the "not found" case**: when retrieval returns nothing relevant, the honest answer
   is "I don't know," not a confident guess.
 
 ## Key Takeaways
@@ -111,7 +111,7 @@ first, then grounds the generation.
 **❌ Naive**
 
 ```js
-// Answers from the model's memory — no access to your data, no grounding.
+// Answers from the model's memory, no access to your data, no grounding.
 async function answer(question) {
   return callModel(`Answer this question: ${question}`);
 }
@@ -146,7 +146,7 @@ async function answer(question, retriever) {
 }
 ```
 
-**🧠 Tradeoff** — The retriever is a class only because it holds the corpus; a closure over
+**🧠 Tradeoff**: The retriever is a class only because it holds the corpus; a closure over
 `chunks` returning a `retrieve` function is just as idiomatic in JS. The win is that `answer`
 depends on the *interface* (`retrieve`), so swapping the in-memory search for a real vector DB
 (pgvector, Pinecone) never touches the generation code. The cost is the whole retrieval
@@ -188,7 +188,7 @@ def answer(question: str, retriever: Retriever) -> str:
     return call_model(prompt)  # your model SDK, kept behind one boundary
 ```
 
-**🧠 Tradeoff** — `Retriever` as a `Protocol` types the seam without a base class: any object with
+**🧠 Tradeoff**: `Retriever` as a `Protocol` types the seam without a base class: any object with
 `retrieve` satisfies it, so a `KeywordRetriever` or a pgvector-backed one drops in structurally.
 That's the Pythonic way to make the retriever swappable. The judgment call is `k` and the
 grounding instruction; both matter more to answer quality than the code around them.
@@ -232,7 +232,7 @@ defmodule RAG do
 end
 ```
 
-**🧠 Tradeoff** — Elixir has no vector-DB SDK to hide behind, so the pattern shows as a pure
+**🧠 Tradeoff**: Elixir has no vector-DB SDK to hide behind, so the pattern shows as a pure
 pipeline: retrieve, join, generate, each a testable function. For a real corpus you'd embed with
 Bumblebee and store vectors in Postgres via `pgvector`, but the shape is the same: a `retrieve/3`
 function the pipeline calls. If you need a named contract, a `behaviour` with `retrieve/3` lets you
@@ -251,7 +251,7 @@ func Answer(question string) string {
 **✅ Idiomatic**
 
 ```go
-// Small implicit interface — any retriever with Retrieve satisfies it.
+// Small implicit interface: any retriever with Retrieve satisfies it.
 type Retriever interface {
     Retrieve(query string, k int) []string
 }
@@ -278,11 +278,11 @@ func Answer(question string, r Retriever) string {
         "Answer the question using ONLY the context below. "+
             "If the answer isn't there, say \"I don't know.\"\n\n"+
             "Context:\n%s\n\nQuestion: %s", context, question)
-    return CallModel(prompt) // your model SDK — here a plain HTTP POST behind one boundary
+    return CallModel(prompt) // your model SDK: here a plain HTTP POST behind one boundary
 }
 ```
 
-**🧠 Tradeoff** — Go's implicit interface makes the retriever seam free: `Answer` takes a
+**🧠 Tradeoff**: Go's implicit interface makes the retriever seam free: `Answer` takes a
 `Retriever`, and any type with `Retrieve` satisfies it with no declaration, so a keyword or pgvector
 retriever swaps in without touching `Answer`. There's no first-party Claude SDK for Go, so
 `CallModel` is a plain HTTP POST to the Messages API; that boundary is exactly where the interface
@@ -292,23 +292,23 @@ earns its keep, keeping the transport out of the pattern.
 
 Real-world uses of RAG:
 
-- **Documentation Q&A / support bots** — answer from product docs and past tickets, with links.
-- **Enterprise search** — "chat with your company knowledge base" over wikis, PDFs, and Slack.
-- **Customer-specific answers** — retrieve one user's records before answering about their account.
-- **Code assistants** — retrieve the relevant files/functions before generating an edit.
-- **Research & analysis** — ground a summary in a specific corpus rather than the open web.
+- **Documentation Q&A / support bots**: answer from product docs and past tickets, with links.
+- **Enterprise search**: "chat with your company knowledge base" over wikis, PDFs, and Slack.
+- **Customer-specific answers**: retrieve one user's records before answering about their account.
+- **Code assistants**: retrieve the relevant files/functions before generating an edit.
+- **Research & analysis**: ground a summary in a specific corpus rather than the open web.
 
 **In modern systems:**
 
-- **Low-code** — a "knowledge" field on a form whose answers are grounded in an attached document set.
-- **Workflow engine** — a retrieval step that enriches the payload with context before a decision step.
-- **Multi-agent** — the shared context pipeline (retrieve → rerank → summarize) that shapes what
+- **Low-code**: a "knowledge" field on a form whose answers are grounded in an attached document set.
+- **Workflow engine**: a retrieval step that enriches the payload with context before a decision step.
+- **Multi-agent**: the shared context pipeline (retrieve → rerank → summarize) that shapes what
   every agent sees before it reasons.
 
 ## Related Patterns
 
-- **Chunking & Embedding** — the ingestion half of RAG: how documents become retrievable vectors.
-- **Hybrid Search & Reranking** — better retrieval than pure vector similarity; the quality lever.
-- **Query Rewriting** — reshape the question before retrieval so the search actually finds the chunk.
-- **Structured Output** — when the grounded answer must be JSON (fields, citations) rather than prose.
-- **Prompt Chaining** — RAG is often one link: retrieve → answer → verify against the sources.
+- **Chunking & Embedding**: the ingestion half of RAG: how documents become retrievable vectors.
+- **Hybrid Search & Reranking**: better retrieval than pure vector similarity; the quality lever.
+- **Query Rewriting**: reshape the question before retrieval so the search actually finds the chunk.
+- **Structured Output**: when the grounded answer must be JSON (fields, citations) rather than prose.
+- **Prompt Chaining**: RAG is often one link: retrieve → answer → verify against the sources.

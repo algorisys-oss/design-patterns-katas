@@ -28,22 +28,22 @@ that never touches a database.
 
 Scatter data access through the codebase and queries end up everywhere:
 
-- **Query duplication** — the same "find active users" SQL is copy-pasted into five services, so
+- **Query duplication**: the same "find active users" SQL is copy-pasted into five services, so
   a schema change means five edits.
-- **Domain coupled to storage** — business logic imports the ORM/SQL client, so you can't test it
+- **Domain coupled to storage**: business logic imports the ORM/SQL client, so you can't test it
   without a database and can't change datastores without touching rules.
-- **Leaky models** — raw rows and ORM entities flow into the domain, coupling it to the schema.
-- **Inconsistent access** — every caller queries slightly differently, so caching, logging, and
+- **Leaky models**: raw rows and ORM entities flow into the domain, coupling it to the schema.
+- **Inconsistent access**: every caller queries slightly differently, so caching, logging, and
   auth checks on data access have no single home.
 
 ## Structure
 
 Key Components:
 
-- **Repository interface** — the collection-like contract the domain depends on (`find`, `save`...).
-- **Concrete Repositories** — implementations for each backing store (SQL, in-memory, HTTP).
-- **Domain objects / entities** — what the repository stores and returns; storage models stay hidden.
-- **Client** — services and use cases that depend only on the interface.
+- **Repository interface**: the collection-like contract the domain depends on (`find`, `save`...).
+- **Concrete Repositories**: implementations for each backing store (SQL, in-memory, HTTP).
+- **Domain objects / entities**: what the repository stores and returns; storage models stay hidden.
+- **Client**: services and use cases that depend only on the interface.
 
 ```
 Service ──uses──► «UserRepository»  find(id) / save(u)
@@ -62,26 +62,26 @@ Service ──uses──► «UserRepository»  find(id) / save(u)
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Testability** — swap a real repository for an in-memory fake; the domain never notices.
-- **Centralized access** — one home per entity for queries, mapping, caching, and access rules.
-- **Storage independence** — change or add a backing store by writing a new implementation.
+- **Testability**: swap a real repository for an in-memory fake; the domain never notices.
+- **Centralized access**: one home per entity for queries, mapping, caching, and access rules.
+- **Storage independence**: change or add a backing store by writing a new implementation.
 
 ### Disadvantages
-- **Abstraction cost** — for simple CRUD over one database, a repository can be ceremony over the ORM.
-- **Leaky queries** — complex reporting queries resist a tidy collection interface and tempt you
+- **Abstraction cost**: for simple CRUD over one database, a repository can be ceremony over the ORM.
+- **Leaky queries**: complex reporting queries resist a tidy collection interface and tempt you
   to expose the query language anyway.
-- **N+1 and performance blind spots** — a naive per-object interface hides expensive access
+- **N+1 and performance blind spots**: a naive per-object interface hides expensive access
   patterns behind innocent-looking calls.
 
 ## Common Mistakes
 
-- **Exposing the query language** — a `query(sql)` method on the repository leaks the storage
+- **Exposing the query language**: a `query(sql)` method on the repository leaks the storage
   detail it was meant to hide; offer intention-revealing finders instead.
-- **A generic repository for everything** — `Repository<T>` with only `getById`/`save` forces
+- **A generic repository for everything**: `Repository<T>` with only `getById`/`save` forces
   business queries into services or leaks them; add entity-specific methods.
-- **Returning storage models** — handing back ORM rows re-couples callers to the schema; map to
+- **Returning storage models**: handing back ORM rows re-couples callers to the schema; map to
   domain objects at the boundary.
-- **One method per screen** — letting the UI drive dozens of bespoke finders bloats the interface;
+- **One method per screen**: letting the UI drive dozens of bespoke finders bloats the interface;
   keep it about the domain, not the views.
 
 ## Key Takeaways
@@ -100,7 +100,7 @@ Service ──uses──► «UserRepository»  find(id) / save(u)
 **❌ Naive**
 
 ```js
-// Service holds SQL inline — logic coupled to the database, untestable without one.
+// Service holds SQL inline: logic coupled to the database, untestable without one.
 class UserService {
   async promote(id) {
     const rows = await db.query("SELECT * FROM users WHERE id=?", [id]);
@@ -129,10 +129,10 @@ const sqlUserRepo = {
   findById: (id) => db.query("SELECT * FROM users WHERE id=?", [id]).then((r) => r[0] && toUser(r[0])),
   save: (u) => db.query("UPDATE users SET role=? WHERE id=?", [u.role, u.id]),
 };
-// tests: new UserService(new Map(...) wrapped as a repo) — no database
+// tests: new UserService(new Map(...) wrapped as a repo), no database
 ```
 
-**🧠 Tradeoff** — Injecting a `users` repository frees `UserService` from SQL, so it tests against
+**🧠 Tradeoff**: Injecting a `users` repository frees `UserService` from SQL, so it tests against
 a `Map`-backed fake and could switch datastores without edits. The cost is an extra object and a
 mapping (`toUser`) between rows and domain objects, negligible next to the testability, but real
 overhead for a one-query CRUD endpoint.
@@ -144,7 +144,7 @@ overhead for a one-query CRUD endpoint.
 **❌ Naive**
 
 ```js
-// Every route reaches into the pool with ad-hoc SQL — duplication everywhere.
+// Every route reaches into the pool with ad-hoc SQL: duplication everywhere.
 app.get("/products/active", async (_req, res) => {
   const { rows } = await pool.query("SELECT * FROM products WHERE active = true");
   res.json(rows);
@@ -165,7 +165,7 @@ function makeProductRepo(pool) {
 // app.get("/products/active", (_req, res) => products.active().then((p) => res.json(p)));
 ```
 
-**🧠 Tradeoff** — Naming finders (`active`, `byId`) instead of scattering SQL gives one place to
+**🧠 Tradeoff**: Naming finders (`active`, `byId`) instead of scattering SQL gives one place to
 tune queries, add caching, or swap `pg` for another driver, and keeps routes thin. Node has no
 repository framework, so you hand-roll the module: lighter than a full ORM's repository layer, but
 you own the mapping and the connection handling.
@@ -177,7 +177,7 @@ you own the mapping and the connection handling.
 **❌ Naive**
 
 ```python
-# Business logic peppered with ORM queries — the domain depends on Django's ORM.
+# Business logic peppered with ORM queries: the domain depends on Django's ORM.
 def deactivate_stale():
     for u in User.objects.filter(last_login__lt=cutoff()):
         u.active = False
@@ -206,7 +206,7 @@ class DjangoUserRepository:                   # one implementation
     def save(self, user): UserModel.objects.filter(id=user.id).update(active=user.active)
 ```
 
-**🧠 Tradeoff** — A `Protocol` describes the repository and the domain depends on it, so
+**🧠 Tradeoff**: A `Protocol` describes the repository and the domain depends on it, so
 `Deactivate` tests with an in-memory list and never imports the ORM. It's clean and type-checked,
 but in Django especially the ORM's own manager/queryset *is* a repository-ish layer, so an extra
 repository can feel redundant, worth it when you want the domain framework-free, less so for
@@ -253,7 +253,7 @@ defmodule Users.Ecto do                        # implementation
 end
 ```
 
-**🧠 Tradeoff** — A **behaviour** as the repository contract lets `Accounts.promote` take the
+**🧠 Tradeoff**: A **behaviour** as the repository contract lets `Accounts.promote` take the
 implementation as an argument (defaulting to the Ecto one), so tests pass `Users.InMemory`. It's
 idiomatic, but Elixir teams often treat the **context** module itself as the repository boundary
 and skip the extra behaviour, which is fine until you actually need to swap or fake the store.
@@ -265,7 +265,7 @@ and skip the extra behaviour, which is fine until you actually need to swap or f
 **❌ Naive**
 
 ```go
-// Service takes a *sql.DB and writes SQL inline — can't test without a database.
+// Service takes a *sql.DB and writes SQL inline: can't test without a database.
 type UserService struct{ db *sql.DB }
 func (s UserService) Promote(id string) error {
     _, err := s.db.Exec("UPDATE users SET role='admin' WHERE id=$1", id)
@@ -296,7 +296,7 @@ func (s UserService) Promote(id string) error {
 // infrastructure implements UserRepo over *sql.DB; tests pass an in-memory map.
 ```
 
-**🧠 Tradeoff** — A tiny `UserRepo` interface, defined where it's used, lets `UserService` test
+**🧠 Tradeoff**: A tiny `UserRepo` interface, defined where it's used, lets `UserService` test
 against a map and swap SQL for anything satisfying the interface: very idiomatic Go (small,
 consumer-defined interfaces). The explicit mapping between DB rows and `User`, and the hand-wiring
 in `main`, are the costs; there's no ORM magic, but also no magic to fight.
@@ -308,7 +308,7 @@ in `main`, are the costs; there's no ORM magic, but also no magic to fight.
 **❌ Naive**
 
 ```csharp
-// The service writes SQL inline — untestable without a database.
+// The service writes SQL inline: untestable without a database.
 public sealed class UserService(NpgsqlDataSource db)
 {
     public Task PromoteAsync(string id) =>
@@ -347,7 +347,7 @@ public sealed class InMemoryUsers : IUserRepository
 }
 ```
 
-**🧠 Tradeoff** — Records make the domain object immutable: `user with { Role = "admin" }`
+**🧠 Tradeoff**: Records make the domain object immutable: `user with { Role = "admin" }`
 produces a new value to save, so nothing outside the repository ever mutates stored state in
 place. The honest C# caveat is EF Core: `DbSet<User>` is already repository-shaped, and wrapping
 it in `IUserRepository` is a classic over-abstraction. Add the interface when you want the domain
@@ -360,7 +360,7 @@ free of EF types or genuinely expect a second store; skip it when EF *is* the pe
 **❌ Naive**
 
 ```rust
-// The service holds the connection and inline SQL — no database, no tests.
+// The service holds the connection and inline SQL, no database, no tests.
 struct UserService { db: postgres::Client }
 
 impl UserService {
@@ -403,10 +403,10 @@ impl UserRepo for InMemoryUsers {
     fn save(&mut self, user: User) { self.0.insert(user.id.clone(), user); }
 }
 
-// A sqlx/postgres implementation is another impl UserRepo — the service never changes.
+// A sqlx/postgres implementation is another impl UserRepo: the service never changes.
 ```
 
-**🧠 Tradeoff** — Ownership makes the repository seam unusually sharp: `by_id` returns a *cloned*
+**🧠 Tradeoff**: Ownership makes the repository seam unusually sharp: `by_id` returns a *cloned*
 `User`, so callers can never hold a live reference into storage, and the clone is the mapping
 cost made visible. The trait keeps the domain crate free of any database dependency; sqlx and
 diesel stay in the adapter crate. As usual Rust makes the dispatch explicit: `UserService<R>` is
@@ -419,7 +419,7 @@ static and monomorphized; reach for `Box<dyn UserRepo>` only when the store is c
 **❌ Naive**
 
 ```zig
-// The service talks to the store type directly — swap the store, edit the service.
+// The service talks to the store type directly: swap the store, edit the service.
 const UserService = struct {
     db: *PostgresClient,
 
@@ -474,7 +474,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — The comptime generic gives a duck-typed repository: any type with `byId` and
+**🧠 Tradeoff**: The comptime generic gives a duck-typed repository: any type with `byId` and
 `save` fits, checked at the instantiation site, with static dispatch and zero indirection. What
 you give up is a named contract: nothing in the source says "this is the repository interface,"
 so the expected shape lives in a comment (or a `comptime` assertion). If the store must be picked
@@ -489,7 +489,7 @@ it's purely the test seam, which is reason enough.
 **❌ Naive**
 
 ```java
-// The service writes SQL inline — untestable without a database.
+// The service writes SQL inline: untestable without a database.
 class UserService {
     void promote(String id) throws SQLException {
         try (var conn = DriverManager.getConnection(DB_URL);
@@ -522,7 +522,7 @@ class UserService {
 
     void promote(String id) {
         var user = users.byId(id).orElseThrow(() -> new NoSuchElementException("user " + id));
-        users.save(new User(user.id(), "admin")); // records are immutable — save a new value
+        users.save(new User(user.id(), "admin")); // records are immutable: save a new value
     }
 }
 
@@ -544,7 +544,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — Java made this pattern famous, and Spring Data made it almost free: declare
+**🧠 Tradeoff**: Java made this pattern famous, and Spring Data made it almost free: declare
 `interface UserRepository extends CrudRepository<User, String>` with a `findByEmail(String email)`
 signature and the framework derives the query from the method *name*, so you write the interface
 and never the implementation. The honest caveat mirrors C#'s EF: JPA's `EntityManager` is already
@@ -555,22 +555,22 @@ behind the repository's back.
 
 ## Applications
 
-- **Domain-driven design** — the canonical persistence boundary in DDD; aggregates are loaded and
+- **Domain-driven design**: the canonical persistence boundary in DDD; aggregates are loaded and
   saved through repositories (backend).
-- **Testable services** — swapping a real repository for an in-memory one is the standard way to
+- **Testable services**: swapping a real repository for an in-memory one is the standard way to
   unit-test business logic fast (backend).
-- **Multi-source data** — one interface fronting a database plus a cache plus a remote API, hiding
+- **Multi-source data**: one interface fronting a database plus a cache plus a remote API, hiding
   the composition from callers (backend).
-- **Framework boundaries** — keeping application logic independent of Rails/Django/Ecto so the ORM
+- **Framework boundaries**: keeping application logic independent of Rails/Django/Ecto so the ORM
   can change without a rewrite (backend).
-- **Offline-first clients** — a repository fronting local storage and a remote API, syncing behind
+- **Offline-first clients**: a repository fronting local storage and a remote API, syncing behind
   one interface (frontend).
 
 ## Related Patterns
 
-- **Unit of Work** — coordinates changes across several repositories so they commit or roll back
+- **Unit of Work**: coordinates changes across several repositories so they commit or roll back
   as one transaction.
-- **Hexagonal (Ports & Adapters)** — a repository interface is the archetypal driven port; the
+- **Hexagonal (Ports & Adapters)**: a repository interface is the archetypal driven port; the
   concrete repository is its adapter.
-- **Data Mapper** — the repository often sits atop a mapper that translates between domain objects
+- **Data Mapper**: the repository often sits atop a mapper that translates between domain objects
   and database rows.

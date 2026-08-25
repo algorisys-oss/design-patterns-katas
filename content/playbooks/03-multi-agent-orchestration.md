@@ -43,31 +43,31 @@ replayable command.
 
 ## The Patterns You'll Reach For
 
-- **Mediator** — a supervisor agent coordinates workers so they don't talk N-to-N. All traffic
+- **Mediator**: a supervisor agent coordinates workers so they don't talk N-to-N. All traffic
   goes through the hub, which keeps coordination auditable and stops the combinatorial mess.
-- **Actor** — each agent is an actor with a mailbox: it processes one message at a time, owns
+- **Actor**: each agent is an actor with a mailbox: it processes one message at a time, owns
   private context, and never shares memory. The cleanest model for concurrent agents.
-- **Command** — a tool call is a Command object the orchestrator can log, gate behind approval,
+- **Command**: a tool call is a Command object the orchestrator can log, gate behind approval,
   and re-run deterministically when replaying a session.
-- **Strategy** — swap the planning strategy (ReAct vs plan-and-execute) or the model behind a
+- **Strategy**: swap the planning strategy (ReAct vs plan-and-execute) or the model behind a
   single `generate` call without touching the orchestration.
-- **Fan-out / Fan-in** — spawn N sub-agents over slices of a task, then gather and merge their
+- **Fan-out / Fan-in**: spawn N sub-agents over slices of a task, then gather and merge their
   results: map-reduce for agents, and how a supervisor parallelizes.
-- **Adapter** — wrap heterogeneous tool and model APIs behind one uniform `call` interface, so a
+- **Adapter**: wrap heterogeneous tool and model APIs behind one uniform `call` interface, so a
   new provider is a new adapter, not a rewrite.
-- **Facade** — one `agent.run(task)` over the tangle of model, memory, tools, and planner.
-- **Chain of Responsibility** — a fallback model chain (fast → strong → human), or tool dispatch
+- **Facade**: one `agent.run(task)` over the tangle of model, memory, tools, and planner.
+- **Chain of Responsibility**: a fallback model chain (fast → strong → human), or tool dispatch
   where each handler claims only the calls it recognizes.
-- **Decorator** — wrap a raw model call with retry, caching, guardrail, and logging layers, each
+- **Decorator**: wrap a raw model call with retry, caching, guardrail, and logging layers, each
   added independently.
-- **Retry / Timeout / Circuit Breaker** — resilience around flaky model and tool calls: back off
+- **Retry / Timeout / Circuit Breaker**: resilience around flaky model and tool calls: back off
   on rate limits, bound a hung tool, trip the breaker to a fallback instead of hammering.
-- **Pub-Sub** — a shared event bus (a blackboard) agents publish findings to and subscribe to
+- **Pub-Sub**: a shared event bus (a blackboard) agents publish findings to and subscribe to
   each other's, coordinating without direct coupling.
-- **Event Sourcing / Memento** — the message and tool-call log is the source of truth; state is
+- **Event Sourcing / Memento**: the message and tool-call log is the source of truth; state is
   derived from it, so a session replays exactly, and you can snapshot and roll back a dead-end
   branch.
-- **Result over exceptions** — a tool returns `Result<value, error>` so the agent handles failure
+- **Result over exceptions**: a tool returns `Result<value, error>` so the agent handles failure
   as data it can reason about, instead of an exception thrown mid-loop.
 
 **And the LLM-specific patterns**, taught in the **AI & LLM Patterns** family, are the substrate an
@@ -79,14 +79,14 @@ assembly; those katas are the parts.
 
 ## How the Approach Changed
 
-1. **One prompt** — a single call in, a single answer out; no tools, no loop.
-2. **Tool use** — the model can call functions, so now you need a dispatcher, adapters, and
+1. **One prompt**: a single call in, a single answer out; no tools, no loop.
+2. **Tool use**: the model can call functions, so now you need a dispatcher, adapters, and
    error handling around each call.
-3. **Single agent loop** — think → act → observe, repeated; suddenly it's a state machine with
+3. **Single agent loop**: think → act → observe, repeated; suddenly it's a state machine with
    retries, timeouts, and a context to manage.
-4. **Multi-agent** — a supervisor delegates to specialists, fans work out, and gathers it back;
+4. **Multi-agent**: a supervisor delegates to specialists, fans work out, and gathers it back;
    the coordination is pure Mediator + Actor + Fan-out/Fan-in.
-5. **Durable agent runs** — the log is the truth, runs resume after a crash, and every tool call
+5. **Durable agent runs**: the log is the truth, runs resume after a crash, and every tool call
    is gated and replayable: the exact durability the workflow playbook describes.
 
 The model got more capable, so more of the classic patterns became necessary, not fewer. The
@@ -107,7 +107,7 @@ newest systems in software are built almost entirely from the oldest ideas in th
 
 ## Related Playbooks
 
-- **Building a Workflow Engine** — a multi-agent run is a workflow whose next step a model
+- **Building a Workflow Engine**: a multi-agent run is a workflow whose next step a model
   decides; the durability, retry, and compensation patterns carry over directly.
-- **Building a JSON Low-Code Framework** — an agent's plan is a small DSL, interpreted by a
+- **Building a JSON Low-Code Framework**: an agent's plan is a small DSL, interpreted by a
   runtime rather than executed as raw code.

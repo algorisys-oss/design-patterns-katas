@@ -45,10 +45,10 @@ handler and lets you assemble the line from outside.
 
 Key Components:
 
-- **Handler** — the interface every link implements (`handle(request)`), plus a reference to
+- **Handler**: the interface every link implements (`handle(request)`), plus a reference to
   the next handler in the line.
-- **Concrete Handlers** — each processes the requests it recognizes and forwards the rest.
-- **Client** — builds the chain and sends the request to its head, unaware of who responds.
+- **Concrete Handlers**: each processes the requests it recognizes and forwards the rest.
+- **Client**: builds the chain and sends the request to its head, unaware of who responds.
 
 ```
 request → [ Handler A ] → [ Handler B ] → [ Handler C ] → (unhandled)
@@ -77,13 +77,13 @@ request → [ Handler A ] → [ Handler B ] → [ Handler C ] → (unhandled)
 
 ## Common Mistakes
 
-- **No terminal handler** — a request that reaches the end silently vanishes; always give the
+- **No terminal handler**: a request that reaches the end silently vanishes; always give the
   chain a default or make "unhandled" an explicit, visible outcome.
-- **Forgetting to forward** — a handler that neither handles nor calls the next drops the
+- **Forgetting to forward**: a handler that neither handles nor calls the next drops the
   request. Every non-handling branch must pass along.
-- **Order left implicit** — the chain's order *is* its behavior; encode it deliberately, don't
+- **Order left implicit**: the chain's order *is* its behavior; encode it deliberately, don't
   let it emerge from construction accidents.
-- **Reaching for it too soon** — if exactly one object always handles the request, a plain call
+- **Reaching for it too soon**: if exactly one object always handles the request, a plain call
   or a `switch` is simpler. CoR earns its keep when the handler is genuinely unknown up front.
 
 ## Key Takeaways
@@ -132,7 +132,7 @@ validate({ name: "email", value: "nope" });    // "email must be an email"
 validate({ name: "email", value: "a@b.co" });  // null → valid
 ```
 
-**🧠 Tradeoff** — Functions-as-handlers drop the class hierarchy entirely; the chain is just an
+**🧠 Tradeoff**: Functions-as-handlers drop the class hierarchy entirely; the chain is just an
 array, so reordering or swapping rule sets is a one-liner. The `??` short-circuits so later
 handlers don't run once one handles. What you give up is the explicit `next` pointer: if a
 handler needs per-instance state or must decide dynamically *which* handler comes next, the
@@ -175,7 +175,7 @@ app.use(rateLimit);
 app.get("/orders", (req, res) => res.json({ orders: [] })); // terminal handler
 ```
 
-**🧠 Tradeoff** — Express, Koa, and Connect *are* this pattern: `next()` forwards, ending the
+**🧠 Tradeoff**: Express, Koa, and Connect *are* this pattern: `next()` forwards, ending the
 response handles. You almost never hand-roll the chain on the backend; the framework owns it,
 and you just register links. The cost is that a middleware which forgets to call `next()` (and
 doesn't end the response) hangs the request forever: the "forgetting to forward" mistake made
@@ -225,7 +225,7 @@ print(validate({"name": "email", "value": ""}))        # email is required
 print(validate({"name": "email", "value": "a@b.co"}))  # None
 ```
 
-**🧠 Tradeoff** — Callables plus a walrus-operator loop give the pythonic chain: the list is the
+**🧠 Tradeoff**: Callables plus a walrus-operator loop give the pythonic chain: the list is the
 order, and short-circuiting is a plain `return`. When handlers need configuration or state (a
 rate limiter holding counters, an approver holding a spending limit), promote them to a `Protocol`
 with a `handle` method and an explicit `_next` reference, which is the classic object chain.
@@ -277,7 +277,7 @@ validate.(%{name: "email", value: ""})        # {:error, "email is required"}
 validate.(%{name: "email", value: "a@b.co"})  # :ok
 ```
 
-**🧠 Tradeoff** — `Enum.reduce_while` is Elixir's Chain of Responsibility: `:cont` forwards,
+**🧠 Tradeoff**: `Enum.reduce_while` is Elixir's Chain of Responsibility: `:cont` forwards,
 `:halt` handles and stops, and the list of functions *is* the chain: no mutable `next` pointer
 anywhere. When handlers are long-lived or must run concurrently, model each as a process (a
 `GenStage` stage, or a `GenServer` that forwards the message it can't handle) and the chain
@@ -341,7 +341,7 @@ func Required(f Field) error {
 // usage: validate := Chain(Required, IsEmail); err := validate(Field{"email", ""})
 ```
 
-**🧠 Tradeoff** — A `Validator` func type plus a variadic `Chain` is the idiomatic single-method
+**🧠 Tradeoff**: A `Validator` func type plus a variadic `Chain` is the idiomatic single-method
 handler: no interface hierarchy, and the chain composes with a plain loop. For HTTP, Go's
 canonical form of this pattern is `func(http.Handler) http.Handler` middleware, wrapped
 outside-in (`logging(auth(handler))`): same chain, expressed as function composition rather
@@ -392,7 +392,7 @@ static Func<Field, string?> Chain(params Func<Field, string?>[] validators) =>
 public sealed record Field(string Name, string Value);
 ```
 
-**🧠 Tradeoff** — a single-method handler contract collapses into `Func<Field, string?>`: the
+**🧠 Tradeoff**: a single-method handler contract collapses into `Func<Field, string?>`: the
 delegate *is* the handler interface, so hold off on an `IValidator` until a handler carries
 state or several members (a rate limiter with counters earns the interface and an explicit
 `SetNext`). The lazy `Select`/`FirstOrDefault` pair short-circuits, so later validators never
@@ -456,11 +456,11 @@ fn main() {
     println!("{:?}", validate(&field)); // Some("email is required")
 
     let field = Field { name: "email".into(), value: "a@b.co".into() };
-    println!("{:?}", validate(&field)); // None — valid
+    println!("{:?}", validate(&field)); // None; valid
 }
 ```
 
-**🧠 Tradeoff** — `find_map` is the chain in one call: walk the list, stop at the first
+**🧠 Tradeoff**: `find_map` is the chain in one call: walk the list, stop at the first
 `Some`. `Box<dyn Fn>` buys a mixed list (plain `fn`s and state-capturing closures like
 `max_len` side by side) at the price of a heap allocation and dynamic dispatch per handler.
 If the rule set were closed, an enum of rules matched in the loop would drop the boxes; keep
@@ -534,7 +534,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — a slice of `*const fn` pointers makes the chain plain data, and the
+**🧠 Tradeoff**: a slice of `*const fn` pointers makes the chain plain data, and the
 `?[]const u8` return is the handle-or-pass signal; `if (handle(field)) |err|` reads it in one
 line. The honest limits: Zig has no closures, so `maxLen50` bakes its limit into its name; a
 configurable validator needs the two-field vtable idiom (`*anyopaque` context plus a function
@@ -554,7 +554,7 @@ class FieldValidator {
         if (value.isEmpty()) return name + " is required";
         if (!value.contains("@")) return name + " must be an email";
         if (value.length() > 50) return name + " is too long";
-        return null; // valid — and every new rule reopens this method
+        return null; // valid, and every new rule reopens this method
     }
 }
 ```
@@ -598,7 +598,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — `Validator` has one method, so it's a functional interface: lambdas are the
+**🧠 Tradeoff**: `Validator` has one method, so it's a functional interface: lambdas are the
 handlers and a `List` is the chain: no abstract `Handler` base, no `setNext` plumbing. The
 stream is lazy, so `findFirst` short-circuits the moment a validator handles. The GoF linked
 form survives in Java as the platform's own chains: servlet filters
@@ -611,29 +611,29 @@ carries state, and it drops into the same list.
 
 Real-world uses of Chain of Responsibility (from the reference article), by tier:
 
-- **Frontend** — DOM event bubbling/handling up a component hierarchy, form-validation
+- **Frontend**: DOM event bubbling/handling up a component hierarchy, form-validation
   pipelines, Redux middleware, permission-gated UI rendering (`admin → user → guest`),
   user-command processing.
-- **Backend** — Express/Koa middleware stacks, layered authorization checks
+- **Backend**: Express/Koa middleware stacks, layered authorization checks
   (`token → role → permission`), tiered logging by level, request filtering (IP → method →
   content-type), staged error handling (`404 → validation → 500`).
-- **Both** — any "try each candidate in order until one takes it" flow: parsers, dispatchers,
+- **Both**: any "try each candidate in order until one takes it" flow: parsers, dispatchers,
   fallback resolvers.
 
 **In modern systems:**
 
-- **Low-code** — a validation pipeline where each rule from the JSON schema gets a pass at the
+- **Low-code**: a validation pipeline where each rule from the JSON schema gets a pass at the
   value, the first failure stopping the chain.
-- **Workflow engine** — step middleware (auth → quota → audit) each step passes through before it
+- **Workflow engine**: step middleware (auth → quota → audit) each step passes through before it
   runs.
-- **Multi-agent** — a fallback model chain (fast → strong → human), or tool dispatch where each
+- **Multi-agent**: a fallback model chain (fast → strong → human), or tool dispatch where each
   handler claims only the calls it recognizes.
 
 ## Related Patterns
 
-- **Command** — the request travelling the chain is often a Command object; CoR decides *who*
+- **Command**: the request travelling the chain is often a Command object; CoR decides *who*
   runs it, Command encapsulates *what* runs.
-- **Composite** — a chain frequently runs *along* a Composite tree, forwarding a request from a
+- **Composite**: a chain frequently runs *along* a Composite tree, forwarding a request from a
   child up to its parent until someone handles it.
-- **Decorator** — both wrap objects into a line, but a Decorator always forwards (adding
+- **Decorator**: both wrap objects into a line, but a Decorator always forwards (adding
   behavior on the way through), while a CoR handler may stop the request cold.

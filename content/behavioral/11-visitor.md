@@ -32,7 +32,7 @@ edits every shape class: the classes swell and unrelated concerns pile up inside
 class Circle {
   area() { /* ... */ }
   toSvg() { /* ... */ }     // added later
-  boundingBox() { /* ... */ } // and later — Circle keeps growing with unrelated ops
+  boundingBox() { /* ... */ } // and later: Circle keeps growing with unrelated ops
 }
 ```
 
@@ -42,10 +42,10 @@ Visitor moves each operation out into its own visitor, so a new operation doesn'
 
 Key Components:
 
-- **Element** — the node types; each has `accept(visitor)`.
-- **Visitor** — one method per element type (`visitCircle`, `visitSquare`).
-- **Concrete Visitors** — one per operation (AreaVisitor, SvgVisitor).
-- **Double dispatch** — `accept` calls back the visitor's type-specific method, so the right code
+- **Element**: the node types; each has `accept(visitor)`.
+- **Visitor**: one method per element type (`visitCircle`, `visitSquare`).
+- **Concrete Visitors**: one per operation (AreaVisitor, SvgVisitor).
+- **Double dispatch**: `accept` calls back the visitor's type-specific method, so the right code
   runs based on *both* the element type and the visitor.
 
 ## When to Use
@@ -67,11 +67,11 @@ Key Components:
 
 ## Common Mistakes
 
-- **Using it when element types change often** — every new type breaks every visitor; then a method
+- **Using it when element types change often**: every new type breaks every visitor; then a method
   on the element is better.
-- **Skipping double dispatch** — a single `switch` on type in one place is simpler than Visitor and
+- **Skipping double dispatch**: a single `switch` on type in one place is simpler than Visitor and
   often enough; only reach for Visitor when operations genuinely multiply.
-- **Confusing "easy to add" axis** — Visitor makes operations easy and types hard; a plain method
+- **Confusing "easy to add" axis**: Visitor makes operations easy and types hard; a plain method
   makes types easy and operations hard. Pick by what actually changes.
 
 ## Key Takeaways
@@ -121,11 +121,11 @@ const SvgVisitor = {
 };
 
 const shapes = [new Circle(2), new Square(3)];
-shapes.map(s => s.accept(AreaVisitor));   // areas — no shape method added
-shapes.map(s => s.accept(SvgVisitor));    // SVG — added as a new visitor, shapes untouched
+shapes.map(s => s.accept(AreaVisitor));   // areas, no shape method added
+shapes.map(s => s.accept(SvgVisitor));    // SVG: added as a new visitor, shapes untouched
 ```
 
-**🧠 Tradeoff** — `accept` dispatches to the visitor's per-type method (double dispatch), so a new
+**🧠 Tradeoff**: `accept` dispatches to the visitor's per-type method (double dispatch), so a new
 operation is a new visitor object and the shapes never change. The flip side: adding a `Triangle`
 means adding a `triangle` method to *every* visitor. Use it when operations grow and types are
 stable, the reverse of a normal method.
@@ -168,7 +168,7 @@ tree.accept(Evaluate);   // 6
 tree.accept(Print);      // "(1 + (2 + 3))"
 ```
 
-**🧠 Tradeoff** — On the backend, Visitor is the classic way to run many operations (evaluate,
+**🧠 Tradeoff**: On the backend, Visitor is the classic way to run many operations (evaluate,
 serialize, type-check, optimize) over an AST without stuffing them all into the node types. Each
 operation is a self-contained visitor. The known cost (adding a node kind touches every visitor)
 is why compilers weigh Visitor against a plain recursive switch or pattern matching.
@@ -201,7 +201,7 @@ class Circle:
 class Square:
     def __init__(self, s): self.s = s
 
-# Each operation is a single-dispatch function — add ops without touching the classes.
+# Each operation is a single-dispatch function: add ops without touching the classes.
 @singledispatch
 def area(shape) -> float:
     raise NotImplementedError
@@ -211,10 +211,10 @@ def _(shape: Circle) -> float: return 3.14159 * shape.r ** 2
 @area.register
 def _(shape: Square) -> float: return shape.s ** 2
 
-area(Circle(2))   # dispatches on type — no accept() boilerplate
+area(Circle(2))   # dispatches on type, no accept() boilerplate
 ```
 
-**🧠 Tradeoff** — `functools.singledispatch` gives Visitor's benefit (add an operation over a type
+**🧠 Tradeoff**: `functools.singledispatch` gives Visitor's benefit (add an operation over a type
 family in one place) without the `accept`/double-dispatch ceremony. Registering a new type's
 handler is one function; adding a whole new operation is a new `singledispatch` function. It's the
 Pythonic Visitor, and it reads far cleaner than the classic OO form.
@@ -238,7 +238,7 @@ end
 **✅ Idiomatic**
 
 ```elixir
-# Each operation is its own module of pattern-matched clauses — the functional Visitor.
+# Each operation is its own module of pattern-matched clauses: the functional Visitor.
 defmodule Circle, do: defstruct [:r]
 defmodule Square, do: defstruct [:s]
 
@@ -255,7 +255,7 @@ end
 Enum.map([%Circle{r: 2}, %Square{s: 3}], &Area.visit/1)
 ```
 
-**🧠 Tradeoff** — Pattern matching *is* double dispatch here: each operation module matches on the
+**🧠 Tradeoff**: Pattern matching *is* double dispatch here: each operation module matches on the
 struct type, so adding an operation is a new module and the structs never change: Visitor's goal
 with none of the `accept` boilerplate. A protocol (`defprotocol`) is the alternative when you want
 the operation extensible per-type across files. Either way the functional form is far lighter than
@@ -299,7 +299,7 @@ func (AreaVisitor) VisitCircle(c Circle) any { return math.Pi * c.R * c.R }
 func (AreaVisitor) VisitSquare(s Square) any { return s.S * s.S }
 ```
 
-**🧠 Tradeoff** — Go has no method overloading, so Visitor uses the explicit `Accept`/`VisitX`
+**🧠 Tradeoff**: Go has no method overloading, so Visitor uses the explicit `Accept`/`VisitX`
 double dispatch to add operations without editing the shapes. In practice Go code often prefers a
 plain `switch v := shape.(type)` type switch, simpler and fine when operations are few. Reach for
 the full Visitor interface when you have many operations and want each grouped and type-checked.
@@ -371,7 +371,7 @@ public sealed class SvgVisitor : IVisitor<string>
 }
 ```
 
-**🧠 Tradeoff** — the generic `Accept<T>` lets each operation pick its own result type; this is
+**🧠 Tradeoff**: the generic `Accept<T>` lets each operation pick its own result type; this is
 the shape of Roslyn's `CSharpSyntaxVisitor<TResult>`, C#'s most famous visitor. But be honest
 about the alternative: on a sealed hierarchy, a pattern-matching switch expression
 (`shape switch { Circle c => ..., Square s => ... }`) puts one operation in one place with none
@@ -386,7 +386,7 @@ operations: match. Many operations over a stable tree: Visitor.
 **❌ Naive**
 
 ```rust
-// Every new operation grows this trait — and edits every shape's impl.
+// Every new operation grows this trait, and edits every shape's impl.
 trait Shape {
     fn area(&self) -> f64;
     fn to_svg(&self) -> String;
@@ -410,7 +410,7 @@ impl Shape for Square {
 
 ```rust
 // A closed set of shapes is an enum; each operation is one function with an
-// exhaustive match. This IS Rust's Visitor — no accept(), no double dispatch.
+// exhaustive match. This IS Rust's Visitor, no accept(), no double dispatch.
 enum Shape {
     Circle { r: f64 },
     Square { s: f64 },
@@ -423,7 +423,7 @@ fn area(shape: &Shape) -> f64 {
     }
 }
 
-// A new operation is a new function — the shapes never change.
+// A new operation is a new function: the shapes never change.
 fn to_svg(shape: &Shape) -> String {
     match shape {
         Shape::Circle { r } => format!(r#"<circle r="{r}"/>"#),
@@ -441,7 +441,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — Rust barely needs the pattern: an enum plus exhaustive `match` already gives
+**🧠 Tradeoff**: Rust barely needs the pattern: an enum plus exhaustive `match` already gives
 "one operation, one place, shapes untouched", and the compiler turns Visitor's weak spot into a
 strength: add a `Triangle` variant and every `match` fails to compile until it's handled, a
 checklist instead of a runtime surprise. What you give up is openness: downstream crates can't
@@ -486,7 +486,7 @@ const Square = struct {
 const std = @import("std");
 
 // A closed set of shapes is a tagged union; each operation is one function with
-// an exhaustive switch. This is Zig's Visitor — no accept, no vtables.
+// an exhaustive switch. This is Zig's Visitor, no accept, no vtables.
 const Shape = union(enum) {
     circle: struct { r: f64 },
     square: struct { s: f64 },
@@ -499,7 +499,7 @@ fn area(shape: Shape) f64 {
     };
 }
 
-// A new operation is a new function — the union never changes.
+// A new operation is a new function: the union never changes.
 fn printSvg(shape: Shape) void {
     switch (shape) {
         .circle => |c| std.debug.print("<circle r=\"{d}\"/>\n", .{c.r}),
@@ -519,7 +519,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — same verdict as Rust, and worth saying plainly: in Zig the tagged union *is*
+**🧠 Tradeoff**: same verdict as Rust, and worth saying plainly: in Zig the tagged union *is*
 the pattern. A `switch` over a `union(enum)` must be exhaustive, so adding a `.triangle` breaks
 every operation at compile time: the "edit every visitor" cost, converted into a compiler
 checklist. There's no double dispatch because there's nothing to dispatch: the tag is right
@@ -556,7 +556,7 @@ class Square {
 import java.util.List;
 
 // A closed set of shapes is a sealed interface; each operation is one
-// exhaustive pattern-matching switch. This is modern Java's Visitor — no accept.
+// exhaustive pattern-matching switch. This is modern Java's Visitor, no accept.
 sealed interface Shape permits Circle, Square {}
 record Circle(double r) implements Shape {}
 record Square(double s) implements Shape {}
@@ -569,7 +569,7 @@ class Operations {
         };
     }
 
-    // A new operation is a new method — the shapes never change.
+    // A new operation is a new method: the shapes never change.
     static String toSvg(Shape shape) {
         return switch (shape) {
             case Circle c -> "<circle r=\"%s\"/>".formatted(c.r());
@@ -597,7 +597,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — Be honest: sealed interfaces plus pattern-matching `switch` (Java 21) took
+**🧠 Tradeoff**: Be honest: sealed interfaces plus pattern-matching `switch` (Java 21) took
 over Visitor's job for closed hierarchies. One operation is one exhaustive `switch`; add a
 `Triangle` to the sealed set and every switch fails to compile until it handles it: the same
 guarantee the `Visitor` interface used to buy with an `accept` method on every node and a
@@ -610,24 +610,24 @@ for languages without pattern matching; Java has it now, so start with the switc
 
 Where Visitor shows up in practice:
 
-- **Frontend** — operations over a shape/scene graph (render, hit-test, export), DOM tree
+- **Frontend**: operations over a shape/scene graph (render, hit-test, export), DOM tree
   transforms.
-- **Backend** — compilers and interpreters (evaluate, type-check, optimize, serialize an AST),
+- **Backend**: compilers and interpreters (evaluate, type-check, optimize, serialize an AST),
   document tree processing, static analysis.
-- **Both** — any stable node hierarchy with a growing set of operations.
+- **Both**: any stable node hierarchy with a growing set of operations.
 
 **In modern systems:**
 
-- **Low-code** — one pass over the JSON node tree per operation: validate, compile to a form,
+- **Low-code**: one pass over the JSON node tree per operation: validate, compile to a form,
   estimate render cost. Add an operation without touching the node types.
-- **Workflow engine** — walk a workflow graph to type-check, price, or visualize it, each as its
+- **Workflow engine**: walk a workflow graph to type-check, price, or visualize it, each as its
   own visitor over the same node set.
-- **Multi-agent** — traverse a plan tree to collect every tool it will call before executing any
+- **Multi-agent**: traverse a plan tree to collect every tool it will call before executing any
   of them, e.g. for a dry-run or a permission check.
 
 ## Related Patterns
 
-- **Composite** — Visitor commonly walks a composite tree, applying an operation to each node.
-- **Interpreter** — Visitor is the usual way to add operations (evaluate, print) over an
+- **Composite**: Visitor commonly walks a composite tree, applying an operation to each node.
+- **Interpreter**: Visitor is the usual way to add operations (evaluate, print) over an
   interpreter's expression tree.
-- **Iterator** — traverses the structure that a visitor operates on.
+- **Iterator**: traverses the structure that a visitor operates on.

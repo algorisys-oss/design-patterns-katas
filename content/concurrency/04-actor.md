@@ -28,11 +28,11 @@ so there is nothing to race.
 Shared mutable state across threads is the hardest thing in concurrency. The usual fix, locks,
 trades one problem for a pile of new ones:
 
-- **Races** — forget to guard one access and you get corruption that only shows up under load.
-- **Deadlocks** — two threads grabbing two locks in different orders freeze each other.
-- **Lock contention** — coarse locks serialize everything (killing the concurrency you wanted);
+- **Races**: forget to guard one access and you get corruption that only shows up under load.
+- **Deadlocks**: two threads grabbing two locks in different orders freeze each other.
+- **Lock contention**: coarse locks serialize everything (killing the concurrency you wanted);
   fine-grained locks are error-prone.
-- **Invisible coupling** — every caller must know the locking protocol; one that doesn't breaks
+- **Invisible coupling**: every caller must know the locking protocol; one that doesn't breaks
   everyone.
 
 The root cause is *sharing*. If two threads didn't share the state, none of this could happen.
@@ -41,11 +41,11 @@ The root cause is *sharing*. If two threads didn't share the state, none of this
 
 Key Components:
 
-- **Actor** — owns private state and a behavior: a function from (state, message) to a new state
+- **Actor**: owns private state and a behavior: a function from (state, message) to a new state
   (and possibly outgoing messages).
-- **Mailbox** — a queue of incoming messages; the actor consumes it one at a time.
-- **Address / reference** — how others reach the actor; they can only `send`, never read state.
-- **Messages** — immutable values describing requests; the actor's only input.
+- **Mailbox**: a queue of incoming messages; the actor consumes it one at a time.
+- **Address / reference**: how others reach the actor; they can only `send`, never read state.
+- **Messages**: immutable values describing requests; the actor's only input.
 
 ```
 Sender A ──send──►┐
@@ -63,26 +63,26 @@ Sender B ──send──►┘     mailbox        handles one msg at a time
 ## Advantages and Disadvantages
 
 ### Advantages
-- **No locks** — sequential message handling means no shared state to guard.
-- **Isolation** — a crashing actor takes down only its own state; supervisors can restart it.
-- **Location transparency** — sending a message is the same whether the actor is local or remote.
+- **No locks**: sequential message handling means no shared state to guard.
+- **Isolation**: a crashing actor takes down only its own state; supervisors can restart it.
+- **Location transparency**: sending a message is the same whether the actor is local or remote.
 
 ### Disadvantages
-- **Async everywhere** — request/reply becomes message + future; simple reads turn into round-trips.
-- **Mailbox overflow** — an actor slower than its senders grows an unbounded mailbox (backpressure
+- **Async everywhere**: request/reply becomes message + future; simple reads turn into round-trips.
+- **Mailbox overflow**: an actor slower than its senders grows an unbounded mailbox (backpressure
   isn't automatic).
-- **Sequential bottleneck** — one actor processes one message at a time; a hot actor is a serial
+- **Sequential bottleneck**: one actor processes one message at a time; a hot actor is a serial
   chokepoint you must shard.
 
 ## Common Mistakes
 
-- **Leaking shared state into messages** — passing a mutable object by reference reintroduces
+- **Leaking shared state into messages**: passing a mutable object by reference reintroduces
   sharing; messages must be immutable (or copied).
-- **Blocking inside the handler** — a long synchronous call in one message stalls the whole
+- **Blocking inside the handler**: a long synchronous call in one message stalls the whole
   mailbox; offload slow work and reply later.
-- **Unbounded mailbox** — no limit means a fast sender can OOM a slow actor; add backpressure or
+- **Unbounded mailbox**: no limit means a fast sender can OOM a slow actor; add backpressure or
   bounded mailboxes.
-- **Chatty request/reply** — turning every field access into a message round-trip is slow; design
+- **Chatty request/reply**: turning every field access into a message round-trip is slow; design
   coarse messages that do real work.
 
 ## Key Takeaways
@@ -101,7 +101,7 @@ Sender B ──send──►┘     mailbox        handles one msg at a time
 **❌ Naive**
 
 ```js
-// Shared object mutated from many async callers — interleaved awaits corrupt it.
+// Shared object mutated from many async callers: interleaved awaits corrupt it.
 const account = { balance: 0 };
 async function deposit(n) {
   const b = account.balance;
@@ -126,13 +126,13 @@ function actor(state, handlers) {
 const account = actor({ balance: 0 }, {
   async deposit(s, n) {
     await audit(n);
-    return { balance: s.balance + n }; // no interleave — mailbox is serial
+    return { balance: s.balance + n }; // no interleave; mailbox is serial
   },
 });
 // account("deposit", 100); account("deposit", 50);  // applied in order, no races
 ```
 
-**🧠 Tradeoff** — JS has no actors, but the single-threaded loop plus a promise chain gives you a
+**🧠 Tradeoff**: JS has no actors, but the single-threaded loop plus a promise chain gives you a
 serial mailbox: chaining each message onto the previous guarantees handlers never interleave, so
 the lost-update bug is gone. It's cooperative, not parallel (one event loop), so it isolates
 *logical* races, not CPU work. For true isolation across cores, use Web Workers as actors.
@@ -171,7 +171,7 @@ class ActorRef {
 }
 ```
 
-**🧠 Tradeoff** — `worker_threads` give genuine actor semantics: each worker has isolated memory
+**🧠 Tradeoff**: `worker_threads` give genuine actor semantics: each worker has isolated memory
 and communicates only by `postMessage`, so there is literally no shared state to race, and it's
 real parallelism across cores. The cost is serialization overhead on every message and the
 round-trip to model request/reply; it's worth it for CPU-bound or crash-isolated work, overkill
@@ -184,7 +184,7 @@ for coordinating a little in-process state.
 **❌ Naive**
 
 ```python
-# Shared dict mutated by many threads — needs a lock, and locks bring deadlocks.
+# Shared dict mutated by many threads: needs a lock, and locks bring deadlocks.
 state = {"balance": 0}
 def deposit(n):
     state["balance"] += n   # not atomic; races without a lock
@@ -212,7 +212,7 @@ class Account(threading.Thread):
                 self._balance += args[0]  # only this thread touches _balance
 ```
 
-**🧠 Tradeoff** — Wrapping state in a thread that owns it, fed by a `queue.Queue` mailbox, gets
+**🧠 Tradeoff**: Wrapping state in a thread that owns it, fed by a `queue.Queue` mailbox, gets
 you the actor discipline: one owner, message-passing, no locks on `_balance`. It's a manual build
 (Python has no actor runtime in the stdlib), and the GIL means it isolates logic rather than
 parallelizing CPU. Libraries like Pykka or Ray provide fuller actor systems when you need them.
@@ -224,7 +224,7 @@ parallelizing CPU. Libraries like Pykka or Ray provide fuller actor systems when
 **❌ Naive**
 
 ```elixir
-# Shared state in ETS is fast but reintroduces the race — concurrent updates
+# Shared state in ETS is fast but reintroduces the race: concurrent updates
 # to the same key need explicit atomic ops or a serialization point.
 :ets.insert(:accounts, {:balance, old + n})  # lost update under concurrency
 ```
@@ -250,7 +250,7 @@ defmodule Account do
 end
 ```
 
-**🧠 Tradeoff** — This is the actor model's home. A `GenServer` *is* an actor: isolated process,
+**🧠 Tradeoff**: This is the actor model's home. A `GenServer` *is* an actor: isolated process,
 private state, serial message handling, and a supervisor that restarts it on crash ("let it
 crash"). You get fault tolerance and distribution nearly for free. The cost is that everything
 stateful becomes a process with an async protocol, but on the BEAM that's the natural grain, so
@@ -263,7 +263,7 @@ it rarely feels forced.
 **❌ Naive**
 
 ```go
-// Shared struct guarded by a mutex — works, but you now own lock ordering,
+// Shared struct guarded by a mutex: works, but you now own lock ordering,
 // contention, and the risk of deadlock as the type grows.
 type Account struct {
     mu      sync.Mutex
@@ -279,7 +279,7 @@ func (a *Account) Deposit(n int) {
 
 ```go
 // "Share memory by communicating": a goroutine owns the state; a channel is
-// the mailbox. No mutex — only the owner goroutine touches balance.
+// the mailbox. No mutex: only the owner goroutine touches balance.
 type deposit struct{ amount int }
 type balance struct{ reply chan int }
 
@@ -298,7 +298,7 @@ func Account(mailbox <-chan any) {
 // mailbox <- deposit{100}
 ```
 
-**🧠 Tradeoff** — Go's proverb "don't communicate by sharing memory; share memory by
+**🧠 Tradeoff**: Go's proverb "don't communicate by sharing memory; share memory by
 communicating" is the actor model: a goroutine owns the state, a channel is its mailbox, and only
 that goroutine mutates `bal`: no mutex, no race. It's lighter than a full actor framework but
 also barer: no supervision, no addresses, no location transparency. You get the core discipline
@@ -311,7 +311,7 @@ and wire the rest yourself.
 **❌ Naive**
 
 ```csharp
-// Shared balance guarded by a lock — works, but you own the lock discipline
+// Shared balance guarded by a lock: works, but you own the lock discipline
 // forever, and every new member must remember it.
 public sealed class Account
 {
@@ -327,7 +327,7 @@ public sealed class Account
 
 ```csharp
 // An actor: a Task loop draining a Channel. The loop is the only code that
-// ever touches the balance — no lock anywhere.
+// ever touches the balance, no lock anywhere.
 using System.Threading.Channels;
 
 var account = new AccountActor();
@@ -369,7 +369,7 @@ public sealed class AccountActor
 }
 ```
 
-**🧠 Tradeoff** — A `Channel` drained by one `Task` is the actor: records make the messages
+**🧠 Tradeoff**: A `Channel` drained by one `Task` is the actor: records make the messages
 immutable, the loop is the only reader of `balance`, and `TaskCompletionSource` turns
 request/reply into a plain `await`. But it's discipline you assemble, not a runtime you inherit;
 compare the Elixir tab, where the mailbox, supervision, and restarts all ship with the BEAM.
@@ -386,7 +386,7 @@ or Orleans; this hand-rolled loop covers the common in-process case.
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-// Shared state behind Arc<Mutex<..>> — safe, but every caller queues on the
+// Shared state behind Arc<Mutex<..>>: safe, but every caller queues on the
 // lock, and the API is "grab the mutex and hope you got the protocol right".
 fn main() {
     let balance = Arc::new(Mutex::new(0));
@@ -409,7 +409,7 @@ fn main() {
 use std::sync::mpsc;
 use std::thread;
 
-// Messages are moved into the actor — ownership transfers, nothing is shared.
+// Messages are moved into the actor: ownership transfers, nothing is shared.
 enum Msg {
     Deposit(i64),
     Balance(mpsc::Sender<i64>), // the reply channel rides in the message
@@ -419,7 +419,7 @@ enum Msg {
 fn spawn_account() -> mpsc::Sender<Msg> {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
-        let mut balance = 0; // owned here — no other thread can even name it
+        let mut balance = 0; // owned here, no other thread can even name it
         for msg in rx {      // one message at a time
             match msg {
                 Msg::Deposit(n) => balance += n,
@@ -443,7 +443,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — This is the natural Rust form, not a workaround: the thread *owns* `balance`,
+**🧠 Tradeoff**: This is the natural Rust form, not a workaround: the thread *owns* `balance`,
 and ownership means the compiler proves nothing else can touch it: the isolation Elixir gets
 from its runtime, Rust gets from the type system at compile time. The message enum is closed
 and exhaustively matched, so an unhandled message is a compile error, not a silent drop. What
@@ -459,7 +459,7 @@ just a dead thread until you build restart logic around it.
 ```zig
 const std = @import("std");
 
-// Shared globals guarded by a mutex — correct only while every caller
+// Shared globals guarded by a mutex: correct only while every caller
 // remembers to take the lock. Nothing enforces it.
 var balance: i64 = 0;
 var mu: std.Io.Mutex = .init;
@@ -507,7 +507,7 @@ const Mailbox = struct {
 };
 
 fn account(io: std.Io, mailbox: *Mailbox) !void {
-    var balance: i64 = 0; // on this thread's stack — unreachable from outside
+    var balance: i64 = 0; // on this thread's stack; unreachable from outside
     while (true) {
         switch (try mailbox.recv(io)) { // one message at a time
             .deposit => |n| balance += n,
@@ -518,7 +518,7 @@ fn account(io: std.Io, mailbox: *Mailbox) !void {
 }
 
 pub fn main(init: std.process.Init) !void {
-    const io = init.io; // blocking is a capability — threaded in like an allocator
+    const io = init.io; // blocking is a capability: threaded in like an allocator
     var mailbox = Mailbox{};
     const actor = try std.Thread.spawn(.{}, account, .{ io, &mailbox });
     try mailbox.send(io, .{ .deposit = 100 });
@@ -528,7 +528,7 @@ pub fn main(init: std.process.Init) !void {
 }
 ```
 
-**🧠 Tradeoff** — Zig gives you the parts, not the pattern: mailbox = ring buffer + mutex +
+**🧠 Tradeoff**: Zig gives you the parts, not the pattern: mailbox = ring buffer + mutex +
 condition, actor = the one thread that reads it. The discipline ("only the owning thread
 touches `balance`") is a convention: nothing enforces it, unlike Rust's ownership or the
 BEAM's process isolation. In the Elixir tab this entire file collapses into `use GenServer`,
@@ -545,7 +545,7 @@ code takes an allocator.
 **❌ Naive**
 
 ```java
-// Shared balance guarded by synchronized — works, but you own the lock
+// Shared balance guarded by synchronized: works, but you own the lock
 // discipline forever, and every new method must remember it.
 class Account {
     private int balance;
@@ -571,7 +571,7 @@ record GetBalance(CompletableFuture<Integer> reply) implements Message {}
 // and one worker thread is the one-message-at-a-time guarantee.
 class AccountActor {
     private final ExecutorService mailbox = Executors.newSingleThreadExecutor();
-    private int balance = 0; // touched only by the mailbox thread — no lock
+    private int balance = 0; // touched only by the mailbox thread, no lock
 
     void send(Message msg) {
         mailbox.execute(() -> {
@@ -602,7 +602,7 @@ class Demo {
 }
 ```
 
-**🧠 Tradeoff** — the single-thread executor is a mailbox you already had: its queue holds
+**🧠 Tradeoff**: the single-thread executor is a mailbox you already had: its queue holds
 the messages, its one thread drains them serially, so `balance` needs no lock and handlers
 never interleave. Modern Java sharpens the protocol the way Rust's enum does: a sealed
 interface plus pattern-matching `switch` means an unhandled message type is a compile
@@ -614,30 +614,30 @@ looping on a `BlockingQueue` is now affordable at GenServer-like scale.
 
 ## Applications
 
-- **Stateful connections** — each WebSocket/session is an actor owning its buffers and state,
+- **Stateful connections**: each WebSocket/session is an actor owning its buffers and state,
   isolated from the others (backend).
-- **Telephony & messaging** — Erlang/Elixir run millions of actors (one per call/user) with
+- **Telephony & messaging**: Erlang/Elixir run millions of actors (one per call/user) with
   supervision; WhatsApp's backbone is the canonical example (backend).
-- **Game entities** — each NPC or player is an actor processing input messages against its own
+- **Game entities**: each NPC or player is an actor processing input messages against its own
   state (backend & frontend).
-- **IoT device shadows** — one actor per device holds last-known state and serializes commands
+- **IoT device shadows**: one actor per device holds last-known state and serializes commands
   (backend).
-- **UI components** — a component with local state and a message reducer (Elm, Redux) is an actor
+- **UI components**: a component with local state and a message reducer (Elm, Redux) is an actor
   in spirit: state changed only through dispatched messages (frontend).
 
 **In modern systems:**
 
-- **Multi-agent** — each agent is an actor with a mailbox: it processes one message at a time,
+- **Multi-agent**: each agent is an actor with a mailbox: it processes one message at a time,
   owns private state, and never shares memory: the cleanest model for concurrent agents.
-- **Workflow engine** — a workflow instance as an actor that owns its state and is driven by
+- **Workflow engine**: a workflow instance as an actor that owns its state and is driven by
   messages (start, step-done, cancel).
-- **Low-code** — a stateful widget as an actor receiving user events serially.
+- **Low-code**: a stateful widget as an actor receiving user events serially.
 
 ## Related Patterns
 
-- **Producer-Consumer** — an actor's mailbox is a producer-consumer queue with the actor as the
+- **Producer-Consumer**: an actor's mailbox is a producer-consumer queue with the actor as the
   single consumer.
-- **Future / Promise** — an actor `call` (request/reply) hands back a future for the reply while
+- **Future / Promise**: an actor `call` (request/reply) hands back a future for the reply while
   the actor keeps handling other messages.
-- **Publish-Subscribe** — actors often communicate over pub/sub topics rather than direct
+- **Publish-Subscribe**: actors often communicate over pub/sub topics rather than direct
   addresses, decoupling sender from receiver.

@@ -39,10 +39,10 @@ token.
 
 Key Components / Participants:
 
-- **Generator** — produces (and later revises) the draft.
-- **Critic** — evaluates the draft against criteria and returns concrete, actionable feedback (or
+- **Generator**: produces (and later revises) the draft.
+- **Critic**: evaluates the draft against criteria and returns concrete, actionable feedback (or
   "looks good"). May be the same model or a separate one (a [[llm-as-judge]]).
-- **Loop** — generate → critique → revise, stopping when the critic passes or a max-iterations cap
+- **Loop**: generate → critique → revise, stopping when the critic passes or a max-iterations cap
   is reached.
 
 ```
@@ -78,13 +78,13 @@ task ──▶ generate ──▶ draft ──┐
 
 ## Common Mistakes
 
-- **No iteration cap** — reflection can loop indefinitely chasing marginal gains. Cap it (2-3 rounds
+- **No iteration cap**: reflection can loop indefinitely chasing marginal gains. Cap it (2-3 rounds
   is usually enough).
-- **Vague critique prompts** — "improve this" yields aimless rewrites. Give the critic concrete
+- **Vague critique prompts**: "improve this" yields aimless rewrites. Give the critic concrete
   criteria and ask for *specific, actionable* feedback.
-- **Self-critique for systematic blind spots** — a model that made an error in its worldview may not
+- **Self-critique for systematic blind spots**: a model that made an error in its worldview may not
   see it in review. Use an independent critic ([[llm-as-judge]]) when the stakes justify it.
-- **Reflecting when one pass is fine** — for simple tasks the extra rounds are pure cost. Reserve it
+- **Reflecting when one pass is fine**: for simple tasks the extra rounds are pure cost. Reserve it
   for output where quality is worth the calls.
 
 ## Key Takeaways
@@ -131,7 +131,7 @@ const critique = (task, draft) =>
     `Task: ${task}\nDraft: ${draft}`);
 ```
 
-**🧠 Tradeoff** — The critic returns *structured* feedback (`{ pass, feedback }`) so the loop can branch
+**🧠 Tradeoff**: The critic returns *structured* feedback (`{ pass, feedback }`) so the loop can branch
 on `pass` and feed concrete `feedback` into the revision, not a vague "make it better." `maxRounds` caps
 the cost. The buy is real quality on hard tasks; the cost is up to `maxRounds + 1` calls per task, so
 gate reflection to work that's worth it.
@@ -168,7 +168,7 @@ def write(task: str, max_rounds: int = 3) -> str:
     return draft
 ```
 
-**🧠 Tradeoff** — Generate and revise are the same `call_model` with a different prompt; the critic is a
+**🧠 Tradeoff**: Generate and revise are the same `call_model` with a different prompt; the critic is a
 separate structured call. Passing a *different* model to `critique` turns self-reflection into
 independent judgment with a one-line change; the seam is already there. Keep the criteria list concrete;
 it's what makes the feedback actionable instead of churny.
@@ -208,7 +208,7 @@ defmodule Reflect do
 end
 ```
 
-**🧠 Tradeoff** — The loop is recursion with the round budget as the base case, and `case` on the
+**🧠 Tradeoff**: The loop is recursion with the round budget as the base case, and `case` on the
 critique's shape branches pass vs. revise: the guardrail is structural. Swapping `critique` to call a
 stronger model is a one-line change. The recursive form reads naturally once you see the round count as
 "fuel," which is the idiomatic Elixir way to bound a loop.
@@ -246,7 +246,7 @@ func Critique(task, draft string) CritiqueResult {
 }
 ```
 
-**🧠 Tradeoff** — A bounded `for` loop over rounds with an early `break` on pass. `Critique` returns a
+**🧠 Tradeoff**: A bounded `for` loop over rounds with an early `break` on pass. `Critique` returns a
 typed `CritiqueResult`, so the branch is on a real field, not parsed prose. Making the critic a separate,
 stronger model is a config change to `Critique`. The explicit loop makes the cost visible (every round
 is a call) which is the right thing to see when deciding whether reflection is worth it here.
@@ -255,21 +255,21 @@ is a call) which is the right thing to see when deciding whether reflection is w
 
 Real-world uses of Reflection:
 
-- **Code generation** — draft, run tests / self-review, fix, repeat.
-- **Writing & editing** — draft then critique for accuracy, tone, and completeness.
-- **Math & reasoning** — solve, then check the solution and correct errors.
-- **Structured extraction** — extract, then verify every field against the source.
-- **Translation** — translate, then a critique pass checks fidelity and fluency.
+- **Code generation**: draft, run tests / self-review, fix, repeat.
+- **Writing & editing**: draft then critique for accuracy, tone, and completeness.
+- **Math & reasoning**: solve, then check the solution and correct errors.
+- **Structured extraction**: extract, then verify every field against the source.
+- **Translation**: translate, then a critique pass checks fidelity and fluency.
 
 **In modern systems:**
 
-- **Multi-agent** — a dedicated critic/reviewer agent evaluates a worker's output before it's accepted.
-- **Workflow engine** — a "review" step that loops a task back for revision until it passes a rubric.
-- **Low-code** — a "polish" action that iteratively refines generated content against quality criteria.
+- **Multi-agent**: a dedicated critic/reviewer agent evaluates a worker's output before it's accepted.
+- **Workflow engine**: a "review" step that loops a task back for revision until it passes a rubric.
+- **Low-code**: a "polish" action that iteratively refines generated content against quality criteria.
 
 ## Related Patterns
 
-- **LLM-as-Judge** — the independent evaluator; the critic in Reflection is often a judge.
-- **ReAct Loop** — both loop, but ReAct gathers information while Reflection refines output.
-- **Prompt Chaining** — a chain with a critique-and-revise link folded back on itself.
-- **Template Method** — generate → critique → revise is a fixed skeleton with pluggable criteria.
+- **LLM-as-Judge**: the independent evaluator; the critic in Reflection is often a judge.
+- **ReAct Loop**: both loop, but ReAct gathers information while Reflection refines output.
+- **Prompt Chaining**: a chain with a critique-and-revise link folded back on itself.
+- **Template Method**: generate → critique → revise is a fixed skeleton with pluggable criteria.

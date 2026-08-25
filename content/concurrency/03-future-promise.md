@@ -27,9 +27,9 @@ stored, passed to functions, and combined, the same way ordinary values are.
 
 Without futures, "do this when that finishes" has two bad shapes:
 
-- **Blocking** — call the slow thing and wait. Simple, but the thread/loop is frozen; you can't
+- **Blocking**: call the slow thing and wait. Simple, but the thread/loop is frozen; you can't
   run two slow things at once, and the UI or server stalls.
-- **Callbacks** — pass a function to run on completion. Non-blocking, but composition falls
+- **Callbacks**: pass a function to run on completion. Non-blocking, but composition falls
   apart: three dependent steps nest three deep ("callback hell"), error handling scatters across
   every callback, and running several in parallel and collecting results is manual bookkeeping.
 
@@ -40,11 +40,11 @@ list, or hand to `map`.
 
 Key Components:
 
-- **Future / Promise** — the object standing in for the eventual result; holds state
+- **Future / Promise**: the object standing in for the eventual result; holds state
   (pending/fulfilled/rejected) and the settled value or error.
-- **Producer** — the async operation that eventually *resolves* or *rejects* the future.
-- **Consumer** — code that attaches a continuation (`then`/`await`) to use the value when ready.
-- **Combinators** — `all` / `race` / `gather` that turn many futures into one.
+- **Producer**: the async operation that eventually *resolves* or *rejects* the future.
+- **Consumer**: code that attaches a continuation (`then`/`await`) to use the value when ready.
+- **Combinators**: `all` / `race` / `gather` that turn many futures into one.
 
 ```
   start()                     resolve(v)
@@ -63,25 +63,25 @@ Producer ──────► [ Future ] ◄──────────  (pe
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Composability** — futures chain and combine; `all`/`race` express fan-out and timeouts cheaply.
-- **Readable async** — `await` makes concurrent code read top-to-bottom, errors via `try/catch`.
-- **First-class** — an async result becomes a value you can return, store, and pass around.
+- **Composability**: futures chain and combine; `all`/`race` express fan-out and timeouts cheaply.
+- **Readable async**: `await` makes concurrent code read top-to-bottom, errors via `try/catch`.
+- **First-class**: an async result becomes a value you can return, store, and pass around.
 
 ### Disadvantages
-- **Hidden concurrency** — `await` in a loop silently serializes; it's easy to lose parallelism.
-- **Eager vs lazy** — JS promises start immediately and can't be cancelled cleanly; other
+- **Hidden concurrency**: `await` in a loop silently serializes; it's easy to lose parallelism.
+- **Eager vs lazy**: JS promises start immediately and can't be cancelled cleanly; other
   runtimes differ, and mixing models confuses.
-- **Error propagation** — an unobserved rejected promise can vanish silently without handling.
+- **Error propagation**: an unobserved rejected promise can vanish silently without handling.
 
 ## Common Mistakes
 
-- **Awaiting in a loop when you meant parallel** — `for (const x of xs) await f(x)` runs one at a
+- **Awaiting in a loop when you meant parallel**: `for (const x of xs) await f(x)` runs one at a
   time; use `Promise.all(xs.map(f))` to actually overlap them.
-- **Forgetting to await** — dropping the `await` (or the returned promise) means the work runs
+- **Forgetting to await**: dropping the `await` (or the returned promise) means the work runs
   detached, errors go unhandled, and ordering breaks.
-- **Swallowing rejections** — no `.catch` / `try` around an await leaves failures silent; always
+- **Swallowing rejections**: no `.catch` / `try` around an await leaves failures silent; always
   handle or propagate.
-- **Blocking on a future from the thread that must resolve it** — waiting synchronously on the
+- **Blocking on a future from the thread that must resolve it**: waiting synchronously on the
   same event loop/thread that would complete the work deadlocks.
 
 ## Key Takeaways
@@ -127,7 +127,7 @@ async function orderTotal(id) {
 const [a, b] = await Promise.all([orderTotal(1), orderTotal(2)]);
 ```
 
-**🧠 Tradeoff** — Promises are native and `async/await` makes async read like sync, with
+**🧠 Tradeoff**: Promises are native and `async/await` makes async read like sync, with
 `try/catch` for errors and `Promise.all`/`race` for combining. The sharp edge is that promises
 are *eager* (they start when created) and not cancellable: `await` in a loop quietly serializes,
 and there's no clean "stop this one." You trade control for ergonomics.
@@ -165,7 +165,7 @@ async function concat() {
 }
 ```
 
-**🧠 Tradeoff** — Node ships promise versions of its callback APIs (`fs/promises`,
+**🧠 Tradeoff**: Node ships promise versions of its callback APIs (`fs/promises`,
 `util.promisify`), so the whole platform composes with `await`. `Promise.all` here overlaps the
 two reads instead of serializing them; the win is real concurrency for I/O with no threads. The
 caveat matches browser JS: eager, non-cancellable promises.
@@ -177,7 +177,7 @@ caveat matches browser JS: eager, non-cancellable promises.
 **❌ Naive**
 
 ```python
-# Blocking calls run strictly one after another — no overlap on I/O waits.
+# Blocking calls run strictly one after another, no overlap on I/O waits.
 def order_total(id):
     user = get_user(id)      # blocks
     orders = get_orders(user)  # blocks
@@ -199,7 +199,7 @@ async def main():
     a, b = await asyncio.gather(order_total(1), order_total(2))
 ```
 
-**🧠 Tradeoff** — `asyncio` coroutines are Python's futures: `await` for the linear form,
+**🧠 Tradeoff**: `asyncio` coroutines are Python's futures: `await` for the linear form,
 `asyncio.gather` for concurrency. Unlike JS, coroutines are *lazy* (they don't run until
 scheduled on the loop), which makes `create_task`/`gather` the point where concurrency actually
 starts. The cost is the two-color split: `async` functions and the loop are their own world you
@@ -212,7 +212,7 @@ have to opt into.
 **❌ Naive**
 
 ```elixir
-# Sequential — each call blocks the process before the next starts.
+# Sequential: each call blocks the process before the next starts.
 user = get_user(id)
 orders = get_orders(user)
 get_total(orders)
@@ -226,10 +226,10 @@ task_a = Task.async(fn -> order_total(1) end)
 task_b = Task.async(fn -> order_total(2) end)
 [a, b] = Task.await_many([task_a, task_b])
 
-# Dependent steps still read linearly — the win is running independent work in parallel.
+# Dependent steps still read linearly: the win is running independent work in parallel.
 ```
 
-**🧠 Tradeoff** — `Task.async/await` is the future on the BEAM: each task runs in its own cheap
+**🧠 Tradeoff**: `Task.async/await` is the future on the BEAM: each task runs in its own cheap
 process, and `await_many` collects several in parallel. Because processes are isolated, a crashing
 task fails its `await` rather than corrupting the caller: futures with fault isolation built in.
 The flip side: a `Task` is tied to its owner process and has an await timeout, so it's for
@@ -253,7 +253,7 @@ func orderTotal(id int) int {
 **✅ Idiomatic**
 
 ```go
-// Go has no Future type — a goroutine writing to a channel IS the future.
+// Go has no Future type: a goroutine writing to a channel IS the future.
 func async[T any](fn func() T) <-chan T {
     ch := make(chan T, 1)
     go func() { ch <- fn() }()
@@ -267,7 +267,7 @@ func main() {
 }
 ```
 
-**🧠 Tradeoff** — Go deliberately omits a `Future` type; the idiom is "start a goroutine, hand
+**🧠 Tradeoff**: Go deliberately omits a `Future` type; the idiom is "start a goroutine, hand
 back a channel." A one-element buffered channel *is* a fulfilled-once future, and starting two
 before receiving gives you parallelism. It's more explicit than `async/await` (no `then`
 chaining, and errors travel as a second channel value or a struct) but it composes with
@@ -280,7 +280,7 @@ chaining, and errors travel as a second channel value or a struct) but it compos
 **❌ Naive**
 
 ```csharp
-// Blocking, strictly sequential — the two totals never overlap.
+// Blocking, strictly sequential: the two totals never overlap.
 var total = OrderTotal(1) + OrderTotal(2);
 Console.WriteLine(total);
 
@@ -314,7 +314,7 @@ static async Task<int> OrderTotalAsync(int id)
 //   int value = await tcs.Task;
 ```
 
-**🧠 Tradeoff** — `Task` is the future, and it's *hot* like a JS promise, running the
+**🧠 Tradeoff**: `Task` is the future, and it's *hot* like a JS promise, running the
 moment it exists, but unlike JS it's cancellable via `CancellationToken`, and
 `Task.WhenAll`/`WhenAny` are `all`/`race`. When you're wrapping a callback API,
 `TaskCompletionSource` is the producer half: hold the source, hand out its `Task`, settle
@@ -360,7 +360,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — Rust has `async`/`await` and a `Future` trait, but std ships no executor:
+**🧠 Tradeoff**: Rust has `async`/`await` and a `Future` trait, but std ships no executor:
 without a runtime crate (tokio, smol) an async fn never runs, so the honest std future is a
 thread and its `JoinHandle`: eager like a JS promise, joined exactly once, and a panic
 comes back as `join`'s `Err` instead of vanishing. Know the twist before reaching for real
@@ -376,7 +376,7 @@ And when you need the resolve-by-hand half, a one-shot `mpsc` channel plays the 
 ```zig
 const std = @import("std");
 
-// Blocking and strictly sequential — the second total waits on the first.
+// Blocking and strictly sequential: the second total waits on the first.
 pub fn main() void {
     const a = orderTotal(1);
     const b = orderTotal(2);
@@ -403,9 +403,9 @@ fn orderTotal(id: u32) u32 {
 }
 
 pub fn main(init: std.process.Init) !void {
-    const io = init.io; // the concurrency capability — passed explicitly, like an allocator
+    const io = init.io; // the concurrency capability: passed explicitly, like an allocator
 
-    var a = io.async(orderTotal, .{1}); // start — pending
+    var a = io.async(orderTotal, .{1}); // start: pending
     var b = io.async(orderTotal, .{2}); // both in flight
 
     const total = a.await(io) + b.await(io); // await: blocks until the result is ready
@@ -413,7 +413,7 @@ pub fn main(init: std.process.Init) !void {
 }
 ```
 
-**🧠 Tradeoff** — Zig grew a real future in 0.17-dev, but behind the `std.Io` capability:
+**🧠 Tradeoff**: Zig grew a real future in 0.17-dev, but behind the `std.Io` capability:
 `io.async` starts the work, `await` and `cancel` settle it, and every one of those calls
 takes the `io` you were handed: concurrency is something the caller grants you, exactly
 like an allocator. The type hides nothing: `Future(u32)` is a pending handle plus the
@@ -430,7 +430,7 @@ worker pool from kata 01.
 **❌ Naive**
 
 ```java
-// Blocking, strictly sequential — the two totals never overlap.
+// Blocking, strictly sequential: the two totals never overlap.
 class Demo {
     public static void main(String[] args) {
         var total = orderTotal(1) + orderTotal(2); // one after the other
@@ -472,7 +472,7 @@ class Demo {
 }
 ```
 
-**🧠 Tradeoff** — `CompletableFuture` is both halves in one class: the future (`join`,
+**🧠 Tradeoff**: `CompletableFuture` is both halves in one class: the future (`join`,
 `allOf`/`anyOf` as `all`/`race`, `orTimeout` for deadlines) and the promise
 (`complete`/`completeExceptionally`), where JS hides the resolver inside the constructor
 and C# splits `Task` from `TaskCompletionSource`. Like a JS promise it's hot, starting on
@@ -484,21 +484,21 @@ than the chain. Keep `CompletableFuture` for its combinators, not to avoid block
 
 ## Applications
 
-- **HTTP clients** — every `fetch`/`http` call returns a future; combinators run several requests
+- **HTTP clients**: every `fetch`/`http` call returns a future; combinators run several requests
   at once and race timeouts (frontend & backend).
-- **UI data loading** — components await data futures and render loading/error/loaded states
+- **UI data loading**: components await data futures and render loading/error/loaded states
   from the future's lifecycle (frontend).
-- **Parallel aggregation** — fan out calls to several services and `all`/`gather` their results
+- **Parallel aggregation**: fan out calls to several services and `all`/`gather` their results
   into one response (backend).
-- **Deferred computation** — hand a future to code that will need the value later, without
+- **Deferred computation**: hand a future to code that will need the value later, without
   forcing it to be computed now (frontend & backend).
-- **Timeouts & fallbacks** — `race` a work future against a timer future to bound latency
+- **Timeouts & fallbacks**: `race` a work future against a timer future to bound latency
   (backend).
 
 ## Related Patterns
 
-- **Worker Pool** — pools typically hand back one future per submitted task, so callers `await`
+- **Worker Pool**: pools typically hand back one future per submitted task, so callers `await`
   results without knowing about the workers.
-- **Fan-out / Fan-in** — fan-out starts many futures; fan-in is `all`/`gather` collecting them.
-- **Actor** — an actor's request/reply (`call`) returns a future for the reply while the actor
+- **Fan-out / Fan-in**: fan-out starts many futures; fan-in is `all`/`gather` collecting them.
+- **Actor**: an actor's request/reply (`call`) returns a future for the reply while the actor
   keeps processing other messages.

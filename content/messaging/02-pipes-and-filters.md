@@ -28,20 +28,20 @@ over a stream.
 
 A single monolithic transformation is rigid and unscalable:
 
-- **One big function** — a step that decodes, validates, enriches, and encodes all at once is hard to
+- **One big function**: a step that decodes, validates, enriches, and encodes all at once is hard to
   test, change, or reuse in parts.
-- **No independent scaling** — if one stage is the bottleneck, you can't scale just that stage.
-- **Can't reorder or reuse** — logic welded into a monolith can't be recomposed for a different flow.
-- **All-or-nothing processing** — no natural place to stream, checkpoint, or parallelize between stages.
+- **No independent scaling**: if one stage is the bottleneck, you can't scale just that stage.
+- **Can't reorder or reuse**: logic welded into a monolith can't be recomposed for a different flow.
+- **All-or-nothing processing**: no natural place to stream, checkpoint, or parallelize between stages.
 
 ## Structure
 
 Key Components:
 
-- **Filter** — a component that transforms its input to output; ideally stateless and single-purpose.
-- **Pipe** — the channel connecting one filter's output to the next filter's input.
-- **Source / Sink** — the pipeline's origin (produces messages) and terminus (consumes results).
-- **Pipeline** — the composed chain; each stage independent and unaware of the others.
+- **Filter**: a component that transforms its input to output; ideally stateless and single-purpose.
+- **Pipe**: the channel connecting one filter's output to the next filter's input.
+- **Source / Sink**: the pipeline's origin (produces messages) and terminus (consumes results).
+- **Pipeline**: the composed chain; each stage independent and unaware of the others.
 
 ```
 Source ─pipe─► [Filter: parse] ─pipe─► [Filter: enrich] ─pipe─► [Filter: format] ─pipe─► Sink
@@ -58,24 +58,24 @@ Source ─pipe─► [Filter: parse] ─pipe─► [Filter: enrich] ─pipe─�
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Composable & reusable** — filters recombine into different pipelines; each is testable alone.
-- **Independent scaling** — scale or parallelize the bottleneck stage without touching others.
-- **Streaming** — data flows incrementally, enabling backpressure and low latency-to-first-result.
+- **Composable & reusable**: filters recombine into different pipelines; each is testable alone.
+- **Independent scaling**: scale or parallelize the bottleneck stage without touching others.
+- **Streaming**: data flows incrementally, enabling backpressure and low latency-to-first-result.
 
 ### Disadvantages
-- **Overhead between stages** — serialization/transport between filters (especially cross-process) costs.
-- **Error handling spread** — a failure mid-pipeline needs a policy (drop, dead-letter, retry) at each stage.
-- **Shared context is awkward** — filters are meant to be independent; threading global state through them
+- **Overhead between stages**: serialization/transport between filters (especially cross-process) costs.
+- **Error handling spread**: a failure mid-pipeline needs a policy (drop, dead-letter, retry) at each stage.
+- **Shared context is awkward**: filters are meant to be independent; threading global state through them
   fights the design.
 
 ## Common Mistakes
 
-- **Stateful filters that assume order/context** — filters relying on hidden shared state break reuse
+- **Stateful filters that assume order/context**: filters relying on hidden shared state break reuse
   and parallelism; keep them stateless transforms.
-- **Chunky filters** — a "filter" doing five things is a monolith in disguise; one filter, one transform.
-- **No backpressure** — a fast source overrunning a slow filter with no flow control floods the pipe;
+- **Chunky filters**: a "filter" doing five things is a monolith in disguise; one filter, one transform.
+- **No backpressure**: a fast source overrunning a slow filter with no flow control floods the pipe;
   use bounded pipes/streams.
-- **Ignoring partial failure** — no per-stage error policy means one bad message can wedge the pipeline.
+- **Ignoring partial failure**: no per-stage error policy means one bad message can wedge the pipeline.
 
 ## Key Takeaways
 
@@ -93,7 +93,7 @@ Source ─pipe─► [Filter: parse] ─pipe─► [Filter: enrich] ─pipe─�
 **❌ Naive**
 
 ```js
-// One function does every stage — untestable in parts, not reusable.
+// One function does every stage: untestable in parts, not reusable.
 function process(raw) {
   const parsed = JSON.parse(raw);
   const enriched = { ...parsed, ts: Date.now(), region: lookup(parsed.ip) };
@@ -113,7 +113,7 @@ const pipeline = (...filters) => (input) => filters.reduce((acc, f) => f(acc), i
 const process = pipeline(parse, enrich, format); // reorder/insert stages freely
 ```
 
-**🧠 Tradeoff** — Splitting into `parse`/`enrich`/`format` filters composed by a `pipeline` makes each
+**🧠 Tradeoff**: Splitting into `parse`/`enrich`/`format` filters composed by a `pipeline` makes each
 stage testable and reusable, and inserting a `validate` filter is one edit. In-process this is
 synchronous function composition; for large data you'd use streaming filters (async generators,
 transform streams) so it processes incrementally rather than materializing everything.
@@ -125,7 +125,7 @@ transform streams) so it processes incrementally rather than materializing every
 **❌ Naive**
 
 ```js
-// Read all, transform all in memory — no streaming, no per-stage scaling.
+// Read all, transform all in memory, no streaming, no per-stage scaling.
 const lines = fs.readFileSync("events.log", "utf8").split("\n");
 const out = lines.map(parse).map(enrich).map(format).join("\n");
 fs.writeFileSync("out.csv", out);
@@ -151,7 +151,7 @@ await pipeline(
 );
 ```
 
-**🧠 Tradeoff** — Node streams *are* pipes and filters: each `Transform` is a filter, `pipeline()`
+**🧠 Tradeoff**: Node streams *are* pipes and filters: each `Transform` is a filter, `pipeline()`
 connects them with automatic backpressure so a slow stage throttles the source. It streams instead of
 buffering the whole file, and stages can be reused across pipelines. The cost is the stream API's
 ceremony and per-stage error handling, worth it for large or continuous data.
@@ -185,7 +185,7 @@ for row in pipeline(open("events.log"), parse, enrich, format):
     write(row)                  # streams one at a time
 ```
 
-**🧠 Tradeoff** — Generator filters give Python lazy, streaming pipes-and-filters: each filter is a
+**🧠 Tradeoff**: Generator filters give Python lazy, streaming pipes-and-filters: each filter is a
 generator transforming a stream, composed without materializing intermediates, so memory stays flat over huge
 inputs. It's idiomatic and reusable. For cross-process/parallel stages you'd graduate to a task
 framework (Celery chains, Airflow, or `multiprocessing` pipelines), trading simplicity for scale.
@@ -216,7 +216,7 @@ File.stream!("events.log") |> Enum.map(&parse/1) |> Enum.map(&enrich/1) |> Enum.
 # for concurrent, partitioned stages: Flow (over GenStage) parallelizes each filter.
 ```
 
-**🧠 Tradeoff** — Elixir's `Stream` gives lazy pipes-and-filters and `|>` wires them beautifully:
+**🧠 Tradeoff**: Elixir's `Stream` gives lazy pipes-and-filters and `|>` wires them beautifully:
 each `Stream.map` is a filter, nothing is materialized until run. For concurrency, `Flow` (built on
 GenStage) turns the same pipeline into partitioned, parallel stages with backpressure, and `Broadway`
 adds durable ingestion from brokers. The language makes the sequential form trivial and offers a clean
@@ -229,7 +229,7 @@ upgrade path to parallel.
 **❌ Naive**
 
 ```go
-// One function chains transforms inline over a slice — no streaming or stage isolation.
+// One function chains transforms inline over a slice, no streaming or stage isolation.
 for _, line := range lines {
     out = append(out, format(enrich(parse(line))))
 }
@@ -252,7 +252,7 @@ formatted := filter(enriched, format)
 for row := range formatted { write(row) }
 ```
 
-**🧠 Tradeoff** — Go channels are the pipes and goroutines the filters: each `filter` stage runs
+**🧠 Tradeoff**: Go channels are the pipes and goroutines the filters: each `filter` stage runs
 concurrently, connected by channels that provide backpressure, and you can fan-out a slow stage across
 workers (the Fan-out/Fan-in pattern). Generics keep it typed. It's genuinely concurrent
 pipes-and-filters in the standard library; the cost is wiring channels and closing them correctly, the
@@ -265,7 +265,7 @@ usual Go bargain of explicitness.
 **❌ Naive**
 
 ```csharp
-// Read all, transform all in memory — stages welded, nothing streams.
+// Read all, transform all in memory: stages welded, nothing streams.
 var rows = File.ReadAllLines("events.log")
     .Select(line => Format(Enrich(Parse(line)))) // parse + enrich + format inline
     .ToList();
@@ -297,7 +297,7 @@ var formatted = Filter(enriched, Format);
 await foreach (var row in formatted.ReadAllAsync()) Write(row);
 ```
 
-**🧠 Tradeoff** — `Channel<T>` pipes with a `Task` per filter are the .NET shape of Go's version:
+**🧠 Tradeoff**: `Channel<T>` pipes with a `Task` per filter are the .NET shape of Go's version:
 stages run concurrently, bounded channels throttle a fast source, and `Complete()` is the
 close-the-channel discipline that lets shutdown ripple through. When you don't need concurrency,
 don't pay for it: LINQ over `IEnumerable`/`IAsyncEnumerable` (`lines.Select(Parse).Select(Enrich)`)
@@ -350,7 +350,7 @@ fn stage<I: Send + 'static, O: Send + 'static>(rx: Receiver<I>, f: fn(I) -> O) -
 }
 ```
 
-**🧠 Tradeoff** — iterator chains are Rust's native sequential pipes-and-filters: lazy, allocation-
+**🧠 Tradeoff**: iterator chains are Rust's native sequential pipes-and-filters: lazy, allocation-
 free, and each `.map` monomorphizes down to roughly the hand-written loop, so composition costs
 nothing. Concurrency isn't free the way Go's is: you make the pipe explicit with `mpsc` and a
 thread per stage, and ownership moves each message down the pipe, so stages can't share mutable
@@ -364,7 +364,7 @@ the sender drops gives clean shutdown.
 **❌ Naive**
 
 ```zig
-// One loop welds every stage together — recomposing means editing this loop.
+// One loop welds every stage together: recomposing means editing this loop.
 while (lines.next()) |line| {
     const parsed = parse(line);
     const enriched = enrich(parsed);
@@ -377,7 +377,7 @@ while (lines.next()) |line| {
 ```zig
 const std = @import("std");
 
-// No closures in Zig — a filter is a plain function over one message type,
+// No closures in Zig: a filter is a plain function over one message type,
 // and the pipeline is an array of function pointers: stages as data.
 const Filter = *const fn (Event) Event;
 
@@ -386,7 +386,7 @@ fn stamp(e: Event) Event { var out = e; out.ts = now(); return out; }
 fn locate(e: Event) Event { var out = e; out.region = lookup(out.ip); return out; }
 fn redact(e: Event) Event { var out = e; out.ip = ""; return out; }
 
-// reorder, insert, or drop stages here — the filters never change:
+// reorder, insert, or drop stages here: the filters never change:
 const stages = [_]Filter{ stamp, locate, redact };
 
 fn run(log: []const u8) void {
@@ -399,7 +399,7 @@ fn run(log: []const u8) void {
 }
 ```
 
-**🧠 Tradeoff** — without closures, the honest Zig pipeline fixes one message type and makes each
+**🧠 Tradeoff**: without closures, the honest Zig pipeline fixes one message type and makes each
 filter a `*const fn (Event) Event` in an array: the pipeline is data you can recompose at runtime,
 and type-changing work (parse, format) sits at the edges as source and sink adapters. It streams
 line by line with zero allocation in the loop. The comptime alternative (an inline chain of
@@ -414,7 +414,7 @@ Go's shape, hand-assembled.
 **❌ Naive**
 
 ```java
-// Read all, transform all in memory — stages welded, nothing streams.
+// Read all, transform all in memory: stages welded, nothing streams.
 var out = new ArrayList<String>();
 for (var line : Files.readAllLines(Path.of("events.log"))) {
     out.add(format(enrich(parse(line)))); // parse + enrich + format inline
@@ -453,7 +453,7 @@ static <I, O> BlockingQueue<O> stage(BlockingQueue<I> in, Function<I, O> fn) {
 // var formatted = stage(enriched, Pipeline::format);
 ```
 
-**🧠 Tradeoff** — `Stream` is Java's sequential pipes-and-filters: `Files.lines` is lazy, each
+**🧠 Tradeoff**: `Stream` is Java's sequential pipes-and-filters: `Files.lines` is lazy, each
 `.map` a filter, and nothing runs until the terminal `forEach` pulls, so huge files stream without
 materializing. `.parallel()` is one word but shares the common pool and suits CPU-bound, unordered
 work, not a pipeline with a slow stage. For that you make the pipe explicit (a bounded
@@ -463,28 +463,28 @@ Stay with streams until one stage genuinely needs its own thread.
 
 ## Applications
 
-- **ETL / data pipelines** — extract → transform → load as composable filter stages (backend).
-- **Compilers** — lex → parse → optimize → codegen is the classic pipes-and-filters architecture
+- **ETL / data pipelines**: extract → transform → load as composable filter stages (backend).
+- **Compilers**: lex → parse → optimize → codegen is the classic pipes-and-filters architecture
   (backend).
-- **Stream processing** — Kafka Streams, Flink, and Beam pipelines chain operators over event streams
+- **Stream processing**: Kafka Streams, Flink, and Beam pipelines chain operators over event streams
   (backend).
-- **Request/response middleware** — HTTP middleware and interceptors are filters over the
+- **Request/response middleware**: HTTP middleware and interceptors are filters over the
   request/response pipe (backend).
-- **Media processing** — decode → resize → watermark → encode pipelines for images/video (backend).
+- **Media processing**: decode → resize → watermark → encode pipelines for images/video (backend).
 
 **In modern systems:**
 
-- **Workflow engine** — the linear engine *is* pipes-and-filters: each step transforms the payload
+- **Workflow engine**: the linear engine *is* pipes-and-filters: each step transforms the payload
   and passes it to the next.
-- **Low-code** — a field value flows through parse → validate → format filters declared in its
+- **Low-code**: a field value flows through parse → validate → format filters declared in its
   JSON.
-- **Multi-agent** — a context pipeline (retrieve → rerank → summarize) shapes what the model sees
+- **Multi-agent**: a context pipeline (retrieve → rerank → summarize) shapes what the model sees
   before it runs.
 
 ## Related Patterns
 
-- **Function Composition** — pipes-and-filters is composition at the system/stream level, with filters
+- **Function Composition**: pipes-and-filters is composition at the system/stream level, with filters
   as components and pipes as channels rather than in-memory function calls.
-- **Message Channel** — pipes *are* channels; the pattern chains channels between transforming stages.
-- **Fan-out / Fan-in** — the way to scale a single slow filter: parallelize that stage across workers,
+- **Message Channel**: pipes *are* channels; the pattern chains channels between transforming stages.
+- **Fan-out / Fan-in**: the way to scale a single slow filter: parallelize that stage across workers,
   then merge.

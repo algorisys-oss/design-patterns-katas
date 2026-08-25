@@ -28,24 +28,24 @@ masters.
 
 A single model doing both reads and writes gets pulled in opposite directions:
 
-- **Conflicting shapes** — normalized tables enforce write consistency but need painful joins to
+- **Conflicting shapes**: normalized tables enforce write consistency but need painful joins to
   render a screen; denormalize for reads and writes get error-prone.
-- **Mismatched load** — most systems read far more than they write, yet one model (and one
+- **Mismatched load**: most systems read far more than they write, yet one model (and one
   database) must scale for both together.
-- **Bloated logic** — the same objects carry validation rules *and* display concerns, so both grow
+- **Bloated logic**: the same objects carry validation rules *and* display concerns, so both grow
   tangled.
-- **Query pressure on the write store** — heavy reporting queries contend with transactional writes
+- **Query pressure on the write store**: heavy reporting queries contend with transactional writes
   on the same tables.
 
 ## Structure
 
 Key Components:
 
-- **Commands** — imperative requests to change state; handled by the write side, return no data.
-- **Write Model** — enforces rules and persists changes; optimized for consistency.
-- **Queries** — requests for data in a specific shape; handled by the read side, change nothing.
-- **Read Model** — one or more denormalized projections optimized for the queries that need them.
-- **Projection** — keeps the read model in sync with writes (synchronously or via events).
+- **Commands**: imperative requests to change state; handled by the write side, return no data.
+- **Write Model**: enforces rules and persists changes; optimized for consistency.
+- **Queries**: requests for data in a specific shape; handled by the read side, change nothing.
+- **Read Model**: one or more denormalized projections optimized for the queries that need them.
+- **Projection**: keeps the read model in sync with writes (synchronously or via events).
 
 ```
              commands              queries
@@ -65,26 +65,26 @@ Client ───────────────► Write Model      Read Mo
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Independent optimization** — model and scale reads and writes for their own workloads.
-- **Simpler models** — write logic isn't muddied by display concerns, and vice versa.
-- **Tailored read shapes** — build exactly the projections your screens and reports need.
+- **Independent optimization**: model and scale reads and writes for their own workloads.
+- **Simpler models**: write logic isn't muddied by display concerns, and vice versa.
+- **Tailored read shapes**: build exactly the projections your screens and reports need.
 
 ### Disadvantages
-- **Eventual consistency** — asynchronous projections mean a write may not be visible in reads
+- **Eventual consistency**: asynchronous projections mean a write may not be visible in reads
   immediately; the UI must cope.
-- **More moving parts** — two models, projections, and sync machinery to build and operate.
-- **Overkill for simple CRUD** — where reads and writes share a shape, CQRS is pure overhead.
+- **More moving parts**: two models, projections, and sync machinery to build and operate.
+- **Overkill for simple CRUD**: where reads and writes share a shape, CQRS is pure overhead.
 
 ## Common Mistakes
 
-- **Applying it everywhere** — CQRS on simple CRUD adds projections and consistency headaches for
+- **Applying it everywhere**: CQRS on simple CRUD adds projections and consistency headaches for
   no benefit; use it where read/write pressures actually diverge.
-- **Ignoring the consistency gap** — building a UI that assumes a write is instantly queryable
+- **Ignoring the consistency gap**: building a UI that assumes a write is instantly queryable
   breaks under asynchronous projection; design for the lag (return the command's result, poll, or
   read-your-writes).
-- **Sharing the models anyway** — reusing the same ORM entities for both sides quietly recouples
+- **Sharing the models anyway**: reusing the same ORM entities for both sides quietly recouples
   them and forfeits the split.
-- **Conflating CQRS with event sourcing** — they pair well but are independent; you can do CQRS
+- **Conflating CQRS with event sourcing**: they pair well but are independent; you can do CQRS
   with plain projected tables and no event log.
 
 ## Key Takeaways
@@ -133,7 +133,7 @@ const queries = {
 // commands change state and return nothing; queries return shaped data and change nothing.
 ```
 
-**🧠 Tradeoff** — Routing writes through `commands` (normalized, validated) and reads through
+**🧠 Tradeoff**: Routing writes through `commands` (normalized, validated) and reads through
 `queries` (a pre-shaped summary) lets each side be exactly what it needs, and the dashboard query
 becomes a cheap lookup. The cost is the `projectOrderSummary` step and the window where the summary
 lags the write: worth it for read-heavy screens, needless for a simple form.
@@ -167,7 +167,7 @@ bus.on("order.placed", (order) => readDb.upsertSalesRollup(order));
 app.get("/reports/sales", (_req, res) => readDb.salesRollup().then((r) => res.json(r))); // fast read
 ```
 
-**🧠 Tradeoff** — Publishing an event on write and projecting into a separate read store moves
+**🧠 Tradeoff**: Publishing an event on write and projecting into a separate read store moves
 reporting load off the transactional database and makes the report a fast lookup. The `202` and the
 projection lag are the honest signal that reads are eventually consistent. It's real infrastructure
 (a bus, a projector, a read store), justified when read load threatens writes, overkill otherwise.
@@ -207,7 +207,7 @@ class SalesDashboard:                  # query side
         return self.read_repo.sales_rollup()    # denormalized, fast
 ```
 
-**🧠 Tradeoff** — Splitting into `PlaceOrder` (command) and `SalesDashboard` (query) handlers with
+**🧠 Tradeoff**: Splitting into `PlaceOrder` (command) and `SalesDashboard` (query) handlers with
 separate repos keeps write rules and read shapes from tangling and lets the read model live in its
 own store (even Redis or a materialized view). It's more classes than a fat model; pay it when the
 two sides truly diverge, not for every entity.
@@ -249,7 +249,7 @@ defmodule Orders.Queries do
 end
 ```
 
-**🧠 Tradeoff** — Elixir splits cleanly into command/query contexts, and a `GenServer` projector
+**🧠 Tradeoff**: Elixir splits cleanly into command/query contexts, and a `GenServer` projector
 subscribed via `Phoenix.PubSub` keeps the read model current; the BEAM's process and pub/sub
 primitives make the projection machinery natural. Libraries like Commanded formalize this. The
 consistency lag between the broadcast and the projection is the same trade CQRS always makes.
@@ -288,7 +288,7 @@ type Queries struct{ read ReadStore }
 func (q Queries) SalesRollup() ([]Rollup, error) { return q.read.Rollup() } // fast, denormalized
 ```
 
-**🧠 Tradeoff** — Two types (`Commands`, `Queries`) over two store interfaces make the split
+**🧠 Tradeoff**: Two types (`Commands`, `Queries`) over two store interfaces make the split
 explicit and each side independently testable and swappable: very Go. Nothing here forces event
 sourcing; the "projection" can be a synchronous upsert into a read table. You own the wiring and the
 consistency handling, but the read/write separation is plain and inspectable.
@@ -331,7 +331,7 @@ public sealed class Queries(IReadStore read)
 }
 ```
 
-**🧠 Tradeoff** — Records make commands what they should be: immutable, equatable messages with no
+**🧠 Tradeoff**: Records make commands what they should be: immutable, equatable messages with no
 behavior. Two small classes over two store interfaces are the whole pattern. In .NET this often
 runs through MediatR (`IRequest`/`IRequestHandler`), but that's dispatch plumbing, not CQRS itself.
 The classic .NET pairing is EF Core on the write side (rules, change tracking) and Dapper or raw
@@ -396,11 +396,11 @@ fn main() {
     let mut app = App { orders: Vec::new(), sales_by_day: HashMap::new() };
     app.place_order(Order { day: "2026-08-17".into(), total: 40 }).unwrap();
     app.place_order(Order { day: "2026-08-17".into(), total: 60 }).unwrap();
-    println!("sales: {}", app.sales_rollup("2026-08-17")); // sales: 100 — a lookup, not a scan
+    println!("sales: {}", app.sales_rollup("2026-08-17")); // sales: 100; a lookup, not a scan
 }
 ```
 
-**🧠 Tradeoff** — In Rust the split shows up in the receivers: commands take `&mut self`, queries
+**🧠 Tradeoff**: In Rust the split shows up in the receivers: commands take `&mut self`, queries
 take `&self`, so the borrow checker *enforces* that the query side cannot write: a guarantee the
 other languages leave to convention. Here the projection is a synchronous map update inside the
 command, which keeps reads instantly consistent; the asynchronous version (a projector thread fed
@@ -465,7 +465,7 @@ const Queries = struct {
     rollup: *const Rollup, // const pointer: the query side cannot write
 
     fn dashboard(self: Queries) Rollup {
-        return self.rollup.*; // the pre-shaped read model — no scan
+        return self.rollup.*; // the pre-shaped read model, no scan
     }
 };
 
@@ -485,7 +485,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — The wiring is pointers, and the pointer types carry the rule: `Commands` holds
+**🧠 Tradeoff**: The wiring is pointers, and the pointer types carry the rule: `Commands` holds
 mutable `*WriteStore`/`*Rollup`, `Queries` holds `*const Rollup`, so a write through the query side
 is a compile error: const-correctness doing what CQRS asks for. The projection is a synchronous
 field update, which is all most Zig programs need; an asynchronous projector means `std.Thread`, a
@@ -515,7 +515,7 @@ class OrderStore {
 import java.util.ArrayList;
 import java.util.List;
 
-// Commands are records — immutable messages. The sealed interface closes the set.
+// Commands are records: immutable messages. The sealed interface closes the set.
 sealed interface Command permits PlaceOrder, CancelOrder {}
 record PlaceOrder(String sku, int total) implements Command {}
 record CancelOrder(String sku) implements Command {}
@@ -531,7 +531,7 @@ class Commands {
     Commands(ReadStore read) { this.read = read; }
 
     void handle(Command cmd) {
-        switch (cmd) { // exhaustive over the sealed set — no default arm
+        switch (cmd) { // exhaustive over the sealed set, no default arm
             case PlaceOrder p -> {
                 if (p.total() <= 0) throw new IllegalArgumentException("empty order"); // write rule
                 writeStore.add(p);
@@ -554,7 +554,7 @@ class Queries {
 
     Queries(ReadStore read) { this.read = read; }
 
-    Rollup dashboard() { return read.rollup; } // pre-shaped — no scan, no joins
+    Rollup dashboard() { return read.rollup; } // pre-shaped, no scan, no joins
 }
 
 public class Demo {
@@ -573,7 +573,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — Records make commands what CQRS wants them to be: immutable, value-equal messages
+**🧠 Tradeoff**: Records make commands what CQRS wants them to be: immutable, value-equal messages
 with no behavior. Sealing the `Command` set adds what most languages here can't: the `switch` is
 exhaustive with no default arm, so adding a `RefundOrder` command fails every handler that ignores
 it at compile time. In production Java the dispatch usually runs through Spring beans or an
@@ -584,21 +584,21 @@ usual price.
 
 ## Applications
 
-- **High-read platforms** — e-commerce and media sites project write data into read-optimized
+- **High-read platforms**: e-commerce and media sites project write data into read-optimized
   stores (Elasticsearch, Redis) for fast catalogs and search (backend).
-- **Dashboards & analytics** — reporting reads run off denormalized projections instead of
+- **Dashboards & analytics**: reporting reads run off denormalized projections instead of
   contending with transactional writes (backend).
-- **Collaborative apps** — separate the authoritative write model from many tailored read views per
+- **Collaborative apps**: separate the authoritative write model from many tailored read views per
   client (backend & frontend).
-- **Event-driven systems** — CQRS is the natural read side of an event-sourced or event-streamed
+- **Event-driven systems**: CQRS is the natural read side of an event-sourced or event-streamed
   architecture (backend).
-- **Task/booking systems** — strict write-side rules (no double-booking) with rich, varied read
+- **Task/booking systems**: strict write-side rules (no double-booking) with rich, varied read
   screens (availability, calendars) (backend).
 
 ## Related Patterns
 
-- **Event Sourcing** — a common write side for CQRS: commands append events, projections build the
+- **Event Sourcing**: a common write side for CQRS: commands append events, projections build the
   read models from the event stream.
-- **Publish-Subscribe** — the usual transport for keeping read models in sync with writes.
-- **Layered / Hexagonal** — CQRS refines the application layer into distinct command and query
+- **Publish-Subscribe**: the usual transport for keeping read models in sync with writes.
+- **Layered / Hexagonal**: CQRS refines the application layer into distinct command and query
   paths, each with its own model and store.

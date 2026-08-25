@@ -28,23 +28,23 @@ without touching the rules.
 
 When domain objects carry their own persistence, the two concerns fuse:
 
-- **Coupled to the schema** — the object's structure is dictated by the table; you can't model the
+- **Coupled to the schema**: the object's structure is dictated by the table; you can't model the
   domain freely (value objects, inheritance, aggregates) without fighting the ORM.
-- **Untestable domain** — business rules can't run without a database, because the objects *are* the
+- **Untestable domain**: business rules can't run without a database, because the objects *are* the
   persistence.
-- **Leaky mapping** — SQL and column names bleed into domain code, so a schema change ripples through
+- **Leaky mapping**: SQL and column names bleed into domain code, so a schema change ripples through
   the business logic.
-- **Hard to evolve independently** — the object model and the database can't change on their own
+- **Hard to evolve independently**: the object model and the database can't change on their own
   schedules because they're the same thing.
 
 ## Structure
 
 Key Components:
 
-- **Domain Object** — pure business model: fields and rules, no persistence code.
-- **Data Mapper** — moves data between domain objects and the database; owns all SQL/ORM details.
-- **Database** — the relational store with its own schema.
-- **Mapping** — the translation logic in both directions (`toDomain(row)`, `toRow(object)`).
+- **Domain Object**: pure business model: fields and rules, no persistence code.
+- **Data Mapper**: moves data between domain objects and the database; owns all SQL/ORM details.
+- **Database**: the relational store with its own schema.
+- **Mapping**: the translation logic in both directions (`toDomain(row)`, `toRow(object)`).
 
 ```
 Data Mapper ──constructs──► Domain Object   (pure, no DB knowledge)
@@ -62,25 +62,25 @@ Data Mapper ──constructs──► Domain Object   (pure, no DB knowledge)
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Clean domain** — business objects are pure and unit-testable with no database.
-- **Independent evolution** — schema and object model change on their own schedules.
-- **Handles complexity** — supports rich models (value objects, inheritance) the schema doesn't mirror.
+- **Clean domain**: business objects are pure and unit-testable with no database.
+- **Independent evolution**: schema and object model change on their own schedules.
+- **Handles complexity**: supports rich models (value objects, inheritance) the schema doesn't mirror.
 
 ### Disadvantages
-- **More code** — a separate mapper per aggregate, plus the translation both ways.
-- **Indirection** — reads/writes go through a layer, less immediate than "object.save()".
-- **Overkill for simple CRUD** — where objects mirror tables 1:1, the ceremony buys little (see Active
+- **More code**: a separate mapper per aggregate, plus the translation both ways.
+- **Indirection**: reads/writes go through a layer, less immediate than "object.save()".
+- **Overkill for simple CRUD**: where objects mirror tables 1:1, the ceremony buys little (see Active
   Record).
 
 ## Common Mistakes
 
-- **Leaking DB models into the domain** — returning ORM entities as "domain objects" quietly recouples
+- **Leaking DB models into the domain**: returning ORM entities as "domain objects" quietly recouples
   them to the schema; the mapper must produce pure domain types.
-- **Persistence logic creeping into domain objects** — a `save()` method on the domain object turns it
+- **Persistence logic creeping into domain objects**: a `save()` method on the domain object turns it
   into Active Record; keep persistence in the mapper.
-- **Anemic domain** — using Data Mapper but leaving objects as field bags forfeits the point; the freed
+- **Anemic domain**: using Data Mapper but leaving objects as field bags forfeits the point; the freed
   domain should hold real behavior.
-- **One mega-mapper** — a single mapper for the whole schema; scope mappers to aggregates.
+- **One mega-mapper**: a single mapper for the whole schema; scope mappers to aggregates.
 
 ## Key Takeaways
 
@@ -98,7 +98,7 @@ Data Mapper ──constructs──► Domain Object   (pure, no DB knowledge)
 **❌ Naive**
 
 ```js
-// The domain object carries its own SQL — coupled to the schema, untestable without a DB.
+// The domain object carries its own SQL: coupled to the schema, untestable without a DB.
 class User {
   constructor(row) { this.id = row.id; this.name = row.name; }
   async save() { await db.query("UPDATE users SET name=? WHERE id=?", [this.name, this.id]); }
@@ -109,7 +109,7 @@ class User {
 
 ```js
 // Pure domain object; a mapper translates both ways.
-class User {                    // no persistence code — just data + rules
+class User {                    // no persistence code: just data + rules
   constructor(id, name) { this.id = id; this.name = name; }
   rename(name) { if (!name) throw new Error("empty"); this.name = name; }
 }
@@ -128,7 +128,7 @@ const UserMapper = {
 };
 ```
 
-**🧠 Tradeoff** — `User` is now a pure object you can unit-test (`rename` throws) with no database, and
+**🧠 Tradeoff**: `User` is now a pure object you can unit-test (`rename` throws) with no database, and
 `UserMapper` owns the SQL and the row↔object translation. You write more code than a `user.save()`, and
 the payoff is a domain model free to be as rich as the business needs. For trivial CRUD it's more than
 you need; for real rules it's the clean separation.
@@ -140,7 +140,7 @@ you need; for real rules it's the clean separation.
 **❌ Naive**
 
 ```js
-// Handlers pass ORM rows around as if they were domain objects — schema leaks everywhere.
+// Handlers pass ORM rows around as if they were domain objects: schema leaks everywhere.
 const row = await pool.query("SELECT * FROM orders WHERE id=$1", [id]);
 res.json({ total: row.total_cents / 100 }); // domain shaping smeared into the handler
 ```
@@ -161,7 +161,7 @@ const OrderMapper = {
 };
 ```
 
-**🧠 Tradeoff** — Mapping `total_cents` → an `Order` with a `total` getter and `ship()` rule keeps the
+**🧠 Tradeoff**: Mapping `total_cents` → an `Order` with a `total` getter and `ship()` rule keeps the
 schema (columns, cents) out of the handlers and gives the domain real behavior. Node ORMs like MikroORM
 implement Data Mapper (vs. Sequelize's Active Record). The extra mapper is the cost; the payoff is
 handlers and rules that never see a column name.
@@ -173,7 +173,7 @@ handlers and rules that never see a column name.
 **❌ Naive**
 
 ```python
-# Django's Model is Active Record — the domain object IS the row, coupled to the table.
+# Django's Model is Active Record: the domain object IS the row, coupled to the table.
 class User(models.Model):
     name = models.CharField(max_length=100)
     def promote(self):        # business logic living on the persistence object
@@ -187,7 +187,7 @@ class User(models.Model):
 from dataclasses import dataclass
 
 @dataclass
-class User:                          # pure domain object — no ORM base class
+class User:                          # pure domain object, no ORM base class
     id: int
     name: str
     def rename(self, name):          # behavior, testable with no DB
@@ -203,7 +203,7 @@ class UserMapper:
         self.session.execute(update(users).where(users.c.id == user.id).values(name=user.name))
 ```
 
-**🧠 Tradeoff** — SQLAlchemy is famous for supporting *both* styles; its Core + a mapper (or classical
+**🧠 Tradeoff**: SQLAlchemy is famous for supporting *both* styles; its Core + a mapper (or classical
 mapping) gives true Data Mapper, keeping `User` a plain dataclass with testable behavior. The contrast
 with Django's Active Record `Model` is the whole lesson: Data Mapper trades convenience for a domain
 model unbound from the schema. Choose it when the domain is rich; Active Record when objects mirror
@@ -239,7 +239,7 @@ defmodule Accounts do
 end
 ```
 
-**🧠 Tradeoff** — Ecto is a Data Mapper by design: schemas define the row↔struct mapping, `Repo` is the
+**🧠 Tradeoff**: Ecto is a Data Mapper by design: schemas define the row↔struct mapping, `Repo` is the
 mapper that talks to the database, and there's no `user.save()`: persistence is explicit and separate.
 Many Elixir apps use the Ecto schema struct *as* the domain (pragmatic), but for a rich domain you add a
 translation to plain structs in the context. The separation is idiomatic; the extra mapping is opt-in
@@ -252,7 +252,7 @@ per complexity.
 **❌ Naive**
 
 ```go
-// A struct with tags and methods that run SQL — persistence welded to the model.
+// A struct with tags and methods that run SQL: persistence welded to the model.
 type User struct {
     ID   int
     Name string
@@ -289,7 +289,7 @@ func (m UserMapper) Save(u *User) error {
 }
 ```
 
-**🧠 Tradeoff** — Idiomatic Go keeps the struct a plain value with behavior and puts scanning/SQL in a
+**🧠 Tradeoff**: Idiomatic Go keeps the struct a plain value with behavior and puts scanning/SQL in a
 mapper (usually called a repository): the standard-library `database/sql` style, and what `sqlc`
 generates. Go's culture strongly favors this explicit Data-Mapper approach over Active-Record ORMs
 (GORM offers the latter). The manual `Scan` mapping is the cost; the benefit is a domain struct with no
@@ -302,7 +302,7 @@ database dependency and SQL you can see.
 **❌ Naive**
 
 ```csharp
-// The model writes itself into the store — schema knowledge welded to the domain.
+// The model writes itself into the store: schema knowledge welded to the domain.
 public sealed class User(int id, string name)
 {
     public int Id { get; } = id;
@@ -320,11 +320,11 @@ var mapper = new UserMapper();
 mapper.Save(new User(1, "Ada"));         // seed the in-memory "users table"
 
 var user = mapper.Find(1)!;
-user.Rename("Grace");                    // pure domain behavior — no storage in sight
+user.Rename("Grace");                    // pure domain behavior, no storage in sight
 mapper.Save(user);
 Console.WriteLine(mapper.Find(1)!.Name); // Grace
 
-// Pure domain object — fields and rules, nothing about rows.
+// Pure domain object: fields and rules, nothing about rows.
 public sealed class User(int id, string name)
 {
     public int Id { get; } = id;
@@ -350,7 +350,7 @@ public sealed class UserMapper
 }
 ```
 
-**🧠 Tradeoff** — EF Core *is* a Data Mapper: entities are plain classes and the `DbContext` does the
+**🧠 Tradeoff**: EF Core *is* a Data Mapper: entities are plain classes and the `DbContext` does the
 translating and tracking, so C# teams usually get this pattern from the framework; the hand mapper
 shows what that machinery does. The type system makes the split visible: `UserRow` is an immutable
 `record` snapshot of storage, `User` is a mutable class with behavior, and only the mapper knows both.
@@ -366,7 +366,7 @@ storage at all.
 ```rust
 use std::collections::HashMap;
 
-// The model writes itself into the store — persistence welded to the struct.
+// The model writes itself into the store: persistence welded to the struct.
 struct User { id: u32, name: String }
 
 impl User {
@@ -381,7 +381,7 @@ impl User {
 ```rust
 use std::collections::HashMap;
 
-// Pure domain struct — fields and rules, no storage in sight.
+// Pure domain struct: fields and rules, no storage in sight.
 struct User { id: u32, name: String }
 
 impl User {
@@ -417,7 +417,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — ownership makes Data Mapper the natural Rust shape: `find` hands you an *owned*
+**🧠 Tradeoff**: ownership makes Data Mapper the natural Rust shape: `find` hands you an *owned*
 `User` translated out of the row, nothing links it back to the table, and only an explicit `save`
 writes it home. There's no fight with the borrow checker because the pattern never asks for shared
 mutable state between object and store, which is exactly why Rust's ORMs (Diesel, SeaORM) are
@@ -433,7 +433,7 @@ that copy-in/copy-out contract.
 ```zig
 const std = @import("std");
 
-// The model writes itself into the store — persistence welded to the struct.
+// The model writes itself into the store: persistence welded to the struct.
 const Table = struct { names: [8]?[]const u8 };
 
 const User = struct {
@@ -451,7 +451,7 @@ const User = struct {
 ```zig
 const std = @import("std");
 
-// Pure domain struct — fields and rules, nothing about storage.
+// Pure domain struct: fields and rules, nothing about storage.
 const User = struct {
     id: u32,
     name: []const u8,
@@ -496,7 +496,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — in Zig, Data Mapper is less a technique than a filing decision: a row struct, a
+**🧠 Tradeoff**: in Zig, Data Mapper is less a technique than a filing decision: a row struct, a
 domain struct, and two small translation functions, with no ORM to hide any of it. `find` returns a
 copy by value, which is precisely the pattern's contract, not a workaround. The honest caveat: for a
 struct this small, `User` and `UserRow` are identical shapes and the split reads as ceremony; it earns
@@ -511,7 +511,7 @@ its keep once the storage layout (packed fields, foreign keys) and the domain sh
 ```java
 import java.util.Map;
 
-// The model writes itself into the store — schema knowledge welded to the domain.
+// The model writes itself into the store: schema knowledge welded to the domain.
 class User {
     int id;
     String name;
@@ -526,7 +526,7 @@ class User {
 import java.util.HashMap;
 import java.util.Map;
 
-// Pure domain object — fields and rules, nothing about rows.
+// Pure domain object: fields and rules, nothing about rows.
 class User {
     final int id;
     private String name;
@@ -563,14 +563,14 @@ public class Demo {
         mapper.save(new User(1, "Ada"));           // seed the in-memory "users table"
 
         var user = mapper.find(1);
-        user.rename("Grace");                      // pure domain behavior — no storage in sight
+        user.rename("Grace");                      // pure domain behavior, no storage in sight
         mapper.save(user);
         System.out.println(mapper.find(1).name()); // Grace
     }
 }
 ```
 
-**🧠 Tradeoff** — this is Hibernate's home ground: JPA's `EntityManager` is a Data Mapper plus a Unit
+**🧠 Tradeoff**: this is Hibernate's home ground: JPA's `EntityManager` is a Data Mapper plus a Unit
 of Work: entities are plain classes, `find`/`persist` do the translating, and the mapping lives in
 annotations instead of a hand-written `toRow`. The hand mapper shows the machinery the framework hides.
 The `record` makes the split visible: `UserRow` is an immutable storage snapshot, `User` a mutable
@@ -580,21 +580,21 @@ making since 2001.
 
 ## Applications
 
-- **Domain-driven design** — the standard persistence approach for rich domains with aggregates and
+- **Domain-driven design**: the standard persistence approach for rich domains with aggregates and
   value objects (backend).
-- **Heavyweight ORMs** — Hibernate/JPA, SQLAlchemy (classical), MikroORM, and Ecto implement Data Mapper
+- **Heavyweight ORMs**: Hibernate/JPA, SQLAlchemy (classical), MikroORM, and Ecto implement Data Mapper
   (backend).
-- **Testable business logic** — pure domain objects mapped separately so rules test without a database
+- **Testable business logic**: pure domain objects mapped separately so rules test without a database
   (backend).
-- **Schema/model divergence** — systems where the object graph deliberately differs from the tables
+- **Schema/model divergence**: systems where the object graph deliberately differs from the tables
   (backend).
-- **Polyglot persistence** — mapping the same domain to different stores by swapping mappers (backend).
+- **Polyglot persistence**: mapping the same domain to different stores by swapping mappers (backend).
 
 ## Related Patterns
 
-- **Active Record** — the opposite trade-off: the object *is* the row and carries its own persistence;
+- **Active Record**: the opposite trade-off: the object *is* the row and carries its own persistence;
   lighter for simple CRUD, more coupled.
-- **Repository** — often sits atop a Data Mapper, presenting a collection-like domain interface while the
+- **Repository**: often sits atop a Data Mapper, presenting a collection-like domain interface while the
   mapper handles row translation.
-- **Identity Map** — a Data Mapper typically uses an Identity Map so the same row maps to the same
+- **Identity Map**: a Data Mapper typically uses an Identity Map so the same row maps to the same
   in-memory object within a session.

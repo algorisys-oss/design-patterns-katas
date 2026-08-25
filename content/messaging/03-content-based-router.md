@@ -28,21 +28,21 @@ directs traffic.
 
 Without a router, routing logic leaks everywhere:
 
-- **Senders know too much** — each producer must know which consumer handles which message type and
+- **Senders know too much**: each producer must know which consumer handles which message type and
   address it directly, coupling producers to the consumer topology.
-- **Scattered dispatch** — `if type == "A" send to X; else if "B" send to Y` copied into every sender,
+- **Scattered dispatch**: `if type == "A" send to X; else if "B" send to Y` copied into every sender,
   so a new type means editing them all.
-- **Rigid topology** — you can't reroute or add destinations without changing producers.
-- **Mixed concerns** — business code that produces a message also decides its routing.
+- **Rigid topology**: you can't reroute or add destinations without changing producers.
+- **Mixed concerns**: business code that produces a message also decides its routing.
 
 ## Structure
 
 Key Components:
 
-- **Router** — reads each message and selects an output channel by a rule over the message's content.
-- **Input channel** — where producers send; the router consumes from it.
-- **Output channels** — the possible destinations, one per category/consumer.
-- **Routing rules** — the predicate/mapping from message content to destination.
+- **Router**: reads each message and selects an output channel by a rule over the message's content.
+- **Input channel**: where producers send; the router consumes from it.
+- **Output channels**: the possible destinations, one per category/consumer.
+- **Routing rules**: the predicate/mapping from message content to destination.
 
 ```
                     ┌── type=A ──► Channel A
@@ -60,24 +60,24 @@ Message ──► [ Content Router ] ── type=B ──► Channel B
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Centralized routing** — one place owns the rules; producers stay simple and decoupled.
-- **Flexible topology** — add/remove destinations or change rules without touching producers.
-- **Separation of concerns** — producing a message and deciding its route are distinct jobs.
+- **Centralized routing**: one place owns the rules; producers stay simple and decoupled.
+- **Flexible topology**: add/remove destinations or change rules without touching producers.
+- **Separation of concerns**: producing a message and deciding its route are distinct jobs.
 
 ### Disadvantages
-- **A chokepoint** — all traffic flows through the router; it's a scaling and failure focus.
-- **Hidden coupling to content** — the router depends on message structure; schema changes ripple.
-- **Debugging indirection** — "where did this message go?" now requires understanding the router's rules.
+- **A chokepoint**: all traffic flows through the router; it's a scaling and failure focus.
+- **Hidden coupling to content**: the router depends on message structure; schema changes ripple.
+- **Debugging indirection**: "where did this message go?" now requires understanding the router's rules.
 
 ## Common Mistakes
 
-- **Business logic in the router** — a router should *route*, not transform or process; keep it thin,
+- **Business logic in the router**: a router should *route*, not transform or process; keep it thin,
   or it becomes a hidden monolith.
-- **No default/dead-letter route** — a message matching no rule silently vanishes; always have a
+- **No default/dead-letter route**: a message matching no rule silently vanishes; always have a
   fallback (unroutable channel).
-- **Routing on deep/fragile content** — depending on nested payload internals couples the router to
+- **Routing on deep/fragile content**: depending on nested payload internals couples the router to
   producer models; route on stable headers/type where possible.
-- **Stateful routing that drifts** — routers that accumulate state become inconsistent across
+- **Stateful routing that drifts**: routers that accumulate state become inconsistent across
   instances; prefer stateless, rule-based routing.
 
 ## Key Takeaways
@@ -96,7 +96,7 @@ Message ──► [ Content Router ] ── type=B ──► Channel B
 **❌ Naive**
 
 ```js
-// The producer decides destinations inline — routing logic embedded in business code.
+// The producer decides destinations inline: routing logic embedded in business code.
 function emit(event) {
   if (event.type === "payment") paymentQueue.push(event);
   else if (event.type === "shipping") shippingQueue.push(event);
@@ -118,12 +118,12 @@ const router = makeRouter(
     shipping: (m) => shippingQueue.push(m),
     email: (m) => emailQueue.push(m),
   },
-  (m) => unroutableQueue.push(m), // default route — nothing is lost
+  (m) => unroutableQueue.push(m), // default route, nothing is lost
 );
-// producers: router(event) — they know nothing about destinations
+// producers: router(event), they know nothing about destinations
 ```
 
-**🧠 Tradeoff** — A small `makeRouter` centralizes the type→channel mapping so producers just call
+**🧠 Tradeoff**: A small `makeRouter` centralizes the type→channel mapping so producers just call
 `router(event)`, and adding a route is one entry. The explicit `fallback` prevents silently dropping
 unroutable messages. In-process it's a lookup; across services the same idea lives in a broker's
 routing (exchange bindings) or an API gateway.
@@ -156,7 +156,7 @@ await ch.bindQueue("unroutable", "events", "#");         // default catch-all
 ch.publish("events", `payment.${order.id}`, Buffer.from(JSON.stringify(order)));
 ```
 
-**🧠 Tradeoff** — A RabbitMQ **topic exchange** *is* a content-based router: routing keys plus queue
+**🧠 Tradeoff**: A RabbitMQ **topic exchange** *is* a content-based router: routing keys plus queue
 bindings direct messages to per-type queues, so the routing lives in infrastructure config, not code,
 and consumers subscribe only to what they handle. The catch-all binding is the dead-letter/default.
 The trade is that routing on the key (a header) is cheap and stable; routing on payload internals would
@@ -194,7 +194,7 @@ router.route("shipping")(lambda m: shipping_q.put(m))
 # producers: router.dispatch(event)
 ```
 
-**🧠 Tradeoff** — A small `Router` with a decorator/registry centralizes rules and gives a clean
+**🧠 Tradeoff**: A small `Router` with a decorator/registry centralizes rules and gives a clean
 `dispatch`, with an explicit fallback. Celery's task routing and Kombu bindings provide the same at the
 broker level for cross-process systems. Keeping the router thin (map to a queue, don't process) is the
 discipline that stops it becoming a god-object.
@@ -227,7 +227,7 @@ end
 # producers call Router.route(event); consumers subscribe to their topic.
 ```
 
-**🧠 Tradeoff** — Elixir's pattern-matched function clauses are a beautifully direct content router:
+**🧠 Tradeoff**: Elixir's pattern-matched function clauses are a beautifully direct content router:
 each clause a routing rule, the last clause the default, and routing to named `Phoenix.PubSub` topics
 keeps producers decoupled from consumers. For durable, high-throughput routing, Broadway consumes a
 queue and dispatches. The match-based router is idiomatic and exhaustive-friendly; keep the clauses
@@ -263,12 +263,12 @@ func (r Router) Route(e Event) {
         ch <- e
         return
     }
-    r.fallback <- e // default route — never dropped
+    r.fallback <- e // default route: never dropped
 }
 // router := Router{routes: map[string]chan<- Event{"payment": paymentCh, ...}, fallback: dlqCh}
 ```
 
-**🧠 Tradeoff** — A `Router` struct mapping type → channel centralizes the rules and makes the default
+**🧠 Tradeoff**: A `Router` struct mapping type → channel centralizes the rules and makes the default
 explicit, so producers call `Route` without knowing destinations. In-process the destinations are Go
 channels; across services they're broker subjects (NATS supports subject-based routing natively). It's
 plain and testable; keep `Route` a pure dispatch so it stays a thin chokepoint rather than a processor.
@@ -280,7 +280,7 @@ plain and testable; keep `Route` a pure dispatch so it stays a thin chokepoint r
 **❌ Naive**
 
 ```csharp
-// The producer decides destinations inline — and silently drops unknown types.
+// The producer decides destinations inline, and silently drops unknown types.
 void Emit(Event e)
 {
     if (e.Type == "payment") paymentCh.Writer.TryWrite(e);
@@ -303,7 +303,7 @@ public sealed class Router(
     public ValueTask RouteAsync(Event e) =>
         routes.TryGetValue(e.Type, out var ch)
             ? ch.WriteAsync(e)
-            : fallback.WriteAsync(e); // default route — nothing is lost
+            : fallback.WriteAsync(e); // default route, nothing is lost
 }
 
 // var router = new Router(new Dictionary<string, ChannelWriter<Event>>
@@ -311,10 +311,10 @@ public sealed class Router(
 //     ["payment"] = paymentCh.Writer,
 //     ["shipping"] = shippingCh.Writer,
 // }, unroutableCh.Writer);
-// producers: await router.RouteAsync(e) — they know nothing about destinations
+// producers: await router.RouteAsync(e), they know nothing about destinations
 ```
 
-**🧠 Tradeoff** — the router holds only `ChannelWriter`s, the write half of each destination, so
+**🧠 Tradeoff**: the router holds only `ChannelWriter`s, the write half of each destination, so
 consumers own their readers and the topology stays one dictionary you can build from config. The
 primary constructor and expression-bodied `RouteAsync` keep it thin: a lookup and a write, nothing
 more. If the type set were closed, a pattern-matching `switch` expression would trade the runtime
@@ -353,7 +353,7 @@ struct Router {
 impl Router {
     fn route(&self, e: Event) {
         let dest = self.routes.get(&e.kind).unwrap_or(&self.fallback);
-        dest.send(e).expect("destination hung up"); // default route — never dropped
+        dest.send(e).expect("destination hung up"); // default route: never dropped
     }
 }
 
@@ -364,10 +364,10 @@ impl Router {
 //     ]),
 //     fallback: dlq_tx,
 // };
-// producers call router.route(e) — they hold no destination senders at all.
+// producers call router.route(e), they hold no destination senders at all.
 ```
 
-**🧠 Tradeoff** — ownership does the decoupling: producers hold a `Router`, never a destination
+**🧠 Tradeoff**: ownership does the decoupling: producers hold a `Router`, never a destination
 `Sender`, so they *can't* address consumers directly. The `HashMap` form suits an open, config-
 driven route set; when the kinds are a closed set, an enum plus exhaustive `match` is the more
 idiomatic Rust router: the compiler forces a decision for every variant and silent drops become
@@ -402,7 +402,7 @@ const Kind = enum { payment, shipping, email };
 // ...then the router is an exhaustive switch: a missing arm won't compile.
 fn route(e: Event) void {
     const kind = std.meta.stringToEnum(Kind, e.kind) orelse {
-        unroutable_q.put(e); // default route — nothing is lost
+        unroutable_q.put(e); // default route, nothing is lost
         return;
     };
     switch (kind) {
@@ -412,10 +412,10 @@ fn route(e: Event) void {
     }
 }
 // producers call route(e); the queues are the bounded mutex+condvar
-// channels from Message Channel — each consumer takes from its own.
+// channels from Message Channel: each consumer takes from its own.
 ```
 
-**🧠 Tradeoff** — for a closed set of kinds, enum + exhaustive `switch` *is* the idiomatic Zig
+**🧠 Tradeoff**: for a closed set of kinds, enum + exhaustive `switch` *is* the idiomatic Zig
 router: add a variant to `Kind` and the compiler lists every switch you must extend, so a routing
 rule can't be forgotten. The only genuinely unknown input is the wire string, handled once at the
 edge: `stringToEnum` returning null is the unroutable case, routed to the dead-letter queue
@@ -430,7 +430,7 @@ flexibility.
 **❌ Naive**
 
 ```java
-// The producer decides destinations inline — and silently drops unknown types.
+// The producer decides destinations inline, and silently drops unknown types.
 void emit(Event e) {
     switch (e.type()) {
         case "payment" -> paymentQ.add(e);
@@ -459,17 +459,17 @@ class Router {
     }
 
     void route(Event e) throws InterruptedException {
-        routes.getOrDefault(e.type(), deadLetter).put(e); // default route — nothing is lost
+        routes.getOrDefault(e.type(), deadLetter).put(e); // default route, nothing is lost
     }
 }
 
 // var router = new Router(
 //     Map.of("payment", paymentQ, "shipping", shippingQ),
 //     dlq);
-// producers: router.route(e) — they know nothing about destinations
+// producers: router.route(e), they know nothing about destinations
 ```
 
-**🧠 Tradeoff** — `Map.of` builds an immutable route table, and `getOrDefault` makes the
+**🧠 Tradeoff**: `Map.of` builds an immutable route table, and `getOrDefault` makes the
 dead-letter path a single expression instead of a forgettable else-branch. Producers hold only the
 `Router`, never a destination queue; the topology is one map you can assemble from config. When
 the kind set is closed, do what the Zig tab does: parse the wire string into an enum (or model
@@ -480,26 +480,26 @@ stopped being a router.
 
 ## Applications
 
-- **Message brokers** — topic/direct exchanges and subject-based routing (RabbitMQ, NATS) route by key
+- **Message brokers**: topic/direct exchanges and subject-based routing (RabbitMQ, NATS) route by key
   (backend).
-- **API gateways** — route requests to backend services by path, header, or tenant (backend).
-- **Event dispatch** — routing domain events to the interested bounded context/service (backend).
-- **Load & feature routing** — directing traffic by region, A/B cohort, or version (backend).
-- **Support/workflow systems** — routing tickets/tasks to queues by category or priority (backend).
+- **API gateways**: route requests to backend services by path, header, or tenant (backend).
+- **Event dispatch**: routing domain events to the interested bounded context/service (backend).
+- **Load & feature routing**: directing traffic by region, A/B cohort, or version (backend).
+- **Support/workflow systems**: routing tickets/tasks to queues by category or priority (backend).
 
 **In modern systems:**
 
-- **Low-code** — route a record to the form or handler named by a discriminator field in its JSON.
-- **Workflow engine** — a branch step routes the instance to the next node by inspecting payload
+- **Low-code**: route a record to the form or handler named by a discriminator field in its JSON.
+- **Workflow engine**: a branch step routes the instance to the next node by inspecting payload
   content.
-- **Multi-agent** — a router agent dispatches each request to the specialist agent that handles
+- **Multi-agent**: a router agent dispatches each request to the specialist agent that handles
   that intent.
 
 ## Related Patterns
 
-- **Message Channel** — the router reads from one channel and writes to others; it's the traffic
+- **Message Channel**: the router reads from one channel and writes to others; it's the traffic
   director between channels.
-- **Splitter** — where a router sends a whole message to one destination, a splitter breaks one message
+- **Splitter**: where a router sends a whole message to one destination, a splitter breaks one message
   into many; they often appear together.
-- **Chain of Responsibility** — the object-level cousin: passing a request along handlers until one
+- **Chain of Responsibility**: the object-level cousin: passing a request along handlers until one
   takes it, versus routing a message to a destination by rule.

@@ -30,9 +30,9 @@ Now there are two caches pretending to be one, and a write in one is invisible t
 
 ```
 const a = new Cache();  // part A
-const b = new Cache();  // part B — a different object, empty
+const b = new Cache();  // part B: a different object, empty
 a.set("k", 1);
-b.get("k");             // undefined — they aren't the same cache
+b.get("k");             // undefined, they aren't the same cache
 ```
 
 You want every caller to reach the *same* cache, created once, on first use.
@@ -41,8 +41,8 @@ You want every caller to reach the *same* cache, created once, on first use.
 
 Key Components:
 
-- **Singleton** — the class or module that controls its own single instance and hands it back.
-- **Access point** — a static method, module, or getter that returns that one instance,
+- **Singleton**: the class or module that controls its own single instance and hands it back.
+- **Access point**: a static method, module, or getter that returns that one instance,
   creating it lazily the first time.
 
 ## When to Use
@@ -68,12 +68,12 @@ Use Singleton when a single shared instance is a real invariant, not a convenien
 
 ## Common Mistakes
 
-- **Using it as a global variable** — if the thing isn't genuinely single, you've just made
+- **Using it as a global variable**: if the thing isn't genuinely single, you've just made
   state global and coupling invisible.
-- **No test seam** — a singleton with no way to reset or replace it leaks state across tests.
-- **Thread/async races on first init** — two callers can both see "not created yet" and build
+- **No test seam**: a singleton with no way to reset or replace it leaks state across tests.
+- **Thread/async races on first init**: two callers can both see "not created yet" and build
   two. Guard the first construction.
-- **Storing request-scoped data in it** — a singleton is process-wide; per-request state in it
+- **Storing request-scoped data in it**: a singleton is process-wide; per-request state in it
   bleeds across requests.
 
 ## Key Takeaways
@@ -94,7 +94,7 @@ A `CacheManager` that the whole app shares.
 **❌ Naive**
 
 ```js
-// A plain class — every `new` makes another cache. Nothing is shared.
+// A plain class: every `new` makes another cache. Nothing is shared.
 class CacheManager {
   constructor() { this.store = new Map(); }
   set(k, v) { this.store.set(k, v); }
@@ -104,14 +104,14 @@ class CacheManager {
 const a = new CacheManager();
 const b = new CacheManager();
 a.set("token", "abc");
-b.get("token");             // undefined — a and b are different objects
+b.get("token");             // undefined: a and b are different objects
 ```
 
 **✅ Idiomatic**
 
 ```js
 // A module-scoped instance, created once, exported. The module system
-// guarantees a single evaluation — this IS the singleton.
+// guarantees a single evaluation: this IS the singleton.
 class CacheManager {
   #store = new Map();
   set(k, v) { this.#store.set(k, v); return this; }
@@ -123,10 +123,10 @@ export const cache = new CacheManager();
 // Every importer gets the same `cache`:
 import { cache } from "./cache.js";
 cache.set("token", "abc");
-cache.get("token");         // "abc" — shared everywhere
+cache.get("token");         // "abc": shared everywhere
 ```
 
-**🧠 Tradeoff** — In modern JS a module is evaluated once, so an exported instance is the
+**🧠 Tradeoff**: In modern JS a module is evaluated once, so an exported instance is the
 simplest correct singleton: no lazy-guard needed. Use a class with a static `getInstance()`
 only if construction must be deferred past import or take arguments. Private fields (`#store`)
 keep the internals from being poked at.
@@ -138,7 +138,7 @@ keep the internals from being poked at.
 **❌ Naive**
 
 ```js
-// A new pool per request — connections balloon until the database refuses more.
+// A new pool per request: connections balloon until the database refuses more.
 export function handler(req, res) {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL }); // every request!
   return pool.query("SELECT 1").then((r) => res.json(r.rows));
@@ -148,18 +148,18 @@ export function handler(req, res) {
 **✅ Idiomatic (backend)**
 
 ```js
-// db.js — the pool is created once when the module first loads, then shared.
+// db.js: the pool is created once when the module first loads, then shared.
 import { Pool } from "pg";
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// handler.js — every importer reuses the same pool.
+// handler.js: every importer reuses the same pool.
 import { pool } from "./db.js";
 export function handler(req, res) {
   return pool.query("SELECT 1").then((r) => res.json(r.rows));
 }
 ```
 
-**🧠 Tradeoff** — Node caches each module after first evaluation, so an exported instance is a
+**🧠 Tradeoff**: Node caches each module after first evaluation, so an exported instance is a
 per-process singleton, the standard way to share a pool, config, or logger. The catch is
 "per-process": under `cluster` or multiple workers each process gets its own pool, and serverless
 cold starts reset it, so anything that must be single *across* processes (a lock, a counter) needs
@@ -172,7 +172,7 @@ external coordination like Redis.
 **❌ Naive**
 
 ```python
-# A normal class — each call constructs a separate cache.
+# A normal class: each call constructs a separate cache.
 class CacheManager:
     def __init__(self):
         self.store = {}
@@ -181,7 +181,7 @@ class CacheManager:
 a = CacheManager()
 b = CacheManager()
 a.store["token"] = "abc"
-print(b.store.get("token"))   # None — different instances
+print(b.store.get("token"))   # None: different instances
 ```
 
 **✅ Idiomatic**
@@ -206,7 +206,7 @@ cache.set("token", "abc")
 print(cache.get("token"))     # abc
 ```
 
-**🧠 Tradeoff** — The Pythonic singleton is a module-level object; import machinery does the
+**🧠 Tradeoff**: The Pythonic singleton is a module-level object; import machinery does the
 "once" for you. The `__new__` override or a metaclass singleton exist but are rarely worth the
 surprise: they break subclassing and confuse `isinstance` intuitions. If you need lazy
 creation, wrap it in a function with `functools.lru_cache` or a module-level `_instance` guard.
@@ -222,7 +222,7 @@ creation, wrap it in a function with `functools.lru_cache` or a module-level `_i
 {:ok, a} = Agent.start_link(fn -> %{} end)
 {:ok, b} = Agent.start_link(fn -> %{} end)
 Agent.update(a, &Map.put(&1, "token", "abc"))
-Agent.get(b, &Map.get(&1, "token"))   # nil — a and b are separate processes
+Agent.get(b, &Map.get(&1, "token"))   # nil: a and b are separate processes
 ```
 
 **✅ Idiomatic**
@@ -245,7 +245,7 @@ CacheManager.set("token", "abc")
 CacheManager.get("token")   # "abc"
 ```
 
-**🧠 Tradeoff** — Elixir has no global mutable objects, so a singleton is a *named process*
+**🧠 Tradeoff**: Elixir has no global mutable objects, so a singleton is a *named process*
 (a `GenServer`/`Agent` registered under `__MODULE__`) started once by a supervisor. The "one
 instance" guarantee comes from the name registry, and you get supervision and crash-recovery
 for free, but state lives in a process you must start, not a value you can just import.
@@ -257,7 +257,7 @@ for free, but state lives in a process you must start, not a value you can just 
 **❌ Naive**
 
 ```go
-// NewCache returns a fresh cache each call — callers don't share one.
+// NewCache returns a fresh cache each call: callers don't share one.
 type Cache struct{ store map[string]string }
 
 func NewCache() *Cache { return &Cache{store: map[string]string{}} }
@@ -266,7 +266,7 @@ func main() {
 	a := NewCache()
 	b := NewCache()
 	a.store["token"] = "abc"
-	_ = b.store["token"] // "" — a and b are different caches
+	_ = b.store["token"] // "": a and b are different caches
 }
 ```
 
@@ -308,7 +308,7 @@ func (m *manager) Get(k string) string {
 }
 ```
 
-**🧠 Tradeoff** — `sync.Once` is the idiomatic Go singleton: it guarantees the initializer runs
+**🧠 Tradeoff**: `sync.Once` is the idiomatic Go singleton: it guarantees the initializer runs
 exactly once even under concurrent access, solving the double-init race that naive lazy code
 has. The unexported type keeps callers going through `Instance()`. For a package-wide value with
 no lazy requirement, a plain package-level variable initialized in `init()` is simpler.
@@ -320,11 +320,11 @@ no lazy requirement, a plain package-level variable initialized in `init()` is s
 **❌ Naive**
 
 ```csharp
-// Anyone can `new` a cache — nothing enforces "one".
+// Anyone can `new` a cache, nothing enforces "one".
 var a = new CacheManager();
 var b = new CacheManager();
 a.Set("token", "abc");
-Console.WriteLine(b.Get("token") ?? "null"); // null — different instances
+Console.WriteLine(b.Get("token") ?? "null"); // null: different instances
 
 public class CacheManager
 {
@@ -341,7 +341,7 @@ using System.Collections.Concurrent;
 
 // Every access point returns the same lazily-built instance.
 CacheManager.Instance.Set("token", "abc");
-Console.WriteLine(CacheManager.Instance.Get("token")); // abc — shared everywhere
+Console.WriteLine(CacheManager.Instance.Get("token")); // abc: shared everywhere
 Console.WriteLine(ReferenceEquals(CacheManager.Instance, CacheManager.Instance)); // True
 
 public sealed class CacheManager
@@ -359,7 +359,7 @@ public sealed class CacheManager
 }
 ```
 
-**🧠 Tradeoff** — `Lazy<T>` gives thread-safe, once-only construction without hand-rolled
+**🧠 Tradeoff**: `Lazy<T>` gives thread-safe, once-only construction without hand-rolled
 double-checked locking, and the private constructor makes "one instance" a compile-time
 fact. But modern .NET rarely writes this class: `services.AddSingleton<CacheManager>()`
 gets the same lifetime from the DI container with the dependency *injected*, visible in
@@ -381,7 +381,7 @@ struct CacheManager {
 }
 
 impl CacheManager {
-    // A constructor — so every caller builds their own cache.
+    // A constructor, so every caller builds their own cache.
     fn new() -> Self {
         Self { store: HashMap::new() }
     }
@@ -391,7 +391,7 @@ fn main() {
     let mut a = CacheManager::new();
     let b = CacheManager::new();
     a.store.insert("token".into(), "abc".into());
-    println!("{:?}", b.store.get("token")); // None — different caches
+    println!("{:?}", b.store.get("token")); // None; different caches
 }
 ```
 
@@ -402,7 +402,7 @@ use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 
 // One process-wide cache, built on first touch. A static is visible to every
-// thread, so Rust REQUIRES the Mutex — unsynchronized globals don't compile.
+// thread, so Rust REQUIRES the Mutex: unsynchronized globals don't compile.
 static CACHE: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
@@ -416,11 +416,11 @@ fn get(key: &str) -> Option<String> {
 
 fn main() {
     set("token", "abc");
-    println!("{:?}", get("token")); // Some("abc") — every caller sees the same cache
+    println!("{:?}", get("token")); // Some("abc"); every caller sees the same cache
 }
 ```
 
-**🧠 Tradeoff** — Rust puts the singleton's cost in plain sight: a `static` is reachable
+**🧠 Tradeoff**: Rust puts the singleton's cost in plain sight: a `static` is reachable
 from every thread, so the compiler forces the state behind a `Mutex` (or something else
 `Sync`): the data race other languages let you write is a compile error here. `LazyLock`
 handles lazy once-only init; reach for `OnceLock::get_or_init` when construction needs
@@ -448,11 +448,11 @@ const CacheManager = struct {
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    // Each init() builds a separate cache — nothing is shared.
+    // Each init() builds a separate cache, nothing is shared.
     var a = CacheManager.init(allocator);
     var b = CacheManager.init(allocator);
     try a.store.put("token", "abc");
-    std.debug.print("{?s}\n", .{b.store.get("token")}); // null — different caches
+    std.debug.print("{?s}\n", .{b.store.get("token")}); // null: different caches
 }
 ```
 
@@ -474,7 +474,7 @@ const CacheManager = struct {
 var instance: ?CacheManager = null;
 var init_mutex: std.Io.Mutex = .init;
 
-// Blocking is a capability here, so the guard needs an `io` — the accessor
+// Blocking is a capability here, so the guard needs an `io`: the accessor
 // names both things it uses, exactly as it names its allocator.
 fn cache(io: std.Io, allocator: std.mem.Allocator) !*CacheManager {
     try init_mutex.lock(io);
@@ -493,11 +493,11 @@ pub fn main() !void {
     try a.store.put("token", "abc");
 
     const b = try cache(io, allocator);
-    std.debug.print("{s}\n", .{b.store.get("token").?}); // abc — same cache
+    std.debug.print("{s}\n", .{b.store.get("token").?}); // abc: same cache
 }
 ```
 
-**🧠 Tradeoff** — Zig needs no pattern for "exists once": a file-scope `var` already is
+**🧠 Tradeoff**: Zig needs no pattern for "exists once": a file-scope `var` already is
 one per process. The only real work is guarding first initialization: a mutex when init
 needs runtime data (here, an allocator), or nothing at all when the initial value is known
 at compile time (`var instance = CacheManager{ ... }` exists before `main` runs). Note the
@@ -518,7 +518,7 @@ cache unless it's truly ambient.
 import java.util.HashMap;
 import java.util.Map;
 
-// The classic lazy getter — two threads can both see null and build two caches.
+// The classic lazy getter: two threads can both see null and build two caches.
 class CacheManager {
     private static CacheManager instance;
     private final Map<String, String> store = new HashMap<>();
@@ -541,7 +541,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 // The holder idiom: the JVM initializes Holder on first use, exactly once,
-// under its own class-loading lock — lazy and thread-safe with no sync code.
+// under its own class-loading lock: lazy and thread-safe with no sync code.
 final class CacheManager {
     private final Map<String, String> store = new ConcurrentHashMap<>();
     private CacheManager() {} // no `new` from outside
@@ -569,15 +569,15 @@ enum Cache {
 public class Demo {
     public static void main(String[] args) {
         CacheManager.instance().set("token", "abc");
-        System.out.println(CacheManager.instance().get("token")); // abc — shared everywhere
+        System.out.println(CacheManager.instance().get("token")); // abc: shared everywhere
 
         Cache.INSTANCE.set("token", "xyz");
-        System.out.println(Cache.INSTANCE.get("token")); // xyz — one instance, guaranteed
+        System.out.println(Cache.INSTANCE.get("token")); // xyz: one instance, guaranteed
     }
 }
 ```
 
-**🧠 Tradeoff** — both idioms let the JVM do the guarding. The holder rides class loading:
+**🧠 Tradeoff**: both idioms let the JVM do the guarding. The holder rides class loading:
 `Holder` isn't initialized until `instance()` first touches it, and class initialization is
 already once-only and thread-safe, so the double-init race from the naive version can't
 happen. The enum goes further: the JVM enforces one instance even against serialization
@@ -591,15 +591,15 @@ genuinely ambient facts; let the container handle the rest.
 
 Real-world uses of Singleton (from the reference article):
 
-- **Configuration** — one parsed config object read across the app.
-- **Caching** — a single shared cache / memoization store.
-- **Connection pools** — one DB or HTTP pool for the process.
-- **Logging** — one logger sink with shared formatting and level.
-- **Service registry / router** — a single URL router or service locator.
+- **Configuration**: one parsed config object read across the app.
+- **Caching**: a single shared cache / memoization store.
+- **Connection pools**: one DB or HTTP pool for the process.
+- **Logging**: one logger sink with shared formatting and level.
+- **Service registry / router**: a single URL router or service locator.
 
 ## Related Patterns
 
-- **Factory Method / Abstract Factory** — a factory is often itself a singleton, and factories
+- **Factory Method / Abstract Factory**: a factory is often itself a singleton, and factories
   sometimes return singletons.
-- **Monostate** — an alternative where all instances share the same state via class-level data,
+- **Monostate**: an alternative where all instances share the same state via class-level data,
   instead of restricting to one instance.

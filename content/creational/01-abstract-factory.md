@@ -20,7 +20,7 @@ one move, without the caller knowing the concrete classes.
 
 Where Factory Method makes one product, Abstract Factory makes a matched set: a button *and* a
 checkbox that share a look, a chair *and* a sofa in the same style. The guarantee it buys is
-**consistency** — you can't accidentally mix a macOS button with a Windows checkbox.
+**consistency**: you can't accidentally mix a macOS button with a Windows checkbox.
 
 ## The Problem
 
@@ -31,7 +31,7 @@ and switching platform means editing construction everywhere.
 ```
 const button = os === "mac" ? new MacButton() : new WinButton();
 const check  = os === "mac" ? new MacCheckbox() : new WinCheckbox();
-// two decisions that must agree — but nothing enforces that they do
+// two decisions that must agree, but nothing enforces that they do
 ```
 
 An abstract factory bundles "make a button" and "make a checkbox" into one platform object, so
@@ -41,10 +41,10 @@ one choice fixes the whole family.
 
 Key Components:
 
-- **Abstract Factory** — the interface with a creator per product (`createButton`, `createCheckbox`).
-- **Concrete Factories** — one per family (`MacFactory`, `WinFactory`).
-- **Abstract Products** — the interfaces (`Button`, `Checkbox`).
-- **Concrete Products** — the family members (`MacButton`, `WinCheckbox`, ...).
+- **Abstract Factory**: the interface with a creator per product (`createButton`, `createCheckbox`).
+- **Concrete Factories**: one per family (`MacFactory`, `WinFactory`).
+- **Abstract Products**: the interfaces (`Button`, `Checkbox`).
+- **Concrete Products**: the family members (`MacButton`, `WinCheckbox`, ...).
 
 ## When to Use
 
@@ -66,11 +66,11 @@ Key Components:
 
 ## Common Mistakes
 
-- **Mixing families** — constructing individual products directly defeats the consistency
+- **Mixing families**: constructing individual products directly defeats the consistency
   guarantee; always go through one factory instance.
-- **Confusing it with Factory Method** — one product vs a whole family. If you only make one
+- **Confusing it with Factory Method**: one product vs a whole family. If you only make one
   kind of thing, you want Factory Method.
-- **Exploding the interface** — every new product kind ripples through all factories; keep the
+- **Exploding the interface**: every new product kind ripples through all factories; keep the
   family small, or reconsider the abstraction.
 
 ## Key Takeaways
@@ -91,7 +91,7 @@ A cross-platform UI factory making a matching `Button` and `Checkbox`.
 **❌ Naive**
 
 ```js
-// Two independent decisions that must agree — but nothing makes them.
+// Two independent decisions that must agree, but nothing makes them.
 function buildUI(os) {
   const button = os === "mac" ? new MacButton() : new WinButton();
   const checkbox = os === "mac" ? new MacCheckbox() : new WinCheckbox();
@@ -121,7 +121,7 @@ const factory = os === "mac" ? new MacFactory() : new WinFactory();
 const ui = buildUI(factory);   // guaranteed all-Mac or all-Windows
 ```
 
-**🧠 Tradeoff** — Passing the factory in makes the family choice explicit and singular; `buildUI`
+**🧠 Tradeoff**: Passing the factory in makes the family choice explicit and singular; `buildUI`
 never mentions a concrete product. Because JS has no interfaces, the "same family" contract is a
 convention, not enforced; a typed language would make `Factory` an interface both concretes
 implement.
@@ -133,7 +133,7 @@ implement.
 **❌ Naive**
 
 ```js
-// Picking each client independently — nothing stops an AWS bucket paired with a GCP queue.
+// Picking each client independently, nothing stops an AWS bucket paired with a GCP queue.
 const storage = provider === "aws" ? new S3Storage(creds) : new GcsStorage(creds);
 const queue = provider === "aws" ? new SqsQueue(creds) : new PubSubQueue(creds);
 // two decisions that must agree, enforced by nothing
@@ -163,7 +163,7 @@ const factory = process.env.CLOUD === "aws" ? new AwsFactory(cfg) : new GcpFacto
 const infra = buildInfra(factory); // all-AWS or all-GCP, same creds and region
 ```
 
-**🧠 Tradeoff** — On the backend the "family" is a set of provider clients that must share
+**🧠 Tradeoff**: On the backend the "family" is a set of provider clients that must share
 credentials, region, and retry policy; the factory guarantees they're built consistently and lets
 you swap clouds by swapping one object at startup. As always in JS the shared interface is
 convention: a typed codebase would make `InfraFactory` an interface both providers implement.
@@ -210,7 +210,7 @@ def build_ui(factory: UIFactory):
 factory: UIFactory = MacFactory() if os == "mac" else WinFactory()
 ```
 
-**🧠 Tradeoff** — `Protocol` gives you the family contract with static checking and no
+**🧠 Tradeoff**: `Protocol` gives you the family contract with static checking and no
 inheritance: `MacFactory` doesn't subclass `UIFactory`, it just matches its shape. That keeps
 the concretes decoupled while a type checker still catches a factory that forgot a method.
 
@@ -246,7 +246,7 @@ defmodule MacFactory do
 end
 
 defmodule App do
-  # Takes a factory module — one choice fixes the whole family.
+  # Takes a factory module: one choice fixes the whole family.
   def build_ui(factory) do
     {factory.create_button(), factory.create_checkbox()}
   end
@@ -256,7 +256,7 @@ factory = if os == :mac, do: MacFactory, else: WinFactory
 App.build_ui(factory)
 ```
 
-**🧠 Tradeoff** — The factory is a *module*, not an object, so you pass the module name and call
+**🧠 Tradeoff**: The factory is a *module*, not an object, so you pass the module name and call
 functions on it. The behaviour documents the family contract and warns at compile time if a
 factory module misses a callback. No instance state means the factory is just a namespace of
 constructors.
@@ -306,7 +306,7 @@ func BuildUI(f Factory) (Button, Checkbox) {
 }
 ```
 
-**🧠 Tradeoff** — Go's implicit interfaces make `MacFactory` and `WinFactory` satisfy `Factory`
+**🧠 Tradeoff**: Go's implicit interfaces make `MacFactory` and `WinFactory` satisfy `Factory`
 just by having the methods. `BuildUI` takes the interface, so it's blind to the family: swap
 the factory value and the whole set changes. Adding a new product kind, though, means editing
 the `Factory` interface and every implementer.
@@ -318,7 +318,7 @@ the `Factory` interface and every implementer.
 **❌ Naive**
 
 ```csharp
-// Two independent decisions that must agree — but nothing makes them.
+// Two independent decisions that must agree, but nothing makes them.
 IButton button = os == "mac" ? new MacButton() : new WinButton();
 ICheckbox checkbox = os == "mac" ? new MacCheckbox() : new WinCheckbox();
 ```
@@ -367,7 +367,7 @@ public sealed class WinFactory : IUIFactory
 }
 ```
 
-**🧠 Tradeoff** — Same shape as Go, but the contract is explicit: `MacFactory` declares
+**🧠 Tradeoff**: Same shape as Go, but the contract is explicit: `MacFactory` declares
 `IUIFactory`, and the compiler rejects a factory that forgot a creator. The products here are
 one-liners, so the class count looks heavy; remember the factory's value is the *pairing*, not
 the products. You could shrink a two-product family to a record of two `Func<>`s, but past that
@@ -381,7 +381,7 @@ that's the pattern's tax in any language.
 **❌ Naive**
 
 ```rust
-// Two independent decisions that must agree — but nothing makes them.
+// Two independent decisions that must agree, but nothing makes them.
 fn build_ui(os: &str) -> (Box<dyn Button>, Box<dyn Checkbox>) {
     let button: Box<dyn Button> =
         if os == "mac" { Box::new(MacButton) } else { Box::new(WinButton) };
@@ -424,7 +424,7 @@ impl UIFactory for WinFactory {
     fn create_checkbox(&self) -> Box<dyn Checkbox> { Box::new(WinCheckbox) }
 }
 
-// The app depends only on the trait — swap the factory, swap the family.
+// The app depends only on the trait: swap the factory, swap the family.
 fn build_ui(factory: &dyn UIFactory) -> (Box<dyn Button>, Box<dyn Checkbox>) {
     (factory.create_button(), factory.create_checkbox())
 }
@@ -438,7 +438,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — `&dyn UIFactory` and the boxed products buy a runtime family swap at the cost
+**🧠 Tradeoff**: `&dyn UIFactory` and the boxed products buy a runtime family swap at the cost
 of dynamic dispatch and heap allocation. The static alternative is a generic factory with
 associated types (`type B: Button`): zero overhead, but the family is fixed at compile time and
 everything touching it grows a type parameter. Be honest about scale, too: with exactly two
@@ -456,7 +456,7 @@ const std = @import("std");
 
 const OS = enum { mac, win };
 
-// Two independent switches that must agree — but nothing makes them.
+// Two independent switches that must agree, but nothing makes them.
 fn buttonLabel(os: OS) []const u8 {
     return switch (os) {
         .mac => "[mac button]",
@@ -473,7 +473,7 @@ fn checkboxLabel(os: OS) []const u8 {
 
 pub fn main() void {
     std.debug.print("{s}\n", .{buttonLabel(.mac)});
-    std.debug.print("{s}\n", .{checkboxLabel(.win)}); // mixed family — compiles fine
+    std.debug.print("{s}\n", .{checkboxLabel(.win)}); // mixed family: compiles fine
 }
 ```
 
@@ -482,11 +482,11 @@ pub fn main() void {
 ```zig
 const std = @import("std");
 
-// No interfaces in Zig — a product carries its behavior as a function pointer.
+// No interfaces in Zig: a product carries its behavior as a function pointer.
 const Button = struct { render: *const fn () []const u8 };
 const Checkbox = struct { render: *const fn () []const u8 };
 
-// The abstract factory is a struct of creator function pointers — a small vtable.
+// The abstract factory is a struct of creator function pointers: a small vtable.
 const UIFactory = struct {
     createButton: *const fn () Button,
     createCheckbox: *const fn () Checkbox,
@@ -524,7 +524,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — the function-pointer factory keeps families swappable at runtime without the
+**🧠 Tradeoff**: the function-pointer factory keeps families swappable at runtime without the
 compiler knowing the set, which is what the pattern promises. But notice what the naive version
 got wrong wasn't the switch, it was having *two* of them. With a closed platform set, idiomatic
 Zig would keep the enum and merge both creators into one exhaustive switch returning the whole
@@ -539,7 +539,7 @@ pointer form only when families must arrive at runtime, from outside the compile
 **❌ Naive**
 
 ```java
-// Two independent decisions that must agree — but nothing makes them.
+// Two independent decisions that must agree, but nothing makes them.
 Button button = os.equals("mac") ? new MacButton() : new WinButton();
 Checkbox checkbox = os.equals("mac") ? new MacCheckbox() : new WinCheckbox();
 ```
@@ -587,7 +587,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — this is the book's own language, and the classical form fits without
+**🧠 Tradeoff**: this is the book's own language, and the classical form fits without
 translation: interfaces, concrete families, one factory choice. Modern Java mostly trims the
 edges. The factories are stateless, so an `enum` with one constant per platform can implement
 `UIFactory`, so each factory becomes a guaranteed singleton and the platform set becomes closed
@@ -599,24 +599,24 @@ the pattern's tax: a new product kind edits `UIFactory` and every factory that i
 
 Real-world uses of Abstract Factory (from the reference article):
 
-- **Cross-platform UI toolkits** — matching controls per OS or theme.
-- **Furniture / product kits** — chair + sofa in one style (the classic GoF example).
-- **Payment integrations** — a provider family (checkout + refund + webhook) per gateway.
-- **Database access kits** — connection + query builder + migrator per engine.
-- **Theming** — a consistent set of components per design theme.
+- **Cross-platform UI toolkits**: matching controls per OS or theme.
+- **Furniture / product kits**: chair + sofa in one style (the classic GoF example).
+- **Payment integrations**: a provider family (checkout + refund + webhook) per gateway.
+- **Database access kits**: connection + query builder + migrator per engine.
+- **Theming**: a consistent set of components per design theme.
 
 **In modern systems:**
 
-- **Low-code** — a renderer family: one factory yields matching input, button, and layout widgets
+- **Low-code**: a renderer family: one factory yields matching input, button, and layout widgets
   for web; another the native set. One schema, consistent output per target.
-- **Multi-agent** — a provider family that produces a matching model, tokenizer, and tool-formatter
+- **Multi-agent**: a provider family that produces a matching model, tokenizer, and tool-formatter
   set, so they never mismatch.
-- **Workflow engine** — an environment factory yielding matching store, queue, and executor for
+- **Workflow engine**: an environment factory yielding matching store, queue, and executor for
   dev vs prod.
 
 ## Related Patterns
 
-- **Factory Method** — the building block; each creator in an abstract factory is one.
-- **Builder** — Builder assembles one complex object step by step; Abstract Factory returns
+- **Factory Method**: the building block; each creator in an abstract factory is one.
+- **Builder**: Builder assembles one complex object step by step; Abstract Factory returns
   families of finished products.
-- **Singleton** — a concrete factory is usually shared as a single instance.
+- **Singleton**: a concrete factory is usually shared as a single instance.

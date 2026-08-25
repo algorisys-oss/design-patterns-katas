@@ -28,37 +28,37 @@ untouched because no one measured.
 
 ## How It Happens
 
-- **Guessing the bottleneck** — intuition about what's slow is famously unreliable; developers optimize what
+- **Guessing the bottleneck**: intuition about what's slow is famously unreliable; developers optimize what
   *feels* slow, which is usually not what *is* slow.
-- **Optimization as fun** — clever performance tricks are satisfying to write, so they get written whether
+- **Optimization as fun**: clever performance tricks are satisfying to write, so they get written whether
   needed or not.
-- **"It might be slow later"** — speculative optimization for imagined future scale that never arrives (a
+- **"It might be slow later"**: speculative optimization for imagined future scale that never arrives (a
   YAGNI violation).
-- **Cargo-culting perf advice** — applying "fast" idioms everywhere reflexively, without measuring their
+- **Cargo-culting perf advice**: applying "fast" idioms everywhere reflexively, without measuring their
   impact here.
 
 ## Why It Hurts
 
-- **Wasted effort** — time spent optimizing code that isn't a bottleneck is time not spent on real problems.
-- **Reduced readability** — optimized code is usually harder to read, understand, and maintain; you pay that
+- **Wasted effort**: time spent optimizing code that isn't a bottleneck is time not spent on real problems.
+- **Reduced readability**: optimized code is usually harder to read, understand, and maintain; you pay that
   cost forever for speed you didn't need.
-- **New bugs** — clever optimizations (caching, manual memory tricks, concurrency) introduce subtle bugs the
+- **New bugs**: clever optimizations (caching, manual memory tricks, concurrency) introduce subtle bugs the
   simple version wouldn't have.
-- **Missed real bottlenecks** — attention on the wrong 97% means the actual 3% (a bad query, an N+1, a
+- **Missed real bottlenecks**: attention on the wrong 97% means the actual 3% (a bad query, an N+1, a
   network round-trip) goes unfixed.
-- **Harder to change** — optimized code is often more rigid, so future changes are costlier.
+- **Harder to change**: optimized code is often more rigid, so future changes are costlier.
 
 ## The Refactor
 
 Measure first, optimize the proven hotspot, keep the rest simple:
 
-- **Write it simply and correctly first** — clear code that works; you can't optimize what isn't correct.
-- **Profile** — measure where time (and memory) actually goes under realistic load; let data, not intuition,
+- **Write it simply and correctly first**: clear code that works; you can't optimize what isn't correct.
+- **Profile**: measure where time (and memory) actually goes under realistic load; let data, not intuition,
   find the hotspot.
-- **Optimize the proven bottleneck** — apply effort to the measured 3%, and re-measure to confirm the gain.
-- **Prefer algorithmic wins** — a better algorithm/data structure (O(n) vs O(n²), fixing an N+1 query) beats
+- **Optimize the proven bottleneck**: apply effort to the measured 3%, and re-measure to confirm the gain.
+- **Prefer algorithmic wins**: a better algorithm/data structure (O(n) vs O(n²), fixing an N+1 query) beats
   micro-tuning; and the biggest wins are usually I/O, not CPU.
-- **Keep the optimization contained & documented** — isolate and comment the complex fast path so the rest
+- **Keep the optimization contained & documented**: isolate and comment the complex fast path so the rest
   stays simple.
 
 ```
@@ -109,10 +109,10 @@ function sum(arr) {
 const sum = (arr) => arr.reduce((s, x) => s + x, 0);
 
 // If profiling of a genuinely hot, large-array path shows reduce is the bottleneck, THEN
-// consider a plain for-loop — measured, and commented as to why.
+// consider a plain for-loop: measured, and commented as to why.
 ```
 
-**🧠 The Fix** — Loop unrolling and `| 0` tricks on a small, cold-path sum trade readability for speed the JIT
+**🧠 The Fix**: Loop unrolling and `| 0` tricks on a small, cold-path sum trade readability for speed the JIT
 already provides and the program never needed. The fix is to write the obvious `reduce` and only reach for a
 tuned loop if the profiler flags *this* code under real load. The clarity you keep is worth more than
 imaginary microseconds.
@@ -138,14 +138,14 @@ def label(x):
 **✅ The Refactor**
 
 ```python
-# Just compute it — it's cheap and rarely called. Cache only if profiling says so.
+# Just compute it: it's cheap and rarely called. Cache only if profiling says so.
 def label(x):
     return f"{x.kind}:{x.state}"
 
-# If a profiler shows a genuinely hot, expensive pure function, add @functools.lru_cache — measured.
+# If a profiler shows a genuinely hot, expensive pure function, add @functools.lru_cache: measured.
 ```
 
-**🧠 The Fix** — Hand-rolling a cache (with a fragile `id()`-based key) for a cheap function called a few
+**🧠 The Fix**: Hand-rolling a cache (with a fragile `id()`-based key) for a cheap function called a few
 times adds complexity, a subtle correctness risk, and memory for no benefit. Compute it directly; if
 profiling later proves a function is both hot *and* expensive, `functools.lru_cache` adds memoization
 cleanly. Optimization is a response to measurement, not a reflex.
@@ -175,7 +175,7 @@ func sum(nums []int) int {
 **✅ The Refactor**
 
 ```go
-// Simple sequential loop — faster here than the concurrency overhead, and obvious.
+// Simple sequential loop: faster here than the concurrency overhead, and obvious.
 func sum(nums []int) int {
     total := 0
     for _, n := range nums {
@@ -186,7 +186,7 @@ func sum(nums []int) int {
 // Reach for goroutines when the work per item is substantial and profiling shows parallelism helps.
 ```
 
-**🧠 The Fix** — Goroutines and channels have real scheduling and synchronization overhead; using them to
+**🧠 The Fix**: Goroutines and channels have real scheduling and synchronization overhead; using them to
 "parallelize" adding integers makes the code *slower* and far harder to read: concurrency as premature
 optimization. The simple loop wins on both speed and clarity. Concurrency pays off when per-item work is
 heavy and measured; here it's pure overhead. Benchmark (`go test -bench`) before reaching for it.
@@ -198,7 +198,7 @@ heavy and measured; here it's pure overhead. Benchmark (`go test -bench`) before
 **❌ The Smell**
 
 ```csharp
-// Ref arithmetic and inlining hints — for a dozen items on a cold path.
+// Ref arithmetic and inlining hints: for a dozen items on a cold path.
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -224,10 +224,10 @@ int[] numbers = [3, 1, 4, 1, 5, 9, 2, 6];
 Console.WriteLine(numbers.Sum()); // 31
 
 // If BenchmarkDotNet shows a genuinely hot, large-array path where Sum() matters,
-// a plain loop over the array is the next step — measured, and commented as to why.
+// a plain loop over the array is the next step: measured, and commented as to why.
 ```
 
-**🧠 The Fix** — `Unsafe.Add` dodges a bounds check the JIT already removes for a plain loop
+**🧠 The Fix**: `Unsafe.Add` dodges a bounds check the JIT already removes for a plain loop
 over an array, so the unsafe ceremony bought nothing measurable; it just made a three-line
 sum unreadable and gave it a way to read out of bounds. The same goes for reflexive
 class-to-struct rewrites and `ref readonly` sprinkling done "for the GC" on cold paths.
@@ -246,7 +246,7 @@ fn sum(nums: &[i32]) -> i32 {
     let ptr = nums.as_ptr();
     let mut total = 0;
     for i in 0..nums.len() {
-        // SAFETY: i < len — true today, one refactor away from UB.
+        // SAFETY: i < len; true today, one refactor away from UB.
         total += unsafe { *ptr.add(i) };
     }
     total
@@ -260,7 +260,7 @@ fn main() {
 **✅ The Refactor**
 
 ```rust
-// Safe AND fast — the iterator never emits a per-element bounds check to begin with.
+// Safe AND fast: the iterator never emits a per-element bounds check to begin with.
 fn sum(nums: &[i32]) -> i32 {
     nums.iter().sum()
 }
@@ -268,11 +268,11 @@ fn sum(nums: &[i32]) -> i32 {
 fn main() {
     println!("{}", sum(&[3, 1, 4, 1, 5, 9, 2, 6])); // 31
 }
-// If perf or cargo flamegraph flags a real hotspot, read the generated code first —
+// If perf or cargo flamegraph flags a real hotspot, read the generated code first: 
 // the optimizer usually got there before you did.
 ```
 
-**🧠 The Fix** — The `unsafe` block traded away Rust's core guarantee to skip a bounds check
+**🧠 The Fix**: The `unsafe` block traded away Rust's core guarantee to skip a bounds check
 that `iter().sum()` never emits: more dangerous, and not faster. Unmeasured `unsafe` is
 Rust's signature form of this anti-pattern: you pay the risk up front and never collect the
 speed. Reach for `unsafe` only in the measured 3%, after profiling the safe version and
@@ -322,11 +322,11 @@ fn sum(nums: []const i32) i32 {
 pub fn main() void {
     std.debug.print("{d}\n", .{sum(&.{ 3, 1, 4, 1, 5, 9, 2, 6 })}); // 31
 }
-// If profiling shows a real hot loop, @Vector is there — added after measurement,
+// If profiling shows a real hot loop, @Vector is there: added after measurement,
 // with the numbers in a comment.
 ```
 
-**🧠 The Fix** — Zig hands you `@Vector` and even inline assembly, so this temptation sits
+**🧠 The Fix**: Zig hands you `@Vector` and even inline assembly, so this temptation sits
 closer to the surface than in most languages. But the hand-vectorized sum guesses a lane
 width, drags along a remainder loop (a classic off-by-one home), and LLVM auto-vectorizes
 the plain `for` anyway when the data is big enough to matter; on a dozen items neither
@@ -340,7 +340,7 @@ obvious loop until a profiler points here.
 **❌ The Smell**
 
 ```java
-// Manual unrolling with four accumulators — for a dozen ints on a cold path.
+// Manual unrolling with four accumulators: for a dozen ints on a cold path.
 class Demo {
     static int fastSum(int[] values) {
         int s0 = 0, s1 = 0, s2 = 0, s3 = 0;   // four accumulators to "hide latency"
@@ -374,10 +374,10 @@ class Demo {
     }
 }
 // If JMH shows a genuinely hot, large-array path where the stream matters,
-// a plain for loop is the next step — measured, and commented as to why.
+// a plain for loop is the next step: measured, and commented as to why.
 ```
 
-**🧠 The Fix** — The JIT's C2 compiler unrolls and auto-vectorizes the obvious loop once it's hot, so the
+**🧠 The Fix**: The JIT's C2 compiler unrolls and auto-vectorizes the obvious loop once it's hot, so the
 hand-unrolled version competes with machinery that already does this, and on eight cold-path integers
 neither is observable anyway. Java has an extra trap here: naive timing harnesses lie (dead-code
 elimination, warmup, on-stack replacement), which is exactly why JMH exists. Write the stream; if a real
@@ -387,9 +387,9 @@ all.
 
 ## Related Patterns
 
-- **Memoization** — a legitimate optimization *when applied to a measured, hot, expensive pure function*;
+- **Memoization**: a legitimate optimization *when applied to a measured, hot, expensive pure function*;
   premature memoization (caching cheap or cold functions) is this anti-pattern.
-- **Golden Hammer** — a sibling: both apply effort/tooling (there a favorite tool, here optimization) before
+- **Golden Hammer**: a sibling: both apply effort/tooling (there a favorite tool, here optimization) before
   the problem justifies it.
-- **YAGNI ("You Aren't Gonna Need It")** — the guiding principle; speculative optimization for imagined future
+- **YAGNI ("You Aren't Gonna Need It")**: the guiding principle; speculative optimization for imagined future
   scale is a YAGNI violation.

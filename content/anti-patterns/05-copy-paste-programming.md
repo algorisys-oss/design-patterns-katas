@@ -27,37 +27,37 @@ version is "right."
 
 ## How It Happens
 
-- **It's faster right now** — copying a working block and tweaking it is quicker than designing a reusable
+- **It's faster right now**: copying a working block and tweaking it is quicker than designing a reusable
   abstraction, so under pressure it wins.
-- **Fear of coupling** — extracting shared code feels like it couples the callers, so people duplicate to
+- **Fear of coupling**: extracting shared code feels like it couples the callers, so people duplicate to
   "keep them independent" (often overcorrecting).
-- **Not noticing the duplication** — the original is in a different file/module, so the author doesn't
+- **Not noticing the duplication**: the original is in a different file/module, so the author doesn't
   realize they're re-implementing it.
-- **Copying from Stack Overflow / another project** — pasting an external snippet repeatedly without
+- **Copying from Stack Overflow / another project**: pasting an external snippet repeatedly without
   consolidating.
 
 ## Why It Hurts
 
-- **Bugs multiply** — a defect in the copied block exists in every copy; fixing one leaves the rest broken.
-- **Changes must be made N times** — a rule or format change requires finding and editing every duplicate,
+- **Bugs multiply**: a defect in the copied block exists in every copy; fixing one leaves the rest broken.
+- **Changes must be made N times**: a rule or format change requires finding and editing every duplicate,
   and the missed one is the bug.
-- **Drift** — copies get edited independently until no two are the same, so "the logic" no longer exists in
+- **Drift**: copies get edited independently until no two are the same, so "the logic" no longer exists in
   one authoritative place.
-- **Bloat** — the codebase is larger than it needs to be, so there's more to read, test, and maintain.
-- **Inconsistency** — the same operation behaves subtly differently in different places, confusing users and
+- **Bloat**: the codebase is larger than it needs to be, so there's more to read, test, and maintain.
+- **Inconsistency**: the same operation behaves subtly differently in different places, confusing users and
   developers.
 
 ## The Refactor
 
 Consolidate duplication into one shared abstraction:
 
-- **Spot the duplication** — the same (or near-same) block appearing more than a couple of times is the
+- **Spot the duplication**: the same (or near-same) block appearing more than a couple of times is the
   signal; tools (linters, `jscpd`, IDE "find duplicates") help.
-- **Extract the common part** — pull the shared logic into a function/method/module with a clear name.
-- **Parameterize the differences** — the bits that varied between copies become parameters (or, for varying
+- **Extract the common part**: pull the shared logic into a function/method/module with a clear name.
+- **Parameterize the differences**: the bits that varied between copies become parameters (or, for varying
   *behavior*, a strategy/callback or a template method).
-- **Replace the copies** — call the shared abstraction from every former duplicate site.
-- **But mind false duplication** — code that merely *looks* similar today but represents different concepts
+- **Replace the copies**: call the shared abstraction from every former duplicate site.
+- **But mind false duplication**: code that merely *looks* similar today but represents different concepts
   may be better left separate; don't couple unrelated things just because they resemble each other.
 
 ```
@@ -120,7 +120,7 @@ const getOrder = (id) => fetchJsonWithRetry(`/api/orders/${id}`);
 // fix a retry bug once → every caller benefits.
 ```
 
-**🧠 The Fix** — Extracting `fetchJsonWithRetry` collapses the pasted retry loops into one place, so a fix or
+**🧠 The Fix**: Extracting `fetchJsonWithRetry` collapses the pasted retry loops into one place, so a fix or
 tweak (backoff, attempt count) happens once and every caller gets it, and the "one copy forgot the backoff"
 class of bug disappears. The varying part (the URL) is a parameter. This is DRY: one home for the retry
 knowledge.
@@ -139,7 +139,7 @@ def create_user(data):
     # ...
 def update_user(data):
     email = data.get("email", "").strip().lower()   # copy
-    if "@" not in email: raise ValueError("bad email")  # copy — and update_user's copy allows "" now
+    if "@" not in email: raise ValueError("bad email")  # copy, and update_user's copy allows "" now
     # ...
 ```
 
@@ -158,7 +158,7 @@ def update_user(data): email = clean_email(data); ...
 # the email rule lives in ONE place; change it once, consistently.
 ```
 
-**🧠 The Fix** — Pulling the email normalize-and-validate into `clean_email` means the rule exists once, so it
+**🧠 The Fix**: Pulling the email normalize-and-validate into `clean_email` means the rule exists once, so it
 can't drift between endpoints (the subtle "update allows empty" bug can't happen) and a change applies
 everywhere. The difference between the sites (there wasn't one, just pure duplication) makes this a clean
 extraction. Python's functions make the shared abstraction cheap.
@@ -201,7 +201,7 @@ func createOrder(db *sql.DB, o Order) error {
 }
 ```
 
-**🧠 The Fix** — The begin/rollback/commit ceremony was pure duplication; `withTx` extracts it once and takes
+**🧠 The Fix**: The begin/rollback/commit ceremony was pure duplication; `withTx` extracts it once and takes
 the *varying behavior* (what to run in the transaction) as a callback, a function parameter carrying the
 difference. Now a fix to the transaction handling (say, adding a `defer` for panics) happens in one place.
 Go's first-class functions make this "extract the boilerplate, pass the difference" refactor idiomatic.
@@ -238,7 +238,7 @@ async Task<string> GetOrder(int id)
 **✅ The Refactor**
 
 ```csharp
-// Extract the retry once; the varying part — the call itself — is a Func<Task<T>>.
+// Extract the retry once; the varying part (the call itself) is a Func<Task<T>>.
 using var http = new HttpClient();
 
 async Task<T> WithRetry<T>(Func<Task<T>> action, int attempts = 3)
@@ -258,7 +258,7 @@ Task<string> GetOrder(int id) => WithRetry(() => http.GetStringAsync($"/api/orde
 // fix a retry bug once → every caller benefits.
 ```
 
-**🧠 The Fix** — The try-catch-delay ceremony was pure duplication; `WithRetry<T>` holds it
+**🧠 The Fix**: The try-catch-delay ceremony was pure duplication; `WithRetry<T>` holds it
 once and takes the varying behavior as a `Func<Task<T>>`, so the "forgot the backoff" drift
 can't recur and a policy change (attempts, delay curve) lands everywhere at once. In
 production you'd likely hand this job to a resilience library like Polly, but the move is
@@ -289,7 +289,7 @@ fn parse_timeout(raw: &str) -> Result<u16, String> {
 **✅ The Refactor**
 
 ```rust
-// One parser; the varying bits — the field name and the extra rule — are parameters.
+// One parser; the varying bits (the field name and the extra rule) are parameters.
 fn parse_field(name: &str, raw: &str, check: impl Fn(u16) -> Result<(), String>) -> Result<u16, String> {
     let n: u16 = raw.trim().parse().map_err(|_| format!("bad {name}: {raw}"))?;
     check(n)?;
@@ -303,11 +303,11 @@ fn parse_port(raw: &str) -> Result<u16, String> {
 }
 
 fn parse_timeout(raw: &str) -> Result<u16, String> {
-    parse_field("timeout", raw, |_| Ok(())) // no extra rule — stated, not forgotten
+    parse_field("timeout", raw, |_| Ok(())) // no extra rule: stated, not forgotten
 }
 ```
 
-**🧠 The Fix** — The copies differed in two ways, and the extraction names both: the field
+**🧠 The Fix**: The copies differed in two ways, and the extraction names both: the field
 name became a value parameter, the extra rule became a closure via `impl Fn`. Each call site
 now *states* its rule: `parse_timeout` visibly accepts anything instead of silently
 forgetting a check it was supposed to copy. The generic bound monomorphizes, so the
@@ -361,11 +361,11 @@ fn parsePort(raw: []const u8) !u16 {
 }
 
 fn parseTimeout(raw: []const u8) !u16 {
-    return parseField(raw, anyValue); // no extra rule — stated, not forgotten
+    return parseField(raw, anyValue); // no extra rule: stated, not forgotten
 }
 ```
 
-**🧠 The Fix** — The trim-parse ceremony lives once, and the varying rule is a plain
+**🧠 The Fix**: The trim-parse ceremony lives once, and the varying rule is a plain
 `*const fn` pointer; Zig has no closures, so the rule can't capture context, which this
 one doesn't need. (A rule that did would take the `*anyopaque` context + function pointer
 shape, or a comptime parameter.) The refactor is also honest about the drift:
@@ -440,7 +440,7 @@ class Api {
 // fix a retry bug once → every caller benefits.
 ```
 
-**🧠 The Fix** — The try-catch-sleep ceremony lives once in `withRetry`, and the varying behavior arrives
+**🧠 The Fix**: The try-catch-sleep ceremony lives once in `withRetry`, and the varying behavior arrives
 as a `Callable<T>`, chosen over `Supplier<T>` deliberately, because `call()` declares `throws Exception`
 and Java's other functional interfaces don't, which is the wrinkle that usually pushes people back to
 pasting. Now the "forgot the backoff" drift can't recur, and a policy change (attempts, delay curve) lands
@@ -449,9 +449,9 @@ same: one home for the retry knowledge, the difference passed in as a lambda.
 
 ## Related Patterns
 
-- **Function Composition** — extracting duplicated logic into small, composable functions is the everyday cure
+- **Function Composition**: extracting duplicated logic into small, composable functions is the everyday cure
   for copy-paste.
-- **Template Method** — when copies share a *skeleton* but differ in steps, a template method holds the common
+- **Template Method**: when copies share a *skeleton* but differ in steps, a template method holds the common
   structure and lets the varying steps differ: DRY for algorithms.
-- **Strategy** — when the difference between copies is *behavior*, extract the common code and pass the varying
+- **Strategy**: when the difference between copies is *behavior*, extract the common code and pass the varying
   behavior as a strategy/callback instead of duplicating the whole block.

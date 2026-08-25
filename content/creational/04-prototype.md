@@ -33,7 +33,7 @@ but a shallow copy shares the nested objects, and editing one clone silently cha
 const base = { name: "", features: { theme: "dark" } };
 const a = { ...base };          // shallow copy
 a.features.theme = "light";
-base.features.theme;            // "light" — the shared nested object leaked
+base.features.theme;            // "light": the shared nested object leaked
 ```
 
 Prototype is about cloning *correctly* so each copy is independent.
@@ -42,9 +42,9 @@ Prototype is about cloning *correctly* so each copy is independent.
 
 Key Components:
 
-- **Prototype** — the object that knows how to copy itself (or that you copy).
-- **clone()** — produces a new, independent object; deep where nested state must not be shared.
-- **Client** — asks a prototype for a copy and customizes it.
+- **Prototype**: the object that knows how to copy itself (or that you copy).
+- **clone()**: produces a new, independent object; deep where nested state must not be shared.
+- **Client**: asks a prototype for a copy and customizes it.
 
 ## When to Use
 
@@ -66,11 +66,11 @@ Key Components:
 
 ## Common Mistakes
 
-- **Shallow-copying when you needed deep** — nested objects stay shared; the #1 Prototype bug.
-- **Deep-copying things that shouldn't be** — copying a DB connection or file handle instead of
+- **Shallow-copying when you needed deep**: nested objects stay shared; the #1 Prototype bug.
+- **Deep-copying things that shouldn't be**: copying a DB connection or file handle instead of
   sharing it.
-- **Forgetting cycles** — a naive deep copy of a graph with a cycle loops forever.
-- **Relying on `JSON.parse(JSON.stringify(x))`** — drops functions, `Date`, `undefined`, `Map`,
+- **Forgetting cycles**: a naive deep copy of a graph with a cycle loops forever.
+- **Relying on `JSON.parse(JSON.stringify(x))`**: drops functions, `Date`, `undefined`, `Map`,
   and breaks on cycles.
 
 ## Key Takeaways
@@ -91,12 +91,12 @@ Cloning a configured object that has nested state.
 **❌ Naive**
 
 ```js
-// Spread is a SHALLOW copy — nested objects are shared, not copied.
+// Spread is a SHALLOW copy: nested objects are shared, not copied.
 const base = { name: "player", stats: { hp: 100, mp: 50 } };
 
 const clone = { ...base };
 clone.stats.hp = 10;
-base.stats.hp;          // 10 — the nested `stats` leaked into the original
+base.stats.hp;          // 10: the nested `stats` leaked into the original
 ```
 
 **✅ Idiomatic**
@@ -109,11 +109,11 @@ const clone = structuredClone(base);
 clone.stats.hp = 10;
 clone.skills.push("blink");
 
-base.stats.hp;          // 100 — untouched
-base.skills;            // ["dash"] — independent
+base.stats.hp;          // 100: untouched
+base.skills;            // ["dash"]: independent
 ```
 
-**🧠 Tradeoff** — `structuredClone` (built into modern runtimes) deep-copies nested data and
+**🧠 Tradeoff**: `structuredClone` (built into modern runtimes) deep-copies nested data and
 even cycles, replacing the fragile `JSON.parse(JSON.stringify(x))` trick, but it throws on
 functions and class instances. When you only need to *reset* a template, a shallow spread with
 fresh nested literals is fine; reach for the deep copy exactly when nested state must be
@@ -126,7 +126,7 @@ independent.
 **❌ Naive**
 
 ```js
-// A shared default object reused across requests — mutations leak between them.
+// A shared default object reused across requests: mutations leak between them.
 const defaultJob = { attempts: 0, options: { priority: "normal" } };
 
 function enqueue(overrides) {
@@ -149,10 +149,10 @@ function enqueue(overrides) {
 }
 
 enqueue({ priority: "high" }).options.priority; // "high"
-defaultJob.options.priority;                    // "normal" — template untouched
+defaultJob.options.priority;                    // "normal": template untouched
 ```
 
-**🧠 Tradeoff** — Cloning a template per request is the fix for a classic Node bug: shared mutable
+**🧠 Tradeoff**: Cloning a template per request is the fix for a classic Node bug: shared mutable
 state leaking across requests. `structuredClone` deep-copies nested objects and even cycles, but
 throws on functions and class instances. For objects with methods, give them a `clone()` method
 or a copy constructor instead.
@@ -168,9 +168,9 @@ import copy
 
 base = {"name": "player", "stats": {"hp": 100, "mp": 50}}
 
-clone = copy.copy(base)      # SHALLOW — nested dict is shared
+clone = copy.copy(base)      # SHALLOW: nested dict is shared
 clone["stats"]["hp"] = 10
-print(base["stats"]["hp"])   # 10 — leaked
+print(base["stats"]["hp"])   # 10: leaked
 ```
 
 **✅ Idiomatic**
@@ -184,11 +184,11 @@ clone = copy.deepcopy(base)  # true recursive copy, handles cycles
 clone["stats"]["hp"] = 10
 clone["skills"].append("blink")
 
-print(base["stats"]["hp"])   # 100 — untouched
+print(base["stats"]["hp"])   # 100: untouched
 print(base["skills"])        # ['dash']
 ```
 
-**🧠 Tradeoff** — `copy.deepcopy` recursively copies arbitrary object graphs and tracks already-
+**🧠 Tradeoff**: `copy.deepcopy` recursively copies arbitrary object graphs and tracks already-
 seen objects so cycles terminate. It's the right default for independence, but it's slower than a
 shallow `copy.copy`, and a class can customize both via `__copy__`/`__deepcopy__` when copying a
 resource handle needs special handling.
@@ -200,12 +200,12 @@ resource handle needs special handling.
 **❌ Naive**
 
 ```elixir
-# In Elixir data is immutable — there is nothing to accidentally share-mutate.
+# In Elixir data is immutable: there is nothing to accidentally share-mutate.
 base = %{name: "player", stats: %{hp: 100, mp: 50}}
 
 # "Cloning" by rebinding does not copy; both names point at the same immutable term.
 clone = base
-# clone.stats.hp = 10   # not even possible — you can't mutate a map in place
+# clone.stats.hp = 10   # not even possible, you can't mutate a map in place
 ```
 
 **✅ Idiomatic**
@@ -217,11 +217,11 @@ base = %{name: "player", stats: %{hp: 100, mp: 50}, skills: ["dash"]}
 clone = put_in(base, [:stats, :hp], 10)
 clone = update_in(clone, [:skills], &["blink" | &1])
 
-base.stats.hp   # 100 — the original term is unchanged, always
+base.stats.hp   # 100: the original term is unchanged, always
 clone.stats.hp  # 10
 ```
 
-**🧠 Tradeoff** — Prototype barely exists as a *problem* in Elixir: values are immutable, so
+**🧠 Tradeoff**: Prototype barely exists as a *problem* in Elixir: values are immutable, so
 there's no shared-mutation bug to guard against, and "deep copy" is meaningless; you can share
 the original freely. The pattern collapses into ordinary functional update (`put_in`,
 `update_in`, struct update `%{s | k: v}`), which returns a new term while leaving the source
@@ -244,7 +244,7 @@ type Player struct {
 orig := Player{Name: "player", Skills: []string{"dash"}}
 clone := orig            // shallow: Skills shares the same backing array
 clone.Skills[0] = "hack"
-_ = orig.Skills[0]       // "hack" — leaked through the shared slice
+_ = orig.Skills[0]       // "hack": leaked through the shared slice
 ```
 
 **✅ Idiomatic**
@@ -267,7 +267,7 @@ func (p Player) Clone() Player {
 }
 ```
 
-**🧠 Tradeoff** — Go has no built-in deep copy: value fields copy on assignment, but slices,
+**🧠 Tradeoff**: Go has no built-in deep copy: value fields copy on assignment, but slices,
 maps, and pointers copy only their headers, so you clone reference fields by hand in a `Clone`
 method. That's explicit and fast, but easy to get wrong as the struct grows: add a field, and
 you must remember to copy it. For deep graphs, a generics helper or serialization round-trip is
@@ -280,12 +280,12 @@ the fallback.
 **❌ Naive**
 
 ```csharp
-// `with` copies a record shallowly — the List reference is shared, not copied.
+// `with` copies a record shallowly: the List reference is shared, not copied.
 var template = new Player("player", new Stats(100, 50), ["dash"]);
 
 var clone = template with { };     // shallow: clone.Skills IS template.Skills
 clone.Skills.Add("hack");
-Console.WriteLine(template.Skills.Count); // 2 — leaked through the shared list
+Console.WriteLine(template.Skills.Count); // 2: leaked through the shared list
 
 public record Stats(int Hp, int Mp);
 public record Player(string Name, Stats Stats, List<string> Skills);
@@ -299,8 +299,8 @@ var template = new Player("player", new Stats(100, 50), ["dash"]);
 var clone = template.Clone();
 clone.Skills.Add("blink");
 
-Console.WriteLine(template.Skills.Count); // 1 — untouched
-Console.WriteLine(clone.Skills.Count);    // 2 — independent list
+Console.WriteLine(template.Skills.Count); // 1: untouched
+Console.WriteLine(clone.Skills.Count);    // 2: independent list
 
 public sealed record Stats(int Hp, int Mp);
 
@@ -311,7 +311,7 @@ public sealed record Player(string Name, Stats Stats, List<string> Skills)
 }
 ```
 
-**🧠 Tradeoff** — records give you `with`-cloning for free, but it's shallow: immutable
+**🧠 Tradeoff**: records give you `with`-cloning for free, but it's shallow: immutable
 fields (`Stats` is a record of ints) are safe to share, while a mutable `List<>` leaks.
 So the deep clone is `with` plus a fresh copy of each mutable field (`[.. Skills]`), and
 a deliberate share of everything immutable. Skip `ICloneable`: it returns `object` and
@@ -329,7 +329,7 @@ into plain `with`.
 use std::cell::RefCell;
 use std::rc::Rc;
 
-// Rc makes sharing easy — and cloning an Rc copies the HANDLE, not the data.
+// Rc makes sharing easy, and cloning an Rc copies the HANDLE, not the data.
 #[derive(Clone)]
 struct Stats {
     hp: u32,
@@ -350,7 +350,7 @@ fn main() {
 
     let clone = template.clone(); // clone.stats points at the SAME RefCell
     clone.stats.borrow_mut().hp = 10;
-    println!("{}", template.stats.borrow().hp); // 10 — leaked through the shared Rc
+    println!("{}", template.stats.borrow().hp); // 10: leaked through the shared Rc
 }
 ```
 
@@ -382,12 +382,12 @@ fn main() {
     clone.stats.hp = 10;
     clone.skills.push("blink".to_string());
 
-    println!("{}", template.stats.hp); // 100 — untouched
-    println!("{:?}", template.skills); // ["dash"] — independent
+    println!("{}", template.stats.hp); // 100: untouched
+    println!("{:?}", template.skills); // ["dash"]; independent
 }
 ```
 
-**🧠 Tradeoff** — ownership makes Prototype nearly automatic: `#[derive(Clone)]` deep-copies
+**🧠 Tradeoff**: ownership makes Prototype nearly automatic: `#[derive(Clone)]` deep-copies
 every owned field, and the borrow checker won't let a stray alias mutate the original behind
 your back. The shallow-copy bug only re-enters through `Rc<RefCell<_>>`, where `.clone()`
 copies the handle *by design*: if a struct hides one, its derived clone shares state. The
@@ -420,7 +420,7 @@ pub fn main() void {
 
     var clone = template; // shallow: clone.skills points at the same array
     clone.skills[0] = "hack";
-    std.debug.print("{s}\n", .{template.skills[0]}); // hack — leaked
+    std.debug.print("{s}\n", .{template.skills[0]}); // hack: leaked
 }
 ```
 
@@ -459,12 +459,12 @@ pub fn main() !void {
     clone.stats.hp = 10;
     clone.skills[0] = "hack";
 
-    // dash 100 — the template is untouched
+    // dash 100: the template is untouched
     std.debug.print("{s} {d}\n", .{ template.skills[0], template.stats.hp });
 }
 ```
 
-**🧠 Tradeoff** — Zig behaves like Go here (assignment copies value fields, slice headers
+**🧠 Tradeoff**: Zig behaves like Go here (assignment copies value fields, slice headers
 share their backing memory) but adds one honest demand: a deep clone must name its
 allocator, and the caller owns the result (`defer allocator.free`). Nothing allocates
 behind your back. Note that `dupe` copies one level: the inner strings stay shared, which
@@ -481,7 +481,7 @@ can't. The Go hazard carries over too: add a field, and you must remember to clo
 import java.util.ArrayList;
 import java.util.List;
 
-// Cloneable's default clone() is SHALLOW — the List is copied by reference.
+// Cloneable's default clone() is SHALLOW: the List is copied by reference.
 class Player implements Cloneable {
     String name;
     List<String> skills;
@@ -502,7 +502,7 @@ public class Demo {
         var template = new Player("player", new ArrayList<>(List.of("dash")));
         var clone = template.clone();
         clone.skills.add("hack");
-        System.out.println(template.skills); // [dash, hack] — leaked through the shared list
+        System.out.println(template.skills); // [dash, hack]: leaked through the shared list
     }
 }
 ```
@@ -513,10 +513,10 @@ public class Demo {
 import java.util.ArrayList;
 import java.util.List;
 
-record Stats(int hp, int mp) {} // immutable — always safe to share
+record Stats(int hp, int mp) {} // immutable: always safe to share
 
 record Player(String name, Stats stats, List<String> skills) {
-    // The copy method: deep where it matters — fresh list, shared immutable Stats.
+    // The copy method: deep where it matters; fresh list, shared immutable Stats.
     Player copy() {
         return new Player(name, stats, new ArrayList<>(skills));
     }
@@ -530,13 +530,13 @@ public class Demo {
         var clone = template.copy();
         clone.skills().add("blink");
 
-        System.out.println(template.skills()); // [dash] — untouched
-        System.out.println(clone.skills());    // [dash, blink] — independent
+        System.out.println(template.skills()); // [dash]: untouched
+        System.out.println(clone.skills());    // [dash, blink]: independent
     }
 }
 ```
 
-**🧠 Tradeoff** — Java's built-in answer is the one to avoid: `Cloneable` is a marker
+**🧠 Tradeoff**: Java's built-in answer is the one to avoid: `Cloneable` is a marker
 interface with no `clone()` in it, `Object.clone()` is protected, shallow, skips
 constructors, and throws a checked exception. Effective Java's verdict is simply don't.
 A copy constructor or copy method is the honest form: plain code, and each field's depth is
@@ -549,22 +549,22 @@ value. Until then the Go hazard applies: add a field, remember to copy it.
 
 Real-world uses of Prototype (from the reference article):
 
-- **Form field templates** — clone a configured field and tweak per instance.
-- **Game entities** — spawn many enemies from one configured prototype.
-- **Document / config defaults** — copy a default template, then customize.
-- **Editor objects** — duplicate a shape or component on the canvas.
-- **Snapshots** — clone current state as a starting point for edits.
+- **Form field templates**: clone a configured field and tweak per instance.
+- **Game entities**: spawn many enemies from one configured prototype.
+- **Document / config defaults**: copy a default template, then customize.
+- **Editor objects**: duplicate a shape or component on the canvas.
+- **Snapshots**: clone current state as a starting point for edits.
 
 **In modern systems:**
 
-- **Low-code** — a saved template node cloned to seed a new form section, then tweaked — no
+- **Low-code**: a saved template node cloned to seed a new form section, then tweaked, with no
   re-parsing the schema from scratch.
-- **Multi-agent** — clone a configured agent as a starting point and adjust its prompt or tools per
+- **Multi-agent**: clone a configured agent as a starting point and adjust its prompt or tools per
   task, rather than rebuilding it.
-- **Workflow engine** — duplicate a workflow definition as the base for a variant.
+- **Workflow engine**: duplicate a workflow definition as the base for a variant.
 
 ## Related Patterns
 
-- **Factory Method / Abstract Factory** — create via a factory call; Prototype creates via
+- **Factory Method / Abstract Factory**: create via a factory call; Prototype creates via
   copying an existing instance. A factory can *return* clones of a prototype.
-- **Memento** — also captures object state, but to restore it later, not to spawn new objects.
+- **Memento**: also captures object state, but to restore it later, not to spawn new objects.

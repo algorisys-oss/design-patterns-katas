@@ -28,10 +28,10 @@ remembers.
 
 The model forgets everything between calls, and the two obvious fixes both fail at scale:
 
-- **Send the whole history every turn** — works for ten turns, then the conversation outgrows the
+- **Send the whole history every turn**: works for ten turns, then the conversation outgrows the
   context window. Costs climb linearly, latency with it, and eventually you hit the wall and the
   request fails.
-- **Send nothing / a fixed window** — the agent forgets what you told it twenty turns ago (or last
+- **Send nothing / a fixed window**: the agent forgets what you told it twenty turns ago (or last
   week), asks for the same information twice, and contradicts itself.
 
 You need to keep *what matters* available without keeping *everything* in the prompt. That's two
@@ -41,13 +41,13 @@ different mechanisms: compaction for the running conversation, retrieval for dur
 
 Key Components / Participants:
 
-- **Short-term memory** — the recent turns verbatim plus a running summary of older ones; kept under
+- **Short-term memory**: the recent turns verbatim plus a running summary of older ones; kept under
   a token budget by periodic compaction (a [[memento]]-like checkpoint of the conversation state).
-- **Long-term memory** — a durable store (vector, key-value, or document) of facts, preferences, and
+- **Long-term memory**: a durable store (vector, key-value, or document) of facts, preferences, and
   past interactions, surviving across sessions.
-- **Retriever** — pulls the few relevant long-term memories for the current turn (this is [[rag]]
+- **Retriever**: pulls the few relevant long-term memories for the current turn (this is [[rag]]
   over the agent's own memory).
-- **Writer** — decides what to persist to long-term memory as the conversation produces durable facts.
+- **Writer**: decides what to persist to long-term memory as the conversation produces durable facts.
 
 ```
                      ┌──────────── short-term ────────────┐
@@ -81,15 +81,15 @@ turn ──▶ prompt = recent turns + running summary + retrieved facts ──�
 
 ## Common Mistakes
 
-- **Naively resending everything** — the default that works in the demo and dies in production.
+- **Naively resending everything**: the default that works in the demo and dies in production.
   Compact once you approach the budget.
-- **Compacting too aggressively** — over-summarize and you lose the detail the next turn needed.
+- **Compacting too aggressively**: over-summarize and you lose the detail the next turn needed.
   Keep recent turns verbatim; summarize only the tail.
-- **Persisting the whole transcript as "long-term memory"** — long-term memory is *curated facts*,
+- **Persisting the whole transcript as "long-term memory"**: long-term memory is *curated facts*,
   not a dump. Write selectively, or retrieval returns noise.
-- **Never expiring or correcting long-term memory** — a wrong fact remembered forever is worse than
+- **Never expiring or correcting long-term memory**: a wrong fact remembered forever is worse than
   forgetting. Support update and delete ([[memento]]/[[event-sourcing]] for auditability).
-- **Storing secrets in memory** — memories are replayed into future prompts; never persist
+- **Storing secrets in memory**: memories are replayed into future prompts; never persist
   credentials or sensitive data there.
 
 ## Key Takeaways
@@ -109,7 +109,7 @@ The naive version resends everything; the idiomatic version compacts and retriev
 **❌ Naive**
 
 ```js
-// Resend the entire history every turn — grows until it breaks.
+// Resend the entire history every turn: grows until it breaks.
 class Chat {
   constructor() { this.history = []; }
   async say(msg) {
@@ -155,7 +155,7 @@ class Memory {
 }
 ```
 
-**🧠 Tradeoff** — Recent turns stay verbatim, older ones fold into a rolling `summary` when the buffer
+**🧠 Tradeoff**: Recent turns stay verbatim, older ones fold into a rolling `summary` when the buffer
 exceeds `budget`, and long-term facts are *retrieved* per turn: the two mechanisms, side by side. The
 prompt stays bounded regardless of conversation length. The cost is a compaction call now and then plus
 the retrieval, and the judgment of what `write` should persist; the genuinely hard part is curation, not code.
@@ -205,7 +205,7 @@ class Memory:
             f"Update the summary.\nSummary: {self.summary}\nTurns: {tail}")
 ```
 
-**🧠 Tradeoff** — The class holds both memories; `store` is injected so short-term (compaction) and
+**🧠 Tradeoff**: The class holds both memories; `store` is injected so short-term (compaction) and
 long-term (a vector store, Redis, or the provider's memory tool) evolve independently. Keeping the last
 few turns verbatim while summarizing the tail is the standard balance between fidelity and budget. The
 Anthropic memory tool and server-side compaction can own pieces of this; the pattern is the same shape.
@@ -251,7 +251,7 @@ defmodule Memory do
 end
 ```
 
-**🧠 Tradeoff** — A GenServer *is* the memory: an [[actor]] that owns its `recent`/`summary`/`store`
+**🧠 Tradeoff**: A GenServer *is* the memory: an [[actor]] that owns its `recent`/`summary`/`store`
 state and processes `say` messages serially, so there's no shared mutable history to race on. Compaction
 is a guarded private function: the `when length(r) > b` clause fires it only over budget. This is the
 most natural home for agent memory in Elixir: one process per conversation, state encapsulated.
@@ -305,7 +305,7 @@ func (m *Memory) compact() {
 }
 ```
 
-**🧠 Tradeoff** — `Memory` holds both stores; `Store` is a small interface (`Retrieve`, `Write`) so the
+**🧠 Tradeoff**: `Memory` holds both stores; `Store` is a small interface (`Retrieve`, `Write`) so the
 long-term backend swaps freely. The compaction slice-arithmetic keeps the last four turns verbatim.
 This struct isn't goroutine-safe as written: a chat server would guard `Say` with a mutex or run one
 `Memory` per goroutine, the Go equivalent of the Elixir actor's serial processing.
@@ -314,21 +314,21 @@ This struct isn't goroutine-safe as written: a chat server would guard `Say` wit
 
 Real-world uses of Memory:
 
-- **Long conversations** — chat that stays coherent past the context window via compaction.
-- **Personal assistants** — remember preferences, names, and past decisions across sessions.
-- **Support agents** — recall a customer's history without re-asking.
-- **Long-running coding agents** — a notes/scratchpad file the agent writes to and consults later.
-- **Personalization** — a per-user long-term store retrieved into each session's prompt.
+- **Long conversations**: chat that stays coherent past the context window via compaction.
+- **Personal assistants**: remember preferences, names, and past decisions across sessions.
+- **Support agents**: recall a customer's history without re-asking.
+- **Long-running coding agents**: a notes/scratchpad file the agent writes to and consults later.
+- **Personalization**: a per-user long-term store retrieved into each session's prompt.
 
 **In modern systems:**
 
-- **Multi-agent** — a shared long-term store (a blackboard) plus per-agent short-term context.
-- **Workflow engine** — checkpoint an agent's memory so a crashed long-running run resumes (a [[memento]]).
-- **Low-code** — a "remembers the user" toggle backed by a per-user memory store.
+- **Multi-agent**: a shared long-term store (a blackboard) plus per-agent short-term context.
+- **Workflow engine**: checkpoint an agent's memory so a crashed long-running run resumes (a [[memento]]).
+- **Low-code**: a "remembers the user" toggle backed by a per-user memory store.
 
 ## Related Patterns
 
-- **Retrieval-Augmented Generation** — long-term memory is RAG over the agent's own past, not documents.
-- **Memento** — short-term compaction and checkpointing snapshot conversation state to restore later.
-- **Event Sourcing** — persisting the message log as the source of truth, folding it into current state.
-- **Actor** — one process per conversation owning its memory is the cleanest concurrency model.
+- **Retrieval-Augmented Generation**: long-term memory is RAG over the agent's own past, not documents.
+- **Memento**: short-term compaction and checkpointing snapshot conversation state to restore later.
+- **Event Sourcing**: persisting the message log as the source of truth, folding it into current state.
+- **Actor**: one process per conversation owning its memory is the cleanest concurrency model.

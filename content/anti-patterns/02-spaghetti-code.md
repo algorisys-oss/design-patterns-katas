@@ -27,35 +27,35 @@ The system is a "big ball of mud."
 
 ## How It Happens
 
-- **Organic growth without design** — features added one patch at a time, each the quickest local edit,
+- **Organic growth without design**: features added one patch at a time, each the quickest local edit,
   with no one stepping back to impose structure.
-- **Deadline pressure** — "just make it work" beats "make it clean," repeatedly, until the mess is load-bearing.
-- **No abstractions** — the same logic inlined everywhere instead of named functions with clear
+- **Deadline pressure**: "just make it work" beats "make it clean," repeatedly, until the mess is load-bearing.
+- **No abstractions**: the same logic inlined everywhere instead of named functions with clear
   responsibilities.
-- **Fear of touching it** — the code is so tangled that changes are made by adding another special-case
+- **Fear of touching it**: the code is so tangled that changes are made by adding another special-case
   branch rather than refactoring, which tangles it further.
 
 ## Why It Hurts
 
-- **Unreadable** — you can't tell what the code does or where a given behavior lives.
-- **Fragile** — a change in one place breaks something unrelated, because everything is connected.
-- **Untestable** — no seams to test a unit in isolation; the tangle has no units.
-- **Slows to a crawl** — every change takes longer than the last as the mess compounds; velocity trends to
+- **Unreadable**: you can't tell what the code does or where a given behavior lives.
+- **Fragile**: a change in one place breaks something unrelated, because everything is connected.
+- **Untestable**: no seams to test a unit in isolation; the tangle has no units.
+- **Slows to a crawl**: every change takes longer than the last as the mess compounds; velocity trends to
   zero.
-- **Onboarding nightmare** — new developers can't build a mental model, so knowledge lives only in a few
+- **Onboarding nightmare**: new developers can't build a mental model, so knowledge lives only in a few
   heads.
 
 ## The Refactor
 
 Untangle incrementally toward structure:
 
-- **Extract functions** — pull cohesive chunks out of long functions into named, single-purpose functions.
-- **Reduce nesting** — use guard clauses/early returns to flatten deep conditionals.
-- **Establish boundaries** — separate concerns into layers/modules (presentation, logic, data) with a clear
+- **Extract functions**: pull cohesive chunks out of long functions into named, single-purpose functions.
+- **Reduce nesting**: use guard clauses/early returns to flatten deep conditionals.
+- **Establish boundaries**: separate concerns into layers/modules (presentation, logic, data) with a clear
   dependency direction.
-- **Isolate state** — replace scattered shared mutable state with local values passed explicitly (or a
+- **Isolate state**: replace scattered shared mutable state with local values passed explicitly (or a
   single owner).
-- **Add tests as you go** — characterize the current behavior with tests before/while refactoring so you
+- **Add tests as you go**: characterize the current behavior with tests before/while refactoring so you
   don't break it.
 
 ```
@@ -128,7 +128,7 @@ async function handle(req, res, next) {
 }
 ```
 
-**🧠 The Fix** — Guard clauses (early throws) flatten the pyramid, and splitting validation, lookup, and
+**🧠 The Fix**: Guard clauses (early throws) flatten the pyramid, and splitting validation, lookup, and
 response into named functions gives the reader one thing at a time and one error path instead of flags
 threaded through nesting. Each piece is now testable alone. The transformation is mechanical (extract and
 flatten) but it's the difference between unreadable and obvious.
@@ -179,7 +179,7 @@ def process(order):
     return save(total)           # I/O separated
 ```
 
-**🧠 The Fix** — Pulling `line_total`/`order_total` out as pure functions and using a guard clause removes
+**🧠 The Fix**: Pulling `line_total`/`order_total` out as pure functions and using a guard clause removes
 the nesting and the `done`/`result` flags, and separates the calculation (testable with no `save`) from the
 I/O. Python's comprehensions make the flattened version clearer still. The mess wasn't inherent complexity;
 it was missing structure, which extraction restores.
@@ -234,7 +234,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-**🧠 The Fix** — Go's idiomatic early-return-on-error is the natural antidote to spaghetti: each failure
+**🧠 The Fix**: Go's idiomatic early-return-on-error is the natural antidote to spaghetti: each failure
 returns immediately, so the happy path stays at the top indentation level with no `ok` flag threaded through
 nested blocks, and `validate` is a testable unit. Go's `if err != nil { return }` convention, often maligned
 as verbose, is exactly what keeps control flow flat and followable.
@@ -272,7 +272,7 @@ static async Task<IResult> Handle(Req? req)
 **✅ The Refactor**
 
 ```csharp
-// Validation becomes a switch expression — a readable table, one error path.
+// Validation becomes a switch expression: a readable table, one error path.
 static string? Validate(Req? req) => req switch
 {
     null => "no body",
@@ -292,7 +292,7 @@ static async Task<IResult> Handle(Req? req)
 }
 ```
 
-**🧠 The Fix** — The switch expression turns the nested validation pyramid into a flat, readable table: each
+**🧠 The Fix**: The switch expression turns the nested validation pyramid into a flat, readable table: each
 pattern names one failure, and `_ => null` is the single success case. Guard clauses with early returns do the
 rest: the `ok`/`err`/`dto` flags disappear because each branch exits the moment it knows the answer.
 `Validate` is now a pure function you can unit test with five one-line cases, no HTTP anywhere.
@@ -343,7 +343,7 @@ fn handle(body: Option<&str>) -> String {
 }
 ```
 
-**🧠 The Fix** — `Result` moves the error path into the type, and `?` is early return built into the language:
+**🧠 The Fix**: `Result` moves the error path into the type, and `?` is early return built into the language:
 each check either passes or exits, so there's nothing left for a flag to remember. Notice the smell needed
 three `mut` variables and the refactor needs none: in Rust, spaghetti announces itself as mutable state, and
 the borrow checker makes threading it around genuinely annoying. `validate` is a pure function; its five cases
@@ -404,7 +404,7 @@ fn handle(body: ?[]const u8) void {
 }
 ```
 
-**🧠 The Fix** — Zig's error unions give failure a channel of its own: `orelse` and `return error.X` exit the
+**🧠 The Fix**: Zig's error unions give failure a channel of its own: `orelse` and `return error.X` exit the
 moment a check fails, so the flags and the trailing `if (ok)` reconciliation vanish, and both locals become
 `const`. The compiler tracks the error set for you: forget to handle one at the call site and it won't build.
 `validate` is now a plain function with an honest signature: it gives you an email or tells you exactly why not.
@@ -438,7 +438,7 @@ static String handle(Req req) {
 ```java
 record Req(String email) {}
 
-// Validation becomes a pattern-matching switch — a readable table, one error path.
+// Validation becomes a pattern-matching switch: a readable table, one error path.
 static String validate(Req req) {
     return switch (req) {
         case null -> "no body";
@@ -459,7 +459,7 @@ static String handle(Req req) {
 }
 ```
 
-**🧠 The Fix** — The switch is the flattening move: record patterns with `when` guards turn the nested
+**🧠 The Fix**: The switch is the flattening move: record patterns with `when` guards turn the nested
 pyramid into a table where each case names one failure and `default -> null` is the single success. Note
 `case null`: a pattern switch can treat null as an ordinary case, where the classic switch would throw,
 so even the outer null check folds into the table. Guard clauses with early returns do the rest: the
@@ -468,9 +468,9 @@ is a pure function you can test with four one-line cases.
 
 ## Related Patterns
 
-- **Layered Architecture** — the structural cure at the system level: impose clear layers with one-way
+- **Layered Architecture**: the structural cure at the system level: impose clear layers with one-way
   dependencies so code can't tangle across boundaries.
-- **Function Composition** — small, single-purpose functions composed into pipelines are the opposite of one
+- **Function Composition**: small, single-purpose functions composed into pipelines are the opposite of one
   giant tangled function.
-- **God Object** — spaghetti's frequent partner; a God Object's internals are usually spaghetti, and both are
+- **God Object**: spaghetti's frequent partner; a God Object's internals are usually spaghetti, and both are
   cured by separating responsibilities.

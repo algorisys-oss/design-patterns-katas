@@ -25,9 +25,9 @@ premium prices only for the hard minority, cutting cost and latency without capp
 
 Picking one model tier for everything is wrong both ways:
 
-- **Always the strong model** — you pay top-tier price and latency for "reset my password" and "what
+- **Always the strong model**: you pay top-tier price and latency for "reset my password" and "what
   time is it," which a tiny model answers perfectly. Most traffic is easy; you're overpaying for it.
-- **Always the cheap model** — the small model handles the easy majority but botches the genuinely
+- **Always the cheap model**: the small model handles the easy majority but botches the genuinely
   hard requests, and there's no path to recover.
 
 The requests differ in difficulty, so the model should too, but you don't know a request's
@@ -37,10 +37,10 @@ difficulty until you try. A cascade tries cheap first and escalates on evidence.
 
 Key Components / Participants:
 
-- **Tiers** — an ordered list of models, cheapest/fastest first, strongest last.
-- **Confidence gate** — decides whether a tier's answer is good enough or the request must escalate
+- **Tiers**: an ordered list of models, cheapest/fastest first, strongest last.
+- **Confidence gate**: decides whether a tier's answer is good enough or the request must escalate
   (self-reported confidence, a validator, a verifier, or an [[llm-as-judge]]).
-- **Escalation** — on a failed gate, pass the request (and optionally the failed attempt) to the next
+- **Escalation**: on a failed gate, pass the request (and optionally the failed attempt) to the next
   tier.
 
 ```
@@ -75,14 +75,14 @@ request ──▶ cheap model ──▶ confident? ──yes──▶ answer
 
 ## Common Mistakes
 
-- **No real confidence signal** — asking the model "are you sure?" is weak; prefer a verifiable check
+- **No real confidence signal**: asking the model "are you sure?" is weak; prefer a verifiable check
   (schema validity, a test, a verifier model, agreement between samples).
-- **Escalating too often** — if most requests fail the gate, you pay double and save nothing.
+- **Escalating too often**: if most requests fail the gate, you pay double and save nothing.
   Calibrate the gate on real traffic.
-- **Escalating too rarely** — a lax gate ships the cheap model's wrong answers. Measure the false-accept rate.
-- **Forgetting the failure path** — a cascade should also escalate on the cheap model's *error* or
+- **Escalating too rarely**: a lax gate ships the cheap model's wrong answers. Measure the false-accept rate.
+- **Forgetting the failure path**: a cascade should also escalate on the cheap model's *error* or
   rate limit, not just low confidence (that's the [[circuit-breaker]]/[[retry]] overlap).
-- **Ignoring the both-models cost** — track the escalation rate; past a break-even point, going
+- **Ignoring the both-models cost**: track the escalation rate; past a break-even point, going
   strong-first is cheaper.
 
 ## Key Takeaways
@@ -129,7 +129,7 @@ async function answer(question, confident = defaultGate) {
 }
 ```
 
-**🧠 Tradeoff** — The tier list plus a pluggable `confident` gate is the whole pattern: accept a tier's
+**🧠 Tradeoff**: The tier list plus a pluggable `confident` gate is the whole pattern: accept a tier's
 answer or fall through to the next, treating an *error* as an automatic escalation. The gate is the crux:
 a schema check or a verifier model is far better than self-reported confidence. Watch the escalation rate:
 past break-even, escalated requests that pay two models cost more than going strong-first.
@@ -161,7 +161,7 @@ def answer(question: str, confident=default_gate) -> str:
     return last                               # strongest tier is the floor
 ```
 
-**🧠 Tradeoff** — A tier list and an injected gate; escalation happens on both a failed gate and a caught
+**🧠 Tradeoff**: A tier list and an injected gate; escalation happens on both a failed gate and a caught
 error, folding the cost cascade and the resilience [[circuit-breaker]]/[[retry]] behavior into one loop.
 `confident` is where the engineering lives: agreement across samples, a validator, or an
 [[llm-as-judge]] beats "are you sure?". Log which tier answered to keep the escalation rate honest.
@@ -197,7 +197,7 @@ defmodule Cascade do
 end
 ```
 
-**🧠 Tradeoff** — `Enum.reduce_while` walks the tiers, `{:halt, res}` accepting on the gate and `{:cont, _}`
+**🧠 Tradeoff**: `Enum.reduce_while` walks the tiers, `{:halt, res}` accepting on the gate and `{:cont, _}`
 escalating on low confidence or a rescued failure; the accumulator carries the last attempt as the floor.
 The tier functions are values in a module attribute, so reordering or adding a model is a one-line change.
 The `try_tier` rescue folds error-escalation into the same loop, the resilience half of the pattern.
@@ -235,7 +235,7 @@ func Answer(question string, confident func(string, string) bool) string {
 }
 ```
 
-**🧠 Tradeoff** — A `[]Model` (each a `func(string) (string, error)`) tried in order, with an injected
+**🧠 Tradeoff**: A `[]Model` (each a `func(string) (string, error)`) tried in order, with an injected
 `confident` gate. The `err != nil` branch escalates on failure, unifying the cost cascade with fallback
 resilience. It's plain and testable: add a tier by appending to the slice. The real work, in every
 language, is the confidence gate: a cheap verifiable check calibrated on real traffic, not a self-assessment.
@@ -244,21 +244,21 @@ language, is the confidence gate: a cheap verifiable check calibrated on real tr
 
 Real-world uses of the Model Cascade:
 
-- **Cost optimization** — a small model handles the FAQ tail; the strong model handles the hard minority.
-- **Latency budgets** — fast model for the common case, escalate only when needed.
-- **Classification with abstention** — cheap classifier answers confident cases, escalates the rest.
-- **Resilience fallback** — escalate to another provider/model on rate limit, error, or refusal.
-- **Draft-then-verify** — cheap model drafts, strong model reviews only the uncertain outputs.
+- **Cost optimization**: a small model handles the FAQ tail; the strong model handles the hard minority.
+- **Latency budgets**: fast model for the common case, escalate only when needed.
+- **Classification with abstention**: cheap classifier answers confident cases, escalates the rest.
+- **Resilience fallback**: escalate to another provider/model on rate limit, error, or refusal.
+- **Draft-then-verify**: cheap model drafts, strong model reviews only the uncertain outputs.
 
 **In modern systems:**
 
-- **Multi-agent** — a fallback model chain (fast → strong → human) behind a single agent capability.
-- **Workflow engine** — a step that escalates to a stronger model when its output fails a validation gate.
-- **Low-code** — a cost dial that quietly serves easy "AI" requests from a cheap model.
+- **Multi-agent**: a fallback model chain (fast → strong → human) behind a single agent capability.
+- **Workflow engine**: a step that escalates to a stronger model when its output fails a validation gate.
+- **Low-code**: a cost dial that quietly serves easy "AI" requests from a cheap model.
 
 ## Related Patterns
 
-- **Router** — routes by *category* up front; a cascade escalates by *difficulty* on evidence.
-- **Chain of Responsibility** — the tiers form a chain; each accepts the request or passes it on.
-- **Circuit Breaker / Retry** — the failure-escalation half: fall back when a tier errors or is rate-limited.
-- **LLM-as-Judge** — a natural confidence gate deciding accept vs. escalate.
+- **Router**: routes by *category* up front; a cascade escalates by *difficulty* on evidence.
+- **Chain of Responsibility**: the tiers form a chain; each accepts the request or passes it on.
+- **Circuit Breaker / Retry**: the failure-escalation half: fall back when a tier errors or is rate-limited.
+- **LLM-as-Judge**: a natural confidence gate deciding accept vs. escalate.

@@ -27,12 +27,12 @@ Show the pain before the cure.
 
 Key Components / Participants:
 
-- **Context** — ...
-- **Strategy (interface)** — ...
-- **Concrete Strategies** — ...
+- **Context**: ...
+- **Strategy (interface)**: ...
+- **Concrete Strategies**: ...
 
 ```
-optional ASCII sketch — the build replaces it with the rendered SVG if one exists at
+optional ASCII sketch: the build replaces it with the rendered SVG if one exists at
 content/<category>/diagrams/<NN-slug>/structure.svg (author a structure.ysl, then run
 scripts/render-diagrams.mjs)
 ```
@@ -52,7 +52,7 @@ scripts/render-diagrams.mjs)
 
 ## Common Mistakes
 
-- **Mistake** — why it bites.
+- **Mistake**: why it bites.
 
 ## Key Takeaways
 
@@ -77,7 +77,7 @@ not the syntax; show each language's idiomatic form of the pattern.
 // the pattern in JS idioms
 ```
 
-**🧠 Tradeoff** — one paragraph on what the idiomatic version costs and buys.
+**🧠 Tradeoff**: one paragraph on what the idiomatic version costs and buys.
 
 ### Python
 
@@ -91,7 +91,7 @@ not the syntax; show each language's idiomatic form of the pattern.
 ```python
 ```
 
-**🧠 Tradeoff** — one paragraph.
+**🧠 Tradeoff**: one paragraph.
 
 ### Elixir
 
@@ -105,7 +105,7 @@ not the syntax; show each language's idiomatic form of the pattern.
 ```elixir
 ```
 
-**🧠 Tradeoff** — one paragraph.
+**🧠 Tradeoff**: one paragraph.
 
 ### Go
 
@@ -119,7 +119,7 @@ not the syntax; show each language's idiomatic form of the pattern.
 ```go
 ```
 
-**🧠 Tradeoff** — one paragraph.
+**🧠 Tradeoff**: one paragraph.
 
 ## Applications
 
@@ -134,4 +134,4 @@ systems)
 
 ## Related Patterns
 
-- **Neighbour** — how this pattern differs from it.
+- **Neighbour**: how this pattern differs from it.

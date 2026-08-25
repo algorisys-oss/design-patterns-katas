@@ -41,7 +41,7 @@ The way out: which patterns/principles undo it, and the shape to move toward.
 
 ## Warning Signs
 
-- **Sign** — what you'd notice.
+- **Sign**: what you'd notice.
 
 ## Key Takeaways
 
@@ -90,4 +90,4 @@ all four).
 
 ## Related Patterns
 
-- **Pattern** — the one that prevents or fixes this.
+- **Pattern**: the one that prevents or fixes this.

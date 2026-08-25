@@ -39,10 +39,10 @@ Splitting the task into steps makes each step legible, testable, and independent
 
 Key Components / Participants:
 
-- **Steps** — each a focused prompt (often with its own [[structured-output]] schema) doing one
+- **Steps**: each a focused prompt (often with its own [[structured-output]] schema) doing one
   sub-task.
-- **Pipeline** — runs the steps in order, threading each output into the next input.
-- **Gates (optional)** — a check between steps that can retry, branch, or stop the chain early.
+- **Pipeline**: runs the steps in order, threading each output into the next input.
+- **Gates (optional)**: a check between steps that can retry, branch, or stop the chain early.
 
 ```
 input ──▶ step 1 ──▶ step 2 ──▶ step 3 ──▶ output
@@ -74,13 +74,13 @@ input ──▶ step 1 ──▶ step 2 ──▶ step 3 ──▶ output
 
 ## Common Mistakes
 
-- **Chaining what one call handles fine** — not every task needs a pipeline; a simple ask stays one
+- **Chaining what one call handles fine**: not every task needs a pipeline; a simple ask stays one
   call. Decompose when quality actually suffers.
-- **Passing prose between steps** — free text is a lossy, fragile interface. Pass validated
+- **Passing prose between steps**: free text is a lossy, fragile interface. Pass validated
   structured output between stages ([[structured-output]]).
-- **No gate on a critical step** — if step 2's output must be valid for step 3, check it; don't let a
+- **No gate on a critical step**: if step 2's output must be valid for step 3, check it; don't let a
   bad value flow downstream.
-- **Ignoring accumulated latency** — five sequential calls can blow an interactive budget; parallelize
+- **Ignoring accumulated latency**: five sequential calls can blow an interactive budget; parallelize
   independent steps and cache stable ones.
 
 ## Key Takeaways
@@ -101,7 +101,7 @@ gate.
 **❌ Naive**
 
 ```js
-// One prompt does extract + classify + draft — each a little worse, un-debuggable.
+// One prompt does extract + classify + draft: each a little worse, un-debuggable.
 async function handle(email) {
   return callModel(
     `Read this email, classify urgency, and draft a reply:\n${email}`);
@@ -118,12 +118,12 @@ const draft        = (ctx)   => callModel(`Draft a ${ctx.urgency} reply about: $
 async function handle(email) {
   const issue = await extractIssue(email);
   const { urgency } = await classify(issue);
-  if (urgency === "unknown") throw new Error("classification failed — gate"); // gate
+  if (urgency === "unknown") throw new Error("classification failed: gate"); // gate
   return draft({ issue, urgency });
 }
 ```
 
-**🧠 Tradeoff** — Three named steps, each a focused call passing *structured* results forward, with a
+**🧠 Tradeoff**: Three named steps, each a focused call passing *structured* results forward, with a
 gate before the expensive draft. Each step is unit-testable with a fake `callModel`. The cost is three
 round trips instead of one, worth it when the single prompt was unreliable; overkill when it wasn't.
 
@@ -156,7 +156,7 @@ def handle(email: str) -> str:
     return draft(issue, urgency)
 ```
 
-**🧠 Tradeoff** — Plain functions compose the chain; typed structured returns make each seam explicit
+**🧠 Tradeoff**: Plain functions compose the chain; typed structured returns make each seam explicit
 and testable. Because steps are ordinary functions, wrapping the pipeline in `functools.reduce` over a
 step list, or parallelizing independent steps with `asyncio.gather`, is a small change. Keep the gate;
 it's what stops a bad classification from producing a confidently-wrong reply.
@@ -188,7 +188,7 @@ defmodule Support do
 end
 ```
 
-**🧠 Tradeoff** — The `with` chain *is* the pipeline: each step returns `{:ok, _}` or `{:error, _}`, and
+**🧠 Tradeoff**: The `with` chain *is* the pipeline: each step returns `{:ok, _}` or `{:error, _}`, and
 the guard `when level != "unknown"` is the gate expressed as a pattern, and a mismatch falls to `else`.
 This is the most natural fit of any language, because Elixir's pipeline-and-`with` idiom was built for
 "a sequence of steps, any of which can fail." No exceptions, just data.
@@ -222,7 +222,7 @@ func Handle(email string) (string, error) {
 }
 ```
 
-**🧠 Tradeoff** — Go has no pipeline sugar, so the chain is explicit: each step returns a value and an
+**🧠 Tradeoff**: Go has no pipeline sugar, so the chain is explicit: each step returns a value and an
 error, checked and wrapped so a failure names its stage. It's more verbose than the `with` form, but
 the verbosity *is* the gate: every seam is a visible decision point. For a dynamic step list, define a
 `type Step func(any) (any, error)` and fold over a slice; for a fixed chain, the straight-line form is
@@ -232,21 +232,21 @@ clearest.
 
 Real-world uses of Prompt Chaining:
 
-- **Content pipelines** — outline → draft → edit → format, each a focused call.
-- **Support triage** — extract → classify → route → draft reply.
-- **Extract-then-reason** — pull structured facts, then reason over them separately (cleaner than both at once).
-- **Translate-then-check** — translate, then a second call verifies fidelity.
-- **RAG** — rewrite query → retrieve → answer → verify against sources is itself a chain.
+- **Content pipelines**: outline → draft → edit → format, each a focused call.
+- **Support triage**: extract → classify → route → draft reply.
+- **Extract-then-reason**: pull structured facts, then reason over them separately (cleaner than both at once).
+- **Translate-then-check**: translate, then a second call verifies fidelity.
+- **RAG**: rewrite query → retrieve → answer → verify against sources is itself a chain.
 
 **In modern systems:**
 
-- **Low-code** — a value flows through parse → validate → format model steps declared in config.
-- **Workflow engine** — this *is* a workflow of LLM steps; the engine's pipes-and-filters over prompts.
-- **Multi-agent** — a single agent's internal plan is often a fixed chain before it reaches for other agents.
+- **Low-code**: a value flows through parse → validate → format model steps declared in config.
+- **Workflow engine**: this *is* a workflow of LLM steps; the engine's pipes-and-filters over prompts.
+- **Multi-agent**: a single agent's internal plan is often a fixed chain before it reaches for other agents.
 
 ## Related Patterns
 
-- **Structured Output** — the safe interface between chain steps; pass data, not prose.
-- **Pipes and Filters** — the general architecture; prompt chaining is the LLM instance of it.
-- **Chain of Responsibility** — a chain where a step may *stop* the flow, not just transform it.
-- **Reflection** — a chain that loops a "critique and revise" step back onto the draft.
+- **Structured Output**: the safe interface between chain steps; pass data, not prose.
+- **Pipes and Filters**: the general architecture; prompt chaining is the LLM instance of it.
+- **Chain of Responsibility**: a chain where a step may *stop* the flow, not just transform it.
+- **Reflection**: a chain that loops a "critique and revise" step back onto the draft.

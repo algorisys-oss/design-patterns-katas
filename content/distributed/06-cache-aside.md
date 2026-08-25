@@ -28,23 +28,23 @@ read-heavy workloads because it's simple and only caches what's hot.
 
 Serving every read straight from the database doesn't scale for hot data:
 
-- **Repeated expensive reads** — the same popular rows are fetched thousands of times a second,
+- **Repeated expensive reads**: the same popular rows are fetched thousands of times a second,
   each a full query, when the answer rarely changes.
-- **Database as bottleneck** — read load saturates the primary; you scale hardware to serve queries
+- **Database as bottleneck**: read load saturates the primary; you scale hardware to serve queries
   whose results are identical.
-- **Caching everything wastes memory** — pre-loading the whole dataset caches cold data that's
+- **Caching everything wastes memory**: pre-loading the whole dataset caches cold data that's
   never read.
-- **High latency on hot paths** — a network round-trip and query on every read when a memory lookup
+- **High latency on hot paths**: a network round-trip and query on every read when a memory lookup
   would do.
 
 ## Structure
 
 Key Components:
 
-- **Cache** — a fast key-value store (in-memory, Redis, Memcached) holding recently-read values.
-- **Database** — the system of record; the source of truth on a miss.
-- **Application** — owns the logic: check cache → on miss, load + populate → return.
-- **TTL / invalidation** — how entries expire or get evicted so the cache doesn't serve stale data.
+- **Cache**: a fast key-value store (in-memory, Redis, Memcached) holding recently-read values.
+- **Database**: the system of record; the source of truth on a miss.
+- **Application**: owns the logic: check cache → on miss, load + populate → return.
+- **TTL / invalidation**: how entries expire or get evicted so the cache doesn't serve stale data.
 
 ```
                 1. read
@@ -64,24 +64,24 @@ Client ──► [ Cache ] ──hit──► return
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Only caches what's used** — lazy population keeps the cache to the hot set.
-- **Resilient to cache failure** — a cache outage falls back to the database; the app still serves.
-- **Simple and general** — plain read logic, works with any cache and datastore.
+- **Only caches what's used**: lazy population keeps the cache to the hot set.
+- **Resilient to cache failure**: a cache outage falls back to the database; the app still serves.
+- **Simple and general**: plain read logic, works with any cache and datastore.
 
 ### Disadvantages
-- **Stale reads** — between a database write and the cache expiring/invalidating, reads can be stale.
-- **First-hit latency** — every miss pays the full database cost, plus a cache write.
-- **Invalidation is hard** — keeping the cache consistent with writes is the perennially tricky part.
+- **Stale reads**: between a database write and the cache expiring/invalidating, reads can be stale.
+- **First-hit latency**: every miss pays the full database cost, plus a cache write.
+- **Invalidation is hard**: keeping the cache consistent with writes is the perennially tricky part.
 
 ## Common Mistakes
 
-- **No TTL and no invalidation** — entries never expire and writes don't evict them, so the cache
+- **No TTL and no invalidation**: entries never expire and writes don't evict them, so the cache
   serves stale data forever; always bound staleness.
-- **Cache stampede on miss** — a hot key expiring lets thousands of concurrent requests all miss and
+- **Cache stampede on miss**: a hot key expiring lets thousands of concurrent requests all miss and
   hit the database at once; use a lock/single-flight to load once.
-- **Caching write failures or nulls carelessly** — caching a "not found" without thought can mask a
+- **Caching write failures or nulls carelessly**: caching a "not found" without thought can mask a
   later insert; be deliberate about negative caching.
-- **Trusting the cache blindly** — treating a possibly-stale cache as truth for critical reads
+- **Trusting the cache blindly**: treating a possibly-stale cache as truth for critical reads
   (balances, permissions) instead of reading through to the source.
 
 ## Key Takeaways
@@ -122,7 +122,7 @@ async function getProduct(id) {
 // on write: await cache.del(`product:${id}`)  // invalidate so the next read reloads
 ```
 
-**🧠 Tradeoff** — The read path is a few lines: hit returns fast, miss loads and populates with a
+**🧠 Tradeoff**: The read path is a few lines: hit returns fast, miss loads and populates with a
 TTL. The TTL bounds staleness cheaply, and deleting the key on write keeps it fresh. What's not
 shown is the stampede risk: if a hot key expires under load, many requests miss at once; a
 single-flight lock around the load fixes it when traffic warrants.
@@ -163,7 +163,7 @@ async function getConfig() {
 }
 ```
 
-**🧠 Tradeoff** — Adding an in-process `inflight` map so concurrent misses share one database load
+**🧠 Tradeoff**: Adding an in-process `inflight` map so concurrent misses share one database load
 prevents the classic stampede where a hot key's expiry unleashes a query flood. Redis holds the
 value across instances; the `inflight` coalescing is per-instance. It's a bit more code than a bare
 get/set, justified precisely for hot keys under load.
@@ -201,7 +201,7 @@ def update_user(user_id, **fields):
     redis.delete(f"user:{user_id}")             # invalidate on write
 ```
 
-**🧠 Tradeoff** — The get/load/populate shape plus an explicit `delete` on write is idiomatic and
+**🧠 Tradeoff**: The get/load/populate shape plus an explicit `delete` on write is idiomatic and
 clear. For local, per-process caching of pure computations, `functools.lru_cache` is a one-line
 alternative, but it has no TTL and no cross-process sharing, so Redis (or Memcached) is the choice
 for shared, invalidatable data. Stampede protection (a Redis lock) is the add-on for very hot keys.
@@ -235,7 +235,7 @@ end
 # (Cachex.fetch/4 does check-load-store atomically, coalescing concurrent misses)
 ```
 
-**🧠 Tradeoff** — `Cachex` (over ETS) gives idiomatic cache-aside with TTLs, and its
+**🧠 Tradeoff**: `Cachex` (over ETS) gives idiomatic cache-aside with TTLs, and its
 `fetch/4` performs the check-load-store as one operation that coalesces concurrent misses: built-in
 stampede protection. Raw ETS works too for the simplest cases. The BEAM makes a fast in-node cache
 trivial; for cross-node sharing you still reach for Redis or a distributed cache.
@@ -277,7 +277,7 @@ func GetProduct(ctx context.Context, id string) (Product, error) {
 }
 ```
 
-**🧠 Tradeoff** — Go's `golang.org/x/sync/singleflight` is purpose-built for the stampede problem:
+**🧠 Tradeoff**: Go's `golang.org/x/sync/singleflight` is purpose-built for the stampede problem:
 `group.Do` ensures one in-flight load per key while others wait for its result. Combined with a TTL
 cache (Ristretto, or a simple map+mutex), it's a robust cache-aside in a few lines. As usual you
 wire the cache and invalidation explicitly, which keeps the behavior obvious.
@@ -317,7 +317,7 @@ async Task UpdateProductAsync(Product p)
 }
 ```
 
-**🧠 Tradeoff** — A `ConcurrentDictionary` with a `(Value, Expires)` tuple is thread-safe
+**🧠 Tradeoff**: A `ConcurrentDictionary` with a `(Value, Expires)` tuple is thread-safe
 cache-aside with lazy expiry: stale entries are simply overwritten on the next miss. What
 it lacks is single-flight: two callers can miss together and both hit the database. The C#
 idiom for that is caching a `Lazy<Task<Product>>` via `GetOrAdd`, so the factory runs once
@@ -357,7 +357,7 @@ impl Cache {
     fn get_product(&self, id: &str) -> Product {
         if let Some((p, expires)) = self.entries.lock().unwrap().get(id) {
             if Instant::now() < *expires {
-                return p.clone(); // hit — clone out so the lock releases
+                return p.clone(); // hit: clone out so the lock releases
             }
         }
         let product = query_product(id); // miss → load (the real database call)
@@ -374,7 +374,7 @@ impl Cache {
 }
 ```
 
-**🧠 Tradeoff** — `Mutex<HashMap>` is the whole cache, std only. Cloning on a hit looks
+**🧠 Tradeoff**: `Mutex<HashMap>` is the whole cache, std only. Cloning on a hit looks
 wasteful but is the point: you can't return a reference into the map without holding the
 lock, so the borrow checker forces a choice: clone out, or serialize every reader. Two
 threads can still race a miss and load twice; harmless here, and the std fix (an entry
@@ -452,7 +452,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — The allocator is a parameter, so the cache's memory is an explicit budget
+**🧠 Tradeoff**: The allocator is a parameter, so the cache's memory is an explicit budget
 you pick and release (`defer cache.deinit()`) rather than ambient heap a GC deals with. As
 of 0.17 the clock works the same way: there's no ambient `milliTimestamp()` anymore; the
 cache holds a `std.Io` and asks *it* for the time, an explicit capability exactly like the
@@ -472,7 +472,7 @@ map in a `std.Io.Mutex` before sharing it across threads.
 Product getProduct(String id) {
     var p = cache.get(id);
     if (p == null) {
-        p = queryProduct(id); // both loaders run — the stampede in miniature
+        p = queryProduct(id); // both loaders run: the stampede in miniature
         cache.put(id, p);
     }
     return p;
@@ -510,7 +510,7 @@ final class ProductCache {
 }
 ```
 
-**🧠 Tradeoff** — `computeIfAbsent` is the line that matters: it runs the mapping function
+**🧠 Tradeoff**: `computeIfAbsent` is the line that matters: it runs the mapping function
 once per absent key while concurrent callers block and receive the same result:
 single-flight built into the map, where the naive check-then-load lets every concurrent
 miss query the database. The catch is the same mechanism: the loader runs under the map's
@@ -521,21 +521,21 @@ coalescing), and Redis remains the answer once the cache must be shared across p
 
 ## Applications
 
-- **Web session & profile data** — user/session objects read on every request cached to spare the
+- **Web session & profile data**: user/session objects read on every request cached to spare the
   database (backend).
-- **Product catalogs & config** — slowly-changing reference data served from Redis/Memcached with a
+- **Product catalogs & config**: slowly-changing reference data served from Redis/Memcached with a
   TTL (backend).
-- **CDNs** — edge caching of static assets and pages is cache-aside at the network layer (frontend).
-- **API response caching** — expensive aggregations cached so repeat requests skip recomputation
+- **CDNs**: edge caching of static assets and pages is cache-aside at the network layer (frontend).
+- **API response caching**: expensive aggregations cached so repeat requests skip recomputation
   (backend).
-- **ORM & query caches** — second-level caches (Hibernate, etc.) sit beside the database for hot
+- **ORM & query caches**: second-level caches (Hibernate, etc.) sit beside the database for hot
   entities (backend).
 
 ## Related Patterns
 
-- **Repository** — the natural home for cache-aside: the repository checks the cache, loads from the
+- **Repository**: the natural home for cache-aside: the repository checks the cache, loads from the
   store on a miss, and invalidates on write, hiding it from callers.
-- **CQRS** — a read model *is* a maintained cache; cache-aside is the lighter-weight, lazily-filled
+- **CQRS**: a read model *is* a maintained cache; cache-aside is the lighter-weight, lazily-filled
   cousin without a separate projection.
-- **Circuit Breaker** — protects the cache or database call so a slow backing store fails fast rather
+- **Circuit Breaker**: protects the cache or database call so a slow backing store fails fast rather
   than hanging the read path.

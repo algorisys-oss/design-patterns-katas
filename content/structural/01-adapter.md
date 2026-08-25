@@ -36,9 +36,9 @@ An adapter presents a `pay(dollars)` face and translates to `charge(cents)` insi
 
 Key Components:
 
-- **Target** — the interface the client expects (`pay(dollars)`).
-- **Adaptee** — the existing/foreign object (`stripe.charge(cents)`).
-- **Adapter** — implements Target, holds an Adaptee, and translates calls.
+- **Target**: the interface the client expects (`pay(dollars)`).
+- **Adaptee**: the existing/foreign object (`stripe.charge(cents)`).
+- **Adapter**: implements Target, holds an Adaptee, and translates calls.
 
 ## When to Use
 
@@ -60,9 +60,9 @@ Key Components:
 
 ## Common Mistakes
 
-- **Adapting in the caller** — scattering conversion at call sites instead of one adapter.
-- **Leaking the adaptee** — exposing vendor-specific types/errors through the target interface.
-- **Confusing it with Facade** — Adapter changes an interface to a *specific expected* one;
+- **Adapting in the caller**: scattering conversion at call sites instead of one adapter.
+- **Leaking the adaptee**: exposing vendor-specific types/errors through the target interface.
+- **Confusing it with Facade**: Adapter changes an interface to a *specific expected* one;
   Facade simplifies a *whole subsystem* behind a new, easier one.
 
 ## Key Takeaways
@@ -111,7 +111,7 @@ const checkout = new Checkout(new StripeAdapter(stripe));
 // Swapping to PayPal = a new adapter; Checkout is untouched.
 ```
 
-**🧠 Tradeoff** — The adapter centralizes the name and unit translation, so `Checkout` depends
+**🧠 Tradeoff**: The adapter centralizes the name and unit translation, so `Checkout` depends
 only on `pay(dollars)` and never sees Stripe. The cost is one wrapper class per vendor: cheap,
 and it's exactly where a vendor swap is isolated.
 
@@ -156,7 +156,7 @@ const uploader = new Uploader(
 );
 ```
 
-**🧠 Tradeoff** — Each adapter absorbs one SDK's method names and argument shapes, so `Uploader`
+**🧠 Tradeoff**: Each adapter absorbs one SDK's method names and argument shapes, so `Uploader`
 never sees S3 and local disk becomes a drop-in for tests. The cost is one wrapper per backend.
 Node's own `util.promisify` is this pattern at the language level, an adapter from callback style
 to promises.
@@ -201,7 +201,7 @@ class Checkout:
 checkout = Checkout(StripeAdapter(stripe))
 ```
 
-**🧠 Tradeoff** — A `Protocol` states the `Gateway` shape without inheritance, so any adapter that
+**🧠 Tradeoff**: A `Protocol` states the `Gateway` shape without inheritance, so any adapter that
 has `pay` satisfies it and the type checker verifies the fit. Duck typing means the adapter is
 minimal; the `Protocol` just documents and enforces the contract for readers and tools.
 
@@ -240,7 +240,7 @@ end
 Checkout.buy(StripeAdapter, 50.0)
 ```
 
-**🧠 Tradeoff** — The adapter is a module implementing a behaviour, passed to `Checkout` by name.
+**🧠 Tradeoff**: The adapter is a module implementing a behaviour, passed to `Checkout` by name.
 Swapping to another provider is a new module; `Checkout` depends only on the `Gateway` callback.
 Since there's no object to hold the adaptee, config (API keys) lives in application config or is
 passed alongside.
@@ -281,7 +281,7 @@ type Checkout struct{ Gateway Gateway } // depends on the interface
 func (c Checkout) Buy(dollars float64) error { return c.Gateway.Pay(dollars) }
 ```
 
-**🧠 Tradeoff** — `StripeAdapter` satisfies `Gateway` implicitly by having `Pay`, so `Checkout`
+**🧠 Tradeoff**: `StripeAdapter` satisfies `Gateway` implicitly by having `Pay`, so `Checkout`
 never imports Stripe. Go's structural interfaces make adapters especially natural; you can even
 adapt with a function type when the target has a single method. One adapter per foreign client
 keeps the translation contained.
@@ -331,7 +331,7 @@ public sealed class Checkout(IGateway gateway)
 }
 ```
 
-**🧠 Tradeoff** — `IGateway` is checked at compile time, so `Checkout` can't quietly depend on
+**🧠 Tradeoff**: `IGateway` is checked at compile time, so `Checkout` can't quietly depend on
 a Stripe-only member; a vendor swap is one new adapter class. When the target has a single
 method, modern C# can shrink the adapter to a `Func<decimal, string>`, an inline lambda doing
 the same translation. The class earns its place once the adapter carries config or a second method.
@@ -398,7 +398,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — the adapter is a thin wrapper struct plus one `impl` — Rust's everyday
+**🧠 Tradeoff**: the adapter is a thin wrapper struct plus one `impl`, Rust's everyday
 newtype habit, so the pattern feels native. `Checkout<G: Gateway>` monomorphizes: zero
 dispatch cost, but the vendor is fixed at compile time. Choose `Box<dyn Gateway>` instead
 when the gateway is picked at runtime (config, feature flags). Rust makes you spell out
@@ -449,7 +449,7 @@ const StripeAdapter = struct {
     }
 };
 
-// Checkout is generic over any gateway type with pay() — checked at comptime.
+// Checkout is generic over any gateway type with pay(): checked at comptime.
 fn Checkout(comptime Gateway: type) type {
     return struct {
         gateway: Gateway,
@@ -466,7 +466,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — `Checkout(comptime Gateway: type)` is duck typing at compile time: the
+**🧠 Tradeoff**: `Checkout(comptime Gateway: type)` is duck typing at compile time: the
 compiler verifies `pay` exists the moment `Checkout(StripeAdapter)` is instantiated, and
 dispatch costs nothing. The catch is that each gateway makes a distinct `Checkout` type, so
 picking a vendor at runtime needs the two-field vtable idiom (`*anyopaque` context + function
@@ -531,7 +531,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — the classical form fits Java with no translation: interface, wrapper class,
+**🧠 Tradeoff**: the classical form fits Java with no translation: interface, wrapper class,
 constructor injection. The standard library is full of it: `InputStreamReader` is an adapter
 from bytes to characters. Since `Gateway` has one method, it's a functional interface: a lambda
 `dollars -> stripe.charge((int) Math.round(dollars * 100))` is the whole adapter. Write the
@@ -542,25 +542,25 @@ floor.
 
 Real-world uses of Adapter (from the reference article):
 
-- **Payment gateways** — unify Stripe/PayPal/Razorpay behind one interface (name + unit fixes).
-- **Legacy printers/devices** — wrap an old API to fit a modern interface.
-- **Notification channels** — email/SMS/webhook adapters behind one `send`.
-- **Storage backends** — S3/GCS/local disk behind a common blob interface.
-- **Logging libraries** — adapt a third-party logger to your logging contract.
+- **Payment gateways**: unify Stripe/PayPal/Razorpay behind one interface (name + unit fixes).
+- **Legacy printers/devices**: wrap an old API to fit a modern interface.
+- **Notification channels**: email/SMS/webhook adapters behind one `send`.
+- **Storage backends**: S3/GCS/local disk behind a common blob interface.
+- **Logging libraries**: adapt a third-party logger to your logging contract.
 
 **In modern systems:**
 
-- **Multi-agent** — wrap heterogeneous tool and model APIs behind one uniform `call` interface the
+- **Multi-agent**: wrap heterogeneous tool and model APIs behind one uniform `call` interface the
   orchestrator expects, so a new provider is a new adapter, not a rewrite.
-- **Low-code** — adapt an external REST endpoint to the datasource interface a JSON binding
+- **Low-code**: adapt an external REST endpoint to the datasource interface a JSON binding
   assumes.
-- **Workflow engine** — adapt a third-party service to the step contract so it drops into a
+- **Workflow engine**: adapt a third-party service to the step contract so it drops into a
   pipeline unchanged.
 
 ## Related Patterns
 
-- **Facade** — simplifies a whole subsystem behind a new interface; Adapter converts one object
+- **Facade**: simplifies a whole subsystem behind a new interface; Adapter converts one object
   to a specific expected interface.
-- **Decorator** — same wrapping shape, but adds behavior while keeping the interface; Adapter
+- **Decorator**: same wrapping shape, but adds behavior while keeping the interface; Adapter
   changes the interface.
-- **Bridge** — designed up front to vary two sides; Adapter reconciles interfaces after the fact.
+- **Bridge**: designed up front to vary two sides; Adapter reconciles interfaces after the fact.

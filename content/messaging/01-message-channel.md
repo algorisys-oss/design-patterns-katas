@@ -29,22 +29,22 @@ copy to every subscriber.
 
 Direct, synchronous calls between systems couple them tightly:
 
-- **Tight coupling** — the caller must know the callee's location and interface, and both must be up
+- **Tight coupling**: the caller must know the callee's location and interface, and both must be up
   at the same time.
-- **Temporal coupling** — if the receiver is down or slow, the sender blocks or fails; there's no
+- **Temporal coupling**: if the receiver is down or slow, the sender blocks or fails; there's no
   buffer to absorb the gap.
-- **Rate coupling** — a fast sender overwhelms a slow receiver because nothing sits between them.
-- **Rigid topology** — adding another interested receiver means editing the sender to call it too.
+- **Rate coupling**: a fast sender overwhelms a slow receiver because nothing sits between them.
+- **Rigid topology**: adding another interested receiver means editing the sender to call it too.
 
 ## Structure
 
 Key Components:
 
-- **Message Channel** — the named conduit (a queue or topic) both ends know; holds messages in transit.
-- **Producer / Sender** — puts messages onto the channel.
-- **Consumer / Receiver** — takes messages off the channel.
-- **Message** — the unit of data passed; ideally self-contained and serializable.
-- **Channel kind** — point-to-point (one consumer per message) or publish-subscribe (all subscribers).
+- **Message Channel**: the named conduit (a queue or topic) both ends know; holds messages in transit.
+- **Producer / Sender**: puts messages onto the channel.
+- **Consumer / Receiver**: takes messages off the channel.
+- **Message**: the unit of data passed; ideally self-contained and serializable.
+- **Channel kind**: point-to-point (one consumer per message) or publish-subscribe (all subscribers).
 
 ```
 Producer ──send──► [ Message Channel ] ──deliver──► Consumer
@@ -61,25 +61,25 @@ Producer ──send──► [ Message Channel ] ──deliver──► Consumer
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Decoupling** — sender and receiver share only the channel name, not each other.
-- **Buffering & resilience** — the channel absorbs bursts and outages (if durable).
-- **Flexible topology** — add consumers/subscribers without touching the producer.
+- **Decoupling**: sender and receiver share only the channel name, not each other.
+- **Buffering & resilience**: the channel absorbs bursts and outages (if durable).
+- **Flexible topology**: add consumers/subscribers without touching the producer.
 
 ### Disadvantages
-- **Infrastructure** — you now run and operate a broker/queue with its own failure modes.
-- **Eventual, async semantics** — no immediate return value; the sender gets no direct response.
-- **Delivery guarantees vary** — at-most/at-least/exactly-once, ordering, and durability are choices
+- **Infrastructure**: you now run and operate a broker/queue with its own failure modes.
+- **Eventual, async semantics**: no immediate return value; the sender gets no direct response.
+- **Delivery guarantees vary**: at-most/at-least/exactly-once, ordering, and durability are choices
   with real trade-offs.
 
 ## Common Mistakes
 
-- **Treating a channel like an RPC** — expecting an immediate reply from a fire-and-forget send;
+- **Treating a channel like an RPC**: expecting an immediate reply from a fire-and-forget send;
   use a separate reply channel or a different pattern for request/response.
-- **Ignoring delivery semantics** — assuming exactly-once and perfect ordering when the broker gives
+- **Ignoring delivery semantics**: assuming exactly-once and perfect ordering when the broker gives
   at-least-once; design idempotent consumers.
-- **Unbounded channels** — a queue with no depth limit hides a slow consumer until it OOMs the broker;
+- **Unbounded channels**: a queue with no depth limit hides a slow consumer until it OOMs the broker;
   monitor and bound depth.
-- **Fat, coupled messages** — putting internal object graphs on the channel recouples the ends to
+- **Fat, coupled messages**: putting internal object graphs on the channel recouples the ends to
   each other's models; send self-contained, versioned messages.
 
 ## Key Takeaways
@@ -113,13 +113,13 @@ const channel = new EventTarget(); // a simple in-process channel
 // consumer side (could be many, added independently):
 channel.addEventListener("order.placed", (e) => reserveInventory(e.detail));
 
-// producer side — knows only the channel and the message:
+// producer side: knows only the channel and the message:
 function onOrder(order) {
   channel.dispatchEvent(new CustomEvent("order.placed", { detail: order }));
 }
 ```
 
-**🧠 Tradeoff** — Even in-process, routing through a named channel (`EventTarget`) decouples the
+**🧠 Tradeoff**: Even in-process, routing through a named channel (`EventTarget`) decouples the
 producer from who consumes: add a second listener without touching `onOrder`. In the browser it's
 synchronous and in-memory, fine for intra-app decoupling; crossing tabs or services needs a real
 channel (BroadcastChannel, WebSocket, or a broker). The shift is from "call the receiver" to "put a
@@ -132,7 +132,7 @@ message on the channel."
 **❌ Naive**
 
 ```js
-// Service calls another service's HTTP endpoint directly — coupled and synchronous.
+// Service calls another service's HTTP endpoint directly: coupled and synchronous.
 await fetch("http://inventory:8080/reserve", { method: "POST", body: JSON.stringify(order) });
 ```
 
@@ -155,7 +155,7 @@ ch.consume("orders", (msg) => {
 });
 ```
 
-**🧠 Tradeoff** — A durable AMQP queue as the channel decouples the services in time and rate: the
+**🧠 Tradeoff**: A durable AMQP queue as the channel decouples the services in time and rate: the
 inventory service can be down and orders wait in the queue, and you scale consumers by adding
 workers. You now run RabbitMQ and handle acks/redelivery (at-least-once → idempotent consumers). The
 gain is resilience the direct `fetch` can't offer; the cost is broker operations and async semantics.
@@ -179,7 +179,7 @@ import json, redis
 
 r = redis.Redis()
 
-# producer — knows only the channel name:
+# producer: knows only the channel name:
 r.lpush("orders", json.dumps(order))
 
 # consumer (separate process):
@@ -191,7 +191,7 @@ def worker():
 # (Celery/Kombu abstract this into task queues with the same channel idea.)
 ```
 
-**🧠 Tradeoff** — A Redis list (or Celery/Kombu) as the channel gives Python producer/consumer
+**🧠 Tradeoff**: A Redis list (or Celery/Kombu) as the channel gives Python producer/consumer
 decoupling across processes and machines: producers `lpush`, workers `brpop`. It buffers and survives
 consumer restarts (with a durable broker). Celery packages retries, acks, and routing on top. The
 trade is the broker dependency and async delivery, versus the simple-but-coupled direct call.
@@ -219,7 +219,7 @@ Phoenix.PubSub.broadcast(MyApp.PubSub, "orders", {:placed, order}) # producer si
 #   Broadway pipeline reads the "orders" queue, acknowledges per message
 ```
 
-**🧠 Tradeoff** — In an Elixir cluster, `Phoenix.PubSub` is a channel needing no external broker —
+**🧠 Tradeoff**: In an Elixir cluster, `Phoenix.PubSub` is a channel needing no external broker, so
 producers broadcast to a named topic, consumers subscribe, and it spans nodes. For durability across
 restarts or non-BEAM systems, Broadway consumes from real brokers (SQS, RabbitMQ, Kafka) with acking
 and backpressure. The BEAM gives you in-memory channels cheaply; you reach for a broker exactly when
@@ -253,10 +253,10 @@ go func() {
 }()
 
 // Across services, swap the Go channel for a broker (NATS, Kafka, SQS) client
-// that publishes/subscribes to a named subject — same shape, durable transport.
+// that publishes/subscribes to a named subject: same shape, durable transport.
 ```
 
-**🧠 Tradeoff** — Go's channels are literally message channels for in-process decoupling — buffered,
+**🧠 Tradeoff**: Go's channels are literally message channels for in-process decoupling, buffered,
 typed, with goroutine consumers you can scale. The producer knows only the channel, not the
 consumers. Crossing process boundaries swaps the Go channel for a broker client (NATS/Kafka/SQS) on a
 named subject; the code shape stays "send to a channel, range over it," but you gain durability and
@@ -288,14 +288,14 @@ _ = Task.Run(async () =>
         ReserveInventory(order);
 });
 
-// producer — knows only the channel, not who consumes:
+// producer: knows only the channel, not who consumes:
 await orders.Writer.WriteAsync(order);
 
 // Across services, swap the Channel for a broker client (Azure Service Bus,
-// RabbitMQ, Kafka) publishing to a named queue — same shape, durable transport.
+// RabbitMQ, Kafka) publishing to a named queue: same shape, durable transport.
 ```
 
-**🧠 Tradeoff** — `Channel<T>` is .NET's in-process message channel: typed, awaitable, and bounded,
+**🧠 Tradeoff**: `Channel<T>` is .NET's in-process message channel: typed, awaitable, and bounded,
 so a full channel makes `WriteAsync` wait: backpressure instead of an unbounded queue quietly
 growing. Multiple readers on one channel give you point-to-point (each order goes to exactly one);
 pub-sub means one channel per subscriber or a broker topic. The producer holds only the `Writer`,
@@ -328,14 +328,14 @@ thread::spawn(move || {
     }
 });
 
-// producer — holds only the sending half:
+// producer: holds only the sending half:
 orders.send(order).unwrap();
 
-// Across services, swap mpsc for a broker client on a named subject —
+// Across services, swap mpsc for a broker client on a named subject: 
 // same send/receive shape, durable transport.
 ```
 
-**🧠 Tradeoff** — `mpsc` makes the channel kind structural: clone the `Sender` for as many
+**🧠 Tradeoff**: `mpsc` makes the channel kind structural: clone the `Sender` for as many
 producers as you like, but exactly one `Receiver` owns the taking end, so point-to-point delivery
 is enforced by ownership, not convention. The consumer's `for order in rx` ends when every sender
 drops: shutdown is ownership too, no close flag needed. `sync_channel` bounds the buffer so a
@@ -358,7 +358,7 @@ inventory.reserve(order); // synchronous, one hard-wired receiver
 ```zig
 const std = @import("std");
 
-// Zig ships no channel type — the honest form is an explicit bounded queue.
+// Zig ships no channel type: the honest form is an explicit bounded queue.
 // Blocking is an io capability in 0.17: put/take ask for an `io` the way
 // containers ask for an allocator.
 fn Channel(comptime T: type, comptime cap: usize) type {
@@ -409,12 +409,12 @@ fn produce(io: std.Io, order: Order) !void {
     const consumer = try std.Thread.spawn(.{}, consume, .{io});
     consumer.detach();
 
-    // producer — knows only the channel:
+    // producer: knows only the channel:
     orders.put(io, order);
 }
 ```
 
-**🧠 Tradeoff** — Zig hands you the parts (`Io.Mutex`, `Io.Condition`, `Thread`), not the channel; a
+**🧠 Tradeoff**: Zig hands you the parts (`Io.Mutex`, `Io.Condition`, `Thread`), not the channel; a
 ring buffer plus two condition variables buys a bounded, blocking `put`/`take` with real
 backpressure, generic over the message type through comptime. In 0.17 blocking itself is a
 capability: the channel asks for an `std.Io` the way a container asks for an allocator, so every
@@ -454,14 +454,14 @@ Thread.startVirtualThread(() -> {
     }
 });
 
-// producer — knows only the channel, not who consumes:
+// producer: knows only the channel, not who consumes:
 orders.put(order); // blocks when full: backpressure, not unbounded growth
 
 // Across services, swap the queue for a broker client (Kafka, SQS, RabbitMQ)
-// publishing to a named topic — same shape, durable transport.
+// publishing to a named topic: same shape, durable transport.
 ```
 
-**🧠 Tradeoff** — `BlockingQueue` has been `java.util.concurrent`'s message channel since 2004:
+**🧠 Tradeoff**: `BlockingQueue` has been `java.util.concurrent`'s message channel since 2004:
 bounded, typed, with `put`/`take` that block instead of failing, so a full queue throttles the
 producer. Multiple takers on one queue give you point-to-point (each order goes to exactly one);
 pub-sub means one queue per subscriber or a broker topic. Virtual threads make a
@@ -471,22 +471,22 @@ to write down.
 
 ## Applications
 
-- **Microservice integration** — services exchange domain events over queues/topics instead of direct
+- **Microservice integration**: services exchange domain events over queues/topics instead of direct
   calls (backend).
-- **Task queues** — web requests enqueue background work (email, thumbnails) onto a channel for
+- **Task queues**: web requests enqueue background work (email, thumbnails) onto a channel for
   workers (backend).
-- **Event streaming** — Kafka/Kinesis topics are durable channels many producers and consumers share
+- **Event streaming**: Kafka/Kinesis topics are durable channels many producers and consumers share
   (backend).
-- **Realtime fan-out** — WebSocket/PubSub channels push updates to connected clients (backend &
+- **Realtime fan-out**: WebSocket/PubSub channels push updates to connected clients (backend &
   frontend).
-- **In-process decoupling** — event emitters and Go channels decouple modules within one app
+- **In-process decoupling**: event emitters and Go channels decouple modules within one app
   (backend & frontend).
 
 ## Related Patterns
 
-- **Producer-Consumer** — the concurrency pattern a channel implements: producers put, consumers take,
+- **Producer-Consumer**: the concurrency pattern a channel implements: producers put, consumers take,
   the channel buffers.
-- **Publish-Subscribe** — a channel *kind*: deliver each message to all subscribers rather than one
+- **Publish-Subscribe**: a channel *kind*: deliver each message to all subscribers rather than one
   consumer.
-- **Message Router** — sits between channels, reading from one and directing messages onto others based
+- **Message Router**: sits between channels, reading from one and directing messages onto others based
   on content or rules.

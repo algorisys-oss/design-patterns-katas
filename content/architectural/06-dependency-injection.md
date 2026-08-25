@@ -27,20 +27,20 @@ fake in tests, with no change to the service itself.
 
 When an object builds its own dependencies, it's welded to them:
 
-- **Hard-wired concretes** — `this.gateway = new StripeGateway()` means you can't run the service
+- **Hard-wired concretes**: `this.gateway = new StripeGateway()` means you can't run the service
   without Stripe, can't test it without real HTTP, and can't switch providers without editing it.
-- **Untestable** — there's no seam to insert a fake, so tests hit real databases and networks.
-- **Hidden dependencies** — what a class needs is buried in its body, not visible in its signature.
-- **Rigid configuration** — timeouts, credentials, and endpoints are baked in rather than supplied.
+- **Untestable**: there's no seam to insert a fake, so tests hit real databases and networks.
+- **Hidden dependencies**: what a class needs is buried in its body, not visible in its signature.
+- **Rigid configuration**: timeouts, credentials, and endpoints are baked in rather than supplied.
 
 ## Structure
 
 Key Components:
 
-- **Client / Service** — declares its dependencies (ideally as interfaces) and receives them.
-- **Dependency (interface)** — the abstraction the client depends on.
-- **Concrete implementations** — the real thing(s) that satisfy the interface.
-- **Injector / Composition Root** — the one place that constructs concretes and wires them in
+- **Client / Service**: declares its dependencies (ideally as interfaces) and receives them.
+- **Dependency (interface)**: the abstraction the client depends on.
+- **Concrete implementations**: the real thing(s) that satisfy the interface.
+- **Injector / Composition Root**: the one place that constructs concretes and wires them in
   (a container, a factory, or just `main`).
 
 ```
@@ -60,25 +60,25 @@ Container ──creates──► OrderService ──depends on──► «Gatewa
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Testability** — inject a fake/mock; no real network or database in unit tests.
-- **Flexibility** — swap implementations (providers, storage) by changing wiring, not code.
-- **Explicit dependencies** — a constructor/signature that lists what's needed documents the object.
+- **Testability**: inject a fake/mock; no real network or database in unit tests.
+- **Flexibility**: swap implementations (providers, storage) by changing wiring, not code.
+- **Explicit dependencies**: a constructor/signature that lists what's needed documents the object.
 
 ### Disadvantages
-- **Wiring overhead** — something must construct and connect everything; that composition root grows.
-- **Indirection** — following "who provides this?" is harder, especially through a magic container.
-- **Framework lock-in** — heavyweight DI containers add annotations, lifecycles, and startup magic
+- **Wiring overhead**: something must construct and connect everything; that composition root grows.
+- **Indirection**: following "who provides this?" is harder, especially through a magic container.
+- **Framework lock-in**: heavyweight DI containers add annotations, lifecycles, and startup magic
   that can obscure more than they help.
 
 ## Common Mistakes
 
-- **Service Locator instead of injection** — having objects *pull* dependencies from a global
+- **Service Locator instead of injection**: having objects *pull* dependencies from a global
   registry hides them again and reintroduces coupling; prefer pushing them in.
-- **Injecting concretes** — passing `StripeGateway` instead of a `Gateway` interface gives you the
+- **Injecting concretes**: passing `StripeGateway` instead of a `Gateway` interface gives you the
   wiring flexibility but not the decoupling; depend on the abstraction.
-- **Over-injecting** — threading a container everywhere, or injecting trivial value objects, adds
+- **Over-injecting**: threading a container everywhere, or injecting trivial value objects, adds
   ceremony without benefit; inject the volatile, external things.
-- **Constructor doing work** — a constructor that also *uses* its dependencies (opens connections,
+- **Constructor doing work**: a constructor that also *uses* its dependencies (opens connections,
   makes calls) couples construction to side effects; construct, then act.
 
 ## Key Takeaways
@@ -97,7 +97,7 @@ Container ──creates──► OrderService ──depends on──► «Gatewa
 **❌ Naive**
 
 ```js
-// The service constructs its own gateway — welded to Stripe, untestable.
+// The service constructs its own gateway: welded to Stripe, untestable.
 class OrderService {
   constructor() {
     this.gateway = new StripeGateway(process.env.STRIPE_KEY); // hard-wired
@@ -125,7 +125,7 @@ const service = new OrderService(new StripeGateway(process.env.STRIPE_KEY));
 const test = new OrderService({ charge: async (n) => ({ ok: true, amount: n }) });
 ```
 
-**🧠 Tradeoff** — Passing the gateway into the constructor turns an untestable class into one you
+**🧠 Tradeoff**: Passing the gateway into the constructor turns an untestable class into one you
 test with a two-line fake, and lets you swap providers by changing the wiring. JS needs no DI
 framework (a constructor argument is enough), but nothing enforces the "shape," so a wrong fake
 fails at call time rather than compile time.
@@ -137,7 +137,7 @@ fails at call time rather than compile time.
 **❌ Naive**
 
 ```js
-// A module reaches for singletons at import time — implicit, global coupling.
+// A module reaches for singletons at import time: implicit, global coupling.
 const db = require("./db");          // shared connection, hard to swap
 const mailer = require("./mailer");
 async function welcome(userId) {
@@ -161,7 +161,7 @@ const welcome = makeWelcome({ users: pgUsers(pool), mailer: smtpMailer(cfg) });
 // tests: makeWelcome({ users: fakeUsers, mailer: { send: jest.fn() } })
 ```
 
-**🧠 Tradeoff** — Factory functions that accept a `deps` object are the lightweight Node idiom:
+**🧠 Tradeoff**: Factory functions that accept a `deps` object are the lightweight Node idiom:
 explicit, no container, and trivially faked in tests. It keeps dependencies out of module-level
 `require` singletons. For large apps a container (Awilix, InversifyJS) automates the wiring, at the
 price of the indirection and startup magic those bring.
@@ -173,7 +173,7 @@ price of the indirection and startup magic those bring.
 **❌ Naive**
 
 ```python
-# Service instantiates its collaborators — no seam for tests or swaps.
+# Service instantiates its collaborators, no seam for tests or swaps.
 class ReportService:
     def __init__(self):
         self.db = Database(DSN)          # hard-wired
@@ -196,11 +196,11 @@ class ReportService:
 
 # composition root
 service = ReportService(db=PostgresDB(DSN), clock=SystemClock())
-# tests inject fakes — deterministic time, no database
+# tests inject fakes: deterministic time, no database
 service = ReportService(db=FakeDB(rows), clock=FrozenClock("2026-01-01"))
 ```
 
-**🧠 Tradeoff** — Plain constructor injection with `Protocol`-typed parameters is idiomatic and
+**🧠 Tradeoff**: Plain constructor injection with `Protocol`-typed parameters is idiomatic and
 enough for most Python: fakes drop in, and a `FrozenClock` makes time-dependent logic testable.
 Frameworks (`dependency-injector`, FastAPI's `Depends`) add containers and request-scoped wiring
 when an app grows; useful, but constructor injection covers the 90% case without them.
@@ -212,7 +212,7 @@ when an app grows; useful, but constructor injection covers the 90% case without
 **❌ Naive**
 
 ```elixir
-# The module calls a concrete implementation directly — nothing to swap.
+# The module calls a concrete implementation directly, nothing to swap.
 defmodule Report do
   def daily, do: MyApp.Postgres.rows_since(DateTime.utc_now())  # hard-wired
 end
@@ -233,7 +233,7 @@ end
 # test config: repo: MyApp.FakeRepo, clock: MyApp.FrozenClock
 ```
 
-**🧠 Tradeoff** — Elixir "injects" through application config plus behaviours: the module looks up
+**🧠 Tradeoff**: Elixir "injects" through application config plus behaviours: the module looks up
 its collaborators, and each environment (or `Mox` in tests) supplies a different implementation.
 It's the community norm and keeps modules pure of hard-wired concretes. The subtlety is
 implicitness (the dependency is resolved inside the module rather than handed in), so passing deps
@@ -272,7 +272,7 @@ svc := NewOrderService(NewStripeGateway(os.Getenv("STRIPE_KEY")))
 // tests: NewOrderService(fakeGateway{})
 ```
 
-**🧠 Tradeoff** — Idiomatic Go DI is exactly this: depend on a small interface, accept it as a
+**🧠 Tradeoff**: Idiomatic Go DI is exactly this: depend on a small interface, accept it as a
 parameter, and wire concretes in `main`. No framework, no tags: the dependency graph is plain
 Go you can read top to bottom. For very large graphs, code generators (Google's `wire`) automate
 the wiring while keeping it compile-time and explicit, avoiding runtime reflection containers.
@@ -284,7 +284,7 @@ the wiring while keeping it compile-time and explicit, avoiding runtime reflecti
 **❌ Naive**
 
 ```csharp
-// The service constructs its own gateway — welded to Stripe, untestable.
+// The service constructs its own gateway: welded to Stripe, untestable.
 public sealed class OrderService
 {
     private readonly StripeGateway _gateway =
@@ -301,7 +301,7 @@ public sealed class OrderService
 var service = new OrderService(
     new StripeGateway(Environment.GetEnvironmentVariable("STRIPE_KEY")!));
 await service.Checkout(new Cart(100));
-// tests: new OrderService(new FakeGateway()) — no network, no key
+// tests: new OrderService(new FakeGateway()), no network, no key
 
 public interface IGateway
 {
@@ -322,7 +322,7 @@ public sealed class OrderService(IGateway gateway)
 public sealed record Cart(int Total);
 ```
 
-**🧠 Tradeoff** — Constructor injection through a primary constructor is the whole pattern, and
+**🧠 Tradeoff**: Constructor injection through a primary constructor is the whole pattern, and
 `IGateway` is compile-checked where the JS fake is duck-typed. What C# adds is a container in the
 box: `new ServiceCollection().AddSingleton<IGateway, StripeGateway>()` builds an `IServiceProvider`,
 and ASP.NET Core resolves constructor parameters from it automatically, with lifetimes (singleton,
@@ -337,7 +337,7 @@ convenience. For a library or a small app, plain `new` in `Main` is still the cl
 **❌ Naive**
 
 ```rust
-// The service builds its own gateway — welded to Stripe, untestable.
+// The service builds its own gateway: welded to Stripe, untestable.
 struct OrderService {
     gateway: StripeGateway,
 }
@@ -396,7 +396,7 @@ fn main() {
 // let service = OrderService::new(FakeGateway::default());
 ```
 
-**🧠 Tradeoff** — Rust has no reflection, so there's no runtime container to hide the graph — and
+**🧠 Tradeoff**: Rust has no reflection, so there's no runtime container to hide the graph, and
 manual wiring in `main` is the honest, standard form, not a compromise. The generic
 `OrderService<G>` monomorphizes each concrete gateway to zero-overhead calls, but the type parameter
 spreads to everything that holds the service; `Box<dyn Gateway>` flattens that to one runtime type
@@ -410,7 +410,7 @@ missing or wrong dependency is a build error, not a startup surprise.
 **❌ Naive**
 
 ```zig
-// The service builds its own gateway — welded to Stripe, untestable.
+// The service builds its own gateway: welded to Stripe, untestable.
 const OrderService = struct {
     gateway: StripeGateway,
 
@@ -428,7 +428,7 @@ const OrderService = struct {
 ```zig
 const std = @import("std");
 
-// No interfaces: the contract is comptime duck typing — any type with charge().
+// No interfaces: the contract is comptime duck typing; any type with charge().
 fn OrderService(comptime Gateway: type) type {
     return struct {
         gateway: Gateway, // injected
@@ -465,7 +465,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — `OrderService(comptime Gateway: type)` is static dependency injection: the
+**🧠 Tradeoff**: `OrderService(comptime Gateway: type)` is static dependency injection: the
 compiler instantiates a service per concrete gateway, calls are direct (no vtable), and a type
 missing `charge` fails at compile time. The cost is that the dependency is part of the type:
 `OrderService(StripeGateway)` and `OrderService(FakeGateway)` are different types, so you can't
@@ -480,7 +480,7 @@ uses, which is Zig injecting its most important dependency, the allocator, by ha
 **❌ Naive**
 
 ```java
-// The service constructs its own gateway — welded to Stripe, untestable.
+// The service constructs its own gateway: welded to Stripe, untestable.
 class OrderService {
     private final StripeGateway gateway =
         new StripeGateway(System.getenv("STRIPE_KEY")); // hard-wired
@@ -509,7 +509,7 @@ class StripeGateway implements Gateway {
 
 record Cart(int total) {}
 
-// The dependency is the constructor signature — injected, never constructed inside.
+// The dependency is the constructor signature: injected, never constructed inside.
 class OrderService {
     private final Gateway gateway;
 
@@ -532,7 +532,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — Constructor injection into a `final` field is the whole pattern, and no framework
+**🧠 Tradeoff**: Constructor injection into a `final` field is the whole pattern, and no framework
 appears in the code above; a fake is one lambda because `Gateway` is a functional interface. What
 Java is famous for is the container layer on top: Spring, Guice, and CDI scan for components,
 resolve constructor parameters by type, and manage lifecycles (singleton, request-scoped) and
@@ -543,31 +543,31 @@ libraries and small services, wiring by hand in `main` stays the clearest compos
 
 ## Applications
 
-- **Testing** — the primary driver everywhere: inject fakes/mocks so unit tests avoid real I/O
+- **Testing**: the primary driver everywhere: inject fakes/mocks so unit tests avoid real I/O
   (backend & frontend).
-- **Provider swaps** — payment, email, storage, and auth providers behind interfaces, chosen at
+- **Provider swaps**: payment, email, storage, and auth providers behind interfaces, chosen at
   wiring time (backend).
-- **Environment configuration** — dev/test/prod supply different databases, endpoints, and
+- **Environment configuration**: dev/test/prod supply different databases, endpoints, and
   credentials through the composition root (backend).
-- **Framework backbones** — Spring, Angular, NestJS, and ASP.NET are built around DI containers
+- **Framework backbones**: Spring, Angular, NestJS, and ASP.NET are built around DI containers
   that wire the whole app (backend & frontend).
-- **Feature flags & A/B** — inject different strategy implementations per user or rollout without
+- **Feature flags & A/B**: inject different strategy implementations per user or rollout without
   branching the callers (backend & frontend).
 
 **In modern systems:**
 
-- **Multi-agent** — inject the model client, tools, and memory into an agent so it's testable with
+- **Multi-agent**: inject the model client, tools, and memory into an agent so it's testable with
   mocks and reconfigurable without touching its logic.
-- **Low-code** — the runtime injects datasources, validators, and theme into the renderer, so one
+- **Low-code**: the runtime injects datasources, validators, and theme into the renderer, so one
   schema runs against different backends.
-- **Workflow engine** — inject the store and queue into the executor to swap in-memory for prod
+- **Workflow engine**: inject the store and queue into the executor to swap in-memory for prod
   infra.
 
 ## Related Patterns
 
-- **Dependency Inversion** — the principle (depend on abstractions); DI is a concrete technique for
+- **Dependency Inversion**: the principle (depend on abstractions); DI is a concrete technique for
   achieving it by supplying those abstractions from outside.
-- **Hexagonal (Ports & Adapters)** — DI is how adapters get wired into the core's ports at the
+- **Hexagonal (Ports & Adapters)**: DI is how adapters get wired into the core's ports at the
   composition root.
-- **Service Locator** — the alternative where objects *pull* dependencies from a registry; more
+- **Service Locator**: the alternative where objects *pull* dependencies from a registry; more
   hidden coupling, generally discouraged in favor of injection.

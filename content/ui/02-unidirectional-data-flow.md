@@ -29,24 +29,24 @@ your back.
 
 When any part of the UI can mutate any state directly, change becomes impossible to follow:
 
-- **Tangled two-way binding** — a field updates a model that updates another field that updates the
+- **Tangled two-way binding**: a field updates a model that updates another field that updates the
   model... and a bug could originate anywhere in the web.
-- **Unpredictable state** — with many components mutating shared state, "how did it get into *this*
+- **Unpredictable state**: with many components mutating shared state, "how did it get into *this*
   state?" has no answer.
-- **Hard to trace & debug** — there's no single record of what changed and why; you reverse-engineer
+- **Hard to trace & debug**: there's no single record of what changed and why; you reverse-engineer
   it from the current mess.
-- **Scattered logic** — the rules for how state changes are spread across every event handler
+- **Scattered logic**: the rules for how state changes are spread across every event handler
   instead of living in one place.
 
 ## Structure
 
 Key Components:
 
-- **State (store)** — a single source of truth for the UI's data, treated as immutable.
-- **View** — a function of state; renders the current state and nothing else.
-- **Action** — a plain, serializable description of something that happened (`{ type, payload }`).
-- **Reducer / Update** — a pure function `(state, action) => newState`; the only place state changes.
-- **Dispatch** — how the view sends an action into the loop.
+- **State (store)**: a single source of truth for the UI's data, treated as immutable.
+- **View**: a function of state; renders the current state and nothing else.
+- **Action**: a plain, serializable description of something that happened (`{ type, payload }`).
+- **Reducer / Update**: a pure function `(state, action) => newState`; the only place state changes.
+- **Dispatch**: how the view sends an action into the loop.
 
 ```
         ┌──────────── state ────────────┐
@@ -66,25 +66,25 @@ Key Components:
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Predictable** — state changes only through pure reducers, so behavior is reproducible.
-- **Traceable & debuggable** — every change is an action you can log, replay, and time-travel.
-- **Testable transitions** — reducers are pure functions: given state + action, assert next state.
+- **Predictable**: state changes only through pure reducers, so behavior is reproducible.
+- **Traceable & debuggable**: every change is an action you can log, replay, and time-travel.
+- **Testable transitions**: reducers are pure functions: given state + action, assert next state.
 
 ### Disadvantages
-- **Boilerplate** — actions, reducers, and dispatch wiring add ceremony for simple state.
-- **Indirection** — a click no longer directly does the thing; it dispatches an action handled elsewhere.
-- **Overkill for local state** — a single toggle doesn't need a store; reach for it when state is
+- **Boilerplate**: actions, reducers, and dispatch wiring add ceremony for simple state.
+- **Indirection**: a click no longer directly does the thing; it dispatches an action handled elsewhere.
+- **Overkill for local state**: a single toggle doesn't need a store; reach for it when state is
   genuinely shared and complex.
 
 ## Common Mistakes
 
-- **Mutating state in the reducer** — reducers must be pure and return *new* state; mutating the
+- **Mutating state in the reducer**: reducers must be pure and return *new* state; mutating the
   argument breaks change detection, time-travel, and predictability.
-- **Side effects in reducers** — fetching or logging inside a reducer makes it impure and
+- **Side effects in reducers**: fetching or logging inside a reducer makes it impure and
   untestable; keep effects at the edges (middleware, effect handlers, commands).
-- **One giant reducer/store for everything** — dumping all state in one place couples unrelated
+- **One giant reducer/store for everything**: dumping all state in one place couples unrelated
   features; split by domain and compose.
-- **Using it for trivial local state** — a component's own toggle or input doesn't need the whole
+- **Using it for trivial local state**: a component's own toggle or input doesn't need the whole
   action/reducer apparatus.
 
 ## Key Takeaways
@@ -131,7 +131,7 @@ function createStore(reducer, initial) {
 // store.subscribe(render); addBtn.onclick = () => store.dispatch({ type: "add", item });
 ```
 
-**🧠 Tradeoff** — A tiny store + pure reducer is the whole Redux idea in a few lines: all change
+**🧠 Tradeoff**: A tiny store + pure reducer is the whole Redux idea in a few lines: all change
 logic lives in one testable function and the view only dispatches. It's more ceremony than mutating
 `cart` directly, and for one small piece of state that's overkill, but for shared, complex state it
 buys predictability, logging, and time-travel that mutation can never offer. `useReducer` gives the
@@ -166,7 +166,7 @@ socket.on("move", (m) => {
 });
 ```
 
-**🧠 Tradeoff** — Even server-side, routing every mutation through a pure `gameReducer` makes the
+**🧠 Tradeoff**: Even server-side, routing every mutation through a pure `gameReducer` makes the
 authoritative state predictable and the rules (reject invalid moves) live in one testable place,
 and the action stream can be logged or replayed to reproduce a game. It's the same discipline as the
 client; the cost is the same boilerplate, worth it for shared multiplayer/session state.
@@ -176,7 +176,7 @@ client; the cost is the same boilerplate, worth it for shared multiplayer/sessio
 **❌ Naive**
 
 ```python
-# Global state mutated from various handlers — untraceable.
+# Global state mutated from various handlers: untraceable.
 state = {"count": 0}
 def increment(): state["count"] += 1   # who changed it, and why?
 def reset():     state["count"] = 0
@@ -203,7 +203,7 @@ class Store:
 # store = Store(reducer, {"count": 0}); store.dispatch({"type": "increment"})
 ```
 
-**🧠 Tradeoff** — The reducer + store pattern ports cleanly to Python, and `match` makes the action
+**🧠 Tradeoff**: The reducer + store pattern ports cleanly to Python, and `match` makes the action
 handling readable. It's the backbone of Python UI frameworks (Reflex's state, Flet's model) and of
 predictable server state. The immutable-update discipline (`{**state, ...}`) is a convention Python
 won't enforce, so the win depends on not reaching in and mutating `_state` directly.
@@ -242,7 +242,7 @@ defmodule CartLive do
 end
 ```
 
-**🧠 Tradeoff** — Phoenix LiveView is *literally* the Elm Architecture (model → view → update):
+**🧠 Tradeoff**: Phoenix LiveView is *literally* the Elm Architecture (model → view → update):
 assigns are the immutable state, `render/1` is `view`, and `handle_event` is `update`. Factoring the
 transitions into a pure `update/3` makes them testable in isolation and keeps all change logic in one
 place. Elixir's immutability means you get the discipline for free: there's no `state` to mutate,
@@ -284,7 +284,7 @@ func reduce(s State, a Action) State {
 // state = reduce(state, action) inside a single goroutine that owns `state` (see Actor)
 ```
 
-**🧠 Tradeoff** — A pure `reduce(State, Action) State` gives Go the same predictable, testable
+**🧠 Tradeoff**: A pure `reduce(State, Action) State` gives Go the same predictable, testable
 transition, and because `State` is a value, returning a copy is natural (no shared mutation).
 Combined with a single goroutine owning the state (the Actor pattern), you also get race-free
 updates. Go has no UI framework prescribing this, but the reducer discipline pays off anywhere state
@@ -292,20 +292,20 @@ must be predictable and replayable.
 
 ## Applications
 
-- **Client state management** — Redux, Zustand, Vuex/Pinia, and NgRx all implement the store +
+- **Client state management**: Redux, Zustand, Vuex/Pinia, and NgRx all implement the store +
   reducer loop (frontend).
-- **Phoenix LiveView & Elm** — server-driven UIs built directly on model-view-update (backend & frontend).
-- **Multiplayer/game servers** — authoritative state advanced by a pure reducer over an action
+- **Phoenix LiveView & Elm**: server-driven UIs built directly on model-view-update (backend & frontend).
+- **Multiplayer/game servers**: authoritative state advanced by a pure reducer over an action
   stream, enabling replay (backend).
-- **Undo/redo & time-travel** — an action log plus pure reducers make history and time-travel
+- **Undo/redo & time-travel**: an action log plus pure reducers make history and time-travel
   debugging trivial (frontend).
-- **Complex forms & wizards** — a reducer centralizes step/validation state instead of scattering it
+- **Complex forms & wizards**: a reducer centralizes step/validation state instead of scattering it
   across fields (frontend).
 
 ## Related Patterns
 
-- **Observer** — the store notifies subscribed views when state changes; the render step is Observer.
-- **Model-View-Controller** — unidirectional flow is MVC tightened into a one-way loop with a pure
+- **Observer**: the store notifies subscribed views when state changes; the render step is Observer.
+- **Model-View-Controller**: unidirectional flow is MVC tightened into a one-way loop with a pure
   update step, removing two-way binding.
-- **Provider / Context** — how the single store is made available to the component tree without prop
+- **Provider / Context**: how the single store is made available to the component tree without prop
   drilling.

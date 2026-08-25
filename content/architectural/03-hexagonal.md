@@ -29,23 +29,23 @@ new adapter; the business logic doesn't change and doesn't even know.
 In plain layered code the domain usually ends up depending *downward* on infrastructure: it
 imports the database client, the HTTP library, the ORM. That inverts the value you wanted:
 
-- **Framework lock-in** — the rules are tangled with a specific database and web framework, so
+- **Framework lock-in**: the rules are tangled with a specific database and web framework, so
   replacing either means surgery on the core.
-- **Slow, brittle tests** — you can't test a use case without spinning up a database and a server.
-- **Leaky abstractions** — ORM models and request objects seep into business logic, coupling rules
+- **Slow, brittle tests**: you can't test a use case without spinning up a database and a server.
+- **Leaky abstractions**: ORM models and request objects seep into business logic, coupling rules
   to schemas and transports.
-- **Wrong dependency direction** — the most valuable, stable part (the domain) depends on the
+- **Wrong dependency direction**: the most valuable, stable part (the domain) depends on the
   least stable part (infrastructure).
 
 ## Structure
 
 Key Components:
 
-- **Application Core / Domain** — entities, rules, and use cases. Depends only on ports.
-- **Ports** — interfaces the core owns: *driving* ports (how the world calls in) and *driven*
+- **Application Core / Domain**: entities, rules, and use cases. Depends only on ports.
+- **Ports**: interfaces the core owns: *driving* ports (how the world calls in) and *driven*
   ports (what the core needs from the world, e.g. a repository).
-- **Driving Adapters** — call the core through driving ports (HTTP controllers, CLI, tests).
-- **Driven Adapters** — implement driven ports (database, email, message bus).
+- **Driving Adapters**: call the core through driving ports (HTTP controllers, CLI, tests).
+- **Driven Adapters**: implement driven ports (database, email, message bus).
 
 ```
  [ HTTP Adapter ] ──► «Input Port» ──► [  Core  ] ──► «Output Port» ◄── [ DB Adapter ]
@@ -63,25 +63,25 @@ Key Components:
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Infrastructure independence** — swap databases, transports, or providers by changing adapters.
-- **Fast tests** — the core runs against in-memory fakes; no DB or server in unit tests.
-- **Right dependency direction** — the stable domain depends on nothing; volatility lives at the edges.
+- **Infrastructure independence**: swap databases, transports, or providers by changing adapters.
+- **Fast tests**: the core runs against in-memory fakes; no DB or server in unit tests.
+- **Right dependency direction**: the stable domain depends on nothing; volatility lives at the edges.
 
 ### Disadvantages
-- **Ceremony** — ports, adapters, and mapping add indirection that a simple CRUD app doesn't need.
-- **Mapping overhead** — translating between domain models and adapter models is real, repetitive work.
-- **Over-abstraction risk** — teams port-and-adapter everything, including things that will never
+- **Ceremony**: ports, adapters, and mapping add indirection that a simple CRUD app doesn't need.
+- **Mapping overhead**: translating between domain models and adapter models is real, repetitive work.
+- **Over-abstraction risk**: teams port-and-adapter everything, including things that will never
   be swapped.
 
 ## Common Mistakes
 
-- **Ports owned by the adapter** — if the database layer defines the repository interface, the
+- **Ports owned by the adapter**: if the database layer defines the repository interface, the
   dependency still points outward; the *core* must own the port.
-- **Leaking adapter types inward** — returning ORM entities or `Request` objects through a port
+- **Leaking adapter types inward**: returning ORM entities or `Request` objects through a port
   re-couples the domain to infrastructure; map at the boundary.
-- **Anemic core** — pushing all logic into services/adapters and leaving the domain a bag of data
+- **Anemic core**: pushing all logic into services/adapters and leaving the domain a bag of data
   loses the point; the rules belong in the center.
-- **Adapters calling adapters** — infrastructure talking directly to other infrastructure bypasses
+- **Adapters calling adapters**: infrastructure talking directly to other infrastructure bypasses
   the core and its rules; route through the domain.
 
 ## Key Takeaways
@@ -100,7 +100,7 @@ Key Components:
 **❌ Naive**
 
 ```js
-// The use case imports the database directly — core coupled to infrastructure.
+// The use case imports the database directly: core coupled to infrastructure.
 import { mongo } from "./mongo.js";
 export async function placeOrder(cart) {
   if (cart.items.length === 0) throw new Error("empty");   // rule
@@ -112,7 +112,7 @@ export async function placeOrder(cart) {
 
 ```js
 // The core defines the port (a shape it needs); an adapter implements it.
-// core/place-order.js — depends only on the port's contract
+// core/place-order.js: depends only on the port's contract
 export function makePlaceOrder({ orders }) {   // `orders` is a driven port
   return async (cart) => {
     if (cart.items.length === 0) throw new DomainError("empty");
@@ -120,7 +120,7 @@ export function makePlaceOrder({ orders }) {   // `orders` is a driven port
   };
 }
 
-// adapters/mongo-orders.js — implements the port
+// adapters/mongo-orders.js: implements the port
 export const mongoOrders = {
   save: (order) => mongo.collection("orders").insertOne(order),
 };
@@ -129,7 +129,7 @@ export const mongoOrders = {
 // tests: makePlaceOrder({ orders: { save: async (o) => o } })  // no DB
 ```
 
-**🧠 Tradeoff** — The use case now depends on a `orders.save` *shape*, not Mongo, so the same core
+**🧠 Tradeoff**: The use case now depends on a `orders.save` *shape*, not Mongo, so the same core
 runs against a real adapter in production and a one-line fake in tests. In dynamic JS the "port" is
 just a duck-typed object: cheap to define, but nothing enforces the contract, so a mismatched
 adapter fails at runtime rather than compile time.
@@ -166,7 +166,7 @@ const smtpMailer = { send: (to, text) => transport.sendMail({ to, text }) };
 // composition root wires them; a queue consumer or a test can call the same core.
 ```
 
-**🧠 Tradeoff** — Wrapping `pg` and `nodemailer` behind `users`/`mailer` ports means the notify
+**🧠 Tradeoff**: Wrapping `pg` and `nodemailer` behind `users`/`mailer` ports means the notify
 use case is transport- and provider-agnostic: switch to SES or a different datastore by writing an
 adapter. You pay for a composition root that wires everything and for the wrapper objects, worth
 it when providers change, overkill for a script that emails once.
@@ -178,7 +178,7 @@ it when providers change, overkill for a script that emails once.
 **❌ Naive**
 
 ```python
-# Use case imports SQLAlchemy models — the domain now depends on the ORM.
+# Use case imports SQLAlchemy models: the domain now depends on the ORM.
 def place_order(cart):
     if not cart.items:
         raise ValueError("empty")
@@ -206,7 +206,7 @@ class SqlOrders:                        # driven adapter
     def save(self, order): session.add(to_row(order)); session.commit()
 ```
 
-**🧠 Tradeoff** — `typing.Protocol` gives a structural port with no inheritance: `SqlOrders`
+**🧠 Tradeoff**: `typing.Protocol` gives a structural port with no inheritance: `SqlOrders`
 satisfies `Orders` just by having `save`, and a fake with a `save` works in tests. It's the
 cleanest expression here: real interfaces, checked by the type checker, without a class hierarchy.
 The mapping (`to_row`) between domain and ORM models is the recurring tax.
@@ -248,7 +248,7 @@ end
 # config: config :my_app, orders_adapter: Orders.Ecto  (Orders.InMemory in tests)
 ```
 
-**🧠 Tradeoff** — Elixir's **behaviours** are the ports and application config picks the adapter,
+**🧠 Tradeoff**: Elixir's **behaviours** are the ports and application config picks the adapter,
 so tests swap in `Orders.InMemory` with one config line. It's idiomatic OTP (named contracts plus
 runtime configuration) and gives fast, DB-free tests. The subtlety is that compile-time adapter
 selection (`compile_env`) versus runtime selection changes how easily you swap per-test.
@@ -288,12 +288,12 @@ func (p PlaceOrder) Do(cart Cart) error {
     return p.Orders.Save(Order{Cart: cart, Status: "placed"})
 }
 
-// adapters/postgres.go — implements Orders, imports the core, not vice versa
+// adapters/postgres.go: implements Orders, imports the core, not vice versa
 type PostgresOrders struct{ db *sql.DB }
 func (r PostgresOrders) Save(o Order) error { _, err := r.db.Exec("INSERT ..."); return err }
 ```
 
-**🧠 Tradeoff** — Go's implicit interfaces make hexagonal feel native: the core package declares
+**🧠 Tradeoff**: Go's implicit interfaces make hexagonal feel native: the core package declares
 `Orders`, and the postgres package implements it by importing the *core*, so dependencies point
 inward with no wiring framework. Tests pass a struct with a `Save` method. Verbosity lives in the
 composition root in `main`, where every adapter is constructed and injected by hand.
@@ -305,7 +305,7 @@ composition root in `main`, where every adapter is constructed and injected by h
 **❌ Naive**
 
 ```csharp
-// The use case news up the database client — core welded to infrastructure.
+// The use case news up the database client: core welded to infrastructure.
 public sealed class PlaceOrder
 {
     public async Task DoAsync(Cart cart)
@@ -320,7 +320,7 @@ public sealed class PlaceOrder
 **✅ Idiomatic**
 
 ```csharp
-// Core project — owns the port and the rule; references no other project.
+// Core project: owns the port and the rule; references no other project.
 public record Order(Cart Cart, string Status);
 
 public interface IOrders                       // driven port, owned by the core
@@ -337,7 +337,7 @@ public sealed class PlaceOrder(IOrders orders)
     }
 }
 
-// Infrastructure project — references the core, never the reverse.
+// Infrastructure project: references the core, never the reverse.
 public sealed class PostgresOrders(NpgsqlDataSource db) : IOrders
 {
     public Task SaveAsync(Order order) =>
@@ -345,10 +345,10 @@ public sealed class PostgresOrders(NpgsqlDataSource db) : IOrders
 }
 
 // Composition root: builder.Services.AddScoped<IOrders, PostgresOrders>();
-// Tests: new PlaceOrder(new InMemoryOrders()) — no container, no database.
+// Tests: new PlaceOrder(new InMemoryOrders()), no container, no database.
 ```
 
-**🧠 Tradeoff** — The assembly boundary makes "dependencies point inward" compiler-enforced: the
+**🧠 Tradeoff**: The assembly boundary makes "dependencies point inward" compiler-enforced: the
 core project has zero package references, so an EF or Npgsql import in the domain is a build
 error, not a code-review catch. ASP.NET's DI container is the composition root, which trims the
 wiring Go writes by hand at the cost of some indirection. For a single-method port a
@@ -362,7 +362,7 @@ wiring Go writes by hand at the cost of some indirection. For a single-method po
 **❌ Naive**
 
 ```rust
-// The use case takes the concrete client — core tied to the database crate.
+// The use case takes the concrete client: core tied to the database crate.
 fn place_order(db: &mut postgres::Client, cart: &Cart) -> Result<(), Error> {
     if cart.items.is_empty() {
         return Err(Error::EmptyCart);
@@ -375,7 +375,7 @@ fn place_order(db: &mut postgres::Client, cart: &Cart) -> Result<(), Error> {
 **✅ Idiomatic**
 
 ```rust
-// core/ — owns the port (a trait) and the rule; no infrastructure imports.
+// core/: owns the port (a trait) and the rule; no infrastructure imports.
 struct Cart { items: Vec<String> }
 struct Order { cart: Cart, status: &'static str }
 
@@ -394,7 +394,7 @@ impl<O: Orders> PlaceOrder<O> {
     }
 }
 
-// adapters/ — depends on the core and implements its trait.
+// adapters/: depends on the core and implements its trait.
 struct InMemoryOrders { saved: Vec<Order> }
 
 impl Orders for InMemoryOrders {
@@ -411,7 +411,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — The trait is the port, and crate boundaries enforce the direction: a core crate
+**🧠 Tradeoff**: The trait is the port, and crate boundaries enforce the direction: a core crate
 whose `Cargo.toml` lists no database dependency provably can't depend on one. Rust then makes you
 pick what Go and C# hide: `PlaceOrder<O: Orders>` monomorphizes each adapter to static-dispatch
 code but fixes it at compile time, while `Box<dyn Orders>` lets config choose the adapter at
@@ -425,7 +425,7 @@ value, so the core hands data outward and keeps no strings attached.
 **❌ Naive**
 
 ```zig
-// The use case calls the concrete store directly — core knows the storage type.
+// The use case calls the concrete store directly: core knows the storage type.
 fn placeOrder(store: *PostgresStore, items: []const []const u8) !void {
     if (items.len == 0) return error.EmptyCart;
     try store.insert(items); // swap the store, edit the core
@@ -440,7 +440,7 @@ const std = @import("std");
 const Order = struct { items: []const []const u8, status: []const u8 };
 
 // The port. Zig has no interfaces, so we build one from a context pointer
-// plus a function pointer — the same idiom std.mem.Allocator uses.
+// plus a function pointer: the same idiom std.mem.Allocator uses.
 const Orders = struct {
     ctx: *anyopaque,
     saveFn: *const fn (ctx: *anyopaque, order: Order) anyerror!void,
@@ -480,7 +480,7 @@ pub fn main() !void {
 }
 ```
 
-**🧠 Tradeoff** — Zig won't give you an interface, so the port is built by hand: an `*anyopaque`
+**🧠 Tradeoff**: Zig won't give you an interface, so the port is built by hand: an `*anyopaque`
 context, a function pointer, and an `@ptrCast` back on the adapter side. That's more ceremony
 than `interface`/`trait`, and more honest, because the indirection you pay is sitting right
 there in the source. When every adapter is known at compile time, a comptime generic
@@ -496,7 +496,7 @@ convention the core owns.
 **❌ Naive**
 
 ```java
-// The use case opens its own connection — core welded to JDBC and the schema.
+// The use case opens its own connection: core welded to JDBC and the schema.
 class PlaceOrder {
     void call(List<String> items) throws SQLException {
         if (items.isEmpty()) throw new IllegalStateException("empty cart");
@@ -513,7 +513,7 @@ class PlaceOrder {
 import java.util.ArrayList;
 import java.util.List;
 
-// core — owns the port and the rule; imports no infrastructure.
+// core: owns the port and the rule; imports no infrastructure.
 record Order(List<String> items, String status) {}
 
 interface Orders {                       // driven port, owned by the core
@@ -530,7 +530,7 @@ class PlaceOrder {
     }
 }
 
-// adapter — implements the core's port; depends inward, never the reverse.
+// adapter: implements the core's port; depends inward, never the reverse.
 class InMemoryOrders implements Orders {
     final List<Order> saved = new ArrayList<>();
     public void save(Order order) { saved.add(order); }
@@ -542,14 +542,14 @@ public class Demo {
         new PlaceOrder(store).call(List.of("book"));
         System.out.println("saved: " + store.saved.size()); // saved: 1
 
-        // Orders is a single method — a functional interface — so a fake is a lambda:
+        // Orders is a single method (a functional interface) so a fake is a lambda:
         new PlaceOrder(order -> System.out.println("status: " + order.status()))
             .call(List.of("pen")); // status: placed
     }
 }
 ```
 
-**🧠 Tradeoff** — Java's `interface` was built for exactly this seam, and putting the core in its
+**🧠 Tradeoff**: Java's `interface` was built for exactly this seam, and putting the core in its
 own build module makes the direction enforceable: a core module with zero dependencies provably
 can't import JDBC. JPMS goes one step further: `module-info.java` exporting only the ports is
 the architecture written as code, but a Maven/Gradle module split is where most teams sensibly
@@ -560,22 +560,22 @@ DI-container-wired) composition root remain, and that part no language sugar rem
 
 ## Applications
 
-- **Long-lived services** — systems expected to outlive their initial database/framework choices
+- **Long-lived services**: systems expected to outlive their initial database/framework choices
   protect the domain behind ports (backend).
-- **Multi-transport APIs** — one core served over REST, GraphQL, gRPC, and a queue consumer, each a
+- **Multi-transport APIs**: one core served over REST, GraphQL, gRPC, and a queue consumer, each a
   driving adapter (backend).
-- **Testable business logic** — fintech/healthcare domains with heavy rules run their core against
+- **Testable business logic**: fintech/healthcare domains with heavy rules run their core against
   in-memory adapters for fast, exhaustive tests (backend).
-- **Provider portability** — swapping payment, email, or storage providers becomes writing one
+- **Provider portability**: swapping payment, email, or storage providers becomes writing one
   adapter, not editing the domain (backend).
-- **Migration & strangler work** — a clean core lets old and new infrastructure coexist behind the
+- **Migration & strangler work**: a clean core lets old and new infrastructure coexist behind the
   same ports during a migration (backend).
 
 ## Related Patterns
 
-- **Layered Architecture** — hexagonal is layering with the dependencies inverted: the domain is
+- **Layered Architecture**: hexagonal is layering with the dependencies inverted: the domain is
   the center, not the top, and infrastructure plugs in rather than sitting beneath.
-- **Repository** — the archetypal driven port; a repository interface owned by the domain with
+- **Repository**: the archetypal driven port; a repository interface owned by the domain with
   database adapters behind it.
-- **Dependency Inversion** — the principle hexagonal is built on: depend on abstractions the core
+- **Dependency Inversion**: the principle hexagonal is built on: depend on abstractions the core
   owns, not on concrete infrastructure.

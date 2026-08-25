@@ -36,10 +36,10 @@ Command makes each action a first-class object you can push onto a history stack
 
 Key Components:
 
-- **Command** — the interface: `execute()`, often `undo()`.
-- **Concrete Command** — binds a receiver and parameters; does the work in `execute`.
-- **Receiver** — the object the command acts on.
-- **Invoker** — triggers commands and may keep a history (undo/redo, queue).
+- **Command**: the interface: `execute()`, often `undo()`.
+- **Concrete Command**: binds a receiver and parameters; does the work in `execute`.
+- **Receiver**: the object the command acts on.
+- **Invoker**: triggers commands and may keep a history (undo/redo, queue).
 
 ## When to Use
 
@@ -61,9 +61,9 @@ Key Components:
 
 ## Common Mistakes
 
-- **`undo` that doesn't fully restore** — capture the state needed to reverse, or undo lies.
-- **Fat commands** — a command should delegate to a receiver, not reimplement the domain.
-- **Confusing it with Strategy** — Command encapsulates a *request to do something* (with undo);
+- **`undo` that doesn't fully restore**: capture the state needed to reverse, or undo lies.
+- **Fat commands**: a command should delegate to a receiver, not reimplement the domain.
+- **Confusing it with Strategy**: Command encapsulates a *request to do something* (with undo);
   Strategy encapsulates *how* to compute something interchangeable.
 
 ## Key Takeaways
@@ -112,7 +112,7 @@ history.run(new InsertText(editor, "hello"));  // text: "hello"
 history.undo();                                // text: ""
 ```
 
-**🧠 Tradeoff** — Making each edit a command turns undo/redo into a stack of objects — the pattern
+**🧠 Tradeoff**: Making each edit a command turns undo/redo into a stack of objects, the pattern
 behind every text editor and design tool. The cost is capturing enough state to reverse (`undo`
 here knows the inserted length); richer edits may store a snapshot (that's Memento's job).
 
@@ -123,7 +123,7 @@ here knows the inserted length); richer edits may store a snapshot (that's Memen
 **❌ Naive**
 
 ```js
-// Work runs inline in the route handler — can't queue, retry, or defer it.
+// Work runs inline in the route handler: can't queue, retry, or defer it.
 app.post("/resize", async (req, res) => {
   await sharp(req.file).resize(800).toFile(out);   // blocks the request; no retry
   res.send("done");
@@ -146,7 +146,7 @@ class JobQueue {
     while (this.#queue.length) {
       const cmd = this.#queue.shift();
       try { await cmd.execute(); }
-      catch { this.#queue.push(cmd); }   // requeue on failure — retry for free
+      catch { this.#queue.push(cmd); }   // requeue on failure: retry for free
     }
   }
 }
@@ -155,7 +155,7 @@ const jobs = new JobQueue();
 jobs.enqueue(new ResizeImageCommand("in.jpg", 800));  // request returns immediately
 ```
 
-**🧠 Tradeoff** — On the backend, Command turns work into queueable jobs — decoupling accepting a
+**🧠 Tradeoff**: On the backend, Command turns work into queueable jobs, decoupling accepting a
 request from doing it, and making retry, scheduling, and logging trivial (this is how BullMQ and
 similar job queues model tasks). The tradeoff is serializing commands if the queue is durable
 (Redis/DB), since a closure can't be persisted but a plain command object can.
@@ -208,7 +208,7 @@ history.run(InsertText(editor, "hello"))
 history.undo()
 ```
 
-**🧠 Tradeoff** — A `Command` `Protocol` types the `execute`/`undo` contract. Python's first-class
+**🧠 Tradeoff**: A `Command` `Protocol` types the `execute`/`undo` contract. Python's first-class
 functions mean simple, undo-less commands can just be callables on a queue; you reach for command
 *objects* precisely when you need the paired `undo` or extra metadata a bare function can't carry.
 
@@ -228,7 +228,7 @@ def on_click(text), do: text <> "hello"
 ```elixir
 # A command is data; a reducer executes it and history is a list of commands.
 defmodule Editor do
-  # commands are plain structs/tuples — trivially serializable and replayable
+  # commands are plain structs/tuples: trivially serializable and replayable
   def apply(text, {:insert, str}), do: text <> str
   def unapply(text, {:insert, str}), do: String.slice(text, 0, byte_size(text) - byte_size(str))
 end
@@ -243,7 +243,7 @@ end
 {text, done} = History.run(%{text: "", done: []}, {:insert, "hello"})
 ```
 
-**🧠 Tradeoff** — In Elixir a command is naturally *data* (a tagged tuple), and executing it is a
+**🧠 Tradeoff**: In Elixir a command is naturally *data* (a tagged tuple), and executing it is a
 pure reducer `(state, command) -> state`. Because commands are plain terms, an undo stack, an
 audit log, and event sourcing all fall out for free, and the commands serialize with no special
 handling, unlike closures.
@@ -290,7 +290,7 @@ func (h *History) Undo() {
 }
 ```
 
-**🧠 Tradeoff** — Any type with `Execute`/`Undo` is a `Command`, so the `History` invoker stores a
+**🧠 Tradeoff**: Any type with `Execute`/`Undo` is a `Command`, so the `History` invoker stores a
 `[]Command` of mixed actions. For fire-and-forget commands (no undo), Go often uses a `func()`
 value or sends work over a channel to a worker pool; the interface earns its keep when you need
 undo or command metadata.
@@ -347,7 +347,7 @@ public sealed class History
 }
 ```
 
-**🧠 Tradeoff** — the interface earns its keep for the paired `Undo`; for fire-and-forget
+**🧠 Tradeoff**: the interface earns its keep for the paired `Undo`; for fire-and-forget
 work, C# reaches for a bare delegate (`Action`), which is a command with no reverse gear.
 `History` is just a `Stack<ICommand>`, and a redo stack is a second one. For the backend-queue
 variant of this pattern, write commands into a `System.Threading.Channels.Channel<ICommand>`
@@ -419,7 +419,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — the receiver goes *into* `execute`/`undo` rather than living in the command:
+**🧠 Tradeoff**: the receiver goes *into* `execute`/`undo` rather than living in the command:
 a command holding `&mut Editor` would keep the editor mutably borrowed for as long as the
 history lives, and the borrow checker rightly refuses. That nudge is useful: commands become
 receiver-free data. Take the hint further and a closed command set becomes
@@ -435,7 +435,7 @@ free. Keep `Box<dyn Command>` when new commands must arrive from outside the cra
 ```zig
 // The action is inlined in the handler; nothing to store, undo, or replay.
 fn handleClick(editor: *Editor) void {
-    editor.insert("hello"); // the action runs and is gone — no undo, no replay
+    editor.insert("hello"); // the action runs and is gone, no undo, no replay
 }
 ```
 
@@ -500,7 +500,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — with no closures, Zig's natural command is a tagged union — the same
+**🧠 Tradeoff**: with no closures, Zig's natural command is a tagged union, the same
 commands-as-data shape as the Elixir tab, and plain bytes, so a durable queue or an audit log
 serializes it with no ceremony. The exhaustive `switch` means adding a `delete` variant makes
 the compiler point at every place that must handle it. The cost is a closed set: outside code
@@ -573,7 +573,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — Java already collapsed the fire-and-forget half of this pattern into
+**🧠 Tradeoff**: Java already collapsed the fire-and-forget half of this pattern into
 `Runnable`: every `executor.submit(() -> ...)` is a command on a queue, and an
 `ExecutorService` draining a `BlockingQueue<Runnable>` is the Node.js tab's job queue shipped
 in `java.util.concurrent`. So the lambda is the default. The two-method interface earns its
@@ -585,24 +585,24 @@ where the classic form still gets written out (Swing's `UndoableEdit` is the sam
 
 Real-world uses of Command (from the reference article), by tier:
 
-- **Frontend** — undo/redo in editors, toolbar actions, keyboard-shortcut dispatch, replaying
+- **Frontend**: undo/redo in editors, toolbar actions, keyboard-shortcut dispatch, replaying
   user actions, game input (move commands).
-- **Backend** — job/task queues, background workers, transactional operations, request logging
+- **Backend**: job/task queues, background workers, transactional operations, request logging
   and replay, CQRS command handlers.
-- **Both** — macros (a command of commands), remote procedure invocation.
+- **Both**: macros (a command of commands), remote procedure invocation.
 
 **In modern systems:**
 
-- **Low-code** — a button's `"action": {...}` JSON becomes a Command the runtime dispatches, so the
+- **Low-code**: a button's `"action": {...}` JSON becomes a Command the runtime dispatches, so the
   UI's behavior is authored as data, not wired in code.
-- **Workflow engine** — each step is a Command: queued, logged, retried, replayed, and rolled back
+- **Workflow engine**: each step is a Command: queued, logged, retried, replayed, and rolled back
   through a paired compensating command.
-- **Multi-agent** — a tool call is a Command object the orchestrator can log, gate behind approval,
+- **Multi-agent**: a tool call is a Command object the orchestrator can log, gate behind approval,
   and re-run deterministically when replaying a session.
 
 ## Related Patterns
 
-- **Memento** — pairs with Command for undo: the memento snapshots state a command restores.
-- **Strategy** — Strategy varies an algorithm; Command reifies a whole request (with undo).
-- **Composite** — a macro command is a composite of commands.
-- **Chain of Responsibility** — a command can be the request passed along a handler chain.
+- **Memento**: pairs with Command for undo: the memento snapshots state a command restores.
+- **Strategy**: Strategy varies an algorithm; Command reifies a whole request (with undo).
+- **Composite**: a macro command is a composite of commands.
+- **Chain of Responsibility**: a command can be the request passed along a handler chain.

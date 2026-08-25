@@ -28,26 +28,26 @@ composition over configuration: rather than a `tabs={[...]}` prop describing eve
 
 A "do everything through props" component collapses under its own configurability:
 
-- **Prop explosion** — a `<Tabs>` that takes `tabs`, `labels`, `icons`, `renderTab`, `activeIndex`,
+- **Prop explosion**: a `<Tabs>` that takes `tabs`, `labels`, `icons`, `renderTab`, `activeIndex`,
   `onChange`, `tabClassName`, `panelClassName`... becomes an unusable configuration language.
-- **No layout control** — the component decides the markup, so you can't put a divider between two
+- **No layout control**: the component decides the markup, so you can't put a divider between two
   tabs or wrap one in a tooltip without a new prop.
-- **Rigid structure** — supporting a new arrangement means adding yet another prop or a render-prop
+- **Rigid structure**: supporting a new arrangement means adding yet another prop or a render-prop
   escape hatch.
-- **Threaded state** — if the user *does* compose the pieces, they're stuck manually passing
+- **Threaded state**: if the user *does* compose the pieces, they're stuck manually passing
   `activeIndex`/`onChange` between every child.
 
 ## Structure
 
 Key Components:
 
-- **Parent** — owns the shared state (e.g., which tab is active) and provides it implicitly to its
+- **Parent**: owns the shared state (e.g., which tab is active) and provides it implicitly to its
   children (via context/slots), plus the API to change it.
-- **Child components** — the composable pieces (`Tab`, `TabPanel`, `TabList`); each reads/uses the
+- **Child components**: the composable pieces (`Tab`, `TabPanel`, `TabList`); each reads/uses the
   shared state without being handed it explicitly.
-- **Implicit communication** — the children coordinate through the parent's context/scope, not
+- **Implicit communication**: the children coordinate through the parent's context/scope, not
   through props the user threads.
-- **Composition** — the user arranges the children in markup; the structure expresses intent.
+- **Composition**: the user arranges the children in markup; the structure expresses intent.
 
 ```
 [ Tabs (parent) ] ── shares context (active tab) ──► TabList
@@ -66,27 +66,27 @@ Key Components:
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Flexible composition** — users arrange, wrap, and style the parts however they like.
-- **Clean API** — the markup structure expresses intent; no giant prop object.
-- **Encapsulated state** — the parent manages coordination; children stay simple and dumb.
+- **Flexible composition**: users arrange, wrap, and style the parts however they like.
+- **Clean API**: the markup structure expresses intent; no giant prop object.
+- **Encapsulated state**: the parent manages coordination; children stay simple and dumb.
 
 ### Disadvantages
-- **Implicit coupling** — children only work inside their parent, and that requirement isn't visible
+- **Implicit coupling**: children only work inside their parent, and that requirement isn't visible
   in a signature.
-- **Discoverability** — which children exist and how they combine is less obvious than a typed props
+- **Discoverability**: which children exist and how they combine is less obvious than a typed props
   list.
-- **Misuse is easy** — a child used outside its parent (or nested wrong) fails at runtime, often
+- **Misuse is easy**: a child used outside its parent (or nested wrong) fails at runtime, often
   with a confusing error.
 
 ## Common Mistakes
 
-- **No guard for orphaned children** — a child rendered outside its parent should fail with a clear
+- **No guard for orphaned children**: a child rendered outside its parent should fail with a clear
   message, not a cryptic null-context error.
-- **Leaking too much internal state** — exposing the entire parent state to children invites misuse;
+- **Leaking too much internal state**: exposing the entire parent state to children invites misuse;
   share only what the children need.
-- **Over-applying it** — a component with two fixed parts doesn't need compound composition; a couple
+- **Over-applying it**: a component with two fixed parts doesn't need compound composition; a couple
   of props are simpler.
-- **Losing accessibility wiring** — flexible composition can break the aria/roles the parts need;
+- **Losing accessibility wiring**: flexible composition can break the aria/roles the parts need;
   the parent should still wire relationships (ids, roles) implicitly.
 
 ## Key Takeaways
@@ -103,7 +103,7 @@ Key Components:
 **❌ Naive**
 
 ```jsx
-// One component configured entirely by props — inflexible and prop-heavy.
+// One component configured entirely by props: inflexible and prop-heavy.
 <Tabs
   tabs={[{ label: "A", content: <A /> }, { label: "B", content: <B /> }]}
   activeIndex={i}
@@ -137,7 +137,7 @@ Tabs.Tab = Tab; Tabs.Panel = TabPanel;
 //   <Tabs.Panel index={0}><A/></Tabs.Panel> ...</Tabs>  ← arrange freely
 ```
 
-**🧠 Tradeoff** — Context lets `Tab` and `TabPanel` share the active index without the user threading
+**🧠 Tradeoff**: Context lets `Tab` and `TabPanel` share the active index without the user threading
 it, so the markup composes freely (insert a `<Divider/>`, wrap a `<Tab>` in a tooltip). It's the API
 behind Radix, Reach UI, and headless component libraries. The cost is implicit coupling (a `<Tab>`
 outside `<Tabs>` breaks) so guard the context read with a helpful error.
@@ -147,7 +147,7 @@ outside `<Tabs>` breaks) so guard the context read with a helpful error.
 **❌ Naive**
 
 ```js
-// A server template partial configured by one big options object — no composition.
+// A server template partial configured by one big options object, no composition.
 res.render("tabs", {
   tabs: [{ label: "A", body: htmlA }, { label: "B", body: htmlB }],
   active: 0, // can't interleave custom markup between tabs
@@ -171,7 +171,7 @@ res.render("layouts/tabs", {
 });
 ```
 
-**🧠 Tradeoff** — Server templates express compound components through **slots/blocks**: the parent
+**🧠 Tradeoff**: Server templates express compound components through **slots/blocks**: the parent
 layout owns the shared state and structure, and the page fills named regions with child partials it
 composes. It's less dynamic than client-side context (the "shared state" is baked at render time,
 enhanced with a little JS for interactivity), but the composition-over-configuration idea carries:
@@ -182,7 +182,7 @@ the page arranges the parts rather than passing one options blob.
 **❌ Naive**
 
 ```python
-# One template tag configured by a dict — rigid, no interleaving.
+# One template tag configured by a dict: rigid, no interleaving.
 {% tabs config=tabs_config active=0 %}   {# can't customize per-tab markup #}
 ```
 
@@ -204,7 +204,7 @@ def tabs(*children): return rx.box(*children, class_name="tabs")  # parent
 def tab(index, label): return rx.button(label, on_click=State.set_active(index))  # child reads State
 ```
 
-**🧠 Tradeoff** — Django/Jinja template inheritance provides the server-side compound shape via
+**🧠 Tradeoff**: Django/Jinja template inheritance provides the server-side compound shape via
 `block` slots a child page fills, with the parent owning structure. For interactive Python UIs,
 Reflex/Flet express it as nested components sharing a `State` object, closer to the React model. The
 principle holds across both: the parent coordinates, the consumer composes named parts rather than
@@ -215,7 +215,7 @@ configuring one component.
 **❌ Naive**
 
 ```elixir
-# A component driven by one big attr — can't interleave or customize parts.
+# A component driven by one big attr: can't interleave or customize parts.
 <.tabs items={[%{label: "A", body: ~H"<A/>"}, %{label: "B", body: ~H"<B/>"}]} active={0} />
 ```
 
@@ -253,7 +253,7 @@ end
 #   </.tabs>
 ```
 
-**🧠 Tradeoff** — Phoenix HEEx has **slots** as a first-class feature: a component declares named
+**🧠 Tradeoff**: Phoenix HEEx has **slots** as a first-class feature: a component declares named
 slots (`:tab`, `:panel`) with their own attrs, and the caller composes them in markup while the
 parent owns the shared `active` state and wiring. It's the cleanest server-side expression of the
 pattern here (typed, validated slots with composition) and LiveView makes the selection interactive
@@ -264,7 +264,7 @@ without client JS.
 **❌ Naive**
 
 ```go
-// A template helper taking a slice of tab structs — no per-tab composition.
+// A template helper taking a slice of tab structs, no per-tab composition.
 tabsTmpl.Execute(w, TabsData{Active: 0, Tabs: []Tab{{"A", bodyA}, {"B", bodyB}}})
 ```
 
@@ -272,7 +272,7 @@ tabsTmpl.Execute(w, TabsData{Active: 0, Tabs: []Tab{{"A", bodyA}, {"B", bodyB}}}
 
 ```go
 // templ components compose: a parent component owns state; children are passed as content.
-// (templ syntax — typed, composable render functions)
+// (templ syntax: typed, composable render functions)
 templ Tabs(active int) {
     <div class="tabs" data-active={ strconv.Itoa(active) }>
         { children... }   // slot: caller composes the child components here
@@ -289,7 +289,7 @@ templ Tab(index int, label string, active int) {
 //   }
 ```
 
-**🧠 Tradeoff** — `templ` gives Go typed, composable components with a `children...` slot, so a parent
+**🧠 Tradeoff**: `templ` gives Go typed, composable components with a `children...` slot, so a parent
 `Tabs` component wraps child `Tab`/`Panel` components the caller arranges: compound composition with
 compile-time checking. The shared `active` state is passed explicitly (Go has no implicit context in
 templates), which is more verbose than React's context but keeps the data flow visible. Plain
@@ -297,22 +297,22 @@ templates), which is more verbose than React's context but keeps the data flow v
 
 ## Applications
 
-- **Headless UI libraries** — Radix, Reach UI, Headless UI, and Ark expose tabs/menus/dialogs as
+- **Headless UI libraries**: Radix, Reach UI, Headless UI, and Ark expose tabs/menus/dialogs as
   compound components for maximum composition (frontend).
-- **Form builders** — `<Form>`, `<Field>`, `<Label>`, `<Error>` sharing form state implicitly
+- **Form builders**: `<Form>`, `<Field>`, `<Label>`, `<Error>` sharing form state implicitly
   (frontend).
-- **Layout primitives** — `<Table>`/`<Row>`/`<Cell>`, `<Menu>`/`<MenuItem>`, `<Accordion>`/`<Item>`
+- **Layout primitives**: `<Table>`/`<Row>`/`<Cell>`, `<Menu>`/`<MenuItem>`, `<Accordion>`/`<Item>`
   (frontend).
-- **Design systems** — components that must be arranged flexibly while staying wired for
+- **Design systems**: components that must be arranged flexibly while staying wired for
   accessibility (frontend).
-- **Server-rendered slots** — Phoenix slots, Django blocks, and templ children compose page sections
+- **Server-rendered slots**: Phoenix slots, Django blocks, and templ children compose page sections
   server-side (backend).
 
 ## Related Patterns
 
-- **Provider / Context** — the usual mechanism for the implicit shared state: the parent provides
+- **Provider / Context**: the usual mechanism for the implicit shared state: the parent provides
   context the children consume.
-- **Composite** — like Composite, it forms a part-whole tree of components; compound components add
+- **Composite**: like Composite, it forms a part-whole tree of components; compound components add
   shared coordination state among the parts.
-- **Container / Presentational** — the compound parent is a small stateful container; its children are
+- **Container / Presentational**: the compound parent is a small stateful container; its children are
   presentational parts arranged by the consumer.

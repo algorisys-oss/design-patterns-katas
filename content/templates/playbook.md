@@ -22,7 +22,7 @@ What you're building, and the thesis. A playbook is the reverse of a kata: it st
 ## The Shape
 
 ```
-an ASCII architecture sketch of the system — the pieces and how data flows between them
+an ASCII architecture sketch of the system: the pieces and how data flows between them
 ```
 
 One paragraph reading the sketch.
@@ -31,8 +31,8 @@ One paragraph reading the sketch.
 
 The reverse index: each pattern, why it's here, and (by name) which kata teaches it.
 
-- **Pattern** — what role it plays in this system.
-- **Pattern** — ...
+- **Pattern**: what role it plays in this system.
+- **Pattern**: ...
 
 (Optionally, a bridging paragraph pointing at a sibling family, e.g. the AI & LLM patterns an
 agent runtime is built from.)
@@ -47,8 +47,8 @@ show that the pattern kernel is constant while the surface modernizes.
 
 ## Pitfalls
 
-- **Pitfall** — the trap and how the pattern set avoids it.
+- **Pitfall**: the trap and how the pattern set avoids it.
 
 ## Related Playbooks
 
-- **Other playbook** — how it connects to this one.
+- **Other playbook**: how it connects to this one.

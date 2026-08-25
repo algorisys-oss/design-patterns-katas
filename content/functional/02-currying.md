@@ -29,23 +29,23 @@ to `map`/`filter`, and reads at the call site as exactly the operation you mean.
 Passing the same "context" arguments through every call is noise, and generic functions don't fit
 higher-order callers cleanly:
 
-- **Repeated arguments** — every call to `log(level, module, message)` repeats `level` and `module`;
+- **Repeated arguments**: every call to `log(level, module, message)` repeats `level` and `module`;
   the varying part is buried among constants.
-- **Awkward for `map`/`filter`** — `items.map(x => multiply(3, x))` needs a wrapper lambda just to
+- **Awkward for `map`/`filter`**: `items.map(x => multiply(3, x))` needs a wrapper lambda just to
   fix `3`; you can't hand `multiply` directly.
-- **No specialization** — you want an `addTax(price)` derived from a general `add(rate, price)`, but
+- **No specialization**: you want an `addTax(price)` derived from a general `add(rate, price)`, but
   without partial application you re-thread `rate` everywhere.
-- **Poor composition** — pipelines want unary functions; multi-arg functions don't slot in without
+- **Poor composition**: pipelines want unary functions; multi-arg functions don't slot in without
   adapters.
 
 ## Structure
 
 Key Components:
 
-- **Curry** — a transform that turns an n-ary function into nested unary functions.
-- **Partial application** — fixing a prefix (or subset) of arguments, returning a function of the rest.
-- **Closures** — the mechanism: each returned function captures the arguments supplied so far.
-- **Specialized function** — the result: a smaller-arity function ready to compose or pass along.
+- **Curry**: a transform that turns an n-ary function into nested unary functions.
+- **Partial application**: fixing a prefix (or subset) of arguments, returning a function of the rest.
+- **Closures**: the mechanism: each returned function captures the arguments supplied so far.
+- **Specialized function**: the result: a smaller-arity function ready to compose or pass along.
 
 ```
 f(a, b, c)  ──curry──►  f(a)(b)(c)          (chain of unary functions)
@@ -62,26 +62,26 @@ f(a, b, c)  ──partial(a)──►  g(b, c)        (a fixed; g awaits b, c)
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Specialization** — derive focused functions by fixing the stable arguments once.
-- **Composability** — unary functions slot cleanly into pipelines and higher-order calls.
-- **Readable call sites** — `addTax(price)` says more than `add(0.2, price)` repeated everywhere.
+- **Specialization**: derive focused functions by fixing the stable arguments once.
+- **Composability**: unary functions slot cleanly into pipelines and higher-order calls.
+- **Readable call sites**: `addTax(price)` says more than `add(0.2, price)` repeated everywhere.
 
 ### Disadvantages
-- **Cognitive overhead** — heavy currying (point-free style) can become cryptic and hard to debug.
-- **Argument order matters** — currying fixes arguments left-to-right, so the API's parameter order
+- **Cognitive overhead**: heavy currying (point-free style) can become cryptic and hard to debug.
+- **Argument order matters**: currying fixes arguments left-to-right, so the API's parameter order
   dictates what you can partially apply.
-- **Not idiomatic everywhere** — in some languages currying is unnatural and reads as cleverness
+- **Not idiomatic everywhere**: in some languages currying is unnatural and reads as cleverness
   rather than clarity.
 
 ## Common Mistakes
 
-- **Over-currying into unreadable point-free code** — chaining a dozen partial applications to avoid
+- **Over-currying into unreadable point-free code**: chaining a dozen partial applications to avoid
   naming anything hurts readability more than it helps; name intermediate functions.
-- **Wrong argument order** — putting the *varying* argument first makes the stable ones un-fixable;
+- **Wrong argument order**: putting the *varying* argument first makes the stable ones un-fixable;
   order parameters config-first, data-last for partial application.
-- **Confusing currying with partial application** — currying always produces unary steps; partial
+- **Confusing currying with partial application**: currying always produces unary steps; partial
   application fixes any subset, so reach for the one you actually need.
-- **Losing `this`/receiver** — currying methods can drop their binding; bind or use standalone
+- **Losing `this`/receiver**: currying methods can drop their binding; bind or use standalone
   functions.
 
 ## Key Takeaways
@@ -113,7 +113,7 @@ receipt.map((amount) => price(0.2, amount)); // again
 const price = (rate) => (amount) => amount + amount * rate;
 const withVat = price(0.2);            // partial application → a named unary function
 
-cart.map(withVat);                     // hand it straight to map — no wrapper
+cart.map(withVat);                     // hand it straight to map, no wrapper
 receipt.map(withVat);
 
 // a generic curry helper for existing multi-arg functions:
@@ -122,7 +122,7 @@ const curry = (fn) => function curried(...args) {
 };
 ```
 
-**🧠 Tradeoff** — Writing `price` as `(rate) => (amount) => ...` makes `withVat` fall out naturally and
+**🧠 Tradeoff**: Writing `price` as `(rate) => (amount) => ...` makes `withVat` fall out naturally and
 slot into `map` with no wrapper. Arrow functions and closures make this idiomatic in JS, and Ramda/
 lodash provide `curry`/`partial` for existing functions. The caution is restraint: a little currying
 clarifies, but stacking it into fully point-free pipelines can become write-only code.
@@ -152,7 +152,7 @@ const makeGetUser = (db) => (id) => db.users.findById(id); // fix db once
 const getUser = makeGetUser(pool);      // hand `getUser` around; db is baked in
 ```
 
-**🧠 Tradeoff** — Partial application is a lightweight dependency-injection idiom in Node: fix the
+**🧠 Tradeoff**: Partial application is a lightweight dependency-injection idiom in Node: fix the
 `db`/config once with `makeGetUser(pool)` and pass the specialized function around, no container
 needed. It also builds tidy, composable logging/middleware. The same restraint applies: a couple of
 levels reads well; deeply nested `f(a)(b)(c)(d)` chains obscure intent, so name the specializations.
@@ -185,7 +185,7 @@ def price_curried(rate):
 with_vat = price_curried(0.2)
 ```
 
-**🧠 Tradeoff** — `functools.partial` is Python's idiomatic partial application — it fixes leading
+**🧠 Tradeoff**: `functools.partial` is Python's idiomatic partial application; it fixes leading
 arguments and returns a callable, no lambda needed. Full currying is less common (Python favors
 named args and `partial`), but closures express it when wanted. `partial` shines for adapting
 functions to `map`/callbacks and for injecting configuration; deep currying tends to read as
@@ -217,7 +217,7 @@ add_ten = &add.(10, &1)                    # partially applied → unary
 Enum.map(nums, add_ten)
 ```
 
-**🧠 Tradeoff** — Elixir functions aren't auto-curried, but closures and the capture operator
+**🧠 Tradeoff**: Elixir functions aren't auto-curried, but closures and the capture operator
 (`&fun/arity`, `&f.(x, &1)`) make partial application natural, and the pipe operator (`|>`) rewards
 the unary functions it produces. It fits the language's functional grain. Full currying is uncommon
 (Elixir prefers explicit multi-arity functions and `|>`), so partial application via captures is the
@@ -254,7 +254,7 @@ func makeGetUser(db *DB) func(id string) (User, error) {
 }
 ```
 
-**🧠 Tradeoff** — Go has no currying syntax, but a function returning a `func` is idiomatic partial
+**🧠 Tradeoff**: Go has no currying syntax, but a function returning a `func` is idiomatic partial
 application, and it's the standard way to bake a dependency (`db`) or config (`rate`) into a
 handler. It's more verbose than curried languages (you write the closure explicitly) and Go
 programmers use it sparingly, favoring plain functions and structs; but for fixing config and
@@ -285,13 +285,13 @@ var withVat = price(0.2m);                        // partial application → nam
 decimal[] cart = [100m, 250m];
 Console.WriteLine(string.Join(", ", cart.Select(withVat))); // 120.0, 300.0
 
-// The same idiom bakes a dependency in — injection without a container:
+// The same idiom bakes a dependency in: injection without a container:
 Func<HttpClient, Func<string, Task<string>>> makeFetch =
     http => url => http.GetStringAsync(url);
 var fetch = makeFetch(new HttpClient());          // client fixed; hand `fetch` around
 ```
 
-**🧠 Tradeoff** — lambdas and closures make currying expressible in C#, and a specialized
+**🧠 Tradeoff**: lambdas and closures make currying expressible in C#, and a specialized
 `Func<decimal, decimal>` slots straight into LINQ with no wrapper. But the type spells the cost
 out loud: `Func<decimal, Func<decimal, decimal>>` is noise where JS reads clean. Idiomatic C#
 uses partial application at the edges (fixing a dependency or a config value) and gives the
@@ -335,7 +335,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — Rust has no auto-currying; a function returning `impl Fn` is the
+**🧠 Tradeoff**: Rust has no auto-currying; a function returning `impl Fn` is the
 partial-application idiom, and `move` makes the captured config's ownership explicit: the
 borrow checker forces you to say who owns `rate`, which JS never asks. Returning different
 closures from different branches needs `Box<dyn Fn>` (one heap hop). Rust code reaches for this
@@ -397,7 +397,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — be honest: Zig has no closures, so currying doesn't survive the port intact.
+**🧠 Tradeoff**: be honest: Zig has no closures, so currying doesn't survive the port intact.
 The `comptime` form generates a real specialized function at zero runtime cost, but only for
 config known at compile time. The struct form is what a closure *is* underneath: the captured
 environment made explicit, and it's just "a struct with a method," which Zig would tell you to
@@ -451,7 +451,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — lambdas capture like closures, so currying works, and `Function.andThen`/
+**🧠 Tradeoff**: lambdas capture like closures, so currying works, and `Function.andThen`/
 `compose` chain the unary results, and that's the composition payoff. The cost is written in the
 type: `Function<Double, Function<Double, Double>>` is noise where JS reads clean, and every
 `Double` boxes (the primitive specializations, `DoubleUnaryOperator` and friends, avoid the
@@ -461,21 +461,21 @@ read foreign here; nobody should need `.apply().apply()` to call your code.
 
 ## Applications
 
-- **Configured functions** — fixing a base URL, API key, or logger level once to derive specialized
+- **Configured functions**: fixing a base URL, API key, or logger level once to derive specialized
   callers (backend & frontend).
-- **Event handlers** — `onClick={handleSelect(item.id)}` partially applies the id per element
+- **Event handlers**: `onClick={handleSelect(item.id)}` partially applies the id per element
   (frontend).
-- **Dependency injection** — baking a `db`/service into a function via partial application instead of
+- **Dependency injection**: baking a `db`/service into a function via partial application instead of
   a container (backend).
-- **`map`/`filter` adapters** — turning multi-arg functions into the unary functions higher-order
+- **`map`/`filter` adapters**: turning multi-arg functions into the unary functions higher-order
   helpers expect (backend & frontend).
-- **Function pipelines** — producing the unary functions that `pipe`/`|>` compose (backend & frontend).
+- **Function pipelines**: producing the unary functions that `pipe`/`|>` compose (backend & frontend).
 
 ## Related Patterns
 
-- **Function Composition** — currying produces the unary functions composition chains together; the
+- **Function Composition**: currying produces the unary functions composition chains together; the
   two are constant companions in FP.
-- **Strategy** — a partially-applied function is a lightweight strategy: a specialized behavior fixed
+- **Strategy**: a partially-applied function is a lightweight strategy: a specialized behavior fixed
   with its configuration, ready to pass around.
-- **Memoization** — often applied to curried/specialized functions to cache their results per fixed
+- **Memoization**: often applied to curried/specialized functions to cache their results per fixed
   configuration.

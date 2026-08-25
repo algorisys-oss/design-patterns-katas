@@ -28,11 +28,11 @@ The naive move is "one worker per task": for each job, spawn a thread (or gorout
 process, or open a connection) and let it run. It reads beautifully and falls over in
 production:
 
-- **Resource exhaustion** — 10,000 tasks become 10,000 threads. Each costs memory and a
+- **Resource exhaustion**: 10,000 tasks become 10,000 threads. Each costs memory and a
   scheduler slot; the machine thrashes long before the work finishes.
-- **No backpressure** — nothing tells the producer to slow down, so a fast producer buries a
+- **No backpressure**: nothing tells the producer to slow down, so a fast producer buries a
   slow consumer.
-- **Downstream overload** — 10,000 simultaneous requests flatten the database or API the tasks
+- **Downstream overload**: 10,000 simultaneous requests flatten the database or API the tasks
   call, turning your throughput problem into *their* outage.
 
 Spawning is also wasteful: setup and teardown cost repeats for every single task. A pool pays
@@ -42,11 +42,11 @@ that cost **once** and reuses the workers.
 
 Key Components:
 
-- **Task Queue** — a buffer the producer submits to and workers pull from. Usually bounded, so
+- **Task Queue**: a buffer the producer submits to and workers pull from. Usually bounded, so
   a full queue applies backpressure to the producer.
-- **Workers** — a fixed set of long-lived executors. Each loops: take a task, run it, repeat.
-- **Producer / Dispatcher** — submits tasks; never touches a worker directly.
-- **Result sink** (optional) — where finished results land (a channel, a future per task, a
+- **Workers**: a fixed set of long-lived executors. Each loops: take a task, run it, repeat.
+- **Producer / Dispatcher**: submits tasks; never touches a worker directly.
+- **Result sink** (optional): where finished results land (a channel, a future per task, a
   results slice).
 
 ```
@@ -55,7 +55,7 @@ Key Components:
 Producer ──► [ Task Queue ] ─────► [ Worker 2 ] ─┼──► results
                       │                          │
                       └──────────► [ Worker 3 ] ─┘
-        (bounded — a full queue slows the producer)
+        (bounded, a full queue slows the producer)
 ```
 
 ## When to Use
@@ -68,25 +68,25 @@ Producer ──► [ Task Queue ] ─────► [ Worker 2 ] ─┼──�
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Bounded resource use** — concurrency is a constant you choose, not a function of load.
-- **Backpressure for free** — a bounded queue makes the producer wait instead of overrunning.
-- **Amortized cost** — workers and their resources are created once and reused.
-- **A tuning knob** — pool size is one number to match cores, connection limits, or SLAs.
+- **Bounded resource use**: concurrency is a constant you choose, not a function of load.
+- **Backpressure for free**: a bounded queue makes the producer wait instead of overrunning.
+- **Amortized cost**: workers and their resources are created once and reused.
+- **A tuning knob**: pool size is one number to match cores, connection limits, or SLAs.
 
 ### Disadvantages
-- **Head-of-line blocking** — one slow task ties up a worker; a few can starve the rest.
-- **Sizing is a guess** — too small under-uses the machine, too large re-creates the overload.
-- **Added machinery** — a queue, lifecycle, and shutdown path you now own.
+- **Head-of-line blocking**: one slow task ties up a worker; a few can starve the rest.
+- **Sizing is a guess**: too small under-uses the machine, too large re-creates the overload.
+- **Added machinery**: a queue, lifecycle, and shutdown path you now own.
 
 ## Common Mistakes
 
-- **Unbounded queue** — a queue that grows forever just moves the resource leak from threads to
+- **Unbounded queue**: a queue that grows forever just moves the resource leak from threads to
   memory; the producer never feels backpressure. Bound it.
-- **Sizing the pool by task count** — the pool size should track the *constraint* (cores for
+- **Sizing the pool by task count**: the pool size should track the *constraint* (cores for
   CPU work, the connection cap for I/O), not how many tasks exist.
-- **No graceful shutdown** — workers left running on exit drop in-flight tasks and leak
+- **No graceful shutdown**: workers left running on exit drop in-flight tasks and leak
   resources. Drain the queue and stop the workers deliberately.
-- **CPU-bound work on an I/O pool** — in runtimes with a GIL or a single event loop, a thread
+- **CPU-bound work on an I/O pool**: in runtimes with a GIL or a single event loop, a thread
   pool won't parallelize CPU-bound work; you need processes or real worker threads.
 
 ## Key Takeaways
@@ -105,7 +105,7 @@ Producer ──► [ Task Queue ] ─────► [ Worker 2 ] ─┼──�
 **❌ Naive**
 
 ```js
-// Fires every task at once — 10k tasks means 10k concurrent requests.
+// Fires every task at once: 10k tasks means 10k concurrent requests.
 async function processAll(tasks, run) {
   return Promise.all(tasks.map(run));
 }
@@ -135,7 +135,7 @@ async function workerPool(tasks, size, run) {
 // await workerPool(urls, 8, (url) => fetch(url).then((r) => r.json()));
 ```
 
-**🧠 Tradeoff** — In the browser there are no threads to pool; the "workers" are just concurrent
+**🧠 Tradeoff**: In the browser there are no threads to pool; the "workers" are just concurrent
 promises and the pool is a concurrency limiter. That's exactly right for I/O (fetches, reads),
 which is what JS does. It buys you a hard ceiling on in-flight requests for a few lines; it does
 nothing for CPU-bound work, which still blocks the single event loop; reach for Web Workers or
@@ -208,7 +208,7 @@ class WorkerPool {
 }
 ```
 
-**🧠 Tradeoff** — Unlike browser JS, Node's `worker_threads` are real threads, so this pool
+**🧠 Tradeoff**: Unlike browser JS, Node's `worker_threads` are real threads, so this pool
 gives you *actual* parallelism for CPU-bound work (hashing, image resizing, parsing). The cost
 is the machinery: message passing, a lifecycle, and `destroy()` to avoid leaking threads. For
 pure I/O, skip it: the promise pool above is lighter and just as effective.
@@ -222,7 +222,7 @@ pure I/O, skip it: the promise pool above is lighter and just as effective.
 ```python
 import threading
 
-# One OS thread per task, all joined at the end — unbounded thread count.
+# One OS thread per task, all joined at the end: unbounded thread count.
 def process_all(tasks, run):
     threads = [threading.Thread(target=run, args=(t,)) for t in tasks]
     for t in threads:
@@ -241,12 +241,12 @@ def process_all(tasks, run, size=8):
     with ThreadPoolExecutor(max_workers=size) as pool:
         return list(pool.map(run, tasks))
 
-# CPU-bound? Swap the executor — processes sidestep the GIL:
+# CPU-bound? Swap the executor: processes sidestep the GIL:
 #   from concurrent.futures import ProcessPoolExecutor
 #   with ProcessPoolExecutor(max_workers=os.cpu_count()) as pool: ...
 ```
 
-**🧠 Tradeoff** — `concurrent.futures` gives you the whole pattern — pool, queue, futures — in
+**🧠 Tradeoff**: `concurrent.futures` gives you the whole pattern (pool, queue, futures) in
 one import, and the `with` block guarantees a clean shutdown. The catch is the GIL:
 `ThreadPoolExecutor` parallelizes I/O beautifully but not CPU-bound Python. The one-line switch
 to `ProcessPoolExecutor` fixes that, at the price of pickling arguments and results across
@@ -260,7 +260,7 @@ process boundaries.
 
 ```elixir
 # One process per task. Processes are cheap on the BEAM, but there's still no
-# limit — a million tasks spawn a million processes and can swamp a slow service.
+# limit: a million tasks spawn a million processes and can swamp a slow service.
 tasks
 |> Enum.map(&Task.async(fn -> run.(&1) end))
 |> Enum.map(&Task.await/1)
@@ -278,7 +278,7 @@ tasks
 # DynamicSupervisor + a counting registry plays the same role.
 ```
 
-**🧠 Tradeoff** — The BEAM's processes are so cheap that "one per task" is often genuinely fine;
+**🧠 Tradeoff**: The BEAM's processes are so cheap that "one per task" is often genuinely fine;
 the real need is a *limit* and *backpressure*, and `Task.async_stream` delivers both as a lazy
 stream with a `max_concurrency` knob. It's the most declarative version here: no queue or
 worker lifecycle to write. When you need workers that outlive a single batch (a supervised,
@@ -323,7 +323,7 @@ func workerPool(tasks []Task, size int, run func(Task) Result) []Result {
     }
 
     for i := range tasks {
-        jobs <- i // blocks when all workers are busy — natural backpressure
+        jobs <- i // blocks when all workers are busy: natural backpressure
     }
     close(jobs)
     wg.Wait()
@@ -331,7 +331,7 @@ func workerPool(tasks []Task, size int, run func(Task) Result) []Result {
 }
 ```
 
-**🧠 Tradeoff** — Go makes the pattern feel native: the `jobs` channel *is* the queue, the
+**🧠 Tradeoff**: Go makes the pattern feel native: the `jobs` channel *is* the queue, the
 `range` loop *is* the worker, and an unbuffered channel gives you backpressure with no extra
 code. You do wire the pieces by hand (channel, `WaitGroup`, `close`), and correctness lives in
 those details: forget to `close(jobs)` and the workers block forever. That explicitness is the
@@ -344,7 +344,7 @@ Go bargain: no framework, but you own the concurrency.
 **❌ Naive**
 
 ```csharp
-// Every item starts at once — 10k items means 10k tasks in flight.
+// Every item starts at once: 10k items means 10k tasks in flight.
 static Task<Result[]> ProcessAll(IEnumerable<Item> items, Func<Item, Task<Result>> run) =>
     Task.WhenAll(items.Select(run));
 ```
@@ -370,7 +370,7 @@ static async Task<Result[]> WorkerPool(
         .ToArray();
 
     for (var i = 0; i < items.Count; i++)
-        await jobs.Writer.WriteAsync(i); // waits when the buffer is full — backpressure
+        await jobs.Writer.WriteAsync(i); // waits when the buffer is full: backpressure
 
     jobs.Writer.Complete(); // no more jobs
     await Task.WhenAll(workers);
@@ -378,7 +378,7 @@ static async Task<Result[]> WorkerPool(
 }
 ```
 
-**🧠 Tradeoff** — `System.Threading.Channels` is Go's channel for .NET: bounded capacity,
+**🧠 Tradeoff**: `System.Threading.Channels` is Go's channel for .NET: bounded capacity,
 a `WriteAsync` that waits instead of blocking a thread, and `Complete()` as the close signal
 that ends every `ReadAllAsync` loop cleanly. The one-line alternative is
 `Parallel.ForEachAsync` with `MaxDegreeOfParallelism`; reach for that when all you need is
@@ -394,7 +394,7 @@ tasks are submitted from elsewhere.
 ```rust
 use std::thread;
 
-// One OS thread per task — thousands of tasks ask the OS for thousands of threads.
+// One OS thread per task: thousands of tasks ask the OS for thousands of threads.
 fn process_all(tasks: Vec<Task>, run: fn(Task) -> Out) -> Vec<Out> {
     let handles: Vec<_> = tasks
         .into_iter()
@@ -414,7 +414,7 @@ use std::thread;
 fn worker_pool(tasks: Vec<Task>, size: usize, run: fn(Task) -> Out) -> Vec<Out> {
     let (job_tx, job_rx) = mpsc::sync_channel(0); // send blocks until a worker takes it
     let (out_tx, out_rx) = mpsc::channel();
-    let job_rx = Arc::new(Mutex::new(job_rx)); // std's receiver is single-consumer — share it
+    let job_rx = Arc::new(Mutex::new(job_rx)); // std's receiver is single-consumer; share it
 
     let workers: Vec<_> = (0..size)
         .map(|_| {
@@ -434,7 +434,7 @@ fn worker_pool(tasks: Vec<Task>, size: usize, run: fn(Task) -> Out) -> Vec<Out> 
 
     let count = tasks.len();
     for (i, task) in tasks.into_iter().enumerate() {
-        job_tx.send((i, task)).unwrap(); // blocks while every worker is busy — backpressure
+        job_tx.send((i, task)).unwrap(); // blocks while every worker is busy: backpressure
     }
     drop(job_tx); // the "close"
 
@@ -449,7 +449,7 @@ fn worker_pool(tasks: Vec<Task>, size: usize, run: fn(Task) -> Out) -> Vec<Out> 
 }
 ```
 
-**🧠 Tradeoff** — std's `Receiver` is single-consumer, so the workers share it behind an
+**🧠 Tradeoff**: std's `Receiver` is single-consumer, so the workers share it behind an
 `Arc<Mutex<...>>`, the exact shape the Rust book builds its `ThreadPool` from.
 `sync_channel(0)` is Go's unbuffered channel: `send` blocks until a worker is free, and
 dropping the sender is the `close`. Ownership makes the sharing explicit where Go hides it.
@@ -465,7 +465,7 @@ line or two; the std version shows what those wrap.
 ```zig
 const std = @import("std");
 
-// One OS thread per task — unbounded, and every spawn is a real kernel thread.
+// One OS thread per task: unbounded, and every spawn is a real kernel thread.
 fn processAll(allocator: std.mem.Allocator, tasks: []const Task, results: []Out) !void {
     const threads = try allocator.alloc(std.Thread, tasks.len);
     defer allocator.free(threads);
@@ -494,7 +494,7 @@ const Pool = struct {
     fn worker(self: *Pool) void {
         while (true) {
             const i = self.next.fetchAdd(1, .monotonic); // claim the next task
-            if (i >= self.tasks.len) return;             // nothing left — exit
+            if (i >= self.tasks.len) return;             // nothing left: exit
             self.results[i] = run(self.tasks[i]);
         }
     }
@@ -513,7 +513,7 @@ fn workerPool(allocator: std.mem.Allocator, tasks: []const Task, results: []Out,
 }
 ```
 
-**🧠 Tradeoff** — with the whole batch known up front, the queue collapses into a shared
+**🧠 Tradeoff**: with the whole batch known up front, the queue collapses into a shared
 cursor: one `fetchAdd`, no mutex, no condvar, and each worker claims indices until the list
 runs out. That's the honest Zig move: the cheapest primitive that's still safe. It only
 works because nothing is produced live; tasks arriving over time need the mutex + condition
@@ -531,7 +531,7 @@ queue from the next kata. For spawn-shaped batches, the std-shipped pool is now
 import java.util.List;
 import java.util.function.Consumer;
 
-// One platform thread per task — 10k tasks ask the OS for 10k threads.
+// One platform thread per task: 10k tasks ask the OS for 10k threads.
 class Naive {
     static void processAll(List<Task> tasks, Consumer<Task> run) throws InterruptedException {
         var threads = tasks.stream()
@@ -569,7 +569,7 @@ class WorkerPool {
 }
 ```
 
-**🧠 Tradeoff** — this is where the pattern has lived since Java 5: `newFixedThreadPool`
+**🧠 Tradeoff**: this is where the pattern has lived since Java 5: `newFixedThreadPool`
 hands you workers, queue, and futures in one line, and the try-with-resources `close()`
 is the graceful shutdown. Two honest catches. First, the factory's internal queue is
 *unbounded*; real backpressure means building `ThreadPoolExecutor` yourself with an
@@ -581,33 +581,33 @@ a downstream limit (which a plain `Semaphore` handles under virtual threads).
 
 ## Applications
 
-- **Web servers** — a thread/goroutine pool serves requests so a traffic spike queues instead
+- **Web servers**: a thread/goroutine pool serves requests so a traffic spike queues instead
   of forking unbounded handlers (backend).
-- **Background jobs** — Sidekiq, Celery, and Oban run jobs over a fixed worker set; pool
+- **Background jobs**: Sidekiq, Celery, and Oban run jobs over a fixed worker set; pool
   size is the throughput dial (backend).
-- **Database connection pools** — a specialized worker pool where the scarce "worker" is a
+- **Database connection pools**: a specialized worker pool where the scarce "worker" is a
   connection (backend).
-- **Batch media processing** — resize or transcode thousands of images across N CPU workers
+- **Batch media processing**: resize or transcode thousands of images across N CPU workers
   without launching thousands of processes (backend).
-- **Web scraping / API clients** — cap in-flight requests to stay under a rate limit while
+- **Web scraping / API clients**: cap in-flight requests to stay under a rate limit while
   still parallelizing (frontend or backend).
-- **Parallel test runners** — Jest, pytest-xdist, and `go test` shard tests across a bounded
+- **Parallel test runners**: Jest, pytest-xdist, and `go test` shard tests across a bounded
   pool of workers.
 
 **In modern systems:**
 
-- **Workflow engine** — a fixed pool of executors pulls ready steps off the queue, so pool size
+- **Workflow engine**: a fixed pool of executors pulls ready steps off the queue, so pool size
   caps how much of the workflow runs at once.
-- **Multi-agent** — a bounded pool of agent workers drains a task queue, so a fan-out can't spawn
+- **Multi-agent**: a bounded pool of agent workers drains a task queue, so a fan-out can't spawn
   unbounded, budget-burning model calls.
-- **Low-code** — a render pool materializes many rows or widgets without flooding the main thread.
+- **Low-code**: a render pool materializes many rows or widgets without flooding the main thread.
 
 ## Related Patterns
 
-- **Producer-Consumer** — the worker pool *is* a producer-consumer with a fixed consumer count;
+- **Producer-Consumer**: the worker pool *is* a producer-consumer with a fixed consumer count;
   the queue between them is the shared piece.
-- **Future / Promise** — each submitted task typically hands back a future to await its result.
-- **Semaphore** — a pool of N workers is a counting semaphore permitting N concurrent tasks; a
+- **Future / Promise**: each submitted task typically hands back a future to await its result.
+- **Semaphore**: a pool of N workers is a counting semaphore permitting N concurrent tasks; a
   semaphore is the pool with the workers factored out.
-- **Actor** — actors are long-lived message-processing workers; a router over a pool of
+- **Actor**: actors are long-lived message-processing workers; a router over a pool of
   identical actors is this pattern in an actor system.

@@ -45,10 +45,10 @@ own object (or function) behind one interface.
 
 Key Components:
 
-- **Context** — holds a reference to a strategy and delegates the work to it. Never contains
+- **Context**: holds a reference to a strategy and delegates the work to it. Never contains
   the algorithm itself.
-- **Strategy interface** — the common shape every algorithm implements (e.g. `pay(amount)`).
-- **Concrete Strategies** — the interchangeable implementations, one per algorithm.
+- **Strategy interface**: the common shape every algorithm implements (e.g. `pay(amount)`).
+- **Concrete Strategies**: the interchangeable implementations, one per algorithm.
 
 ```
         ┌──────────────┐        strategy      ┌──────────────────┐
@@ -88,13 +88,13 @@ Key Components:
 
 ## Common Mistakes
 
-- **Putting the algorithm in the context** — the context should only delegate. If it holds a
+- **Putting the algorithm in the context**: the context should only delegate. If it holds a
   branch that decides *what* to do, you haven't applied the pattern.
-- **A strategy that needs the context's private state** — if the algorithm can't run from its
+- **A strategy that needs the context's private state**: if the algorithm can't run from its
   inputs alone, the boundary is wrong. Pass what it needs as arguments.
-- **Reaching for it too early** — one or two stable variants don't justify the ceremony. This
+- **Reaching for it too early**: one or two stable variants don't justify the ceremony. This
   pays off when variants multiply or change often.
-- **Confusing it with State** — same structure, different intent. Strategy variants are picked
+- **Confusing it with State**: same structure, different intent. Strategy variants are picked
   by the caller and don't know about each other; State transitions itself between states.
 
 ## Key Takeaways
@@ -124,7 +124,7 @@ class PaymentProcessor {
     } else if (method === "paypal") {
       return `Paid ${amount} using PayPal.`;
     }
-    // Adding crypto means editing this class — it violates Open/Closed.
+    // Adding crypto means editing this class, it violates Open/Closed.
     throw new Error(`Unknown payment method: ${method}`);
   }
 }
@@ -165,7 +165,7 @@ context.setStrategy(new CryptoPayment());
 console.log(context.pay(300));          // Paid 300 using Crypto.
 ```
 
-**🧠 Tradeoff** — JS has no interfaces, so the "contract" is just the duck-typed `pay(amount)`
+**🧠 Tradeoff**: JS has no interfaces, so the "contract" is just the duck-typed `pay(amount)`
 method. That's flexible but unenforced: nothing stops you passing an object without a `pay`.
 For a single-method strategy you could skip classes entirely and pass a plain function; the
 class version pays off when a strategy carries its own configuration or state.
@@ -177,7 +177,7 @@ class version pays off when a strategy carries its own configuration or state.
 **❌ Naive**
 
 ```js
-// A route handler switching on the payment method — the same conditional, server-side.
+// A route handler switching on the payment method: the same conditional, server-side.
 app.post("/pay", (req, res) => {
   const { method, amount } = req.body;
   switch (method) {
@@ -207,7 +207,7 @@ app.post("/pay", (req, res) => {
 });
 ```
 
-**🧠 Tradeoff** — On the backend a strategy is usually just a function keyed in an object, so
+**🧠 Tradeoff**: On the backend a strategy is usually just a function keyed in an object, so
 "add a strategy" becomes "add a key": no classes, no context object. This is how Passport.js
 registers auth strategies (`passport.use(new LocalStrategy(...))`) and how payment SDKs dispatch
 gateways. The looseness is the same duck-typing bargain: an unknown key must be handled
@@ -269,12 +269,12 @@ print(context.pay(100))                 # Paid 100 using Credit Card.
 context.set_strategy(paypal)
 print(context.pay(200))                 # Paid 200 using PayPal.
 
-# A new strategy is a new function — nothing else changes.
+# A new strategy is a new function, nothing else changes.
 context.set_strategy(lambda amount: f"Paid {amount} using Crypto.")
 print(context.pay(300))                 # Paid 300 using Crypto.
 ```
 
-**🧠 Tradeoff** — In Python the class-per-strategy hierarchy from the GoF book is usually
+**🧠 Tradeoff**: In Python the class-per-strategy hierarchy from the GoF book is usually
 overkill: a function *is* the strategy. Reach for a `Protocol` or an `abc.ABC` only when a
 strategy needs to bundle state or several related methods, or when you want the type checker
 to enforce the contract. For one method, a callable is the Pythonic choice.
@@ -312,7 +312,7 @@ paypal = fn amount -> "Paid #{amount} using PayPal." end
 IO.puts(Checkout.pay(credit_card, 100))   # Paid 100 using Credit Card.
 IO.puts(Checkout.pay(paypal, 200))        # Paid 200 using PayPal.
 
-# A new strategy is a new function passed in — Checkout never changes.
+# A new strategy is a new function passed in: Checkout never changes.
 crypto = fn amount -> "Paid #{amount} using Crypto." end
 IO.puts(Checkout.pay(crypto, 300))        # Paid 300 using Crypto.
 ```
@@ -333,7 +333,7 @@ end
 # Checkout.pay/2 then takes the module: Payment.pay via CreditCard.pay(100)
 ```
 
-**🧠 Tradeoff** — Elixir has no objects to hold a mutable `strategy` field, so there's no
+**🧠 Tradeoff**: Elixir has no objects to hold a mutable `strategy` field, so there's no
 "context with a setStrategy"; you pass the strategy on each call, or store it in the state of
 a process/`GenServer` if it must persist. Functions are the lightweight idiom; behaviours add
 a named contract and a compile-time warning when a module forgets to implement a callback, at
@@ -379,7 +379,7 @@ package main
 
 import "fmt"
 
-// The strategy interface — anything with a Pay method satisfies it implicitly.
+// The strategy interface: anything with a Pay method satisfies it implicitly.
 type PaymentStrategy interface {
 	Pay(amount int) string
 }
@@ -412,7 +412,7 @@ func main() {
 }
 ```
 
-**🧠 Tradeoff** — Go interfaces are satisfied *implicitly*: `CreditCard` never declares it
+**🧠 Tradeoff**: Go interfaces are satisfied *implicitly*: `CreditCard` never declares it
 implements `PaymentStrategy`, it just has the method. That keeps strategies decoupled from the
 interface. For a single-method strategy you can skip the structs and use a function type
 (`type PaymentStrategy func(int) string`), which is often the leaner Go form; use the
@@ -462,7 +462,7 @@ public sealed class PayPal : IPaymentStrategy
     public string Pay(int amount) => $"Paid {amount} using PayPal.";
 }
 
-// Primary constructor — the context takes its starting strategy up front.
+// Primary constructor: the context takes its starting strategy up front.
 public sealed class PaymentContext(IPaymentStrategy strategy)
 {
     private IPaymentStrategy _strategy = strategy;
@@ -472,7 +472,7 @@ public sealed class PaymentContext(IPaymentStrategy strategy)
 }
 ```
 
-**🧠 Tradeoff** — unlike JS duck typing, `IPaymentStrategy` is checked at compile time:
+**🧠 Tradeoff**: unlike JS duck typing, `IPaymentStrategy` is checked at compile time:
 you cannot hand the context an object without a `Pay`. The classical form above earns its
 keep when a strategy carries configuration or several members. For a single method, modern
 C# often skips the interface entirely and stores a `Func<int, string>`, and the pattern
@@ -545,7 +545,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — `Box<dyn PaymentStrategy>` buys runtime swapping at the cost of a heap
+**🧠 Tradeoff**: `Box<dyn PaymentStrategy>` buys runtime swapping at the cost of a heap
 allocation and dynamic dispatch. A generic `PaymentContext<S: PaymentStrategy>` compiles
 each strategy to zero-overhead code but fixes it at compile time. Rust makes you pick,
 where Go and C# hide the choice. And when the set of strategies is closed, plain Rust
@@ -582,7 +582,7 @@ pub fn main() void {
 ```zig
 const std = @import("std");
 
-// Zig has no interfaces or closures — the strategy is a function pointer.
+// Zig has no interfaces or closures: the strategy is a function pointer.
 const PaymentStrategy = struct {
     payFn: *const fn (amount: u32) void,
 
@@ -619,7 +619,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — a bare function pointer covers stateless strategies; once a strategy
+**🧠 Tradeoff**: a bare function pointer covers stateless strategies; once a strategy
 needs its own state, Zig's answer is the two-field vtable idiom (`*anyopaque` context +
 function pointer) that `std.mem.Allocator` uses. Be honest about the naive version,
 though: when the set of strategies is closed, the enum + exhaustive `switch` *is*
@@ -648,7 +648,7 @@ class PaymentService {
 **✅ Idiomatic**
 
 ```java
-// The strategy contract — a single method, so it's a functional interface.
+// The strategy contract: a single method, so it's a functional interface.
 interface PaymentStrategy {
     String pay(int amount);
 }
@@ -682,14 +682,14 @@ public class Demo {
         context.setStrategy(new PayPal());
         System.out.println(context.pay(200)); // Paid 200 using PayPal.
 
-        // Single-method interface — a lambda IS a strategy:
+        // Single-method interface: a lambda IS a strategy:
         context.setStrategy(amount -> "Paid %d using Crypto.".formatted(amount));
         System.out.println(context.pay(300)); // Paid 300 using Crypto.
     }
 }
 ```
 
-**🧠 Tradeoff** — this is the GoF book's home language, and the classical form fits with
+**🧠 Tradeoff**: this is the GoF book's home language, and the classical form fits with
 no translation: interface, concrete classes, context. What modern Java changes is the
 floor. Since any single-method interface is a functional interface, a lambda replaces the
 strategy class; `Comparator` passed to `sort` is the standard library doing exactly this.
@@ -700,29 +700,29 @@ it's one stateless method, which is most of the time.
 
 Real-world uses of Strategy (from the reference articles):
 
-- **Payment processing** — credit card / PayPal / crypto behind one `pay` call.
-- **Authentication** — OAuth vs JWT vs session strategies chosen per request (backend).
-- **Form validation** — email / phone / password validators swapped per field (frontend).
-- **Theme switching** — light / dark / high-contrast render strategies (frontend).
-- **Sorting & compression** — quick vs merge sort; ZIP vs GZIP, picked by data size or config.
-- **Logging** — console vs file vs remote sink selected by environment (backend).
-- **API rate limiting** — token bucket vs leaky bucket per route (backend).
+- **Payment processing**: credit card / PayPal / crypto behind one `pay` call.
+- **Authentication**: OAuth vs JWT vs session strategies chosen per request (backend).
+- **Form validation**: email / phone / password validators swapped per field (frontend).
+- **Theme switching**: light / dark / high-contrast render strategies (frontend).
+- **Sorting & compression**: quick vs merge sort; ZIP vs GZIP, picked by data size or config.
+- **Logging**: console vs file vs remote sink selected by environment (backend).
+- **API rate limiting**: token bucket vs leaky bucket per route (backend).
 
 **In modern systems:**
 
-- **Low-code** — a field's `"validator": "email"` or `"format": "currency"` picks a strategy at
+- **Low-code**: a field's `"validator": "email"` or `"format": "currency"` picks a strategy at
   render time straight from the JSON config; adding one is a new object, not a new branch.
-- **Workflow engine** — a step's retry/backoff policy chosen by name from the step definition.
-- **Multi-agent** — swap the planning strategy (ReAct vs plan-and-execute) or the model behind a
+- **Workflow engine**: a step's retry/backoff policy chosen by name from the step definition.
+- **Multi-agent**: swap the planning strategy (ReAct vs plan-and-execute) or the model behind a
   single `generate` call without touching the orchestration around it.
 
 ## Related Patterns
 
-- **State** — identical structure, different intent. State objects transition between
+- **State**: identical structure, different intent. State objects transition between
   themselves as internal state changes; Strategy variants are chosen by the client and are
   unaware of each other.
-- **Template Method** — varies *steps* of a fixed algorithm via inheritance; Strategy varies
+- **Template Method**: varies *steps* of a fixed algorithm via inheritance; Strategy varies
   the *whole* algorithm via composition. Composition swaps at runtime; inheritance is fixed at
   compile time.
-- **Factory Method** — often pairs with Strategy to construct the concrete strategy chosen at
+- **Factory Method**: often pairs with Strategy to construct the concrete strategy chosen at
   runtime from a config value or user choice.

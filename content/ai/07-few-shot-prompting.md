@@ -25,11 +25,11 @@ it. No fine-tuning, no training run; the "learning" happens in-context, per requ
 
 Zero-shot (instruction only) is underspecified for anything with a house style:
 
-- **Format drift** — you asked for "a short summary" and get three sentences here, a bulleted list
+- **Format drift**: you asked for "a short summary" and get three sentences here, a bulleted list
   there, a paragraph the next time. Instructions describe; they don't pin.
-- **Label ambiguity** — "classify the sentiment" — but is a neutral-but-frustrated review "neutral"
+- **Label ambiguity**: "classify the sentiment", but is a neutral-but-frustrated review "neutral"
   or "negative"? Your definition lives in examples, not adjectives.
-- **Edge cases** — the one weird input (an empty field, a sarcastic tone) that prose instructions
+- **Edge cases**: the one weird input (an empty field, a sarcastic tone) that prose instructions
   never anticipated but a well-chosen example covers.
 
 A few examples resolve all three by demonstration, which the model imitates far more reliably than it
@@ -39,11 +39,11 @@ follows description.
 
 Key Components / Participants:
 
-- **Instruction** — the task statement (still useful; examples complement it, not replace it).
-- **Examples** — a small set of input→output pairs demonstrating format, labels, and edge cases.
-- **Selector** — chooses which examples to include: a fixed set, or dynamically the ones most similar
+- **Instruction**: the task statement (still useful; examples complement it, not replace it).
+- **Examples**: a small set of input→output pairs demonstrating format, labels, and edge cases.
+- **Selector**: chooses which examples to include: a fixed set, or dynamically the ones most similar
   to the current input (retrieval-based).
-- **Query** — the real input, appended in the same shape as the examples.
+- **Query**: the real input, appended in the same shape as the examples.
 
 ```
 instruction
@@ -75,15 +75,15 @@ instruction
 
 ## Common Mistakes
 
-- **Unrepresentative examples** — three easy cases teach nothing about the hard one. Include the
+- **Unrepresentative examples**: three easy cases teach nothing about the hard one. Include the
   edge cases you actually care about.
-- **Class imbalance** — five "positive" examples and one "negative" biases the model toward positive.
+- **Class imbalance**: five "positive" examples and one "negative" biases the model toward positive.
   Balance the label distribution.
-- **Inconsistent formatting across examples** — if your examples don't share an exact shape, the
+- **Inconsistent formatting across examples**: if your examples don't share an exact shape, the
   model has no pattern to copy. Be rigorous.
-- **Few-shot when structured output is the real fix** — if the goal is valid JSON, a schema
+- **Few-shot when structured output is the real fix**: if the goal is valid JSON, a schema
   ([[structured-output]]) guarantees it; examples only nudge. Use the right tool.
-- **Static examples for a shifting distribution** — when inputs vary widely, retrieve examples
+- **Static examples for a shifting distribution**: when inputs vary widely, retrieve examples
   similar to each input instead of hard-coding one set.
 
 ## Key Takeaways
@@ -104,7 +104,7 @@ examples dynamically.
 **❌ Naive**
 
 ```js
-// Instruction only — format and labels drift request to request.
+// Instruction only: format and labels drift request to request.
 async function classify(review) {
   return callModel(`Classify the sentiment of this review: ${review}`);
 }
@@ -130,7 +130,7 @@ async function classify(review, examples = EXAMPLES) {
 }
 ```
 
-**🧠 Tradeoff** — A consistent example block pins the label set (three values, demonstrated) and the
+**🧠 Tradeoff**: A consistent example block pins the label set (three values, demonstrated) and the
 exact shape the model should complete. Passing `examples` as a parameter is what makes it *dynamic*:
 swap in examples retrieved by similarity to `review` for a shifting distribution. The cost is example
 tokens on every call; when the labels are fixed, a [[structured-output]] enum is the stronger guarantee.
@@ -164,7 +164,7 @@ def classify(review: str, examples: list[tuple[str, str]] = EXAMPLES) -> str:
     return call_model(prompt).strip()
 ```
 
-**🧠 Tradeoff** — Examples as data (`list[tuple]`) separate the *content* of the demonstration from the
+**🧠 Tradeoff**: Examples as data (`list[tuple]`) separate the *content* of the demonstration from the
 *formatting*, so you can curate, balance, or retrieve them independently. To go dynamic, replace the
 default with `select_similar(review, pool, k=3)`: the same signature, retrieval-backed. The judgment
 is curation, not code: representative, balanced, consistently formatted examples.
@@ -206,7 +206,7 @@ defmodule Sentiment do
 end
 ```
 
-**🧠 Tradeoff** — `Enum.map_join` builds the example block in one pass, and the default `@examples`
+**🧠 Tradeoff**: `Enum.map_join` builds the example block in one pass, and the default `@examples`
 arg makes the static case ergonomic while leaving the door open to pass retrieved examples. The
 heredoc keeps the prompt readable. For dynamic selection you'd embed the pool once and pass the
 nearest few; the function signature already supports it.
@@ -251,7 +251,7 @@ func Classify(review string, examples []Shot) string {
 }
 ```
 
-**🧠 Tradeoff** — A `Shot` struct and a `strings.Builder` keep example formatting explicit and
+**🧠 Tradeoff**: A `Shot` struct and a `strings.Builder` keep example formatting explicit and
 allocation-light. Taking `examples []Shot` as a parameter is the seam for dynamic selection: pass the
 package-level `examples` for the static case, or the retrieved nearest-k for a shifting distribution.
 No magic; the whole pattern is "format demonstrations consistently, then the query."
@@ -260,21 +260,21 @@ No magic; the whole pattern is "format demonstrations consistently, then the que
 
 Real-world uses of Few-Shot Prompting:
 
-- **Classification & tagging** — pin an exact label set with a few balanced examples.
-- **Format enforcement** — demonstrate the output shape when a schema is too rigid for the content.
-- **Style & tone matching** — show the house voice for summaries, replies, or rewrites.
-- **Structured extraction** — a couple of worked extractions teach the field mapping.
-- **Dynamic few-shot** — retrieve the most similar past examples per input (RAG for exemplars).
+- **Classification & tagging**: pin an exact label set with a few balanced examples.
+- **Format enforcement**: demonstrate the output shape when a schema is too rigid for the content.
+- **Style & tone matching**: show the house voice for summaries, replies, or rewrites.
+- **Structured extraction**: a couple of worked extractions teach the field mapping.
+- **Dynamic few-shot**: retrieve the most similar past examples per input (RAG for exemplars).
 
 **In modern systems:**
 
-- **Low-code** — a "train by example" UX where users add input→output pairs and the model generalizes.
-- **Workflow engine** — a classification/routing step tuned by curated examples, no retrain.
-- **Multi-agent** — an agent primed with exemplars of good tool use or output format before it runs.
+- **Low-code**: a "train by example" UX where users add input→output pairs and the model generalizes.
+- **Workflow engine**: a classification/routing step tuned by curated examples, no retrain.
+- **Multi-agent**: an agent primed with exemplars of good tool use or output format before it runs.
 
 ## Related Patterns
 
-- **Structured Output** — when the goal is *valid* output, a schema guarantees what examples only nudge.
-- **Retrieval-Augmented Generation** — dynamic few-shot *is* RAG applied to examples instead of documents.
-- **Strategy** — static vs. retrieved example selection are interchangeable strategies behind one call.
-- **Prototype** — a curated example set is a template you clone and adapt per task.
+- **Structured Output**: when the goal is *valid* output, a schema guarantees what examples only nudge.
+- **Retrieval-Augmented Generation**: dynamic few-shot *is* RAG applied to examples instead of documents.
+- **Strategy**: static vs. retrieved example selection are interchangeable strategies behind one call.
+- **Prototype**: a curated example set is a template you clone and adapt per task.

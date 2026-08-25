@@ -27,21 +27,21 @@ lives in one place instead of scattering through the display code.
 
 Put state, rendering, and event handling in one place and every kind of change collides:
 
-- **UI and logic tangle** — a button's click handler mutates state, recomputes totals, and
+- **UI and logic tangle**: a button's click handler mutates state, recomputes totals, and
   rewrites the DOM, so you can't restyle without risking the rules.
-- **No reuse** — the business logic is welded to one screen; a second view means copy-paste.
-- **Hard to test** — the rules can't run without the UI, because they *are* the UI.
-- **Input scattered** — event handling is smeared across widgets with no single place to reason
+- **No reuse**: the business logic is welded to one screen; a second view means copy-paste.
+- **Hard to test**: the rules can't run without the UI, because they *are* the UI.
+- **Input scattered**: event handling is smeared across widgets with no single place to reason
   about "what happens when the user acts."
 
 ## Structure
 
 Key Components:
 
-- **Model** — application state and the rules that change it; notifies observers when it changes.
-- **View** — renders the model for the user; ideally passive, reading model state.
-- **Controller** — receives user input, invokes model updates, and selects the view.
-- **Notification** — the model tells views it changed (often via Observer) so they re-render.
+- **Model**: application state and the rules that change it; notifies observers when it changes.
+- **View**: renders the model for the user; ideally passive, reading model state.
+- **Controller**: receives user input, invokes model updates, and selects the view.
+- **Notification**: the model tells views it changed (often via Observer) so they re-render.
 
 ```
         input           updates
@@ -61,26 +61,26 @@ User ─────────► Controller ─────────► Mo
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Separation of concerns** — rules, rendering, and input each have one place.
-- **Parallel work** — designers touch views, developers touch models, with a thin controller seam.
-- **Multiple views** — one model can back several presentations at once.
+- **Separation of concerns**: rules, rendering, and input each have one place.
+- **Parallel work**: designers touch views, developers touch models, with a thin controller seam.
+- **Multiple views**: one model can back several presentations at once.
 
 ### Disadvantages
-- **Boundary blur** — "where does this logic go?" (fat controllers, smart views) is a constant
+- **Boundary blur**: "where does this logic go?" (fat controllers, smart views) is a constant
   judgment call.
-- **Indirection** — a trivial screen pays for three collaborating parts.
-- **Variant sprawl** — MVP, MVVM, and MVC differ subtly, and teams argue past each other about
+- **Indirection**: a trivial screen pays for three collaborating parts.
+- **Variant sprawl**: MVP, MVVM, and MVC differ subtly, and teams argue past each other about
   which they're doing.
 
 ## Common Mistakes
 
-- **Fat controller** — cramming business rules into the controller instead of the model turns it
+- **Fat controller**: cramming business rules into the controller instead of the model turns it
   into the tangle MVC was meant to remove.
-- **Smart view** — a view that queries and mutates the model directly couples presentation to
+- **Smart view**: a view that queries and mutates the model directly couples presentation to
   logic; views should read, controllers should write.
-- **Model that knows the view** — the model calling view methods reverses the dependency; it
+- **Model that knows the view**: the model calling view methods reverses the dependency; it
   should only *notify*, letting views pull.
-- **God model** — one giant model for the whole app; split it by feature so changes stay local.
+- **God model**: one giant model for the whole app; split it by feature so changes stay local.
 
 ## Key Takeaways
 
@@ -98,7 +98,7 @@ User ─────────► Controller ─────────► Mo
 **❌ Naive**
 
 ```js
-// One click handler holds state, rules, and rendering — all welded together.
+// One click handler holds state, rules, and rendering: all welded together.
 let count = 0;
 document.querySelector("#btn").addEventListener("click", () => {
   count += 1;                                    // state
@@ -126,7 +126,7 @@ model.subscribe(view);                                                        //
 document.querySelector("#btn").addEventListener("click", () => model.increment()); // controller
 ```
 
-**🧠 Tradeoff** — Splitting into model/view/controller means the rule (`min(10, ...)`) lives in one
+**🧠 Tradeoff**: Splitting into model/view/controller means the rule (`min(10, ...)`) lives in one
 testable place and the view is a pure function of state. For a single counter it's more code than
 the inline handler; the payoff appears the moment a second view (a progress bar) subscribes to the
 same model with zero changes to the logic.
@@ -138,7 +138,7 @@ same model with zero changes to the logic.
 **❌ Naive**
 
 ```js
-// Express route builds HTML from raw rows inline — no model, no view boundary.
+// Express route builds HTML from raw rows inline, no model, no view boundary.
 app.get("/todos", async (req, res) => {
   const rows = await db.query("SELECT * FROM todos");
   res.send("<ul>" + rows.map((r) => `<li>${r.title}</li>`).join("") + "</ul>");
@@ -162,7 +162,7 @@ export async function index(req, res) {
 // views/todos/index.ejs   →  <ul><% todos.forEach(t => { %><li><%= t.title %></li><% }) %></ul>
 ```
 
-**🧠 Tradeoff** — This is the shape every server-side web framework encodes: a route (controller)
+**🧠 Tradeoff**: This is the shape every server-side web framework encodes: a route (controller)
 asks a model and renders a template (view). Separating them lets the same `Todo` model serve an
 HTML page and a JSON endpoint, and lets a designer own the template. The cost is the framework's
 conventions and a bit of ceremony for the simplest pages.
@@ -202,7 +202,7 @@ model.subscribe(lambda c: label.config(text=str(c)))     # view
 button.config(command=model.increment)                    # controller
 ```
 
-**🧠 Tradeoff** — The model owns the `min(10, ...)` rule and publishes changes; the view is just a
+**🧠 Tradeoff**: The model owns the `min(10, ...)` rule and publishes changes; the view is just a
 subscriber. On the server, Django is famously "MVT": its *template* is the view and its *view*
 is the controller, the same three roles under different names. The discipline in plain Python is
 yours to keep; the payoff is a rule you can unit-test with no GUI.
@@ -235,12 +235,12 @@ defmodule MyAppWeb.CounterLive do            # controller: input → model → a
   def handle_event("inc", _params, socket) do
     {:noreply, assign(socket, count: Counter.increment(socket.assigns.count))}
   end
-  # render/1 is the view — a pure function of assigns
+  # render/1 is the view: a pure function of assigns
   def render(assigns), do: ~H"<button phx-click='inc'><%= @count %></button>"
 end
 ```
 
-**🧠 Tradeoff** — Phoenix separates the roles cleanly: the **context** module is the model (pure,
+**🧠 Tradeoff**: Phoenix separates the roles cleanly: the **context** module is the model (pure,
 testable rules), `render/1` is the view (a pure function of assigns), and the controller/LiveView
 maps events to model calls. Keeping the rule in `Counter` rather than the event handler means it's
 tested without the socket. LiveView blurs client/server, but the model/view/controller split still
@@ -277,7 +277,7 @@ func (h *Handler) counter(w http.ResponseWriter, r *http.Request) { // controlle
 }
 ```
 
-**🧠 Tradeoff** — Go has no MVC framework blessing the split, so you assemble it: a `Counter` type
+**🧠 Tradeoff**: Go has no MVC framework blessing the split, so you assemble it: a `Counter` type
 holds state and the rule, `html/template` is the view, and the handler is a thin controller. The
 explicitness is very Go (no magic wiring) and the model tests with a plain unit test. The cost
 is that nothing enforces the boundaries, so team discipline keeps handlers from growing fat.
@@ -322,7 +322,7 @@ public sealed class CounterModel
 }
 ```
 
-**🧠 Tradeoff** — C# builds the model-notifies-view link into the language: `event` *is* the
+**🧠 Tradeoff**: C# builds the model-notifies-view link into the language: `event` *is* the
 Observer hookup, one declaration and one `+=`. The rule tests as a plain unit test: call
 `Increment`, assert `Count`, no UI attached. Note where the frameworks sit: ASP.NET Core MVC
 names the three roles outright, while WPF and MAUI prefer MVVM, where data binding replaces the
@@ -372,7 +372,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — The hand-rolled observer works, but push it toward a real UI and the borrow
+**🧠 Tradeoff**: The hand-rolled observer works, but push it toward a real UI and the borrow
 checker starts objecting: views that also hold state mean shared mutation, which drags in
 `Rc<RefCell<...>>`. That's why Rust UI libraries (iced, and egui in spirit) favor Model-View-Update
 instead: a `Message` enum, an `update` function that `match`es messages into model changes, and a
@@ -402,7 +402,7 @@ fn onClick() void {
 ```zig
 const std = @import("std");
 
-// Zig has no closures — a view is a plain function pointer.
+// Zig has no closures: a view is a plain function pointer.
 const View = *const fn (count: u32) void;
 
 const CounterModel = struct {
@@ -426,7 +426,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — With no closures, a Zig view is a bare function pointer, which only covers
+**🧠 Tradeoff**: With no closures, a Zig view is a bare function pointer, which only covers
 stateless views; a widget that carries its own state needs the two-field vtable idiom
 (`*anyopaque` context + function pointer). The rule still tests clean: call `increment`, assert
 `count`, no rendering involved. Honestly, Zig has no mainstream UI framework to bless the split;
@@ -486,7 +486,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — Classic Java would declare an `Observer` interface and anonymous inner classes
+**🧠 Tradeoff**: Classic Java would declare an `Observer` interface and anonymous inner classes
 to implement it; `IntConsumer` plus a lambda deletes all of that, and the view subscribes in one
 line. The rule now tests as plain JUnit: call `increment`, assert `count`, no window open. Java's
 frameworks bless the split on both sides of the wire. Swing was designed around it (every
@@ -496,21 +496,21 @@ that renders it. Same three roles, whether the view is a label or an HTML page.
 
 ## Applications
 
-- **Web frameworks** — Rails, Django (MVT), Laravel, Spring MVC, and Phoenix all ship the model/
+- **Web frameworks**: Rails, Django (MVT), Laravel, Spring MVC, and Phoenix all ship the model/
   view/controller split as the default app shape (backend).
-- **Desktop & mobile UIs** — Cocoa (MVC), Android (with MVVM), and classic Swing apps structure
+- **Desktop & mobile UIs**: Cocoa (MVC), Android (with MVVM), and classic Swing apps structure
   screens this way (frontend).
-- **Single-page apps** — early frameworks (Backbone) were explicitly MVC; React/Vue lean toward
+- **Single-page apps**: early frameworks (Backbone) were explicitly MVC; React/Vue lean toward
   the MVVM-ish variant with reactive view-models (frontend).
-- **Game UIs & tools** — editor and HUD code separates game state (model) from rendering (view)
+- **Game UIs & tools**: editor and HUD code separates game state (model) from rendering (view)
   and input (controller) (frontend).
-- **Admin/CRUD screens** — the pattern's sweet spot: forms and tables driven by a shared model
+- **Admin/CRUD screens**: the pattern's sweet spot: forms and tables driven by a shared model
   (frontend & backend).
 
 ## Related Patterns
 
-- **Observer** — the model-notifies-view link is Observer; the view subscribes to model changes.
-- **MVP / MVVM** — variants that relocate presentation logic: MVP routes everything through a
+- **Observer**: the model-notifies-view link is Observer; the view subscribes to model changes.
+- **MVP / MVVM**: variants that relocate presentation logic: MVP routes everything through a
   presenter, MVVM binds the view to a view-model via data binding.
-- **Layered Architecture** — MVC is layering applied to the UI tier; the model itself often sits
+- **Layered Architecture**: MVC is layering applied to the UI tier; the model itself often sits
   atop application/domain layers.

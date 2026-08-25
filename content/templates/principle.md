@@ -43,7 +43,7 @@ optional ASCII sketch (replaced by the rendered SVG if a structure.ysl exists)
 
 ## Common Mistakes
 
-- **Mistake** — why it bites.
+- **Mistake**: why it bites.
 
 ## Key Takeaways
 
@@ -66,7 +66,7 @@ pattern template's "tradeoff" does).
 ```js
 ```
 
-**🧠 Note** — one paragraph.
+**🧠 Note**: one paragraph.
 
 ### Python
 
@@ -80,7 +80,7 @@ pattern template's "tradeoff" does).
 ```python
 ```
 
-**🧠 Note** — one paragraph.
+**🧠 Note**: one paragraph.
 
 ### Elixir
 
@@ -94,7 +94,7 @@ pattern template's "tradeoff" does).
 ```elixir
 ```
 
-**🧠 Note** — one paragraph.
+**🧠 Note**: one paragraph.
 
 ### Go
 
@@ -108,7 +108,7 @@ pattern template's "tradeoff" does).
 ```go
 ```
 
-**🧠 Note** — one paragraph.
+**🧠 Note**: one paragraph.
 
 ## Applications
 
@@ -118,4 +118,4 @@ Where the principle shows up in practice.
 
 ## Related Principles & Patterns
 
-- **Neighbour** — how it connects.
+- **Neighbour**: how it connects.

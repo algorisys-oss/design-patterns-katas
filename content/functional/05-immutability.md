@@ -28,24 +28,24 @@ identity. Predictability, sharing safety, and cheap snapshots all fall out of "d
 
 Shared mutable state is the root of a surprising number of bugs:
 
-- **Spooky action at a distance** — you pass an object to a function that mutates it, and now your
+- **Spooky action at a distance**: you pass an object to a function that mutates it, and now your
   copy changed too, because it was the same object.
-- **Data races** — two threads mutating the same structure corrupt it; you reach for locks, which
+- **Data races**: two threads mutating the same structure corrupt it; you reach for locks, which
   bring their own problems.
-- **Hard change detection** — to know if state changed you must deep-compare, because the same object
+- **Hard change detection**: to know if state changed you must deep-compare, because the same object
   reference might have been mutated in place.
-- **No cheap history** — undo/redo, snapshots, and time-travel need past states, but in-place mutation
+- **No cheap history**: undo/redo, snapshots, and time-travel need past states, but in-place mutation
   overwrites them.
 
 ## Structure
 
 Key Components:
 
-- **Immutable value** — data that is never modified after creation.
-- **Transformation** — an operation that takes a value and returns a *new* value with the change.
-- **Structural sharing** — new versions reuse the unchanged parts of the old one, so copying is cheap
+- **Immutable value**: data that is never modified after creation.
+- **Transformation**: an operation that takes a value and returns a *new* value with the change.
+- **Structural sharing**: new versions reuse the unchanged parts of the old one, so copying is cheap
   (persistent data structures), rather than deep-cloning everything.
-- **Identity = value change** — a changed reference means changed data; unchanged reference means
+- **Identity = value change**: a changed reference means changed data; unchanged reference means
   unchanged data (cheap equality).
 
 ```
@@ -63,27 +63,27 @@ State v1 { value: 1 } ──update(fn)──► State v2 { value: 2 }
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Predictable** — a value never changes after you receive it; no action at a distance.
-- **Concurrency-safe** — nothing to race on; immutable data is safely shared without locks.
-- **Cheap comparison & history** — reference equality detects change; old versions are free snapshots.
+- **Predictable**: a value never changes after you receive it; no action at a distance.
+- **Concurrency-safe**: nothing to race on; immutable data is safely shared without locks.
+- **Cheap comparison & history**: reference equality detects change; old versions are free snapshots.
 
 ### Disadvantages
-- **Allocation cost** — producing new values allocates; naive deep-copying is expensive (mitigated by
+- **Allocation cost**: producing new values allocates; naive deep-copying is expensive (mitigated by
   structural sharing).
-- **Verbosity** — "change" becomes "copy with change," which is wordier without good spread/update
+- **Verbosity**: "change" becomes "copy with change," which is wordier without good spread/update
   syntax or a library.
-- **Not free in mutable languages** — languages that default to mutation require discipline or
+- **Not free in mutable languages**: languages that default to mutation require discipline or
   libraries to keep it immutable, and it's easy to slip.
 
 ## Common Mistakes
 
-- **Shallow copy, deep mutation** — spreading the top level but then mutating a nested object still
+- **Shallow copy, deep mutation**: spreading the top level but then mutating a nested object still
   mutates the shared inner value; copy the path you change.
-- **Mutating "just this once"** — one in-place mutation in an otherwise-immutable codebase breaks the
+- **Mutating "just this once"**: one in-place mutation in an otherwise-immutable codebase breaks the
   guarantees everything else relies on.
-- **Deep-cloning everything** — copying entire large structures on every change (instead of
+- **Deep-cloning everything**: copying entire large structures on every change (instead of
   structural sharing) is slow; use persistent structures or libraries.
-- **Assuming built-ins are immutable** — freezing the outer object (`Object.freeze`) is shallow;
+- **Assuming built-ins are immutable**: freezing the outer object (`Object.freeze`) is shallow;
   nested data can still change.
 
 ## Key Takeaways
@@ -127,7 +127,7 @@ const c2 = addItem(c1, item); // c1 is unchanged; c1 !== c2 → cheap change det
 //   const next = produce(state, (draft) => { draft.user.cart.items.push(item); });
 ```
 
-**🧠 Tradeoff** — Spreading to copy the changed path keeps `c1` intact and makes `c1 !== c2` a
+**🧠 Tradeoff**: Spreading to copy the changed path keeps `c1` intact and makes `c1 !== c2` a
 one-reference change check, which is exactly what powers React's re-render and memoization. The cost
 is verbosity and the shallow-copy trap (you must copy each nested level you change). Immer removes the
 ceremony by letting you write mutations against a draft while producing a truly immutable result.
@@ -153,10 +153,10 @@ function applyOverrides(config, overrides) {
 function applyOverrides(config, overrides) {
   return { ...config, ...overrides, headers: { ...config.headers, ...overrides.headers } };
 }
-// each request derives its own config from a shared, never-mutated base — no cross-request bleed.
+// each request derives its own config from a shared, never-mutated base, no cross-request bleed.
 ```
 
-**🧠 Tradeoff** — Deriving a new config per request instead of `Object.assign`-ing a shared one
+**🧠 Tradeoff**: Deriving a new config per request instead of `Object.assign`-ing a shared one
 prevents the classic Node bug where one request mutates state another is using. Note the nested spread
 (`headers`): shallow copying isn't enough when you change nested fields. For deeply nested shared
 state, `immer` or `immutable.js` (structural sharing) keep it correct and cheap.
@@ -193,7 +193,7 @@ def add_item(cart: Cart, item) -> Cart:
 # c2 = add_item(c1, item); c1 is unchanged
 ```
 
-**🧠 Tradeoff** — `@dataclass(frozen=True)` plus `dataclasses.replace` gives Python real immutable
+**🧠 Tradeoff**: `@dataclass(frozen=True)` plus `dataclasses.replace` gives Python real immutable
 values and clean "copy with change," and immutable collections (`tuple`, `frozenset`, or the `pyrsistent`
 library for structural sharing) complete it. It runs against Python's mutable-by-default grain (lists
 and dicts tempt you back) so it's a discipline, most valuable for shared state and value objects.
@@ -206,10 +206,10 @@ Frozen dataclasses also become hashable, so they work as dict keys and in sets.
 **❌ Naive**
 
 ```elixir
-# There's no in-place mutation to misuse — but trying to "update" by rebinding
+# There's no in-place mutation to misuse, but trying to "update" by rebinding
 # and expecting the old binding to change is the misconception to unlearn.
 cart = %{items: [], total: 0}
-# cart.items = [item]   # not valid — data is immutable
+# cart.items = [item]   # not valid: data is immutable
 ```
 
 **✅ Idiomatic**
@@ -225,7 +225,7 @@ c2 = add_item(c1, item)   # c1 is unchanged, always
 # update_in(state.user.cart.items, &[item | &1])
 ```
 
-**🧠 Tradeoff** — Immutability isn't a pattern in Elixir; it's the only option. Every value is
+**🧠 Tradeoff**: Immutability isn't a pattern in Elixir; it's the only option. Every value is
 immutable, "updates" (`%{map | ...}`, `put_in`, `update_in`) return new structures with automatic
 structural sharing, and this is *why* the BEAM's concurrency is safe: processes can't corrupt shared
 data because there's no shared mutable data. You pay nothing extra for it; the only adjustment is
@@ -258,7 +258,7 @@ func AddItem(cart Cart, item Item) Cart { // value receiver → cart is a copy
 }
 ```
 
-**🧠 Tradeoff** — Go structs are value types, so passing and returning by value gives copy semantics
+**🧠 Tradeoff**: Go structs are value types, so passing and returning by value gives copy semantics
 for the struct itself, but slices and maps are reference-like, so you must explicitly `copy` them to
 avoid sharing the backing array (the subtle bug the naive version hides). Go has no persistent data
 structures in the standard library, so immutability is a discipline with real copy costs; it's used
@@ -292,7 +292,7 @@ using System.Collections.Immutable;
 
 var c1 = new Cart([], 0m);
 var c2 = c1.Add(new Item("Book", 25m));
-Console.WriteLine($"{c1.Total} {c2.Total}"); // 0 25 — c1 unchanged
+Console.WriteLine($"{c1.Total} {c2.Total}"); // 0 25: c1 unchanged
 
 public sealed record Item(string Name, decimal Price);
 
@@ -303,7 +303,7 @@ public sealed record Cart(ImmutableList<Item> Items, decimal Total)
 }
 ```
 
-**🧠 Tradeoff** — records make "copy with change" one expression: `with` produces a new value and
+**🧠 Tradeoff**: records make "copy with change" one expression: `with` produces a new value and
 leaves the original alone, and records compare by value, so snapshots and change detection come
 cheap. The trap is that `with` copies *shallowly*: a record holding a `List<T>` still shares the
 mutable list, the same shallow-copy bite as the JS spread. Pair records with the immutable
@@ -346,11 +346,11 @@ fn add_item(cart: &Cart, item: Item) -> Cart {
 fn main() {
     let c1 = Cart { items: vec![], total: 0 };
     let c2 = add_item(&c1, Item { name: "Book".into(), price: 25 });
-    println!("{} {}", c1.total, c2.total); // 0 25 — c1 unchanged
+    println!("{} {}", c1.total, c2.total); // 0 25: c1 unchanged
 }
 ```
 
-**🧠 Tradeoff** — immutability is Rust's *default*: `let` bindings can't change, mutation must be
+**🧠 Tradeoff**: immutability is Rust's *default*: `let` bindings can't change, mutation must be
 declared with `let mut`, and a `&mut` borrow is exclusive: aliasing XOR mutation. That means the
 naive version isn't actually dangerous here: shared mutable state is a compile error, not a runtime
 bug, so Rust gives you immutability's safety even in mutating code. What returning new values still
@@ -381,7 +381,7 @@ const std = @import("std");
 const Item = struct { name: []const u8, price: u32 };
 const Cart = struct { items: []const Item, total: u32 };
 
-// Return a new cart; the copy cost is explicit — you see the alloc.
+// Return a new cart; the copy cost is explicit, you see the alloc.
 fn addItem(allocator: std.mem.Allocator, cart: Cart, item: Item) !Cart {
     const items = try allocator.alloc(Item, cart.items.len + 1);
     @memcpy(items[0..cart.items.len], cart.items);
@@ -396,11 +396,11 @@ pub fn main() !void {
     const c2 = try addItem(allocator, c1, .{ .name = "Book", .price = 25 });
     defer allocator.free(c2.items);
 
-    std.debug.print("{d} {d}\n", .{ c1.total, c2.total }); // 0 25 — c1 unchanged
+    std.debug.print("{d} {d}\n", .{ c1.total, c2.total }); // 0 25: c1 unchanged
 }
 ```
 
-**🧠 Tradeoff** — Zig's defaults lean immutable: `const` is the normal binding (the compiler rejects
+**🧠 Tradeoff**: Zig's defaults lean immutable: `const` is the normal binding (the compiler rejects
 a `var` you never mutate), function parameters are immutable, and assigning a struct copies the
 value. Mutation requires an explicit pointer, so it's visible at every call site. The trap mirrors
 Go: slices are pointer-plus-length views, so a value copy still shares the backing memory, hence the
@@ -437,7 +437,7 @@ public class Demo {
     public static void main(String[] args) {
         var c1 = new Cart(List.of(), 0);
         var c2 = c1.add(new Item("Book", 25));
-        System.out.println(c1.total() + " " + c2.total()); // 0 25 — c1 unchanged
+        System.out.println(c1.total() + " " + c2.total()); // 0 25: c1 unchanged
     }
 }
 
@@ -445,7 +445,7 @@ record Item(String name, int price) {}
 
 record Cart(List<Item> items, int total) {
     Cart {
-        items = List.copyOf(items); // seal the list — no caller's reference can reach inside
+        items = List.copyOf(items); // seal the list, no caller's reference can reach inside
     }
 
     Cart add(Item item) {
@@ -456,7 +456,7 @@ record Cart(List<Item> items, int total) {
 }
 ```
 
-**🧠 Tradeoff** — records give the value half for free: final fields, value equality, no setters. But
+**🧠 Tradeoff**: records give the value half for free: final fields, value equality, no setters. But
 record immutability is *shallow*: a record holding an `ArrayList` still shares the mutable list,
 the same trap as the C# `with` and the JS spread. The compact constructor's `List.copyOf` closes it:
 every `Cart` holds an unmodifiable list, so there's no path to mutation left. Java has no `with`
@@ -466,21 +466,21 @@ pervasive immutability has a real cost; it's spent on shared state and value obj
 
 ## Applications
 
-- **State management** — Redux and friends require immutable updates so reference equality drives
+- **State management**: Redux and friends require immutable updates so reference equality drives
   re-renders (frontend).
-- **Concurrent programming** — immutable data is shared across threads/goroutines/processes without
+- **Concurrent programming**: immutable data is shared across threads/goroutines/processes without
   locks (backend).
-- **Undo/redo & time-travel** — keeping past immutable states makes history trivial (frontend).
-- **Value objects (DDD)** — money, dates, and coordinates modeled as immutable values you compare and
+- **Undo/redo & time-travel**: keeping past immutable states makes history trivial (frontend).
+- **Value objects (DDD)**: money, dates, and coordinates modeled as immutable values you compare and
   replace, not mutate (backend).
-- **Caching & memoization** — immutable keys/results are safe to cache because they can't change under
+- **Caching & memoization**: immutable keys/results are safe to cache because they can't change under
   the cache (backend & frontend).
 
 ## Related Patterns
 
-- **Lens** — the composable tool for updating deeply nested *immutable* data without hand-writing the
+- **Lens**: the composable tool for updating deeply nested *immutable* data without hand-writing the
   copy-the-path spread at every level.
-- **Unidirectional Data Flow** — depends on immutable state so reducers return new state and change
+- **Unidirectional Data Flow**: depends on immutable state so reducers return new state and change
   detection stays cheap.
-- **Memento** — immutable snapshots are natural mementos; you keep past values for undo because they
+- **Memento**: immutable snapshots are natural mementos; you keep past values for undo because they
   can't change.

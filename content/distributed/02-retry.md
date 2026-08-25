@@ -28,23 +28,23 @@ that are safe to repeat.
 
 Treating every failure as final is brittle over a network:
 
-- **Transient faults surface as errors** — a one-off connection reset or a load-balancer hiccup
+- **Transient faults surface as errors**: a one-off connection reset or a load-balancer hiccup
   fails a request that would have worked a moment later.
-- **Naive retries stampede** — retrying immediately, with no delay, hammers a struggling service
+- **Naive retries stampede**: retrying immediately, with no delay, hammers a struggling service
   and can turn a blip into an outage (a "retry storm").
-- **Synchronized retries** — many clients retrying on the same fixed schedule hit the recovering
+- **Synchronized retries**: many clients retrying on the same fixed schedule hit the recovering
   service in waves ("thundering herd").
-- **Unsafe repeats** — blindly retrying a non-idempotent operation (charge a card, send an email)
+- **Unsafe repeats**: blindly retrying a non-idempotent operation (charge a card, send an email)
   can double it.
 
 ## Structure
 
 Key Components:
 
-- **Operation** — the call being attempted; ideally idempotent so repeats are safe.
-- **Retry policy** — max attempts, which errors are retryable, and the backoff schedule.
-- **Backoff** — the growing delay between attempts (usually exponential: 100ms, 200ms, 400ms...).
-- **Jitter** — randomness added to the delay so clients desynchronize.
+- **Operation**: the call being attempted; ideally idempotent so repeats are safe.
+- **Retry policy**: max attempts, which errors are retryable, and the backoff schedule.
+- **Backoff**: the growing delay between attempts (usually exponential: 100ms, 200ms, 400ms...).
+- **Jitter**: randomness added to the delay so clients desynchronize.
 
 ```
 attempt 1 ──fail──► wait 100ms±j ──► attempt 2 ──fail──► wait 200ms±j ──► attempt 3 ──► give up / succeed
@@ -61,25 +61,25 @@ attempt 1 ──fail──► wait 100ms±j ──► attempt 2 ──fail──
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Hides transient faults** — momentary glitches never reach the user.
-- **Cheap resilience** — a policy wrapping a call, no new infrastructure.
-- **Backoff + jitter protect the dependency** — spreads load instead of stampeding.
+- **Hides transient faults**: momentary glitches never reach the user.
+- **Cheap resilience**: a policy wrapping a call, no new infrastructure.
+- **Backoff + jitter protect the dependency**: spreads load instead of stampeding.
 
 ### Disadvantages
-- **Amplifies real outages** — retrying a genuinely-down service multiplies load exactly when it's
+- **Amplifies real outages**: retrying a genuinely-down service multiplies load exactly when it's
   weakest (pair with a circuit breaker).
-- **Added latency** — each retry adds its backoff to the worst-case response time.
-- **Duplication risk** — retrying non-idempotent work can double side effects.
+- **Added latency**: each retry adds its backoff to the worst-case response time.
+- **Duplication risk**: retrying non-idempotent work can double side effects.
 
 ## Common Mistakes
 
-- **Retrying non-idempotent operations** — re-sending a payment or POST without an idempotency key
+- **Retrying non-idempotent operations**: re-sending a payment or POST without an idempotency key
   can charge twice; make the operation safe to repeat first.
-- **Retrying non-retryable errors** — retrying a `400`/`404`/validation error just wastes time; the
+- **Retrying non-retryable errors**: retrying a `400`/`404`/validation error just wastes time; the
   answer won't change.
-- **No backoff or jitter** — immediate, synchronized retries create retry storms and thundering
+- **No backoff or jitter**: immediate, synchronized retries create retry storms and thundering
   herds that deepen the outage.
-- **Unbounded retries** — retrying forever turns a transient failure into a hung request; cap
+- **Unbounded retries**: retrying forever turns a transient failure into a hung request; cap
   attempts and total time.
 
 ## Key Takeaways
@@ -98,7 +98,7 @@ attempt 1 ──fail──► wait 100ms±j ──► attempt 2 ──fail──
 **❌ Naive**
 
 ```js
-// One shot — a transient network blip surfaces as a hard failure.
+// One shot: a transient network blip surfaces as a hard failure.
 async function loadProfile(id) {
   const res = await fetch(`/api/users/${id}`);
   if (!res.ok) throw new Error(res.status);
@@ -126,7 +126,7 @@ async function withRetry(fn, { attempts = 4, baseMs = 200 } = {}) {
 // await withRetry(() => loadProfile(id));
 ```
 
-**🧠 Tradeoff** — A small `withRetry` wrapper hides blips for a handful of lines, and exponential
+**🧠 Tradeoff**: A small `withRetry` wrapper hides blips for a handful of lines, and exponential
 backoff with jitter keeps it polite. It only re-runs the passed function, so idempotency is the
 caller's responsibility: retrying a GET is safe, retrying a POST needs an idempotency key. It
 doesn't know when a service is truly *down*, which is what a circuit breaker adds.
@@ -161,7 +161,7 @@ async function getStock() {
 }
 ```
 
-**🧠 Tradeoff** — `p-retry` gives production retry semantics (exponential backoff, randomization,
+**🧠 Tradeoff**: `p-retry` gives production retry semantics (exponential backoff, randomization,
 and `AbortError` to bail out of permanent failures) so you're not re-deriving the schedule. The
 `AbortError` distinction is the important discipline: retry `5xx`/timeouts, abort on `4xx`.
 Combine with a breaker so a sustained upstream outage stops the retries.
@@ -195,7 +195,7 @@ def fetch_report():
     return resp.json()
 ```
 
-**🧠 Tradeoff** — `tenacity` turns retry into a declarative decorator: stop condition, wait
+**🧠 Tradeoff**: `tenacity` turns retry into a declarative decorator: stop condition, wait
 strategy, and *which* exceptions to retry, all in one place. Restricting `retry_if_exception_type`
 to transient errors avoids retrying validation failures. The library is the idiomatic choice; the
 one thing it can't decide for you is idempotency; that's a property of the operation.
@@ -233,7 +233,7 @@ end
 # (the `retry` library provides a declarative macro for the same thing)
 ```
 
-**🧠 Tradeoff** — Recursion with a backoff sleep is the natural Elixir shape, and pattern matching
+**🧠 Tradeoff**: Recursion with a backoff sleep is the natural Elixir shape, and pattern matching
 on the error makes "retry only transient reasons" explicit. Often you don't even retry in-process:
 you `let it crash` and a supervisor restarts the worker, or you push the job to Oban, which retries
 with backoff durably. The `retry` library packages the inline version when you want it.
@@ -264,7 +264,7 @@ func fetchRate(ctx context.Context) (Rate, error) {
         var rate Rate
         rate, err = doFetch(ctx)
         if err == nil || !retryable(err) {
-            return rate, err // success, or a permanent error — stop
+            return rate, err // success, or a permanent error: stop
         }
         backoff := time.Duration(1<<i) * 200 * time.Millisecond
         jitter := time.Duration(rand.Int63n(int64(backoff)))
@@ -278,7 +278,7 @@ func fetchRate(ctx context.Context) (Rate, error) {
 }
 ```
 
-**🧠 Tradeoff** — A plain loop with `time.After` and a `select` on `ctx.Done()` is idiomatic Go:
+**🧠 Tradeoff**: A plain loop with `time.After` and a `select` on `ctx.Done()` is idiomatic Go:
 explicit backoff, jitter, and cooperative cancellation so retries respect the caller's deadline. No
 framework needed, though `cenkalti/backoff` packages the schedule. The verbosity buys total clarity
 about when it stops and how it interacts with `context`.
@@ -323,14 +323,14 @@ static async Task<T> WithRetry<T>(Func<Task<T>> fn, int attempts, TimeSpan baseD
 
 static bool IsTransient(Exception e) => e switch
 {
-    TaskCanceledException => true,                                  // timeout — retry
+    TaskCanceledException => true,                                  // timeout: retry
     HttpRequestException { StatusCode: null } => true,              // connection-level blip
     HttpRequestException h => (int?)h.StatusCode is >= 500 or 429,  // 5xx / throttled
-    _ => false,                       // 4xx, validation... — the answer won't change
+    _ => false,                       // 4xx, validation...: the answer won't change
 };
 ```
 
-**🧠 Tradeoff** — The exception filter (`catch ... when`) is the idiomatic classify step: a permanent
+**🧠 Tradeoff**: The exception filter (`catch ... when`) is the idiomatic classify step: a permanent
 failure never enters the catch block, so it propagates with its original stack. `Task.Delay` waits
 without holding a thread, and `Random.Shared` supplies jitter with no setup. In production the
 schedule usually comes from Polly (`WaitAndRetryAsync` with decorrelated jitter, composed with its
@@ -361,7 +361,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 enum FetchError {
     Timeout,    // transient
     Connection, // transient
-    BadRequest, // permanent — the answer won't change
+    BadRequest, // permanent: the answer won't change
 }
 
 impl FetchError {
@@ -395,7 +395,7 @@ fn with_retry<T>(mut f: impl FnMut() -> Result<T, FetchError>) -> Result<T, Fetc
 // let rate = with_retry(do_fetch)?;
 ```
 
-**🧠 Tradeoff** — Making `FetchError` an enum turns "which failures are retryable" into a
+**🧠 Tradeoff**: Making `FetchError` an enum turns "which failures are retryable" into a
 compile-time decision: `is_transient` matches exhaustively, so adding a variant forces you to
 classify it before the code builds. `FnMut` is honest about the operation running more than once.
 `thread::sleep` blocks the thread: fine in a worker; async Rust would use a runtime's timer, a
@@ -451,7 +451,7 @@ fn withRetry(io: std.Io, f: *const fn () FetchError!f64) FetchError!f64 {
 // const rate = try withRetry(io, doFetch);
 ```
 
-**🧠 Tradeoff** — Error sets give the same guarantee as Rust's enum: the `switch` in `isTransient`
+**🧠 Tradeoff**: Error sets give the same guarantee as Rust's enum: the `switch` in `isTransient`
 is exhaustive, so a new error can't sneak past classification. `catch` is plain control flow (no
 unwinding, no hidden cost) which keeps the retry loop readable top to bottom. Sleeping goes
 through the `io` you pass in: 0.17 makes blocking a capability, threaded explicitly like an
@@ -517,7 +517,7 @@ class Reports {
     // The classify step: a switch over the exception's type.
     static boolean isTransient(Exception e) {
         return switch (e) {
-            case HttpTimeoutException _ -> true; // deadline hit — worth another try
+            case HttpTimeoutException _ -> true; // deadline hit: worth another try
             case ConnectException _ -> true;     // connection-level blip
             default -> false;                    // 4xx, parse errors... the answer won't change
         };
@@ -525,7 +525,7 @@ class Reports {
 }
 ```
 
-**🧠 Tradeoff** — The `switch` over exception types makes classification one visible expression:
+**🧠 Tradeoff**: The `switch` over exception types makes classification one visible expression:
 transient types retry, everything else propagates with its original stack. `Thread.sleep` blocking
 a thread used to be the knock against plain retry loops in Java; on a virtual thread
 (`Executors.newVirtualThreadPerTaskExecutor()`) a sleeping thread costs close to nothing, so the
@@ -536,29 +536,29 @@ above is the whole idea. Idempotency stays the operation's problem, not the wrap
 
 ## Applications
 
-- **HTTP & RPC clients** — the default resilience wrapper on any network call, retrying `5xx`,
+- **HTTP & RPC clients**: the default resilience wrapper on any network call, retrying `5xx`,
   `429`, and timeouts (backend & frontend).
-- **Cloud SDKs** — AWS, GCP, and Azure clients retry throttling and transient errors with backoff
+- **Cloud SDKs**: AWS, GCP, and Azure clients retry throttling and transient errors with backoff
   out of the box (backend).
-- **Message & job systems** — queues (SQS, Oban, Sidekiq) redeliver failed jobs with backoff,
+- **Message & job systems**: queues (SQS, Oban, Sidekiq) redeliver failed jobs with backoff,
   retry being a first-class feature (backend).
-- **Database drivers** — reconnect and retry on transient connection drops or serialization
+- **Database drivers**: reconnect and retry on transient connection drops or serialization
   failures (backend).
-- **Frontend fetches** — retrying a flaky request a couple of times keeps a UI from flashing an
+- **Frontend fetches**: retrying a flaky request a couple of times keeps a UI from flashing an
   error on a momentary blip (frontend).
 
 **In modern systems:**
 
-- **Multi-agent** — retry a model call with backoff on rate-limit or `5xx`, and retry a tool on
+- **Multi-agent**: retry a model call with backoff on rate-limit or `5xx`, and retry a tool on
   transient failure, before the agent gives up on the turn.
-- **Workflow engine** — a per-step retry policy declared in the step definition, with backoff and
+- **Workflow engine**: a per-step retry policy declared in the step definition, with backoff and
   a max-attempts cap before it dead-letters.
-- **Low-code** — a datasource binding retries a failed fetch before showing an error state.
+- **Low-code**: a datasource binding retries a failed fetch before showing an error state.
 
 ## Related Patterns
 
-- **Circuit Breaker** — the counterpart: retry handles *transient* failure, the breaker stops the
+- **Circuit Breaker**: the counterpart: retry handles *transient* failure, the breaker stops the
   retries once failure is *sustained*, preventing a retry storm.
-- **Timeout** — bounds each attempt so a hung call fails and can be retried rather than blocking.
-- **Idempotency (keys)** — the enabling companion: retries are only safe when repeating the
+- **Timeout**: bounds each attempt so a hung call fails and can be retried rather than blocking.
+- **Idempotency (keys)**: the enabling companion: retries are only safe when repeating the
   operation has no extra effect.

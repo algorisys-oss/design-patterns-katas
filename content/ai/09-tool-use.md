@@ -40,10 +40,10 @@ well-formed tool call, and you dispatch on it.
 
 Key Components / Participants:
 
-- **Tool** — a name, a description (what it does and *when* to use it), and an input schema.
-- **Registry / dispatch table** — maps a tool name to the function that runs it.
-- **Tool call** — the model's structured request: `{ name, input, id }`.
-- **Tool result** — the executed output, returned to the model tagged with the call's `id`.
+- **Tool**: a name, a description (what it does and *when* to use it), and an input schema.
+- **Registry / dispatch table**: maps a tool name to the function that runs it.
+- **Tool call**: the model's structured request: `{ name, input, id }`.
+- **Tool result**: the executed output, returned to the model tagged with the call's `id`.
 
 ```
 tools ──▶ model ──▶ tool_call { name, input, id }
@@ -78,15 +78,15 @@ tools ──▶ model ──▶ tool_call { name, input, id }
 
 ## Common Mistakes
 
-- **Too many tools** — a bloated registry degrades selection. Keep it small; consider tool-search or
+- **Too many tools**: a bloated registry degrades selection. Keep it small; consider tool-search or
   a [[router]] when the set is large.
-- **Weak descriptions** — the description is how the model decides *when* to call. Be prescriptive
+- **Weak descriptions**: the description is how the model decides *when* to call. Be prescriptive
   ("call this when the user asks about an order's status"), not just descriptive.
-- **Executing unvalidated arguments** — a hallucinated or malicious argument runs against your
+- **Executing unvalidated arguments**: a hallucinated or malicious argument runs against your
   system. Validate inputs; treat tool results as untrusted input.
-- **No gate on destructive tools** — `delete_account` should not run on the model's say-so alone;
+- **No gate on destructive tools**: `delete_account` should not run on the model's say-so alone;
   require confirmation ([[human-in-the-loop]]).
-- **Dropping the `id`** — every tool result must carry the call's id, or the model can't match result
+- **Dropping the `id`**: every tool result must carry the call's id, or the model can't match result
   to request.
 
 ## Key Takeaways
@@ -106,7 +106,7 @@ naive version fakes tools by parsing prose; the idiomatic version uses typed too
 **❌ Naive**
 
 ```js
-// Ask the model to print an action, then regex it out — breaks constantly.
+// Ask the model to print an action, then regex it out: breaks constantly.
 async function act(question) {
   const out = await callModel(`If you need to search, print SEARCH: <query>\n${question}`);
   const m = out.match(/SEARCH:\s*(.+)/); // preamble, typos, wrong format → miss
@@ -134,7 +134,7 @@ async function dispatch(call) {
 // The model emits a typed tool_use block; you run dispatch and return the result.
 ```
 
-**🧠 Tradeoff** — Tools as data (`{ description, schema, run }`) make the registry a dispatch table; the
+**🧠 Tradeoff**: Tools as data (`{ description, schema, run }`) make the registry a dispatch table; the
 provider guarantees a well-formed `tool_use` block, so `dispatch` never parses prose. `validate` before
 `run` is the guard against hallucinated arguments. The cost is that descriptions and the tool set are
 now prompt engineering you must tune, but that's the real work, exposed instead of hidden in a regex.
@@ -178,7 +178,7 @@ def dispatch(call) -> str:
     return tool.run(validate(tool.schema, call.input))  # validate first
 ```
 
-**🧠 Tradeoff** — A `Tool` dataclass plus a name→`Tool` registry is the dispatch table; the
+**🧠 Tradeoff**: A `Tool` dataclass plus a name→`Tool` registry is the dispatch table; the
 `@beta_tool` decorator in the Anthropic SDK derives the schema from a typed function signature if you'd
 rather not hand-write it. Either way the pattern is the same: typed tools, validated inputs, a dispatch
 map. The judgment is which capabilities to expose and how to describe them.
@@ -220,7 +220,7 @@ defmodule Tools do
 end
 ```
 
-**🧠 Tradeoff** — Tools are a map to a struct holding a `run` function value; `dispatch` pattern-matches
+**🧠 Tradeoff**: Tools are a map to a struct holding a `run` function value; `dispatch` pattern-matches
 the call and `with` threads validation before execution. If you want a named contract per tool, a
 `behaviour` with `run/1` and `schema/0` callbacks lets each tool be its own module, which is cleaner when tools
 grow logic. For a handful, the map-of-functions is leaner. There's no Claude SDK here, so the tool-call
@@ -270,7 +270,7 @@ func Dispatch(call ToolCall) (string, error) {
 }
 ```
 
-**🧠 Tradeoff** — A `Tool` struct with a `Run` func field and a name→`Tool` map is the dispatch table; the
+**🧠 Tradeoff**: A `Tool` struct with a `Run` func field and a name→`Tool` map is the dispatch table; the
 `(string, error)` returns make validation and unknown-tool failures explicit and un-ignorable. Go has no
 tool-runner, so `Dispatch` is the loop's act step: exactly where you'd add a permission check for a
 destructive tool. The `any`-typed args are the seam where the model's untyped output meets your typed code;
@@ -280,21 +280,21 @@ validate there.
 
 Real-world uses of Tool Use:
 
-- **Data access** — look up orders, users, inventory, or documents mid-conversation.
-- **Actions** — send an email, create a ticket, schedule an event, post a message.
-- **Computation** — a calculator or code-execution tool for exact math the model shouldn't guess.
-- **Web** — search and fetch tools to reach information past the model's training cutoff.
-- **MCP servers** — a standardized way to expose a whole toolset (GitHub, Slack, a database) to the model.
+- **Data access**: look up orders, users, inventory, or documents mid-conversation.
+- **Actions**: send an email, create a ticket, schedule an event, post a message.
+- **Computation**: a calculator or code-execution tool for exact math the model shouldn't guess.
+- **Web**: search and fetch tools to reach information past the model's training cutoff.
+- **MCP servers**: a standardized way to expose a whole toolset (GitHub, Slack, a database) to the model.
 
 **In modern systems:**
 
-- **Multi-agent** — wrap heterogeneous tool and model APIs behind one uniform call the orchestrator dispatches.
-- **Workflow engine** — a step whose "work" is a typed tool the model chose to invoke.
-- **Low-code** — the app's declared actions (`sendEmail`, `queryTable`) exposed as tools the model can call.
+- **Multi-agent**: wrap heterogeneous tool and model APIs behind one uniform call the orchestrator dispatches.
+- **Workflow engine**: a step whose "work" is a typed tool the model chose to invoke.
+- **Low-code**: the app's declared actions (`sendEmail`, `queryTable`) exposed as tools the model can call.
 
 ## Related Patterns
 
-- **ReAct Loop** — the control flow that repeatedly calls tools; Tool Use is the mechanism it runs on.
-- **Command** — every tool call is a Command object: loggable, gate-able, replayable.
-- **Adapter** — a tool adapts a foreign API to the uniform tool interface the model expects.
-- **Chain of Responsibility** — tool dispatch as a chain where each handler claims the calls it recognizes.
+- **ReAct Loop**: the control flow that repeatedly calls tools; Tool Use is the mechanism it runs on.
+- **Command**: every tool call is a Command object: loggable, gate-able, replayable.
+- **Adapter**: a tool adapts a foreign API to the uniform tool interface the model expects.
+- **Chain of Responsibility**: tool dispatch as a chain where each handler claims the calls it recognizes.

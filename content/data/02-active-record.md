@@ -27,21 +27,21 @@ are right there on the object. It's the philosophy behind Rails, Django, Eloquen
 
 For simple, table-shaped data, a full Data Mapper is more machinery than the job needs:
 
-- **Ceremony for CRUD** — a separate mapper/repository per entity, plus two-way translation, is a lot of
+- **Ceremony for CRUD**: a separate mapper/repository per entity, plus two-way translation, is a lot of
   code when the object just mirrors the table.
-- **Indirection to save** — `mapper.save(user)` is a step removed from the intuitive `user.save()`.
-- **Boilerplate** — hand-writing finders and inserts for every table that's essentially the same shape.
-- **Slow to move** — for a CRUD app or prototype, the "clean domain" separation delays shipping without
+- **Indirection to save**: `mapper.save(user)` is a step removed from the intuitive `user.save()`.
+- **Boilerplate**: hand-writing finders and inserts for every table that's essentially the same shape.
+- **Slow to move**: for a CRUD app or prototype, the "clean domain" separation delays shipping without
   a payoff, because there's little domain complexity to protect.
 
 ## Structure
 
 Key Components:
 
-- **Active Record class** — maps 1:1 to a table; instance fields mirror columns.
-- **Instance persistence** — `save()`, `delete()`, `update()` on the object act on its row.
-- **Class-level finders** — `find(id)`, `where(...)`, `all()` as static/class methods returning records.
-- **Direct SQL ownership** — the class generates its own queries (usually via an ORM base class).
+- **Active Record class**: maps 1:1 to a table; instance fields mirror columns.
+- **Instance persistence**: `save()`, `delete()`, `update()` on the object act on its row.
+- **Class-level finders**: `find(id)`, `where(...)`, `all()` as static/class methods returning records.
+- **Direct SQL ownership**: the class generates its own queries (usually via an ORM base class).
 
 ```
 User (Active Record) { name, email; save(), delete(), find() }
@@ -60,23 +60,23 @@ User (Active Record) { name, email; save(), delete(), find() }
 ## Advantages and Disadvantages
 
 ### Advantages
-- **Simple & fast** — the shortest path to persistence; minimal boilerplate for CRUD.
-- **Intuitive** — `user.save()` reads exactly as it means; finders live on the model.
-- **Convention-driven** — mature frameworks (Rails, Django, Eloquent) automate the mapping.
+- **Simple & fast**: the shortest path to persistence; minimal boilerplate for CRUD.
+- **Intuitive**: `user.save()` reads exactly as it means; finders live on the model.
+- **Convention-driven**: mature frameworks (Rails, Django, Eloquent) automate the mapping.
 
 ### Disadvantages
-- **Couples domain to schema** — the object's shape is the table's shape; hard to model a rich domain.
-- **Untestable in isolation** — business logic on the record can't run without a database.
-- **Fat models** — as logic grows, mixing rules with persistence produces God-object models.
+- **Couples domain to schema**: the object's shape is the table's shape; hard to model a rich domain.
+- **Untestable in isolation**: business logic on the record can't run without a database.
+- **Fat models**: as logic grows, mixing rules with persistence produces God-object models.
 
 ## Common Mistakes
 
-- **Piling business logic onto records** — as domain complexity grows, an Active Record becomes a fat,
+- **Piling business logic onto records**: as domain complexity grows, an Active Record becomes a fat,
   untestable God object; extract rules into services/POROs or move to Data Mapper.
-- **Persistence in tight loops** — calling `save()` per object in a loop hits the DB N times; batch or
+- **Persistence in tight loops**: calling `save()` per object in a loop hits the DB N times; batch or
   use a Unit of Work.
-- **N+1 queries** — lazy per-record association loading in a loop; eager-load related data.
-- **Using it for a rich domain** — forcing a complex domain into table-shaped records fights the model;
+- **N+1 queries**: lazy per-record association loading in a loop; eager-load related data.
+- **Using it for a rich domain**: forcing a complex domain into table-shaped records fights the model;
   that's Data Mapper territory.
 
 ## Key Takeaways
@@ -120,7 +120,7 @@ class User {
 // const u = await User.find(1); u.name = "Ada"; await u.save();
 ```
 
-**🧠 Tradeoff** — Putting `find`/`save`/`delete` on `User` gives the intuitive `u.save()` and centralizes
+**🧠 Tradeoff**: Putting `find`/`save`/`delete` on `User` gives the intuitive `u.save()` and centralizes
 the entity's SQL, fast and readable for CRUD. The cost is that `User` now depends on `db`, so testing
 its behavior means a database (or heavy mocking), and any real domain logic added here mixes with
 persistence. Sequelize/Objection give this style with far less hand-written SQL.
@@ -154,7 +154,7 @@ await post.save();                                // UPDATE
 const found = await Post.findByPk(id);            // SELECT
 ```
 
-**🧠 Tradeoff** — Sequelize (and TypeORM's Active Record mode) gives Node this style: a model definition
+**🧠 Tradeoff**: Sequelize (and TypeORM's Active Record mode) gives Node this style: a model definition
 generates the SQL, and `create`/`save`/`findByPk` live on the model: minimal code for CRUD. It's ideal
 for straightforward apps and prototypes. The same caveats hold: the model couples to the schema and
 grows fat if you keep loading it with business logic; MikroORM's Data Mapper mode is the alternative for
@@ -189,7 +189,7 @@ class Article(models.Model):
 # Article.objects.filter(published=True)                # class-level finders
 ```
 
-**🧠 Tradeoff** — Django's ORM is the canonical Active Record: `Model` subclasses map to tables, and
+**🧠 Tradeoff**: Django's ORM is the canonical Active Record: `Model` subclasses map to tables, and
 `.save()`/`.objects` provide persistence with almost no boilerplate, hugely productive for CRUD web
 apps. It's why Django ships fast. The flip side is the well-known "fat model" pull and coupling to the
 schema; teams with rich domains move logic into services or adopt SQLAlchemy's Data Mapper. Convenience
@@ -209,7 +209,7 @@ Postgrex.query!(conn, "UPDATE users SET name = $1 WHERE id = $2", [name, id])
 **✅ Idiomatic**
 
 ```elixir
-# Elixir/Ecto is Data Mapper, not Active Record — there's no user.save().
+# Elixir/Ecto is Data Mapper, not Active Record: there's no user.save().
 # The closest "record-like" convenience is a schema + a thin context, but persistence
 # stays explicit through Repo (deliberately):
 schema = Repo.get(User, id)
@@ -218,7 +218,7 @@ schema
 |> Repo.update!()     # persistence is a separate step, by design
 ```
 
-**🧠 Tradeoff** — Elixir is the odd one out: Ecto is intentionally a **Data Mapper**, so there is no
+**🧠 Tradeoff**: Elixir is the odd one out: Ecto is intentionally a **Data Mapper**, so there is no
 Active Record `save()` on the struct: persistence always goes through `Repo`, and immutability means a
 struct can't "save itself" anyway. This is a deliberate design stance (explicit over convenient). The
 lesson lands by contrast: Active Record fits mutable, object-oriented languages; the functional, immutable
@@ -253,7 +253,7 @@ db.First(&found, id)             // SELECT
 db.Delete(&user)                 // DELETE
 ```
 
-**🧠 Tradeoff** — GORM brings an Active-Record-style ORM to Go: struct tags define the mapping and
+**🧠 Tradeoff**: GORM brings an Active-Record-style ORM to Go: struct tags define the mapping and
 `Create`/`Save`/`First`/`Delete` handle persistence with little code, convenient for CRUD services.
 But Go's community leans strongly the other way, preferring explicit Data Mapper (`database/sql`, `sqlc`)
 for visible SQL and no reflection magic. So Active Record exists in Go but runs against the grain; it's a
@@ -266,7 +266,7 @@ convenience trade many Go teams decline in favor of explicitness.
 **❌ Naive**
 
 ```csharp
-// The users table poked directly from every call site — no single home for the entity.
+// The users table poked directly from every call site, no single home for the entity.
 users[1] = ("Ada", "ada@example.com");        // insert, inline
 users[1] = ("Grace", users[1].Email);         // the same update repeated everywhere
 ```
@@ -305,7 +305,7 @@ public sealed class User(int id, string name, string email)
 }
 ```
 
-**🧠 Tradeoff** — this is hand-rolled because .NET's mainstream ORM went the other way: EF Core is a
+**🧠 Tradeoff**: this is hand-rolled because .NET's mainstream ORM went the other way: EF Core is a
 Data Mapper with a Unit of Work: entities are plain classes, the `DbContext` tracks them, and
 persistence is `context.SaveChanges()`, not `user.Save()`. The static `Table` and `_nextId` are the
 tell: Active Record needs storage reachable from every instance, which means process-global state,
@@ -319,7 +319,7 @@ persistence into a context you can scope and swap.
 **❌ Naive**
 
 ```rust
-// The same HashMap poked inline from every call site — no single home for the entity.
+// The same HashMap poked inline from every call site, no single home for the entity.
 users.insert(1, ("Ada".to_string(), "ada@example.com".to_string()));
 let email = users[&1].1.clone();
 users.insert(1, ("Grace".to_string(), email)); // the same update repeated everywhere
@@ -332,7 +332,7 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 // Active Record wants the store reachable from every instance with no arguments.
-// In Rust that means a global behind a lock — already a smell.
+// In Rust that means a global behind a lock: already a smell.
 static TABLE: OnceLock<Mutex<HashMap<u32, (String, String)>>> = OnceLock::new();
 
 fn table() -> &'static Mutex<HashMap<u32, (String, String)>> {
@@ -366,7 +366,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — Active Record fights Rust's ownership model, and the code shows the bruises. A
+**🧠 Tradeoff**: Active Record fights Rust's ownership model, and the code shows the bruises. A
 no-argument `save()` forces the table into a `static` behind a `Mutex`; `find` can only hand back a
 clone of the row, never a live reference into the table, because the borrow checker forbids exactly
 the "object *is* the row" identity the pattern is built on. Every save re-clones the strings through
@@ -380,7 +380,7 @@ Learn the pattern here; write Data Mapper in real Rust.
 **❌ Naive**
 
 ```zig
-// The table poked inline from every call site — no single home for the entity.
+// The table poked inline from every call site, no single home for the entity.
 table[1] = .{ .name = "Ada", .email = "ada@example.com" };
 table[1] = .{ .name = "Grace", .email = table[1].?.email }; // repeated everywhere
 ```
@@ -392,7 +392,7 @@ const std = @import("std");
 
 const Row = struct { name: []const u8, email: []const u8 };
 
-// The in-memory "users table", keyed by id — a mutable global the model reaches for.
+// The in-memory "users table", keyed by id: a mutable global the model reaches for.
 var table: [8]?Row = @splat(null);
 
 const User = struct {
@@ -422,7 +422,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — mechanically Zig makes this easy: a mutable file-scope `var` compiles without
+**🧠 Tradeoff**: mechanically Zig makes this easy: a mutable file-scope `var` compiles without
 complaint, and `user.save()` just works. But that convenience rests on hidden reachable state, which
 is exactly what Zig style spends its effort avoiding, and with no ORM to generate the mapping, all
 Active Record saves you here is a parameter. Passing the table in explicitly turns this back into
@@ -436,7 +436,7 @@ garbage-collected framework languages; in Zig it's a shape to recognize, not one
 **❌ Naive**
 
 ```java
-// The users table poked directly from every call site — no single home for the entity.
+// The users table poked directly from every call site, no single home for the entity.
 table.put(1, new String[] { "Ada", "ada@example.com" });   // insert, inline
 table.put(1, new String[] { "Grace", table.get(1)[1] });   // the same update repeated everywhere
 ```
@@ -488,7 +488,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — Active Record is what JPA deliberately isn't: a JPA entity never saves itself (the
+**🧠 Tradeoff**: Active Record is what JPA deliberately isn't: a JPA entity never saves itself (the
 `EntityManager` does) because Java's mainstream chose Data Mapper after the EJB entity-bean years.
 The style survives at the edges: jOOQ's `UpdatableRecord` has a `store()`, and ActiveJDBC copies Rails
 outright. The static `TABLE` and `nextId` are the tell: a no-argument `save()` needs storage reachable
@@ -497,19 +497,19 @@ for a small tool; Java culture puts persistence in a context injected where it's
 
 ## Applications
 
-- **CRUD web apps** — Rails, Django, Laravel/Eloquent, and Phoenix-with-schemas build admin panels and
+- **CRUD web apps**: Rails, Django, Laravel/Eloquent, and Phoenix-with-schemas build admin panels and
   content apps fast (backend).
-- **Prototypes & MVPs** — the quickest way to get persistence working when speed matters most (backend).
-- **Thin-domain services** — apps that are mostly forms over tables with light validation (backend).
-- **Scaffolding & generators** — framework generators produce Active Record models, controllers, and
+- **Prototypes & MVPs**: the quickest way to get persistence working when speed matters most (backend).
+- **Thin-domain services**: apps that are mostly forms over tables with light validation (backend).
+- **Scaffolding & generators**: framework generators produce Active Record models, controllers, and
   views from a schema (backend).
-- **Internal tools** — CRUD dashboards where domain complexity is low and convenience is king (backend).
+- **Internal tools**: CRUD dashboards where domain complexity is low and convenience is king (backend).
 
 ## Related Patterns
 
-- **Data Mapper** — the opposite trade-off: pure domain objects with persistence in a separate mapper;
+- **Data Mapper**: the opposite trade-off: pure domain objects with persistence in a separate mapper;
   more code, but decoupled and testable for rich domains.
-- **Repository** — often layered over Active Record or Data Mapper to present a collection-like interface
+- **Repository**: often layered over Active Record or Data Mapper to present a collection-like interface
   and hide query details from callers.
-- **Unit of Work** — batches the many `save()` calls Active Record encourages into one transaction to
+- **Unit of Work**: batches the many `save()` calls Active Record encourages into one transaction to
   avoid per-object round-trips.

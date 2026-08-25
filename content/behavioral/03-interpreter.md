@@ -42,12 +42,12 @@ a small grammar you define, a tree you build from the input, and an evaluator yo
 
 Key Components:
 
-- **AbstractExpression** — the interface every node implements: `interpret(context)`.
-- **TerminalExpression** — a leaf: a literal, a variable, a single comparison. Interprets directly.
-- **NonTerminalExpression** — a composite: combines child expressions (`add`, `and`, `or`).
+- **AbstractExpression**: the interface every node implements: `interpret(context)`.
+- **TerminalExpression**: a leaf: a literal, a variable, a single comparison. Interprets directly.
+- **NonTerminalExpression**: a composite: combines child expressions (`add`, `and`, `or`).
   Interprets by recursing into its children.
-- **Context** — the input the interpretation runs against (variable bindings, the data row).
-- **Client** — builds the tree (usually via a parser) and calls `interpret` on the root.
+- **Context**: the input the interpretation runs against (variable bindings, the data row).
+- **Client**: builds the tree (usually via a parser) and calls `interpret` on the root.
 
 ```
 "1 + 2 * 3"  →  parse  →        Add
@@ -79,13 +79,13 @@ Key Components:
 
 ## Common Mistakes
 
-- **Using it for a large grammar** — beyond a dozen rules, hand-rolled Interpreter collapses;
+- **Using it for a large grammar**: beyond a dozen rules, hand-rolled Interpreter collapses;
   reach for a parser generator (PEG, ANTLR) or a real parser library instead.
-- **Forgetting the parser** — Interpreter is the *evaluate-the-tree* half. Building the AST from
+- **Forgetting the parser**: Interpreter is the *evaluate-the-tree* half. Building the AST from
   raw text (lexing + parsing) is a separate job the pattern doesn't cover.
-- **Falling back to `eval`** — convenient, but it's an injection hole and gives you none of the
+- **Falling back to `eval`**: convenient, but it's an injection hole and gives you none of the
   custom semantics that are the whole point.
-- **Mistaking it for a whole compiler** — Interpreter evaluates; it doesn't optimize, type-check,
+- **Mistaking it for a whole compiler**: Interpreter evaluates; it doesn't optimize, type-check,
   or emit code.
 
 ## Key Takeaways
@@ -107,11 +107,11 @@ for `1 + 2 * 3` interprets to `7`.
 **❌ Naive**
 
 ```js
-// "Just eval it" — works until the input isn't trusted or isn't JavaScript.
+// "Just eval it": works until the input isn't trusted or isn't JavaScript.
 function evaluate(expr) {
   return eval(expr); // 🚨 arbitrary code execution; no custom grammar, no domain rules
 }
-evaluate("1 + 2 * 3"); // 7 — but a hostile string runs anything, and you can't extend the language
+evaluate("1 + 2 * 3"); // 7, but a hostile string runs anything, and you can't extend the language
 ```
 
 **✅ Idiomatic (frontend)**
@@ -136,7 +136,7 @@ const expr = new Add(new Num(1), new Mul(new Num(2), new Num(3)));
 expr.interpret(); // 7
 ```
 
-**🧠 Tradeoff** — Putting `interpret` on each node is the textbook form: adding a new node type
+**🧠 Tradeoff**: Putting `interpret` on each node is the textbook form: adding a new node type
 (say `Sub`) needs no changes to the existing ones. The cost is the mirror image: adding a new
 *operation* over the tree (pretty-print, optimize) means editing every class. That asymmetry is
 the Expression Problem, and it's exactly what Visitor trades the other way.
@@ -148,7 +148,7 @@ the Expression Problem, and it's exactly what Visitor trades the other way.
 **❌ Naive**
 
 ```js
-// A rules check frozen into code — every new rule is a redeploy.
+// A rules check frozen into code: every new rule is a redeploy.
 function eligible(user) {
   return user.age > 18 && user.country === "US"; // can't change without shipping
 }
@@ -178,10 +178,10 @@ function build(node) {
 const rule = build({
   all: [{ field: "age", op: ">", value: 18 }, { field: "country", op: "==", value: "US" }],
 });
-rule({ age: 21, country: "US" }); // true — and the rule shipped as data, not code
+rule({ age: 21, country: "US" }); // true, and the rule shipped as data, not code
 ```
 
-**🧠 Tradeoff** — Closures instead of classes give a lighter interpreter — no node hierarchy —
+**🧠 Tradeoff**: Closures instead of classes give a lighter interpreter (no node hierarchy)
 and the JSON *is* a sentence in the grammar, so rules become editable config. This is how
 feature-flag and pricing engines work. The moment you need real syntax (operator precedence,
 arbitrary nesting, helpful parse errors), stop hand-rolling and reach for a parser library.
@@ -232,7 +232,7 @@ expr = Add(Num(1), Mul(Num(2), Num(3)))
 interpret(expr)  # 7
 ```
 
-**🧠 Tradeoff** — Dataclasses plus `match` keep the whole interpreter in one function — very
+**🧠 Tradeoff**: Dataclasses plus `match` keep the whole interpreter in one function, which is very
 readable, and adding an *operation* is just another function. The tradeoff flips from the OO
 form: adding a new *node type* means touching every `match`. Pick the axis you expect to grow;
 here Python's structural pattern matching makes the data-oriented side the natural default.
@@ -244,12 +244,12 @@ here Python's structural pattern matching makes the data-oriented side the natur
 **❌ Naive**
 
 ```elixir
-# Code.eval_string is Elixir's eval — same trust problem, plus it compiles at runtime.
+# Code.eval_string is Elixir's eval: same trust problem, plus it compiles at runtime.
 defmodule Evaluator do
   def evaluate(expr), do: Code.eval_string(expr) |> elem(0)
 end
 
-Evaluator.evaluate("1 + 2 * 3")  # 7 — but never on untrusted input
+Evaluator.evaluate("1 + 2 * 3")  # 7, but never on untrusted input
 ```
 
 **✅ Idiomatic**
@@ -266,7 +266,7 @@ expr = {:add, {:num, 1}, {:mul, {:num, 2}, {:num, 3}}}
 Interpreter.eval(expr)  # 7
 ```
 
-**🧠 Tradeoff** — Tagged tuples and multiple function heads *are* the interpreter — no classes,
+**🧠 Tradeoff**: Tagged tuples and multiple function heads *are* the interpreter, with no classes,
 no dispatch machinery, the compiler checks your clauses. It's the most direct expression of the
 pattern in any of these languages. As with Python, new operations are cheap (another function),
 new node types touch every clause: the same Expression-Problem tradeoff, made explicit by the
@@ -316,7 +316,7 @@ func (m Mul) Interpret() int { return m.L.Interpret() * m.R.Interpret() }
 // Add{Num(1), Mul{Num(2), Num(3)}}.Interpret() == 7
 ```
 
-**🧠 Tradeoff** — A small `Expr` interface with each node implementing `Interpret()` is the
+**🧠 Tradeoff**: A small `Expr` interface with each node implementing `Interpret()` is the
 idiomatic Go form; implicit satisfaction means no `extends`, just a method. Like the JS class
 version, it's open to new node types and closed to new operations. Go has no pattern matching, so
 the data-first alternative (a type switch over a tagged struct) reads worse than the interface
@@ -330,7 +330,7 @@ here; the method-per-node form is the one to reach for.
 
 ```csharp
 // A hard-coded evaluator: no grammar, no tree, every new expression is new code.
-Console.WriteLine(Evaluate("+", 1, Evaluate("*", 2, 3))); // 7 — nesting lives in code, not data
+Console.WriteLine(Evaluate("+", 1, Evaluate("*", 2, 3))); // 7: nesting lives in code, not data
 
 static int Evaluate(string op, int a, int b) => op switch
 {
@@ -361,7 +361,7 @@ public sealed record Add(Expr Left, Expr Right) : Expr;
 public sealed record Mul(Expr Left, Expr Right) : Expr;
 ```
 
-**🧠 Tradeoff** — records plus one recursive switch expression is the modern C# form: the
+**🧠 Tradeoff**: records plus one recursive switch expression is the modern C# form: the
 interpreter reads like the grammar, and a new *operation* (pretty-print, optimize) is just
 another function. Two honest notes. C# can't check a record hierarchy for exhaustiveness, so
 the `_` arm is load-bearing where Rust's `match` would simply refuse to compile. And the
@@ -385,14 +385,14 @@ fn evaluate(op: &str, a: i64, b: i64) -> i64 {
 }
 
 fn main() {
-    println!("{}", evaluate("+", 1, evaluate("*", 2, 3))); // 7 — nesting lives in code, not data
+    println!("{}", evaluate("+", 1, evaluate("*", 2, 3))); // 7: nesting lives in code, not data
 }
 ```
 
 **✅ Idiomatic**
 
 ```rust
-// The AST is an enum — one variant per grammar rule.
+// The AST is an enum: one variant per grammar rule.
 enum Expr {
     Num(i64),
     Add(Box<Expr>, Box<Expr>), // non-terminals box their children
@@ -416,7 +416,7 @@ fn main() {
 }
 ```
 
-**🧠 Tradeoff** — an enum AST with an exhaustive `match` isn't a workaround here; it's the
+**🧠 Tradeoff**: an enum AST with an exhaustive `match` isn't a workaround here; it's the
 natural Rust form, and the Rust compiler's own AST is built this way. No `_` arm means adding a
 `Sub` variant makes every `match` that forgets it fail to compile. The `Box` is non-negotiable:
 a recursive type needs indirection to have a known size. Trait objects (`Box<dyn Expr>` with an
@@ -442,7 +442,7 @@ fn evaluate(op: u8, a: i64, b: i64) i64 {
 }
 
 pub fn main() void {
-    std.debug.print("{d}\n", .{evaluate('+', 1, evaluate('*', 2, 3))}); // 7 — nesting lives in code
+    std.debug.print("{d}\n", .{evaluate('+', 1, evaluate('*', 2, 3))}); // 7: nesting lives in code
 }
 ```
 
@@ -453,7 +453,7 @@ const std = @import("std");
 
 const Bin = struct { l: *const Expr, r: *const Expr };
 
-// The AST is a tagged union — one variant per grammar rule.
+// The AST is a tagged union: one variant per grammar rule.
 const Expr = union(enum) {
     num: i64,
     add: Bin, // non-terminals hold child pointers
@@ -481,7 +481,7 @@ pub fn main() void {
 }
 ```
 
-**🧠 Tradeoff** — a tagged union plus exhaustive `switch` is idiomatic Zig for a closed
+**🧠 Tradeoff**: a tagged union plus exhaustive `switch` is idiomatic Zig for a closed
 grammar, and the same guarantee as Rust: no `else` branch, so a new variant flags every switch
 at compile time. The demo builds the tree as `const` nodes with address-of: no allocator in
 sight; a real parser allocates nodes with an explicit allocator, and the Zig way is an arena
@@ -506,13 +506,13 @@ class Evaluator {
         };
     }
 }
-// Evaluator.evaluate("+", 1, Evaluator.evaluate("*", 2, 3)) == 7 — nesting lives in code, not data
+// Evaluator.evaluate("+", 1, Evaluator.evaluate("*", 2, 3)) == 7: nesting lives in code, not data
 ```
 
 **✅ Idiomatic**
 
 ```java
-// The AST is a sealed hierarchy — one record per grammar rule.
+// The AST is a sealed hierarchy: one record per grammar rule.
 sealed interface Expr permits Num, Add, Mul {}
 record Num(int value) implements Expr {}
 record Add(Expr left, Expr right) implements Expr {}
@@ -536,7 +536,7 @@ public class Demo {
 }
 ```
 
-**🧠 Tradeoff** — the GoF book wrote this pattern in Java's ancestors' style: an abstract
+**🧠 Tradeoff**: the GoF book wrote this pattern in Java's ancestors' style: an abstract
 `Expr` with `interpret()` overridden in every node class. That still compiles, but modern Java
 has a better axis for a small DSL: a sealed interface, records for nodes, and one
 pattern-matching switch. Because the hierarchy is sealed, the switch needs no `default`: add
@@ -548,28 +548,28 @@ closed, which is exactly right for the small, stable grammars where Interpreter 
 
 Real-world uses of Interpreter (from the reference article), by tier:
 
-- **Frontend** — form/eligibility rule engines, command languages for UI actions
+- **Frontend**: form/eligibility rule engines, command languages for UI actions
   (`show #panel` / `hide #panel`), Markdown-to-HTML rendering, spreadsheet-formula evaluation,
   search-query mini-languages.
-- **Backend** — JSON/YAML rules engines (pricing, eligibility, feature flags), SQL-like query
+- **Backend**: JSON/YAML rules engines (pricing, eligibility, feature flags), SQL-like query
   interpreters over in-memory data, config DSLs, arithmetic/expression evaluators, policy engines.
-- **Both** — calculators, template languages, and any small, stable DSL where behavior is
+- **Both**: calculators, template languages, and any small, stable DSL where behavior is
   described as data.
 
 **In modern systems:**
 
-- **Low-code** — a JSON rule tree (`{"and": [{"eq": ["role", "admin"]}, ...]}`) parsed once and
+- **Low-code**: a JSON rule tree (`{"and": [{"eq": ["role", "admin"]}, ...]}`) parsed once and
   evaluated per record. This *is* the core of a JSON low-code engine: behavior shipped as data.
-- **Workflow engine** — step conditions and transition guards written as data, interpreted to
+- **Workflow engine**: step conditions and transition guards written as data, interpreted to
   decide which node runs next, so the flow is editable without a redeploy.
-- **Multi-agent** — an agent's plan expressed as a small step DSL the runtime walks, rather than
+- **Multi-agent**: an agent's plan expressed as a small step DSL the runtime walks, rather than
   free-form generated code you have to sandbox and trust.
 
 ## Related Patterns
 
-- **Composite** — an AST *is* a Composite tree; Interpreter adds the `interpret` operation that
+- **Composite**: an AST *is* a Composite tree; Interpreter adds the `interpret` operation that
   recurses over it.
-- **Visitor** — the other way to evaluate an AST: Visitor keeps operations outside the node types
+- **Visitor**: the other way to evaluate an AST: Visitor keeps operations outside the node types
   (easy to add operations, hard to add nodes), classic Interpreter keeps `interpret` inside them
   (easy to add nodes, hard to add operations): the two halves of the Expression Problem.
-- **Iterator** — commonly used to walk the token stream while parsing text into the tree.
+- **Iterator**: commonly used to walk the token stream while parsing text into the tree.
