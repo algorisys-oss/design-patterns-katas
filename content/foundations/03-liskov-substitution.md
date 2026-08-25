@@ -55,7 +55,7 @@ class Square extends Rectangle {
 - Forces you to model behavior, not just taxonomy.
 
 ### Cautions
-- Real-world "is-a" can mislead — prefer composition when behavior diverges.
+- Real-world "is-a" can mislead; prefer composition when behavior diverges.
 - Strengthening preconditions or weakening postconditions in a subtype is a silent violation.
 
 ## Common Mistakes
@@ -73,7 +73,7 @@ class Square extends Rectangle {
 
 ## Implementations
 
-The bird that can't fly — model capability by behavior, not taxonomy.
+The bird that can't fly: model capability by behavior, not taxonomy.
 
 ### JavaScript
 
@@ -110,7 +110,7 @@ migrate([new Sparrow()]);       // fine — Penguin was never eligible
 
 **🧠 Note** — The fix is to model the *ability* (`FlyingBird`), so a `Penguin` is never handed to
 code that expects flight. Nothing overrides a method into a lie. When behavior doesn't fit the
-hierarchy, change the hierarchy — or use a capability interface — rather than throwing.
+hierarchy, change the hierarchy (or use a capability interface) rather than throwing.
 
 ### Python
 
@@ -153,7 +153,7 @@ def migrate(flyers: list[Flyer]) -> list[str]:
 
 **🧠 Note** — A `Flyer` `Protocol` types the *capability*; `Sparrow` matches it structurally,
 `Penguin` doesn't, and the type checker keeps a `Penguin` out of `migrate`. Behavioral typing
-lets ability, not ancestry, decide substitutability — very much the Pythonic answer to LSP.
+lets ability, not ancestry, decide substitutability. That's very much the Pythonic answer to LSP.
 
 ### Elixir
 
@@ -200,7 +200,7 @@ def migrate(flyers), do: Enum.map(flyers, &Flyer.fly/1)
 
 **🧠 Note** — Elixir has no inheritance, so LSP shows up in *behaviour/protocol* contracts. By
 giving flight its own protocol and implementing it only for types that truly fly, a `Penguin`
-is never substitutable where a `Flyer` is expected — the contract is honest by construction.
+is never substitutable where a `Flyer` is expected; the contract is honest by construction.
 
 ### Go
 
@@ -242,7 +242,7 @@ func Migrate(flyers []Flyer) []string {
 
 **🧠 Note** — Go's implicit interfaces make LSP almost automatic: a type is a `Flyer` only if it
 actually has `Fly()`. Not giving `Penguin` a `Fly` method means the compiler refuses to
-substitute it where a `Flyer` is required — the honest relationship is enforced at build time.
+substitute it where a `Flyer` is required; the honest relationship is enforced at build time.
 
 ### CSharp
 
@@ -294,7 +294,7 @@ public sealed class Penguin : Bird { } // honestly not an IFlyer
 
 **🧠 Note** — The capability moves out of the base class into `IFlyer`, so `Migrate` states
 its real requirement in its signature and the compiler keeps a `Penguin` out. This trap ships
-in the BCL itself — read-only collections that throw `NotSupportedException` from `Add` — so
+in the BCL itself (read-only collections that throw `NotSupportedException` from `Add`), so
 C# developers meet the violation early. `sealed` on the leaves also stops the next subtype
 from re-introducing a lying override.
 
@@ -351,7 +351,7 @@ fn main() {
 
 **🧠 Note** — Rust sidesteps the classic LSP traps by having no inheritance to misuse:
 there's no base class to override, only traits a type explicitly opts into. What remains of
-LSP is the *behavioral* half — an `impl` must still honor the trait's documented contract.
+LSP is the *behavioral* half: an `impl` must still honor the trait's documented contract.
 The compiler can't check that: an `Ord` impl that violates total order still compiles and
 quietly breaks every sort that trusted it. Shape is enforced; honesty is still on you.
 
@@ -412,7 +412,7 @@ pub fn main() void {
 
 **🧠 Note** — Zig has no subtype relationship at all; whether a type substitutes is decided
 at each `anytype` call site, at compile time, by whether it has the members the code uses.
-So the only way to violate LSP is to write a `fly` that lies — the fix is to not write it.
+So the only way to violate LSP is to write a `fly` that lies, and the fix is to not write it.
 The limit is the same as Rust's: comptime checks shape, not behavior. A `fly` returning the
 wrong thing still compiles, so the contract beyond the signature lives in doc comments and
 tests.
@@ -479,12 +479,12 @@ public class Demo {
 ```
 
 **🧠 Note** — Java is where the classic violations live. Square/Rectangle only breaks under
-*mutation* — the base promised independent setters — so records dissolve it: an immutable value
+*mutation* (the base promised independent setters), so records dissolve it: an immutable value
 has no setter to override into a lie, and the shared contract shrinks to what both shapes truly
 honor. The JDK ships the other classic: `List.of(...)` and `Collections.unmodifiableList` return
 a `List` whose `add` throws `UnsupportedOperationException`, so every `List` parameter carries a
 landmine the type system can't see. Same lesson both times: when a subtype can't keep the full
-contract, shrink the contract or drop the inheritance — never override to throw.
+contract, shrink the contract or drop the inheritance. Never override to throw.
 
 ## Applications
 

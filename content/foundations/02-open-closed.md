@@ -26,7 +26,7 @@ The lever is polymorphism: depend on an abstraction, and add implementations beh
 
 ## The Smell
 
-A function you edit every time a new case appears — the growing `switch`:
+A function you edit every time a new case appears, the growing `switch`:
 
 ```
 function area(shape) {
@@ -52,7 +52,7 @@ Every new shape modifies `area`, risking the cases that already worked.
 
 ### Cautions
 - Guessing the wrong extension axis adds abstraction you never use.
-- Apply it where change actually happens — don't pre-abstract everything.
+- Apply it where change actually happens. Don't pre-abstract everything.
 
 ## Common Mistakes
 
@@ -141,7 +141,7 @@ def total_area(shapes: list[Shape]) -> float:
 ```
 
 **🧠 Note** — A `Shape` `Protocol` fixes the extension point; new shapes just implement `area`.
-`functools.singledispatch` is another Pythonic OCP tool — register a new type's handler without
+`functools.singledispatch` is another Pythonic OCP tool: register a new type's handler without
 editing the generic function.
 
 ### Elixir
@@ -236,7 +236,7 @@ func TotalArea(shapes []Shape) float64 {
 
 **🧠 Note** — `TotalArea` depends on the `Shape` interface; any type with `Area()` satisfies it,
 so new shapes extend the system without editing existing code. Go's implicit interfaces make the
-extension point cheap — no shape needs to declare it implements `Shape`.
+extension point cheap: no shape needs to declare it implements `Shape`.
 
 ### CSharp
 
@@ -283,8 +283,8 @@ public sealed record Triangle(double B, double H) : IShape
 ```
 
 **🧠 Note** — Records with primary constructors make each shape a two-liner, and LINQ's `Sum`
-is the whole `TotalArea`. C# could also close the set — a sealed hierarchy plus a pattern-match
-`switch` — but that puts the central switch back; pick the interface when new shapes should
+is the whole `TotalArea`. C# could also close the set with a sealed hierarchy plus a pattern-match
+`switch`, but that puts the central switch back; pick the interface when new shapes should
 arrive as new files, the switch when the set genuinely won't grow.
 
 ### Rust
@@ -349,9 +349,9 @@ fn main() {
 
 **🧠 Note** — Be fair to the "naive" version: in Rust an enum with an exhaustive `match` is
 often the *right* call for a closed set, because adding a variant makes the compiler walk you
-to every match that needs updating — modification, but safe modification. Reach for the trait
+to every match that needs updating: modification, but safe modification. Reach for the trait
 (and pay the `Box<dyn>` heap allocation and dynamic dispatch) when shapes must come from code
-you don't own — other crates can `impl Shape` but can't add variants to your enum.
+you don't own: other crates can `impl Shape` but can't add variants to your enum.
 
 ### Zig
 
@@ -432,7 +432,7 @@ pub fn main() void {
 ```
 
 **🧠 Note** — Same honesty as Rust: the tagged union + exhaustive `switch` *is* idiomatic Zig
-for a closed set — zero indirection, and the compiler flags every unhandled case. The vtable
+for a closed set: zero indirection, and the compiler flags every unhandled case. The vtable
 buys openness at the cost of a pointer indirection and the `@ptrCast` boilerplate, so reach
 for it only when new shapes must arrive without touching the switch. When the set is known at
 compile time, `anytype`/comptime generics give the same openness with static dispatch.
@@ -489,7 +489,7 @@ public class Demo {
 
 **🧠 Note** — same honesty Rust asks for: the "naive" version is a legitimate modern-Java form.
 `sealed` declares the set closed, and the pattern-matching `switch` is exhaustive with no
-`default` — add `Triangle` to `permits` and the compiler walks you to every switch that must
+`default`. Add `Triangle` to `permits` and the compiler walks you to every switch that must
 now handle it. That's modification, but safe, compiler-guided modification. Choose the open
 interface when new shapes should arrive from packages you don't control; choose sealed + switch
 when the set genuinely won't grow and it's the *operations* that vary.

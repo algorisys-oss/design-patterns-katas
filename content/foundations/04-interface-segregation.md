@@ -6,7 +6,7 @@ sequence: 4
 title: Interface Segregation Principle
 also_known_as: [ISP]
 gof: false
-intent: "No client should be forced to depend on methods it doesn't use — prefer small, focused interfaces."
+intent: "No client should be forced to depend on methods it doesn't use; prefer small, focused interfaces."
 frequency: medium
 difficulty: intermediate
 tags: [solid, isp, interfaces, cohesion, decoupling]
@@ -19,7 +19,7 @@ languages: [javascript, python, elixir, go, csharp, rust, zig, java]
 > Clients shouldn't be forced to depend on interfaces they don't use.
 
 Many small, role-focused interfaces beat one fat interface. When a type must implement methods it
-has no use for — stubbing them out or throwing — the interface is too big. Split it so each
+has no use for (stubbing them out or throwing), the interface is too big. Split it so each
 client depends only on the slice it actually calls.
 
 ISP is SRP applied to interfaces: one interface, one role.
@@ -39,11 +39,11 @@ class SimplePrinter implements Machine {
 }
 ```
 
-`SimplePrinter` depends on `scan` and `fax` it will never provide — and callers can't trust them.
+`SimplePrinter` depends on `scan` and `fax` it will never provide, and callers can't trust them.
 
 ## Why It Matters
 
-- Implementers only build what they actually support — no throwing stubs.
+- Implementers only build what they actually support: no throwing stubs.
 - Clients depend on a small surface, so changes to unrelated methods don't touch them.
 - Ties directly to LSP: small honest interfaces are easy to substitute.
 
@@ -60,12 +60,12 @@ class SimplePrinter implements Machine {
 ## ISP and API Evolution
 
 Interface size is also an **evolution** problem, not just a coupling one. Every method on an
-interface is a promise to every client and every implementer — and the wider that promise, the
+interface is a promise to every client and every implementer, and the wider that promise, the
 harder it is to change without breaking someone. This is where ISP meets versioning and backward
 compatibility.
 
 - **Widening breaks implementers.** Add a method to a fat interface and *every* implementer must
-  now provide it — existing code stops compiling, or starts throwing. Small interfaces localize
+  now provide it: existing code stops compiling, or starts throwing. Small interfaces localize
   the change: a new capability becomes a *new* interface that only the types needing it adopt.
 - **Changing a signature breaks callers.** Turning `charge(amount)` into `charge(amount, currency)`
   breaks every existing call. Backward-compatible evolution is **additive**: keep the old method
@@ -73,12 +73,12 @@ compatibility.
   Old callers keep working; new callers opt in.
 - **Version at the seam.** When a contract genuinely must change incompatibly, *version* it
   (`PaymentV2`, `/v2/...`) and deprecate the old one on a schedule rather than mutating it under
-  live clients. Segregated interfaces make this cheap — you version the one small role that
+  live clients. Segregated interfaces make this cheap: you version the one small role that
   changed, not a god interface every client touches.
 
 The through-line: **prefer many specific methods/interfaces over one broad, mutable one.**
-Specific signatures are stable — you extend the surface with new members instead of reshaping
-existing ones — which is exactly what keeps published APIs and shared libraries compatible.
+Specific signatures are stable: you extend the surface with new members instead of reshaping
+existing ones, which is exactly what keeps published APIs and shared libraries compatible.
 
 ```
 // ❌ breaking — every existing caller of charge(amount) must now change
@@ -151,7 +151,7 @@ printAll(new SimplePrinter(), ["a"]);  // no scan/fax stubs in sight
 ```
 
 **🧠 Note** — JS has no formal interfaces, so ISP is about which *methods a client requires*.
-`printAll` needs only `print`, so a `SimplePrinter` suffices — nothing forces it to fake a
+`printAll` needs only `print`, so a `SimplePrinter` suffices; nothing forces it to fake a
 scanner. The role boundary lives in what the function asks for, not in a declared interface.
 
 ### Python
@@ -202,7 +202,7 @@ def print_all(printer: Printer, docs: list[str]) -> list[str]:
 
 **🧠 Note** — Small `Protocol`s per role are the Pythonic ISP: `print_all` asks for `Printer`,
 so `SimplePrinter` fits without pretending to scan. A device that does more just satisfies more
-protocols — composition of roles, not one fat ABC with throwing stubs.
+protocols: composition of roles, not one fat ABC with throwing stubs.
 
 ### Elixir
 
@@ -259,7 +259,7 @@ end
 
 **🧠 Note** — Elixir behaviours segregate cleanly: define one per role and a module lists exactly
 the behaviours it implements. `AllInOne` adopts both `Printer` and `Scanner`; `SimplePrinter`
-only `Printer` — no module is forced to stub a callback it can't honor.
+only `Printer`, so no module is forced to stub a callback it can't honor.
 
 ### Go
 
@@ -365,7 +365,7 @@ public sealed class AllInOne : IPrinter, IScanner
 
 **🧠 Note** — a C# class can implement any number of interfaces, so ISP costs nothing: declare
 one interface per role and let each device pick its set. `PrintAll` takes `IPrinter`, checked at
-compile time — through that parameter a caller can't even see `Scan`. The classic .NET smell is
+compile time; through that parameter a caller can't even see `Scan`. The classic .NET smell is
 the `ISomethingManager` with a dozen members; split it by who calls what, not by what the
 implementing class happens to contain.
 
@@ -439,7 +439,7 @@ fn main() {
 
 **🧠 Note** — small traits are how Rust's std already works: `Read`, `Write`, and `Display` are
 each one role, and you bound on exactly what you call. Unlike Go's implicit satisfaction, an
-`impl` block states which roles a type plays — the compiler rejects a `SimplePrinter` handed
+`impl` block states which roles a type plays, so the compiler rejects a `SimplePrinter` handed
 where a `Scanner` is needed. Where a client genuinely needs two roles, ask for the pair at that
 one seam (`P: Printer + Scanner`) rather than gluing them into a fat supertrait everyone
 inherits.
@@ -507,9 +507,9 @@ pub fn main() void {
 ```
 
 **🧠 Note** — with `anytype`, `printAll` compiles against exactly the methods it calls, so the
-role boundary is the call site itself — segregation for free, though the contract is implicit
+role boundary is the call site itself: segregation for free, though the contract is implicit
 and a missing `print` only surfaces as a compile error where the function is instantiated. When
-dispatch must be runtime, keep each vtable role-sized the way `std.mem.Allocator` does one job —
+dispatch must be runtime, keep each vtable role-sized the way `std.mem.Allocator` does one job,
 never one fat vtable padded with panicking function pointers.
 
 ### Java
@@ -565,9 +565,9 @@ public class Demo {
 ```
 
 **🧠 Note** — a role interface with one method is a functional interface, so a test double is a
-lambda: `printAll(doc -> "fake " + doc, docs)` — no mocking library needed. Java also shows what
+lambda: `printAll(doc -> "fake " + doc, docs)`. No mocking library needed. Java also shows what
 it costs to grow a wide interface anyway: default methods exist because `Collection` had to gain
-`stream()` without breaking every implementer in the world — additive evolution bolted onto the
+`stream()` without breaking every implementer in the world: additive evolution bolted onto the
 language. Segregation makes that machinery mostly unnecessary: small role interfaces grow by
 adding new interfaces, not by patching old ones.
 

@@ -6,7 +6,7 @@ sequence: 1
 title: Single Responsibility Principle
 also_known_as: [SRP]
 gof: false
-intent: "A class or module should have one reason to change — one job, one owner of that job."
+intent: "A class or module should have one reason to change: one job, one owner of that job."
 frequency: high
 difficulty: beginner
 tags: [solid, srp, cohesion, separation-of-concerns, maintainability]
@@ -19,8 +19,8 @@ languages: [javascript, python, elixir, go, csharp, rust, zig, java]
 > A module should have one, and only one, reason to change.
 
 "Responsibility" here means *a reason to change*, tied to one stakeholder or concern. A class
-that formats a report, computes its numbers, and emails it has three reasons to change —
-accounting rules, layout, and delivery — pulled by three different people. SRP says split those
+that formats a report, computes its numbers, and emails it has three reasons to change
+(accounting rules, layout, and delivery), pulled by three different people. SRP says split those
 so each concern lives in its own unit.
 
 This is the principle the design patterns keep leaning on: Strategy, Facade, and Decorator all
@@ -42,7 +42,7 @@ class Report {
 
 ## Why It Matters
 
-- Changes stay local — a layout tweak can't break the totals.
+- Changes stay local: a layout tweak can't break the totals.
 - Each concern is testable alone, without mocking the others.
 - Code is easier to name and find: the class does what its name says.
 
@@ -54,7 +54,7 @@ class Report {
 
 ### Cautions
 - Taken too far it fragments logic into a hundred one-method classes.
-- "One responsibility" is a judgment call — group by *reason to change*, not by counting methods.
+- "One responsibility" is a judgment call. Group by *reason to change*, not by counting methods.
 
 ## Common Mistakes
 
@@ -155,7 +155,7 @@ ReportMailer(mailer).send(html)
 ```
 
 **🧠 Note** — In Python these can even be plain functions in separate modules
-(`calc.py`, `render.py`, `deliver.py`) — the unit of responsibility is the *module*, not
+(`calc.py`, `render.py`, `deliver.py`); the unit of responsibility is the *module*, not
 necessarily a class. Either way, each file has one reason to change.
 
 ### Elixir
@@ -245,7 +245,7 @@ func (m Mailer) Send(html string) { m.Client.Send(html) }
 
 **🧠 Note** — Go leans on small packages and types with a tight method set. Separating the three
 concerns into `Calculator`, `Renderer`, and `Mailer` keeps each type's method set cohesive, and
-a coordinator wires them — each type now has a single axis of change.
+a coordinator wires them, so each type now has a single axis of change.
 
 ### CSharp
 
@@ -291,7 +291,7 @@ public sealed class ReportMailer(IMailer mailer)
 
 **🧠 Note** — Each sealed class is now one expression-bodied member serving one stakeholder;
 an email-provider change touches only `ReportMailer`'s constructor dependency. In a real
-codebase the split usually goes further — separate namespaces or projects per concern — and
+codebase the split usually goes further (separate namespaces or projects per concern), and
 the stateless `Calculator` and `Renderer` could just as well be static methods. The unit of
 responsibility matters more than whether it's a class.
 
@@ -424,7 +424,7 @@ pub fn main() !void {
 ```
 
 **🧠 Note** — In Zig every file *is* a struct, so "one file, one concern" is literally the
-module system — `@import("calc.zig")` and you're done. The split also narrows the fallible
+module system: `@import("calc.zig")` and you're done. The split also narrows the fallible
 path: only rendering returns an error union, so `try` appears exactly where failure can
 happen, and the caller owns the buffer instead of every concern touching it.
 
@@ -486,7 +486,7 @@ public class Demo {
 codebase these three land in `report.calc`, `report.render`, `report.deliver`. The stateless
 `ReportCalculator` and `ReportRenderer` could just as well be static methods; the boundary
 matters, not the ceremony. And because `Mailer` is a single-method interface, delivery is
-faked in tests with a lambda — the split is exactly what made that test cheap.
+faked in tests with a lambda; the split is exactly what made that test cheap.
 
 ## Applications
 

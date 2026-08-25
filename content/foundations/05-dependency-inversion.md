@@ -6,7 +6,7 @@ sequence: 5
 title: Dependency Inversion Principle
 also_known_as: [DIP]
 gof: false
-intent: "Depend on abstractions, not concretions — high-level policy shouldn't rely on low-level detail."
+intent: "Depend on abstractions, not concretions: high-level policy shouldn't rely on low-level detail."
 frequency: high
 difficulty: intermediate
 tags: [solid, dip, abstraction, dependency-injection, decoupling]
@@ -21,7 +21,7 @@ languages: [javascript, python, elixir, go, csharp, rust, zig, java]
 
 Your business logic (high-level policy) shouldn't hard-wire a specific database, mailer, or API
 (low-level detail). Put an abstraction between them and inject the detail, so policy stays stable
-while details are swapped freely — and tested with fakes.
+while details are swapped freely, and tested with fakes.
 
 "Inversion" is the direction of the dependency arrow: instead of policy → detail, both point at
 an interface the policy owns.
@@ -42,7 +42,7 @@ class OrderService {
 
 ## Why It Matters
 
-- Business logic is testable with in-memory fakes — no real DB or network.
+- Business logic is testable with in-memory fakes: no real DB or network.
 - Details (DB, transport, vendor) swap without touching policy.
 - It's the mechanism behind OCP: extend behind the abstraction you depend on.
 
@@ -53,7 +53,7 @@ class OrderService {
 - Enables dependency injection and easy testing.
 
 ### Cautions
-- Every dependency behind an interface is over-abstraction — invert what actually varies or
+- Every dependency behind an interface is over-abstraction. Invert what actually varies or
   needs faking.
 - The interface should be defined by the *consumer's* needs, not the provider's API.
 
@@ -155,7 +155,7 @@ under_test = OrderService(InMemoryStore())
 
 **🧠 Note** — A `Store` `Protocol` defines what `OrderService` needs; any object with `save`
 qualifies, so injection swaps Postgres for an in-memory fake in tests. Python's constructor
-injection plus structural typing gives DIP with no framework — just pass the dependency in.
+injection plus structural typing gives DIP with no framework; just pass the dependency in.
 
 ### Elixir
 
@@ -196,7 +196,7 @@ OrderService.place(order, InMemoryStore)
 **🧠 Note** — Elixir inverts the dependency by taking the implementing *module* as an argument or
 reading it from application config (`Application.get_env`). The `Store` behaviour is the
 abstraction both sides depend on; tests inject a fake module. Config-based injection is the
-common production form — swap the store without editing `OrderService`.
+common production form: swap the store without editing `OrderService`.
 
 ### Go
 
@@ -238,7 +238,7 @@ func (s *OrderService) Place(order Order) error { return s.store.Save(order) }
 ```
 
 **🧠 Note** — Idiomatically in Go the *consumer* declares the `Store` interface it needs, and any
-type with `Save` satisfies it implicitly — so `OrderService` never imports the Postgres package.
+type with `Save` satisfies it implicitly, so `OrderService` never imports the Postgres package.
 Injecting the store via the constructor makes it trivially testable with a fake and swappable in
 production. This "accept interfaces, return structs" habit is DIP by default.
 
@@ -293,7 +293,7 @@ public sealed record Order(int Id);
 ```
 
 **🧠 Note** — constructor injection is so standard in .NET that ASP.NET Core ships a container
-for it — but the principle is just this: `OrderService` names an `IStore` it owns, and the
+for it, but the principle is just this: `OrderService` names an `IStore` it owns, and the
 concrete store arrives from outside. Keep the interface consumer-shaped (`Save(order)`), not a
 mirror of the vendor SDK. And when the dependency is a single method, a `Func<Order, string>`
 injected directly does the same inversion without declaring an interface at all.
@@ -373,7 +373,7 @@ fn main() {
 ```
 
 **🧠 Note** — Rust makes the injection cost explicit. The generic `OrderService<S: Store>` above
-monomorphizes: zero dispatch overhead, but the store is fixed per instantiation — exactly right
+monomorphizes: zero dispatch overhead, but the store is fixed per instantiation, exactly right
 when prod uses Postgres and tests use the fake. If the store must change at runtime, or the
 generic parameter starts infecting every type that holds a service, switch the field to
 `Box<dyn Store>` and pay one indirection. Either way the arrow is inverted: both stores conform
@@ -453,7 +453,7 @@ pub fn main() void {
 
 **🧠 Note** — Zig's standard library is built on this exact inversion: everything that allocates
 depends on `std.mem.Allocator`, a `*anyopaque` context plus function pointers, and the caller
-injects the concrete allocator. The `Store` above is the same idiom at kata size — the erased
+injects the concrete allocator. The `Store` above is the same idiom at kata size; the erased
 pointer plus `@ptrCast(@alignCast(...))` is the price of runtime swapping without interfaces.
 When the store can be fixed at build time, the cheaper Zig form is comptime injection: make the
 service generic over the store type (`fn OrderService(comptime S: type)`) and skip the vtable.
@@ -513,9 +513,9 @@ public class Demo {
 
 **🧠 Note** — this wiring is what Spring's whole container automates, but DIP needs none of it:
 constructor injection is just `new` at the edge of the program. Two modern touches. `Store` has
-one method, so it's a functional interface and a test fake is a lambda —
+one method, so it's a functional interface and a test fake is a lambda:
 `new OrderService(order -> "saved")`. And keep the interface consumer-shaped (`save(order)`),
-not a mirror of JDBC or the vendor SDK — the service owns the contract, the detail conforms.
+not a mirror of JDBC or the vendor SDK: the service owns the contract, the detail conforms.
 Reach for a container when the object graph gets deep; the principle is already satisfied here.
 
 ## Applications
